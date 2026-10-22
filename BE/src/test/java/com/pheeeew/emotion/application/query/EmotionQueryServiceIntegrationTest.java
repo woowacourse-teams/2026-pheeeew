@@ -49,6 +49,10 @@ import com.pheeeew.support.PostgisDataJpaTest;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
+import java.time.LocalDate;
+import com.pheeeew.emotion.domain.repository.query.EmotionContentFilter;
+import com.pheeeew.emotion.domain.repository.query.EmotionSearchScope;
+import org.junit.jupiter.params.provider.EnumSource;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -631,6 +635,8 @@ class EmotionQueryServiceIntegrationTest {
         // then
         assertThat(page.items()).extracting(EmotionMapItemView::id).containsExactlyElementsOf(expected.reversed());
         assertThat(page.items()).isEqualTo(legacy.items());
+        assertThat(emotionMapQueryService.findContentMapWithinBoundsV4(bounds, viewer.getPublicId(), null, null, null, null, null).items())
+                .isEqualTo(page.items());
         assertThat(page.hasNext()).isFalse();
         assertThat(page.nextCursor()).isNull();
     }
@@ -1224,8 +1230,9 @@ class EmotionQueryServiceIntegrationTest {
         assertThat(third.items().getFirst().emojis()).hasSize(6).contains(EmotionEmojiResult.of(EmojiType.HEART, 1, true));
     }
 
-    @Test
-    void 좌표_없는_다음_페이지는_새_감정을_제외하고_현재_삭제와_차단을_반영한다() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void 좌표_없는_다음_페이지는_새_감정을_제외하고_현재_삭제와_차단을_반영한다(boolean v4) {
         // given: 삭제·차단할 감정은 첫 페이지 다음에 위치한다.
         Emotion deleted = saveEmotion(author.getId(), 129, 35);
         Emotion blocked = saveEmotion(author.getId(), 129, 35);
@@ -1237,7 +1244,7 @@ class EmotionQueryServiceIntegrationTest {
         entityManager.flush();
         jdbcClient.sql("UPDATE emotions SET created_at = '2025-01-01T00:00:00Z'").update();
         entityManager.clear();
-        EmotionPageView first = emotionQueryService.findListWithoutBounds(viewer.getPublicId(), null, null, null, null, null, null);
+        EmotionPageView first = findUnfilteredList(v4, viewer.getPublicId(), null);
 
         entityManager.find(Emotion.class, deleted.getId()).delete();
         emotionBlockRepository.save(EmotionBlock.builder().blockerDeviceId(viewer.getId()).emotionId(blocked.getId()).build());
@@ -1245,13 +1252,14 @@ class EmotionQueryServiceIntegrationTest {
                 .blockedDeviceId(blockedAuthor.getId()).originEmotionId(byBlockedAuthor.getId()).build());
         Emotion added = saveEmotion(author.getId(), 129, 35);
         entityManager.flush();
-        Instant snapshotAt = EmotionCursorCodec.decodeFilteredWithoutBounds(first.nextCursor()).snapshotAt();
+        Instant snapshotAt = (v4 ? EmotionCursorCodec.decodeV4WithoutBounds(first.nextCursor())
+                : EmotionCursorCodec.decodeFilteredWithoutBounds(first.nextCursor())).snapshotAt();
         setCreatedAt(added, snapshotAt.plusSeconds(1));
         entityManager.clear();
 
         // when
-        EmotionPageView next = emotionQueryService.findListWithoutBounds(viewer.getPublicId(), null, null, null, null, null, first.nextCursor());
-        EmotionPageView anotherViewer = emotionQueryService.findListWithoutBounds(author.getPublicId(), null, null, null, null, null, first.nextCursor());
+        EmotionPageView next = findUnfilteredList(v4, viewer.getPublicId(), first.nextCursor());
+        EmotionPageView anotherViewer = findUnfilteredList(v4, author.getPublicId(), first.nextCursor());
 
         // then
         assertThat(next.items()).extracting(EmotionDetailView::id).containsExactly(emotion.getId());
@@ -1283,6 +1291,136 @@ class EmotionQueryServiceIntegrationTest {
         assertThatThrownBy(() -> emotionQueryService.findListWithinBounds(null, viewer.getPublicId(), null, withoutBounds))
                 .isInstanceOfSatisfying(EmotionException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(EMOTION_INVALID_CURSOR));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = EmotionSearchScope.class, names = {"ALL", "MY"})
+    void v4_목록은_그룹_감정을_포함하고_필터를_유지하며_50개씩_이어진다(EmotionSearchScope scope) {
+        // given
+        emotion.delete();
+        var group = 기본_그룹_빌더().build();
+        entityManager.persist(group);
+        var stamp = 기본_스탬프_빌더(group).build();
+        entityManager.persist(stamp);
+        List<Long> expected = new ArrayList<>();
+        for (int index = 0; index < 51; index++) {
+            expected.add(saveEmotion(viewer.getId(), 129, 35).getId());
+        }
+        var grouped = saveEmotionWithStamp(stamp);
+        if (scope == EmotionSearchScope.ALL) {
+            expected.add(grouped.getId());
+        }
+        entityManager.flush();
+        jdbcClient.sql("UPDATE emotions SET created_at = '2026-10-01T03:00:00Z'").update();
+        entityManager.clear();
+        var date = LocalDate.of(2026, 10, 1);
+
+        var firstResults = registry.get("pheeeew.sigh.list.results").tags("page", "first", "has_next", "true").summary();
+        var nextResults = registry.get("pheeeew.sigh.list.results").tags("page", "next", "has_next", "false").summary();
+        long firstBefore = firstResults.count();
+        long nextBefore = nextResults.count();
+
+        // when
+        var first = emotionQueryService.findListWithoutBoundsV4(viewer.getPublicId(), date, date,
+                EmotionContentFilter.MEMO, scope, null);
+        var second = emotionQueryService.findListWithoutBoundsV4(viewer.getPublicId(), null, null, null, null, first.nextCursor());
+
+        // then
+        assertThat(firstResults.count()).isEqualTo(firstBefore + 1);
+        assertThat(nextResults.count()).isEqualTo(nextBefore + 1);
+        assertThat(first.items()).hasSize(50);
+        assertThat(first.hasNext()).isTrue();
+        assertThat(Stream.concat(first.items().stream(), second.items().stream()).map(EmotionDetailView::id).toList())
+                .containsExactlyElementsOf(expected.reversed());
+        assertThat(second.hasNext()).isFalse();
+        assertThat(second.nextCursor()).isNull();
+        var cursor = EmotionCursorCodec.decodeV4WithoutBounds(first.nextCursor());
+        assertThat(cursor.filter()).isEqualTo(EmotionSearchFilter.of(date, date, EmotionContentFilter.MEMO, scope, null));
+        assertThatThrownBy(() -> emotionQueryService.findListWithoutBoundsV4(viewer.getPublicId(), null, null, null,
+                scope == EmotionSearchScope.ALL ? EmotionSearchScope.MY : EmotionSearchScope.ALL, first.nextCursor()))
+                .isInstanceOfSatisfying(EmotionException.class,
+                        error -> assertThat(error.getErrorCode()).isEqualTo(EMOTION_INVALID_CURSOR));
+    }
+
+    @Test
+    void v4_목록은_기존_커서와_핀_커서와_미래_커서를_거부한다() {
+        // given
+        var filter = EmotionSearchFilter.from(null);
+        var now = Instant.now();
+        var cursors = List.of(
+                EmotionCursorCodec.encode(EmotionCursor.initialWithoutBounds(now, filter)),
+                EmotionCursorCodec.encodeV4(EmotionCursor.initialWithinBounds(EmotionSearchBounds.of(126, 37, 128, 38), now, filter)),
+                EmotionCursorCodec.encodeV4(EmotionCursor.initialWithoutBounds(now.plusSeconds(60), filter)));
+
+        // when / then
+        for (String cursor : cursors) {
+            assertThatThrownBy(() -> emotionQueryService.findListWithoutBoundsV4(viewer.getPublicId(), null, null, null, null, cursor))
+                    .isInstanceOfSatisfying(EmotionException.class,
+                            error -> assertThat(error.getErrorCode()).isEqualTo(EMOTION_INVALID_CURSOR));
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = EmotionSearchScope.class, names = {"ALL", "MY"})
+    void v4_핀은_SQL에서도_기간과_범위를_유지하며_200개씩_이어진다(EmotionSearchScope scope) {
+        // given
+        emotion.delete();
+        List<Long> expected = new ArrayList<>();
+        for (int index = 0; index < 201; index++) {
+            expected.add(saveEmotion(viewer.getId(), 127, 37.5).getId());
+        }
+        var group = 기본_그룹_빌더().build();
+        entityManager.persist(group);
+        var stamp = 기본_스탬프_빌더(group).build();
+        entityManager.persist(stamp);
+        var grouped = saveEmotionWithStamp(stamp);
+        if (scope == EmotionSearchScope.ALL) {
+            expected.add(grouped.getId());
+        }
+        entityManager.flush();
+        jdbcClient.sql("UPDATE emotions SET created_at = '2026-10-01T03:00:00Z'").update();
+        entityManager.clear();
+        var date = LocalDate.of(2026, 10, 1);
+        var bounds = EmotionSearchBounds.of(126, 37, 128, 38);
+
+        // when
+        var first = emotionMapQueryService.findContentMapWithinBoundsV4(bounds, viewer.getPublicId(), date, date,
+                EmotionContentFilter.MEMO, scope, null);
+        var second = emotionMapQueryService.findContentMapWithinBoundsV4(null, viewer.getPublicId(), null, null, null, null, first.nextCursor());
+
+        // then
+        assertThat(first.items()).hasSize(200);
+        assertThat(first.hasNext()).isTrue();
+        assertThat(Stream.concat(first.items().stream(), second.items().stream()).map(EmotionMapItemView::id).toList())
+                .containsExactlyElementsOf(expected.reversed());
+        assertThat(second.hasNext()).isFalse();
+        assertThat(second.nextCursor()).isNull();
+        assertThat(EmotionCursorCodec.decodeV4WithinBounds(first.nextCursor()).filter())
+                .isEqualTo(EmotionSearchFilter.of(date, date, EmotionContentFilter.MEMO, scope, null));
+        assertThatThrownBy(() -> emotionMapQueryService.findContentMapWithinBoundsV4(null, viewer.getPublicId(), null, null,
+                EmotionContentFilter.AUDIO, null, first.nextCursor())).isInstanceOfSatisfying(EmotionException.class,
+                        error -> assertThat(error.getErrorCode()).isEqualTo(EMOTION_INVALID_CURSOR));
+    }
+
+    @Test
+    void v4_핀은_기존과_목록과_미래_커서를_거부한다() {
+        // given
+        var bounds = EmotionSearchBounds.of(126, 37, 128, 38);
+        var filter = EmotionSearchFilter.from(null);
+        var now = Instant.now();
+        for (String cursor : List.of(EmotionCursorCodec.encode(EmotionCursor.initialWithinBounds(bounds, now, filter)),
+                EmotionCursorCodec.encodeV4(EmotionCursor.initialWithoutBounds(now, filter)),
+                EmotionCursorCodec.encodeV4(EmotionCursor.initialWithinBounds(bounds, now.plusSeconds(60), filter)))) {
+            // when / then
+            assertThatThrownBy(() -> emotionMapQueryService.findContentMapWithinBoundsV4(null, viewer.getPublicId(), null, null, null, null, cursor))
+                    .isInstanceOfSatisfying(EmotionException.class,
+                            error -> assertThat(error.getErrorCode()).isEqualTo(EMOTION_INVALID_CURSOR));
+        }
+    }
+
+    private EmotionPageView findUnfilteredList(boolean v4, UUID devicePublicId, String cursor) {
+        return v4 ? emotionQueryService.findListWithoutBoundsV4(devicePublicId, null, null, null, null, cursor)
+                : emotionQueryService.findListWithoutBounds(devicePublicId, null, null, null, null, null, cursor);
     }
 
     private Emotion saveEmotionWithStamp(GroupStamp stamp) {

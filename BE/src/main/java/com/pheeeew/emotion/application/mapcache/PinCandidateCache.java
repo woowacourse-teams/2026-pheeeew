@@ -48,7 +48,7 @@ public class PinCandidateCache implements EmotionMapCacheListener {
         });
     }
 
-    public Page find(EmotionCursor cursor, boolean firstPage, Long deviceId) {
+    public Page find(EmotionCursor cursor, boolean firstPage, Long deviceId, int pageSize) {
         BatchedSnapshot.Read<Snapshot> read = publication.read();
         if (!read.loadAllowed()) {
             metrics.request("fallback");
@@ -71,7 +71,7 @@ public class PinCandidateCache implements EmotionMapCacheListener {
         EmotionMapBlocks blocked = repository.findBlockedTargets(deviceId);
 
         PinCandidates.Selection selection = metrics.measurePinSearch(
-                () -> snapshot.ordered().select(selected, blocked, 201), PinCandidates.Selection::scanned);
+                () -> snapshot.ordered().select(selected, blocked, pageSize + 1), PinCandidates.Selection::scanned);
 
         return Page.of(selected, selection.pins());
     }

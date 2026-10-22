@@ -499,6 +499,120 @@ class EmotionCursorCodecTest {
                         error -> assertThat(error.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_INVALID_CURSOR));
     }
 
+    @ParameterizedTest
+    @EnumSource(value = EmotionSearchScope.class, names = {"ALL", "MY"})
+    void v4_커서는_조회_종류와_필터와_페이지_위치를_유지한다(EmotionSearchScope scope) {
+        // given
+        var filter = EmotionSearchFilter.of(LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 8),
+                EmotionContentFilter.MEMO, scope, null);
+        var bounds = EmotionSearchBounds.of(170, 37, -170, 39);
+        var map = EmotionCursor.ofWithinBounds(bounds, SNAPSHOT, LAST_CREATED_AT, 42L, filter);
+        var list = EmotionCursor.ofWithoutBounds(SNAPSHOT, LAST_CREATED_AT, 42L, filter);
+
+        // when / then
+        assertThat(EmotionCursorCodec.decodeV4WithinBounds(EmotionCursorCodec.encodeV4(map))).isEqualTo(map);
+        assertThat(EmotionCursorCodec.decodeV4WithoutBounds(EmotionCursorCodec.encodeV4(list))).isEqualTo(list);
+        var next = list.next(LAST_CREATED_AT.minusSeconds(1), 41L);
+        assertThat(EmotionCursorCodec.decodeV4WithoutBounds(EmotionCursorCodec.encodeV4(next))).isEqualTo(next);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void v4는_기존_모든_형식의_커서를_거부한다(boolean withinBounds) {
+        // given: 기본 전체·단일 그룹·필터·다중 그룹으로 기존 1~7 형식을 모두 만든다.
+        var filters = List.of(EmotionSearchFilter.from(null), EmotionSearchFilter.from(List.of(GROUP_A)),
+                EmotionSearchFilter.of(null, null, EmotionContentFilter.MEMO, EmotionSearchScope.ALL, null),
+                EmotionSearchFilter.of(null, null, null, EmotionSearchScope.MY, null),
+                EmotionSearchFilter.from(List.of(GROUP_A, GROUP_B)));
+        for (var filter : filters) {
+            var cursor = withinBounds
+                    ? EmotionCursor.ofWithinBounds(EmotionSearchBounds.of(126, 37, 128, 38), SNAPSHOT, LAST_CREATED_AT, 42L, filter)
+                    : EmotionCursor.ofWithoutBounds(SNAPSHOT, LAST_CREATED_AT, 42L, filter);
+            String legacy = EmotionCursorCodec.encode(cursor);
+
+            // when / then: 기존 API에서는 계속 유효하지만 v4에서는 두 조회 모두 거부한다.
+            assertThat(decodeFiltered(withinBounds, legacy)).isEqualTo(cursor);
+            v4_잘못된_커서를_검증한다(legacy);
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void v4_커서는_다른_조회_종류나_기존_API와_혼용할_수_없다(boolean withinBounds) {
+        // given
+        var filter = EmotionSearchFilter.from(null);
+        var cursor = withinBounds
+                ? EmotionCursor.initialWithinBounds(EmotionSearchBounds.of(126, 37, 128, 38), SNAPSHOT, filter)
+                : EmotionCursor.initialWithoutBounds(SNAPSHOT, filter);
+        String encoded = EmotionCursorCodec.encodeV4(cursor);
+
+        // when / then
+        assertThat(withinBounds ? EmotionCursorCodec.decodeV4WithinBounds(encoded)
+                : EmotionCursorCodec.decodeV4WithoutBounds(encoded)).isEqualTo(cursor);
+        assertThatThrownBy(() -> {
+            if (withinBounds) {
+                EmotionCursorCodec.decodeV4WithoutBounds(encoded);
+            } else {
+                EmotionCursorCodec.decodeV4WithinBounds(encoded);
+            }
+        }).isInstanceOfSatisfying(EmotionException.class,
+                error -> assertThat(error.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_INVALID_CURSOR));
+        잘못된_커서임을_검증한다(encoded);
+        잘못된_좌표_없는_커서임을_검증한다(encoded);
+        assertThatThrownBy(() -> EmotionCursorCodec.decodeFilteredWithinBounds(encoded))
+                .isInstanceOfSatisfying(EmotionException.class,
+                        error -> assertThat(error.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_INVALID_CURSOR));
+    }
+
+    @Test
+    void v4는_그룹_조건이_있는_커서를_발급하지_않는다() {
+        // given / when / then
+        for (var groups : List.of(List.of(GROUP_A), List.of(GROUP_A, GROUP_B))) {
+            var filter = EmotionSearchFilter.from(groups);
+            for (var cursor : List.of(EmotionCursor.initialWithoutBounds(SNAPSHOT, filter),
+                    EmotionCursor.initialWithinBounds(EmotionSearchBounds.of(126, 37, 128, 38), SNAPSHOT, filter))) {
+                assertThatThrownBy(() -> EmotionCursorCodec.encodeV4(cursor))
+                        .isInstanceOfSatisfying(EmotionException.class,
+                                error -> assertThat(error.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_INVALID_CURSOR));
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" ", "%%%", "not-a-cursor"})
+    void v4도_빈_커서와_잘못된_인코딩을_거부한다(String encoded) {
+        // when / then
+        v4_잘못된_커서를_검증한다(encoded);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "10|2026-10-08T00:00:00Z|2026-10-07T00:00:00Z|42||||ALL|ALL",
+            "9|2026-10-08T00:00:00Z|2026-10-07T00:00:00Z|42||||ALL",
+            "9|2026-10-08T00:00:00Z|2026-10-07T00:00:00Z|42|11111111-1111-1111-1111-111111111111|||ALL|ALL",
+            "9|2026-10-08T00:00:00Z|2026-10-07T00:00:00Z|42||||ALL|GROUP",
+            "9|invalid|2026-10-07T00:00:00Z|42||||ALL|ALL",
+            "9|2026-10-08T00:00:00Z|2026-10-09T00:00:00Z|42||||ALL|ALL",
+            "9|2026-10-08T00:00:00Z|2026-10-07T00:00:00Z|0||||ALL|ALL",
+            "9|2026-10-08T00:00:00Z|2026-10-07T00:00:00Z|42||2026-10-01||ALL|ALL",
+            "9|2026-10-08T00:00:00Z|2026-10-07T00:00:00Z|42||||NONE|ALL",
+            "8|2026-10-08T00:00:00Z|2026-10-07T00:00:00Z|42||||ALL|ALL|126|NaN|128|38"
+    })
+    void v4_형식이어도_그룹이나_잘못된_검색_조건이_있으면_거부한다(String payload) {
+        // when / then
+        v4_잘못된_커서를_검증한다(encodePayload(payload));
+    }
+
+    private void v4_잘못된_커서를_검증한다(String encoded) {
+        assertThatThrownBy(() -> EmotionCursorCodec.decodeV4WithinBounds(encoded))
+                .isInstanceOfSatisfying(EmotionException.class,
+                        error -> assertThat(error.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_INVALID_CURSOR));
+        assertThatThrownBy(() -> EmotionCursorCodec.decodeV4WithoutBounds(encoded))
+                .isInstanceOfSatisfying(EmotionException.class,
+                        error -> assertThat(error.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_INVALID_CURSOR));
+    }
+
     private EmotionCursor decodeFiltered(boolean withinBounds, String encoded) {
         return withinBounds ? EmotionCursorCodec.decodeFilteredWithinBounds(encoded)
                 : EmotionCursorCodec.decodeFilteredWithoutBounds(encoded);

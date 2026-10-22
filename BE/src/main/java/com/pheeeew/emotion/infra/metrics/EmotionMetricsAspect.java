@@ -29,7 +29,8 @@ public class EmotionMetricsAspect {
 
     @AfterReturning(
             pointcut = "(execution(* com.pheeeew.emotion.application.query.EmotionQueryService.findListWithinBounds(..))"
-                    + " || execution(* com.pheeeew.emotion.application.query.EmotionQueryService.findListWithoutBounds(..)))"
+                    + " || execution(* com.pheeeew.emotion.application.query.EmotionQueryService.findListWithoutBounds(..))"
+                    + " || execution(* com.pheeeew.emotion.application.query.EmotionQueryService.findListWithoutBoundsV4(..)))"
                     + " && args(.., encodedCursor)",
             returning = "result",
             argNames = "encodedCursor,result"

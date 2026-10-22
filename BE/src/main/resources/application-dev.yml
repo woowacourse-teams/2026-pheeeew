@@ -31,6 +31,8 @@ management:
         "[spring.data.repository.invocations]": 50ms,100ms,200ms,500ms,1s,3s
 
 pheeeew:
+  emotion-map:
+    max-page-size: 1000
   app-attest:
     # 개발 서버는 Xcode 실기기 개발 빌드로 테스트한다.
     # TestFlight 빌드로 바꾸면 PRODUCTION 으로 고쳐야 한다.
