@@ -7,7 +7,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.times;
 
-import com.pheeeew.appversion.infra.metrics.AppVersionMetricsFilter;
 import com.pheeeew.auth.fixture.AccessTokenFixture;
 import com.pheeeew.auth.infra.security.AuthenticationErrorHandler;
 import com.pheeeew.auth.infra.security.SecurityConfig;
@@ -40,8 +39,6 @@ import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTe
 import org.springframework.boot.security.autoconfigure.web.servlet.SecurityFilterAutoConfiguration;
 import org.springframework.boot.security.autoconfigure.web.servlet.ServletWebSecurityAutoConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.ComponentScan.Filter;
-import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -58,8 +55,7 @@ import org.springframework.test.web.servlet.client.RestTestClient;
         CurrentDeviceArgumentResolver.class, GlobalExceptionHandler.class, ClockConfig.class,
         EmotionCreateRateLimiter.class, EmotionWebMvcConfig.class})
 @WebMvcTest(
-        controllers = {EmotionController.class, EmotionV4Controller.class},
-        excludeFilters = @Filter(type = FilterType.ASSIGNABLE_TYPE, classes = AppVersionMetricsFilter.class)
+        controllers = {EmotionController.class, EmotionV4Controller.class}
 )
 class EmotionCreateRateLimitInterceptorTest {
 

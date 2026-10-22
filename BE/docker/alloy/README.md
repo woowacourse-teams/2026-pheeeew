@@ -74,7 +74,7 @@
 
 ## 수집 범위와 자원
 
-- 지표: HTTP 요청 시간·횟수, 지도·V2 목록 조회 시간·결과, 플랫폼별 앱 버전 확인 횟수, JVM 메모리·GC·스레드, 톰캣 요청 처리 스레드(사용 중, 생성됨, 최대), 앱 프로세스 CPU·가동 시간, DB 커넥션 풀, 수집 상태. `config.alloy`의 이름 허용 목록 밖 지표는 보내지 않아요.
+- 지표: HTTP 요청 시간·횟수, 지도·V2 목록 조회 시간·결과, JVM 메모리·GC·스레드, 톰캣 요청 처리 스레드(사용 중, 생성됨, 최대), 앱 프로세스 CPU·가동 시간, DB 커넥션 풀, 수집 상태. `config.alloy`의 이름 허용 목록 밖 지표는 보내지 않아요.
 - 톰캣 스레드 지표는 `application-dev.yml`, `application-prod.yml`의 `server.tomcat.mbeanregistry.enabled`가 켜져 있어야 앱이 내보내요. 이 설정을 끄면 허용 목록에 있어도 값이 없어요.
 - 로그: 아래 클래스와 이벤트 조합만 전송해요. 다른 logger, 다른 event, 잘못된 JSON은 제외해요. `correlationId`와 오류 위치 등은 JSON 본문에 유지하며 라벨로 승격하지 않아요.
 - 앱에서 제공하는 JVM·프로세스 지표가 중심이에요. EC2 전체 메모리·디스크, CPU 크레딧, RDS 내부 상태, nginx·Cloudflare 로그, traces·profiles는 이번 수집 범위에 없어요. HTTP 지표 또한 앱에 도달한 요청만 반영해요.
@@ -86,7 +86,7 @@
 | `com.pheeeew.common.logging.RequestLogWriter` | `http_request_failed`, `http_request_slow` | 기존 HTTP 로그 정책 유지 |
 | `com.pheeeew.common.logging.ScheduledTaskErrorHandler` | `scheduled_task_failed` | `ERROR`만 허용 |
 
-BE 활동 통계 제거에 따라 활동 지표와 기록·집계 오류 로그는 더 이상 전송하지 않아요. 기존 활동 지표와 삭제한 logger/event 조합이 차단되는지도 검증해요. 앱 버전 호출량과 서버 모니터링은 유지해요.
+BE 활동 통계 제거에 따라 활동 지표와 기록·집계 오류 로그는 더 이상 전송하지 않아요. 기존 활동 지표와 삭제한 logger/event 조합이 차단되는지도 검증해요. 앱 버전 확인 전용 지표도 #881에서 허용 목록에서 제거해요. 버전 정책 API와 공통 서버 모니터링은 유지해요.
 
 기본 지도 캐시는 `pheeeew_map_cache_requests_total`의 `cache=regions|pins`, `result`로 적중·SQL 대체 경로를 구분해요. `lock_wait_seconds`는 쓰기 잠금 대기, `rebuild_seconds`는 캐시별 원본 재생성 시간, `maintenance_seconds`는 복구·보정 작업 시간이에요. `maintenance_busy_total`은 잠금을 얻지 못한 횟수이며 `maintenance_failures_total`은 재생성·예약 실패예요. `pending_age_seconds`는 아직 공개하지 않은 등록 배치의 나이이며 없거나 무효화된 경우 0이에요. `candidates{cache="pins"}`는 현재 메모리에 보관한 후보 수이며 상한 초과·미준비·무효화 시 0이에요. DB 전체 건수를 뜻하지 않아요. 핀 `pin_search_seconds`와 `pin_scanned`는 영역 탐색 시간과 검사 후보 수예요. 횟수·합계·최댓값을 제공하며 히스토그램을 켜지 않으면 p95·p99를 계산할 수 없어요.
 

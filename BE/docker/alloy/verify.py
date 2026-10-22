@@ -25,7 +25,7 @@ def docker(*args, check=True):
 def verify_metrics(config):
     pattern = re.search(r'regex\s*=\s*"([^"]+)"', config).group(1)
     accepted = ["up", "scrape_duration_seconds", "scrape_samples_scraped",
-                "pheeeew_app_version_checks_total", "jvm_threads_live_threads",
+                "jvm_threads_live_threads",
                 "process_cpu_usage", "process_uptime_seconds", "system_cpu_usage",
                 "hikaricp_connections"]
     families = {
@@ -53,7 +53,7 @@ def verify_metrics(config):
     accepted.extend(f"jvm_memory_{kind}_bytes" for kind in ("used", "committed", "max"))
     accepted.extend(f"tomcat_threads_{kind}_threads" for kind in ("busy", "current", "config_max"))
     rejected = ["pheeeew_activity_device_id", "pheeeew_activity_dau_created",
-                "pheeeew_app_version_checks_created", "pheeeew_sigh_list_results_bucket",
+                "pheeeew_app_version_checks_total", "pheeeew_app_version_checks_created", "pheeeew_sigh_list_results_bucket",
                 "pheeeew_unreviewed_total", "unreviewed_metric",
                 "pheeeew_region_query_seconds_created", "pheeeew_region_query_seconds_device_id",
                 "pheeeew_emotion_press_query_seconds_created", "pheeeew_emotion_press_query_seconds_device_id",
