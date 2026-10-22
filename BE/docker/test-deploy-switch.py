@@ -106,8 +106,6 @@ class Fixture:
             path.mkdir(parents=True)
         self.upstream.mkdir(parents=True)
         self.pointer = self.upstream / 'active.conf'
-        self.app_py = self.dir / 'app.py'
-        self.app_py.write_text(APP)
         self._certs()
         self._shims()
         self._compose()
@@ -131,9 +129,8 @@ class Fixture:
     def _compose(self):
         base = {
             'image': 'python:3.13-alpine',
-            'volumes': [f'{self.app_py}:/app.py:ro'],
             'healthcheck': {
-                'test': ['CMD', 'wget', '-q', '-O', '-', 'http://localhost:8080/actuator/health'],
+                'test': ['CMD', 'wget', '-q', '-O', '-', 'http://127.0.0.1:8080/actuator/health'],
                 'interval': '2s', 'timeout': '2s', 'retries': 10, 'start_period': '2s',
             },
             'stop_grace_period': '5s',
@@ -142,7 +139,7 @@ class Fixture:
         services = {}
         for color in ('blue', 'green'):
             service = dict(base)
-            service['command'] = ['python', '/app.py', f'app-{color}']
+            service['command'] = ['python', '-c', APP, f'app-{color}']
             service['container_name'] = f'{self.project}-app-{color}'
             service['profiles'] = [color]
             services[f'app-{color}'] = service
@@ -225,7 +222,11 @@ class Fixture:
         self.compose_nginx('up', '-d', '--wait', '--wait-timeout', '60')
 
     def start_app(self, color):
-        self.compose_apps('up', '-d', '--wait', '--wait-timeout', '60', color)
+        result = self.compose_apps('up', '-d', '--wait', '--wait-timeout', '60', color)
+        if result.returncode != 0:
+            print(f'    {color} 를 띄우지 못했습니다: {result.stderr.strip().splitlines()[-1:]}')
+            self.diagnose()
+            raise Failure(f'{color} 가 healthy 가 되지 않았다')
 
     def running(self, container):
         name = container if container.startswith('pheeeew') else f'{self.project}-{container}'
@@ -254,6 +255,22 @@ class Fixture:
         env['APP_IMAGE'] = 'python:3.13-alpine'
         return subprocess.run(['bash', '-s'], input=script, text=True,
                               capture_output=True, env=env, cwd=self.dir)
+
+    def diagnose(self):
+        names = sh('docker', 'ps', '-a', '--filter', f'name={self.project}',
+                   '--format', '{{.Names}}').stdout.split()
+        for name in names:
+            state = sh('docker', 'inspect', name, '--format',
+                       'status={{.State.Status}} exit={{.State.ExitCode}}'
+                       ' health={{if .State.Health}}{{.State.Health.Status}}{{end}}')
+            print(f'    {name}: {state.stdout.strip()}')
+            logs = sh('docker', 'logs', '--tail', '5', name)
+            for line in (logs.stdout + logs.stderr).splitlines()[-5:]:
+                print(f'      로그 {line}')
+            probes = sh('docker', 'inspect', name, '--format',
+                        '{{range .State.Health.Log}}{{.ExitCode}} {{.Output}}{{end}}')
+            for line in probes.stdout.splitlines()[-3:]:
+                print(f'      헬스체크 {line}')
 
     def cleanup(self):
         self.compose_nginx('down', '-v', '--remove-orphans')
@@ -374,7 +391,7 @@ def scenario_legacy_app(fx):
     fx.point_at('set $upstream_app app;\n')
     sh('docker', 'run', '-d', '--name', 'pheeeew-dev-app',
        '--network', f'{fx.project}-net', '--network-alias', 'app',
-       '-v', f'{fx.app_py}:/app.py:ro', 'python:3.13-alpine', 'python', '/app.py', 'app')
+       'python:3.13-alpine', 'python', '-c', APP, 'app')
     result = fx.deploy()
     expect(result.returncode == 0, f'종료 코드 {result.returncode}\n{result.stdout}{result.stderr}')
     expect(fx.pointer_color() == 'app-blue', f'전환 파일 {fx.pointer_color()}')
@@ -489,6 +506,7 @@ def main():
                 except Failure as failure:
                     failures.append(name)
                     print(f'FAIL: {name} — {failure}')
+                    fx.diagnose()
         finally:
             fx.cleanup()
         if failures:
