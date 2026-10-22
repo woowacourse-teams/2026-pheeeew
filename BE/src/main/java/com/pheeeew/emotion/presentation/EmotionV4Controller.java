@@ -2,16 +2,22 @@ package com.pheeeew.emotion.presentation;
 
 import com.pheeeew.auth.presentation.annotation.CurrentDevice;
 import com.pheeeew.common.exception.CommonErrorCode;
-import com.pheeeew.common.presentation.dto.CursorResponse;
-import com.pheeeew.emotion.presentation.dto.EmotionsV4WithoutBoundsRequest;
-import com.pheeeew.emotion.presentation.dto.EmotionV4MapRequest;
-import com.pheeeew.emotion.presentation.dto.EmotionV4MapResponse;
 import com.pheeeew.common.exception.PheeeewException;
+import com.pheeeew.common.presentation.dto.CursorResponse;
+import com.pheeeew.emotion.application.command.EmotionCommandService;
 import com.pheeeew.emotion.application.query.EmotionMapQueryService;
 import com.pheeeew.emotion.application.query.EmotionQueryService;
+import com.pheeeew.emotion.presentation.dto.EmotionContentType;
+import com.pheeeew.emotion.presentation.dto.EmotionCreateResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionRegionMapResponse;
+import com.pheeeew.emotion.presentation.dto.EmotionV4CreateRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionV4DetailResponse;
+import com.pheeeew.emotion.presentation.dto.EmotionV4MapRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionV4MapResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionV4RegionMapRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionV4UpdateRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionsV4WithoutBoundsRequest;
+import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +28,9 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -33,6 +42,7 @@ public class EmotionV4Controller implements EmotionV4ControllerApi {
 
     private static final MediaType GEO_JSON = MediaType.parseMediaType("application/geo+json");
 
+    private final EmotionCommandService emotionCommandService;
     private final EmotionQueryService emotionQueryService;
     private final EmotionMapQueryService emotionMapQueryService;
 
@@ -91,6 +101,35 @@ public class EmotionV4Controller implements EmotionV4ControllerApi {
         return ResponseEntity.ok().cacheControl(CacheControl.noCache().cachePrivate())
                 .body(CursorResponse.of(page.items().stream().map(EmotionV4MapResponse::from).toList(),
                         page.hasNext(), page.nextCursor()));
+    }
+
+    @Override
+    @PostMapping
+    public ResponseEntity<EmotionCreateResponse> saveV4(
+            @RequestBody EmotionV4CreateRequest request,
+            @CurrentDevice UUID devicePublicId,
+            @RequestParam MultiValueMap<String, String> parameters
+    ) {
+        rejectGroupParameters(parameters);
+        var result = EmotionCreateResponse.from(emotionCommandService.save(request.requestId(), request.state(),
+                request.longitude(), request.latitude(), request.rotationDegrees(), request.memo(), request.audioUploadId(),
+                null, devicePublicId, request.anonymous()));
+        return ResponseEntity.ok().location(URI.create("/api/v4/emotions/" + result.id()))
+                .cacheControl(CacheControl.noStore()).body(result);
+    }
+
+    @Override
+    @PutMapping("/{emotionId}")
+    public ResponseEntity<Void> updateWithoutGroupChange(
+            @PathVariable Long emotionId,
+            @RequestBody EmotionV4UpdateRequest request,
+            @CurrentDevice UUID devicePublicId,
+            @RequestParam MultiValueMap<String, String> parameters
+    ) {
+        rejectGroupParameters(parameters);
+        emotionCommandService.updateWithoutGroupChange(emotionId, devicePublicId, request.state(), request.memo(),
+                request.audioUploadId(), request.contentType() == EmotionContentType.AUDIO && request.audioUploadId() == null);
+        return ResponseEntity.noContent().build();
     }
 
     private void rejectGroupParameters(MultiValueMap<String, String> parameters) {

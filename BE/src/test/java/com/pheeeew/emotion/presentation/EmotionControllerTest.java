@@ -170,6 +170,109 @@ class EmotionControllerTest {
     }
 
     @ParameterizedTest
+    @MethodSource("v3UpdateContents")
+    void v4_수정은_그룹을_변경하지_않는_경로로_내용을_전달한다(
+            String content, String memo, String uploadId, boolean keepAudio
+    ) {
+        // when / then
+        client.put().uri("/api/v4/emotions/42").header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+                .contentType(MediaType.APPLICATION_JSON).body("{\"state\":\"ANGRY\"," + content + "}")
+                .exchange().expectStatus().isNoContent();
+        verify(emotionCommandService).updateWithoutGroupChange(42L, DEVICE_PUBLIC_ID, EmotionState.ANGRY, memo, uploadId, keepAudio);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"null", "\"\"", "\"11111111-1111-1111-1111-111111111111\"", "false", "{}", "[]"})
+    void v4_등록과_수정은_본문의_groupId를_null도_포함하여_거부한다(String groupId) {
+        // when / then
+        for (var method : List.of(HttpMethod.POST, HttpMethod.PUT)) {
+            String uri = method == HttpMethod.POST ? "/api/v4/emotions" : "/api/v4/emotions/42";
+            client.method(method).uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(createBody("\"contentType\":\"MEMO\",\"memo\":\"메모\",\"groupId\":" + groupId))
+                    .exchange().expectStatus().isBadRequest().expectBody().jsonPath("$.code").isEqualTo("COMMON-001");
+        }
+        verifyNoInteractions(emotionCommandService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0", "\"true\"", "[]", "{}"})
+    void v4도_익명_선택에_JSON_boolean만_허용한다(String anonymous) {
+        // when / then
+        client.post().uri("/api/v4/emotions").header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(createBody("\"contentType\":\"MEMO\",\"memo\":\"메모\",\"anonymous\":" + anonymous))
+                .exchange().expectStatus().isBadRequest();
+        verifyNoInteractions(emotionCommandService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"\"contentType\":\"NONE\"", "\"contentType\":\"MEMO\",\"memo\":\"   \"",
+            "\"contentType\":\"AUDIO\",\"audioUploadId\":\" \""})
+    void v4_등록과_수정도_잘못된_내용을_거부한다(String content) {
+        // when / then
+        for (var method : List.of(HttpMethod.POST, HttpMethod.PUT)) {
+            client.method(method).uri(method == HttpMethod.POST ? "/api/v4/emotions" : "/api/v4/emotions/42")
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").contentType(MediaType.APPLICATION_JSON)
+                    .body(createBody(content)).exchange().expectStatus().isBadRequest();
+        }
+        verifyNoInteractions(emotionCommandService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"groupId=", "scope=GROUP"})
+    void v4_등록과_수정도_쿼리의_그룹_입력을_거부한다(String query) {
+        // when / then
+        for (var method : List.of(HttpMethod.POST, HttpMethod.PUT)) {
+            String uri = method == HttpMethod.POST ? "/api/v4/emotions" : "/api/v4/emotions/42";
+            client.method(method).uri(uri + "?" + query).header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+                    .contentType(MediaType.APPLICATION_JSON).body(createBody("\"contentType\":\"MEMO\",\"memo\":\"메모\""))
+                    .exchange().expectStatus().isBadRequest();
+        }
+        verifyNoInteractions(emotionCommandService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0", "-1", "invalid"})
+    void v4_수정도_잘못된_감정_ID를_거부한다(String id) {
+        // when / then
+        client.put().uri("/api/v4/emotions/" + id).header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+                .contentType(MediaType.APPLICATION_JSON).body("{\"state\":\"ANGRY\",\"contentType\":\"MEMO\",\"memo\":\"수정\"}")
+                .exchange().expectStatus().isBadRequest();
+        verifyNoInteractions(emotionCommandService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v4/emotions", "/api/v4/emotions/42"})
+    void v4_등록과_수정도_인증이_필요하다(String uri) {
+        // when / then
+        var method = uri.endsWith("42") ? HttpMethod.PUT : HttpMethod.POST;
+        request(method, uri, null).expectStatus().isUnauthorized();
+        request(method, uri, "invalid-token").expectStatus().isUnauthorized();
+        verifyNoInteractions(emotionCommandService);
+    }
+
+    @ParameterizedTest
+    @MethodSource("v3AnonymousOptions")
+    void v4는_그룹_없이_익명_선택을_전달하여_등록한다(String option, Boolean anonymous) {
+        // given
+        var saved = 기본_한숨_빌더().build();
+        ReflectionTestUtils.setField(saved, "id", 42L);
+        when(emotionCommandService.save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), isNull(),
+                eq(DEVICE_PUBLIC_ID), eq(anonymous))).thenReturn(saved);
+
+        // when / then
+        client.post().uri("/api/v4/emotions").header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+                .contentType(MediaType.APPLICATION_JSON).body(createBody("\"contentType\":\"MEMO\",\"memo\":\"메모\"" + option))
+                .exchange().expectStatus().isOk()
+                .expectHeader().valueEquals(HttpHeaders.LOCATION, "/api/v4/emotions/42")
+                .expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
+                .expectBody().json("{\"id\":42}", JsonCompareMode.STRICT);
+        verify(emotionCommandService).save(UUID.fromString("5d1ad34e-1e20-4f20-a20e-3825a095fe6b"),
+                EmotionState.FRUSTRATED, 126.97, 37.56, 35.5, "메모", null, null, DEVICE_PUBLIC_ID, anonymous);
+    }
+
+    @ParameterizedTest
     @ValueSource(strings = {"ALL", "MY"})
     void v4_핀은_다음_페이지에서_좌표_없이_필터와_커서를_전달한다(EmotionSearchScope scope) {
         // given
@@ -410,11 +513,11 @@ class EmotionControllerTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"/api/v4/emotions", "/api/v4/emotions/42", "/api/v4/emotions/map", "/api/v4/emotions/map/regions"})
-    void v4_조회도_인증이_필요하며_다른_HTTP_메서드를_허용하지_않는다(String uri) {
+    void v4_조회도_인증이_필요하며_삭제는_허용하지_않는다(String uri) {
         // when / then
         request(HttpMethod.GET, uri, null).expectStatus().isUnauthorized();
         request(HttpMethod.GET, uri, "invalid-token").expectStatus().isUnauthorized();
-        request(HttpMethod.PUT, uri, "access-token").expectStatus().isForbidden();
+        request(HttpMethod.DELETE, uri, "access-token").expectStatus().isForbidden();
         verifyNoInteractions(emotionQueryService, emotionMapQueryService, emotionCommandService);
     }
 
@@ -896,7 +999,7 @@ class EmotionControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/api/v1/emotions", "/api/v2/emotions", "/api/v3/emotions"})
+    @ValueSource(strings = {"/api/v1/emotions", "/api/v2/emotions", "/api/v3/emotions", "/api/v4/emotions"})
     void 등록_필수값과_좌표_각도_메모_길이를_검증한다(String uri) {
         String valid = createBody("\"contentType\":\"MEMO\",\"memo\":\"메모\"");
         for (String body : List.of(valid.replace("35.5", "360"), valid.replace("126.97", "181"),

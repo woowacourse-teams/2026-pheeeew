@@ -58,7 +58,7 @@ import org.springframework.test.web.servlet.client.RestTestClient;
         CurrentDeviceArgumentResolver.class, GlobalExceptionHandler.class, ClockConfig.class,
         EmotionCreateRateLimiter.class, EmotionWebMvcConfig.class})
 @WebMvcTest(
-        controllers = EmotionController.class,
+        controllers = {EmotionController.class, EmotionV4Controller.class},
         excludeFilters = @Filter(type = FilterType.ASSIGNABLE_TYPE, classes = AppVersionMetricsFilter.class)
 )
 class EmotionCreateRateLimitInterceptorTest {
@@ -97,7 +97,7 @@ class EmotionCreateRateLimitInterceptorTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/api/v1/emotions", "/api/v2/emotions", "/api/v3/emotions"})
+    @ValueSource(strings = {"/api/v1/emotions", "/api/v2/emotions", "/api/v3/emotions", "/api/v4/emotions"})
     void 같은_requestId도_1초_안에는_429이며_1초_후에는_다시_조회한다(String uri) {
         // given
         String token = newDeviceToken();
@@ -124,7 +124,8 @@ class EmotionCreateRateLimitInterceptorTest {
     @ParameterizedTest
     @CsvSource({"/api/v1/emotions,/api/v3/emotions", "/api/v3/emotions,/api/v1/emotions",
             "/api/v1/emotions,/api/v2/emotions", "/api/v2/emotions,/api/v3/emotions",
-            "/api/v3/emotions,/api/v2/emotions", "/api/v2/emotions,/api/v1/emotions"})
+            "/api/v3/emotions,/api/v2/emotions", "/api/v2/emotions,/api/v1/emotions",
+            "/api/v3/emotions,/api/v4/emotions", "/api/v4/emotions,/api/v3/emotions"})
     void 버전을_바꿔도_같은_기기의_1초_제한을_공유한다(String first, String next) {
         // given
         String token = newDeviceToken();

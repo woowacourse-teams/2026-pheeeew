@@ -2,12 +2,15 @@ package com.pheeeew.emotion.presentation;
 
 import com.pheeeew.common.exception.ErrorResponse;
 import com.pheeeew.common.presentation.dto.CursorResponse;
-import com.pheeeew.emotion.presentation.dto.EmotionsV4WithoutBoundsRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionCreateResponse;
+import com.pheeeew.emotion.presentation.dto.EmotionRegionMapResponse;
+import com.pheeeew.emotion.presentation.dto.EmotionV4CreateRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionV4DetailResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionV4MapRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionV4MapResponse;
-import com.pheeeew.emotion.presentation.dto.EmotionRegionMapResponse;
-import com.pheeeew.emotion.presentation.dto.EmotionV4DetailResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionV4RegionMapRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionV4UpdateRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionsV4WithoutBoundsRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -127,6 +130,65 @@ public interface EmotionV4ControllerApi {
     })
     ResponseEntity<CursorResponse<EmotionV4MapResponse>> findContentMapWithinBoundsV4(
             @Valid @ParameterObject EmotionV4MapRequest request,
+            @Parameter(hidden = true) UUID devicePublicId,
+            @Parameter(hidden = true) MultiValueMap<String, String> parameters
+    );
+
+    @Operation(summary = "그룹 없는 감정 등록", description = """
+            MEMO·AUDIO 감정을 그룹 연결 없이 등록합니다. groupId는 null을 포함해 입력 자체를 400으로 거부합니다.
+            requestId는 재시도마다 동일하게 전달합니다. 같은 기기의 재시도에는 최초 감정 ID를 반환하고
+            기존 그룹 감정의 재시도여도 저장된 감정과 그룹 연결을 변경하지 않습니다.
+
+            anonymous는 JSON boolean만 허용하며 생략·null이면 익명입니다. 기명 등록에는 기기 닉네임이 필요합니다.
+            내용·좌표·각도·녹음 업로드 검증과 기기별 1초 등록 제한은 기존 등록과 같습니다.
+            성공하면 200과 감정 ID를 반환하고 Location은 v4 상세 경로를 가리킵니다.
+            """, security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "등록 또는 동일 요청의 최초 감정 ID"),
+            @ApiResponse(responseCode = "400", description = "잘못된 내용·위치·녹음·그룹 입력",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "인증 실패 또는 유효하지 않은 기기",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "녹음 업로드 없음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "다른 기기의 requestId·사용할 수 없는 녹음 또는 기명 등록에 필요한 닉네임 없음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "429", description = "등록 빈도 제한. Retry-After 확인",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "503", description = "녹음 저장소 확인 불가",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    ResponseEntity<EmotionCreateResponse> saveV4(
+            @Valid EmotionV4CreateRequest request,
+            @Parameter(hidden = true) UUID devicePublicId,
+            @Parameter(hidden = true) MultiValueMap<String, String> parameters
+    );
+
+    @Operation(summary = "그룹 연결을 유지하는 감정 수정", description = """
+            인증된 기기가 작성한 감정의 상태·메모·녹음을 수정합니다. 기존 그룹 연결은 그대로 유지합니다.
+            groupId는 null을 포함해 입력 자체를 400으로 거부합니다. 기존 그룹의 삭제·탈퇴 여부를 다시 검증하지 않습니다.
+            위치·회전·작성 시각·등록 당시 익명 설정은 변경하지 않습니다.
+
+            contentType은 MEMO·AUDIO만 허용합니다. AUDIO에서 audioUploadId를 생략하거나 null로 두면
+            기존 녹음을 유지하며 기존 녹음이 없으면 400입니다. 새 업로드를 전달하면 교체합니다.
+            소유자가 아니거나 삭제된 감정은 404이며 성공하면 본문 없이 204입니다.
+            """, security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "수정 완료"),
+            @ApiResponse(responseCode = "400", description = "잘못된 내용·금지된 그룹 입력 또는 유지할 녹음 없음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "인증 실패 또는 유효하지 않은 기기",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "수정할 수 없는 감정 또는 없는 업로드",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "사용할 수 없는 녹음 업로드",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "503", description = "녹음 저장소 확인 불가",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    ResponseEntity<Void> updateWithoutGroupChange(
+            @Min(value = 1, message = "감정 ID는 1 이상이어야 합니다.") Long emotionId,
+            @Valid EmotionV4UpdateRequest request,
             @Parameter(hidden = true) UUID devicePublicId,
             @Parameter(hidden = true) MultiValueMap<String, String> parameters
     );
