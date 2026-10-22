@@ -453,9 +453,13 @@ V20260831_3__create_sigh_status_index.sql
 - nullable 컬럼 추가
 - DEFAULT가 있는 NOT NULL 컬럼 추가
 - 테이블 추가, 인덱스 추가
-- 기존 데이터가 통과하는 CHECK 제약 추가
+- 기존 데이터와 **배포 중 함께 도는 모든 버전의 INSERT, UPDATE 값**이 통과하는 CHECK 제약 추가
 
 구버전은 모르는 컬럼을 쓰지 않고, `validate`는 엔티티에 없는 컬럼을 허용한다.
+
+CHECK 제약만 예외다. 기존 데이터가 통과해도 **구버전이 쓰는 값이 제약을 위반하면 migration 이 성공한 뒤
+그 요청이 실패한다.** `V20261009_1__add_group_join_type.sql`은 이 경우를 피한 예다. DEFAULT `'PRIVATE'`가
+구버전의 INSERT에 채워져 `CHECK (join_type IN ('PUBLIC', 'PRIVATE'))`를 통과한다.
 
 #### 두 배포로 나눠야 하는 것
 
