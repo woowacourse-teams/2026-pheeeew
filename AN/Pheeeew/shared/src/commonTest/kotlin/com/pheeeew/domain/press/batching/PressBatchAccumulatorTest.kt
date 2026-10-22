@@ -1,6 +1,7 @@
-package com.pheeeew.data.repository.press
+package com.pheeeew.domain.press.batching
 
 import com.pheeeew.domain.model.emotion.EmotionState
+import com.pheeeew.domain.press.time.PressEpochMillis
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

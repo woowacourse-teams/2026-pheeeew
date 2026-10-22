@@ -1,5 +1,7 @@
-package com.pheeeew.data.repository.press
+package com.pheeeew.domain.press.batching
 
+import com.pheeeew.domain.press.time.PressDelayMillis
+import com.pheeeew.domain.press.time.PressMonotonicMillis
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

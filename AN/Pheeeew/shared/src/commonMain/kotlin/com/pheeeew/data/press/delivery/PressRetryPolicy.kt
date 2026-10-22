@@ -1,5 +1,6 @@
-package com.pheeeew.data.repository.press
+package com.pheeeew.data.press.delivery
 
+import com.pheeeew.domain.press.time.PressDelayMillis
 import kotlin.random.Random
 
 /** Retry timing is injectable; server Retry-After is a minimum, never shortened by jitter. */

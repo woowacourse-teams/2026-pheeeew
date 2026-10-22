@@ -1,8 +1,9 @@
-package com.pheeeew.data.repository.press
+package com.pheeeew.domain.press.batching
 
 import com.pheeeew.core.time.koreaCalendarDate
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.press.PressBatch
+import com.pheeeew.domain.press.time.PressEpochMillis
 
 /** Five counters per input day, not per tap. A request never mixes KST dates. */
 internal class PressBatchAccumulator {

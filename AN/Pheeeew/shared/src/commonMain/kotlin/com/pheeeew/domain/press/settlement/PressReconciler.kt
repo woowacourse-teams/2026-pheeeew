@@ -1,11 +1,11 @@
-package com.pheeeew.data.repository.press
+package com.pheeeew.domain.press.settlement
 
 import com.pheeeew.domain.model.press.MyDailyPressSnapshot
 
 /** Pure decisions. This object never changes counters, publishes state, retries, or performs I/O. */
 internal object PressReconciler {
     fun resolveUnknown(
-        write: PressWriteState,
+        write: PressPendingWrite,
         snapshot: MyDailyPressSnapshot,
         canRetryUnknown: Boolean,
     ): PressWriteResolution {
@@ -17,18 +17,10 @@ internal object PressReconciler {
             PressWriteResolution.Retired
         } else {
             PressWriteResolution.Pending(
-                write.copy(phase = PressWritePhase.RetryPending, reconciliationMisses = misses),
+                write.copy(reconciliationMisses = misses),
             )
         }
     }
-
-    fun canApplyAggregate(
-        requestedGeneration: Long,
-        currentGeneration: Long,
-        write: PressWriteState?,
-    ): Boolean =
-        requestedGeneration == currentGeneration &&
-            write?.phase != PressWritePhase.InFlight && write?.uncertain != true
 
     /** Only successful writes already covered at read start may leave the optimistic total. */
     fun reconcileAll(
@@ -47,7 +39,7 @@ internal object PressReconciler {
     }
 
     private fun isCovered(
-        write: PressWriteState,
+        write: PressPendingWrite,
         snapshot: MyDailyPressSnapshot,
     ): Boolean {
         if (snapshot.pressDate != write.baseline.pressDate) return false
@@ -68,7 +60,7 @@ internal sealed interface PressWriteResolution {
     data object Retired : PressWriteResolution
 
     data class Pending(
-        val write: PressWriteState,
+        val write: PressPendingWrite,
     ) : PressWriteResolution
 }
 

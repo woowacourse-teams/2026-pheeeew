@@ -1,4 +1,4 @@
-package com.pheeeew.data.repository.press
+package com.pheeeew.domain.press.time
 
 import kotlin.jvm.JvmInline
 

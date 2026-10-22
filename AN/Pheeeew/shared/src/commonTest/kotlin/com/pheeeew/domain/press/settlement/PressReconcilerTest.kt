@@ -1,14 +1,12 @@
-package com.pheeeew.data.repository.press
+package com.pheeeew.domain.press.settlement
 
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.press.MyDailyPressSnapshot
 import com.pheeeew.domain.model.press.PressBatch
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 class PressReconcilerTest {
     @Test
@@ -19,8 +17,6 @@ class PressReconcilerTest {
             assertIs<PressWriteResolution.Pending>(PressReconciler.resolveUnknown(write, wrongEmotion, false))
         assertEquals(1, decision.write.reconciliationMisses)
         assertEquals(0, write.reconciliationMisses)
-        assertEquals(PressWritePhase.RetryPending, decision.write.phase)
-        assertTrue(decision.write.uncertain)
         assertEquals(write.batch, decision.write.batch)
         assertEquals(
             PressWriteResolution.Confirmed,
@@ -64,27 +60,10 @@ class PressReconcilerTest {
         assertNull(PressReconciler.reconcileAll(Long.MAX_VALUE, 7, 10, 5))
     }
 
-    @Test
-    fun `a detached aggregate is invalid after a newer read or an active or uncertain write`() {
-        assertTrue(PressReconciler.canApplyAggregate(4, 4, null))
-        assertFalse(PressReconciler.canApplyAggregate(3, 4, null))
-        assertFalse(PressReconciler.canApplyAggregate(4, 4, write().copy(uncertain = false)))
-        assertFalse(PressReconciler.canApplyAggregate(4, 4, write().copy(phase = PressWritePhase.RetryPending)))
-        assertTrue(
-            PressReconciler.canApplyAggregate(
-                4,
-                4,
-                write().copy(phase = PressWritePhase.RetryPending, uncertain = false),
-            ),
-        )
-    }
-
     private fun write() =
-        PressWriteState(
+        PressPendingWrite(
             batch = PressBatch(1, mapOf(EmotionState.ANGRY to 2)),
             baseline = snapshot(),
-            createdAtMonotonicMillis = PressMonotonicMillis(0L),
-            uncertain = true,
         )
 
     private fun snapshot(
