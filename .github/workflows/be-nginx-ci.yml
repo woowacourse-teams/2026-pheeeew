@@ -2,7 +2,7 @@ name: BE Nginx CI
 
 on:
   pull_request:
-    branches: [main, be/dev, develop]
+    branches: [main, develop]
     paths:
       - 'BE/docker/nginx/**'
       - 'BE/docker/compose.nginx.dev.yml'
