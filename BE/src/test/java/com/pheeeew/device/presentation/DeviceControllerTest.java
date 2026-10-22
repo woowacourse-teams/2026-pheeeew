@@ -8,7 +8,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.pheeeew.appversion.infra.metrics.AppVersionMetricsFilter;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
 import com.pheeeew.device.application.DeviceChallengeService;
 import com.pheeeew.device.application.DeviceService;
@@ -28,8 +27,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.ComponentScan.Filter;
-import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -40,8 +37,7 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 @AutoConfigureRestTestClient
 @Import(GlobalExceptionHandler.class)
 @WebMvcTest(
-        controllers = DeviceController.class,
-        excludeFilters = @Filter(type = FilterType.ASSIGNABLE_TYPE, classes = AppVersionMetricsFilter.class)
+        controllers = DeviceController.class
 )
 class DeviceControllerTest {
 
