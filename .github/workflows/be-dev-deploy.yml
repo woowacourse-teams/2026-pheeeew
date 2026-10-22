@@ -245,12 +245,14 @@ jobs:
 
           docker compose -f compose.nginx.yml up -d --wait --wait-timeout 60
 
-          if docker compose -f compose.nginx.yml exec -T nginx nginx -t; then
-            docker compose -f compose.nginx.yml exec -T nginx nginx -s reload
-            echo "nginx 설정을 다시 읽었습니다."
-          else
-            echo "nginx 설정이 올바르지 않아 reload 를 건너뜁니다. 이전 설정으로 계속 동작합니다."
+          if ! docker compose -f compose.nginx.yml exec -T nginx nginx -t; then
+            echo "nginx 설정이 올바르지 않습니다. reload 를 건너뛰고 앱 배포도 하지 않습니다."
+            echo "엣지는 메모리의 이전 설정으로 계속 동작하므로 서비스는 유지됩니다."
+            exit 1
           fi
+
+          docker compose -f compose.nginx.yml exec -T nginx nginx -s reload
+          echo "nginx 설정을 다시 읽었습니다."
           REMOTE
 
       - name: 배포
