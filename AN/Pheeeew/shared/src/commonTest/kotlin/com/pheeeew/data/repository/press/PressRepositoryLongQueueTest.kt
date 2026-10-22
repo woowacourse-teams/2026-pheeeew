@@ -3,7 +3,8 @@ package com.pheeeew.data.repository.press
 import com.pheeeew.core.monitoring.ActivityType
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.monitoring.NoOpMonitoring
-import com.pheeeew.data.press.delivery.PressRetryPolicy
+import com.pheeeew.data.press.delivery.PressDeliveryPolicy
+import com.pheeeew.data.press.retry.PressRetryPolicy
 import com.pheeeew.data.repository.PressRepositoryImpl
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.press.AllDailyPressSnapshot
@@ -552,11 +553,8 @@ class PressRepositoryLongQueueTest {
         backgroundScope,
         flushDelayMillis = PressDelayMillis.Zero,
         connectivity = connectivity,
-        retryPolicy =
-            PressRetryPolicy(
-                minRequestIntervalMillis = PressDelayMillis(10L),
-                jitter = { 1.0 },
-            ),
+        retryPolicy = PressRetryPolicy(jitter = { 1.0 }),
+        deliveryPolicy = PressDeliveryPolicy(minRequestIntervalMillis = PressDelayMillis(10L)),
         nowMillis = { PressMonotonicMillis(testScheduler.currentTime) },
     )
 

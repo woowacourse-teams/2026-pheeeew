@@ -2,7 +2,8 @@ package com.pheeeew.data.repository
 
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.monitoring.NoOpMonitoring
-import com.pheeeew.data.press.delivery.PressRetryPolicy
+import com.pheeeew.data.press.delivery.PressDeliveryPolicy
+import com.pheeeew.data.press.retry.PressRetryPolicy
 import com.pheeeew.data.press.session.PressSession
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.press.PressAcceptance
@@ -26,6 +27,7 @@ internal class PressRepositoryImpl(
     batchMaxTotal: Int = 100,
     flushDelayMillis: PressDelayMillis = PressDelayMillis(500L),
     retryPolicy: PressRetryPolicy = PressRetryPolicy(),
+    deliveryPolicy: PressDeliveryPolicy = PressDeliveryPolicy(),
     aggregateRefreshMillis: PressDelayMillis = PressDelayMillis(1_000L),
     connectivity: Flow<Boolean>? = null,
     nowMillis: () -> PressMonotonicMillis = monotonicClock(),
@@ -45,6 +47,7 @@ internal class PressRepositoryImpl(
             batchMaxTotal = batchMaxTotal,
             flushDelayMillis = flushDelayMillis,
             retryPolicy = retryPolicy,
+            deliveryPolicy = deliveryPolicy,
             aggregateRefreshMillis = aggregateRefreshMillis,
             connectivity = connectivity,
             nowMillis = nowMillis,

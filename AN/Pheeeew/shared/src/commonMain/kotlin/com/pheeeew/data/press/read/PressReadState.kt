@@ -1,6 +1,6 @@
 package com.pheeeew.data.press.read
 
-import com.pheeeew.data.press.delivery.PressRetryPolicy
+import com.pheeeew.data.press.retry.PressRetryPolicy
 import com.pheeeew.domain.press.time.PressDelayMillis
 import com.pheeeew.domain.press.time.PressMonotonicMillis
 

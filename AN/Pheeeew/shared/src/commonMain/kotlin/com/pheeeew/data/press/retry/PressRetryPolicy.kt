@@ -1,4 +1,4 @@
-package com.pheeeew.data.press.delivery
+package com.pheeeew.data.press.retry
 
 import com.pheeeew.domain.press.time.PressDelayMillis
 import kotlin.random.Random
@@ -7,12 +7,10 @@ import kotlin.random.Random
 internal class PressRetryPolicy(
     private val initialDelayMillis: PressDelayMillis = PressDelayMillis(1_000L),
     private val maxDelayMillis: PressDelayMillis = PressDelayMillis(60_000L),
-    val minRequestIntervalMillis: PressDelayMillis = PressDelayMillis(100L),
     private val jitter: () -> Double = { Random.nextDouble() },
 ) {
     init {
         require(initialDelayMillis.value > 0L && maxDelayMillis.value >= initialDelayMillis.value)
-        require(minRequestIntervalMillis.value > 0L)
     }
 
     fun delayMillis(

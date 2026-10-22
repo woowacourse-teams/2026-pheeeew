@@ -1,5 +1,6 @@
 package com.pheeeew.data.press.delivery
 
+import com.pheeeew.data.press.retry.PressRetryPolicy
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.press.MyDailyPressSnapshot
 import com.pheeeew.domain.model.press.MyDailyPressTotals
@@ -87,6 +88,7 @@ class PressDeliveryCoordinatorTest {
             sender = sender,
             scope = scope,
             retryPolicy = PressRetryPolicy(jitter = { 1.0 }),
+            deliveryPolicy = PressDeliveryPolicy(),
             nowMillis = { PressMonotonicMillis(scope.testScheduler.currentTime) },
             host = host,
         )

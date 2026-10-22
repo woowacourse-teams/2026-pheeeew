@@ -1,5 +1,6 @@
 package com.pheeeew.data.press.delivery
 
+import com.pheeeew.data.press.retry.PressRetryPolicy
 import com.pheeeew.domain.model.press.PressSendResult
 import com.pheeeew.domain.press.batching.PressFlushPolicy
 import com.pheeeew.domain.press.time.PressDelayMillis
@@ -19,6 +20,7 @@ internal class PressDeliveryCoordinator(
     private val sender: PressSender,
     private val scope: CoroutineScope,
     private val retryPolicy: PressRetryPolicy,
+    private val deliveryPolicy: PressDeliveryPolicy,
     private val nowMillis: () -> PressMonotonicMillis,
     private val host: PressDeliveryHost,
 ) {
@@ -123,7 +125,7 @@ internal class PressDeliveryCoordinator(
     /** 다음 직렬 요청의 간격과 남은 묶음 대기를 적용한다. */
     private suspend fun awaitNextWriteIfNeeded() {
         if (!host.hasOutstandingWrites()) return
-        delay(retryPolicy.minRequestIntervalMillis.value)
+        delay(deliveryPolicy.minRequestIntervalMillis.value)
         awaitFlush(host.remainingBatchWait())
     }
 

@@ -1,6 +1,6 @@
 package com.pheeeew.data.repository.press
 
-import com.pheeeew.data.press.delivery.PressRetryPolicy
+import com.pheeeew.data.press.retry.PressRetryPolicy
 import com.pheeeew.data.repository.PressRepositoryImpl
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.press.AllDailyPressSnapshot

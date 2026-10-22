@@ -5,12 +5,13 @@ import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.data.press.delivery.PressDeliveryCoordinator
 import com.pheeeew.data.press.delivery.PressDeliveryDecision
 import com.pheeeew.data.press.delivery.PressDeliveryHost
+import com.pheeeew.data.press.delivery.PressDeliveryPolicy
 import com.pheeeew.data.press.delivery.PressDeliveryPreparation
-import com.pheeeew.data.press.delivery.PressRetryPolicy
 import com.pheeeew.data.press.delivery.PressWriteState
 import com.pheeeew.data.press.read.PressReadContext
 import com.pheeeew.data.press.read.PressReadCoordinator
 import com.pheeeew.data.press.read.PressReadEvent
+import com.pheeeew.data.press.retry.PressRetryPolicy
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.press.AllDailyPressSnapshot
 import com.pheeeew.domain.model.press.PressAcceptance
@@ -49,6 +50,7 @@ internal class PressSession(
     batchMaxTotal: Int,
     flushDelayMillis: PressDelayMillis,
     private val retryPolicy: PressRetryPolicy,
+    deliveryPolicy: PressDeliveryPolicy,
     aggregateRefreshMillis: PressDelayMillis,
     connectivity: Flow<Boolean>?,
     private val nowMillis: () -> PressMonotonicMillis,
@@ -74,6 +76,7 @@ internal class PressSession(
             sender = sender,
             scope = sessionScope,
             retryPolicy = retryPolicy,
+            deliveryPolicy = deliveryPolicy,
             nowMillis = nowMillis,
             host = this,
         )
