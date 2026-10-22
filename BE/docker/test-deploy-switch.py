@@ -14,8 +14,7 @@ REPO = Path(__file__).resolve().parents[2]
 WORKFLOW = REPO / '.github/workflows/be-dev-deploy.yml'
 HTTP_PORT = 18080
 HTTPS_PORT = 18443
-COLORS = ('app', 'app-blue', 'app-green')
-LEGACY = 'pheeeew-dev-app'
+COLORS = ('app-blue', 'app-green')
 
 
 def remote_script():
@@ -107,7 +106,6 @@ class Fixture:
             path.mkdir(parents=True)
         self.upstream.mkdir(parents=True)
         self.pointer = self.upstream / 'active.conf'
-        self.made_legacy = False
         self._certs()
         self._shims()
         self._compose()
@@ -230,24 +228,12 @@ class Fixture:
             self.diagnose()
             raise Failure(f'{color} 가 healthy 가 되지 않았다')
 
-    def start_legacy(self):
-        sh('docker', 'run', '-d', '--name', LEGACY,
-           '--network', f'{self.project}-net', '--network-alias', 'app',
-           'python:3.13-alpine', 'python', '-c', APP, 'app')
-        self.made_legacy = True
-
-    def drop_legacy(self):
-        if self.made_legacy:
-            sh('docker', 'rm', '-f', LEGACY)
-            self.made_legacy = False
-
     def running(self, container):
-        name = container if container.startswith('pheeeew') else f'{self.project}-{container}'
-        return sh('docker', 'inspect', '-f', '{{.State.Running}}', name).stdout.strip() == 'true'
+        return sh('docker', 'inspect', '-f', '{{.State.Running}}',
+                  f'{self.project}-{container}').stdout.strip() == 'true'
 
     def exists(self, container):
-        name = container if container.startswith('pheeeew') else f'{self.project}-{container}'
-        return sh('docker', 'inspect', name).returncode == 0
+        return sh('docker', 'inspect', f'{self.project}-{container}').returncode == 0
 
     def pointer_color(self):
         for line in self.pointer.read_text().splitlines():
@@ -289,7 +275,6 @@ class Fixture:
         self.compose_nginx('down', '-v', '--remove-orphans')
         self.compose_apps('--profile', 'blue', '--profile', 'green', 'down', '-v',
                           '--remove-orphans')
-        self.drop_legacy()
         sh('docker', 'network', 'rm', f'{self.project}-net')
 
 
@@ -400,16 +385,13 @@ def scenario_restore_fail(fx):
     expect(fx.running('app-blue'), 'app-blue 를 지웠다')
 
 
-def scenario_legacy_app(fx):
+def scenario_retired_pointer(fx):
     fx.point_at('set $upstream_app app;\n')
-    fx.start_legacy()
     result = fx.deploy()
-    expect(result.returncode == 0, f'종료 코드 {result.returncode}\n{result.stdout}{result.stderr}')
-    expect(fx.pointer_color() == 'app-blue', f'전환 파일 {fx.pointer_color()}')
-    expect(fx.running('app-blue'), 'app-blue 가 떠 있지 않다')
-    expect(not fx.exists(LEGACY), '이전 단일 컨테이너가 남아 있다')
-    expect(f'{LEGACY} 을 정리했습니다' in result.stdout, '이관 안내가 없다')
-    fx.made_legacy = False
+    expect(result.returncode == 1, f'종료 코드 {result.returncode}')
+    expect('전환 파일의 값이 올바르지 않습니다' in result.stdout, '이관 전 값을 거부하지 않는다')
+    expect(not fx.exists('app-blue') and not fx.exists('app-green'),
+           '이관 전 값인데 앱을 띄웠다')
 
 
 def scenario_invalid_pointer(fx):
@@ -433,12 +415,13 @@ def scenario_drain_check_fails(fx):
     fx.start_app('app-blue')
     fx.fail_drain()
     result = fx.deploy()
-    expect(result.returncode == 1, f'종료 코드 {result.returncode}')
+    expect(result.returncode == 0, f'종료 코드 {result.returncode}\n{result.stdout}')
     expect(fx.pointer_color() == 'app-green', f'전환 파일 {fx.pointer_color()}')
-    expect(fx.running('app-blue'), '워커 검사가 실패했는데 app-blue 를 지웠다')
     expect(fx.running('app-green'), 'app-green 이 내려갔다')
-    expect('app-blue 를 삭제하지 않습니다' in result.stdout, '보존 안내가 없다')
+    expect(not fx.exists('app-blue'), '워커 검사가 실패했는데 app-blue 를 남겼다')
+    expect('graceful 하게 내립니다' in result.stdout, 'graceful 종료 안내가 없다')
     expect('한 번도 확인하지 못했습니다' in result.stdout, '미확인 상태를 알리지 않는다')
+    expect('배포 성공' in result.stdout, '전환이 성공했는데 배포를 실패로 끝냈다')
 
 
 def scenario_broken_json_body(fx):
@@ -484,7 +467,7 @@ SCENARIOS = (
     ('워커 검사 실패', scenario_drain_check_fails),
     ('전환 후 깨진 JSON', scenario_broken_json_body),
     ('롤백이 긴 요청을 기다린다', scenario_rollback_drains_long_request),
-    ('최초 app 이관', scenario_legacy_app),
+    ('이관 전 전환 파일 거부', scenario_retired_pointer),
     ('전환 파일 이상값', scenario_invalid_pointer),
     ('전환 파일 빈 값', scenario_empty_pointer),
 )
@@ -492,7 +475,6 @@ SCENARIOS = (
 
 def reset(fx):
     fx.compose_apps('--profile', 'blue', '--profile', 'green', 'rm', '-sf')
-    fx.drop_legacy()
     fx.reset_edge()
     fx.fix_nginx_conf()
     fx.restore_app('app-green')
@@ -501,9 +483,6 @@ def reset(fx):
 
 def main():
     only = sys.argv[1:]
-    if sh('docker', 'inspect', LEGACY).returncode == 0:
-        print(f'{LEGACY} 컨테이너가 이미 있습니다. 이 검사는 그 이름을 쓰므로 중단합니다.')
-        return 1
     with tempfile.TemporaryDirectory() as root:
         fx = Fixture(root)
         failures = []

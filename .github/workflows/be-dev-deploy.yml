@@ -376,10 +376,10 @@ jobs:
               return 1
             fi
             echo "$ACTIVE 로 복구했고 정상 응답을 확인했습니다."
-            if ! wait_drained; then
-              echo "!! $TARGET 으로 향하던 요청이 끝났는지 확인하지 못했습니다."
-              echo "   $TARGET 을 삭제하지 않고 남깁니다. 진행 중 요청을 확인한 뒤 정리하세요."
-              return 1
+            if wait_drained; then
+              echo "$TARGET 으로 향하던 요청이 모두 끝났습니다."
+            else
+              echo "$TARGET 으로 향하던 요청이 끝났는지 확인하지 못했습니다."
             fi
             $APPS stop "$TARGET"
             $APPS rm -f "$TARGET"
@@ -388,7 +388,7 @@ jobs:
 
           ACTIVE=$(read_pointer)
           case "$ACTIVE" in
-            app|app-blue|app-green) ;;
+            app-blue|app-green) ;;
             *) echo "전환 파일의 값이 올바르지 않습니다: '${ACTIVE:-빈 값}'. 전환하지 않습니다."; exit 1 ;;
           esac
           [ "$ACTIVE" = app-blue ] && TARGET=app-green || TARGET=app-blue
@@ -429,25 +429,16 @@ jobs:
           fi
           echo "$TARGET 으로 전환했고 정상 응답을 확인했습니다."
 
-          if ! wait_drained; then
-            echo "!! 이전 요청이 끝났는지 확인하지 못했습니다. $ACTIVE 를 삭제하지 않습니다."
-            echo "   전환은 성공했고 트래픽은 $TARGET 이 받고 있습니다."
-            rm -f "$BACKUP"
-            exit 1
+          if wait_drained; then
+            echo "이전 요청이 모두 끝났습니다."
+          else
+            echo "이전 요청이 끝났는지 확인하지 못했습니다. $ACTIVE 를 graceful 하게 내립니다."
+            echo "   종료 유예 30초 안에서 앱이 남은 요청을 스스로 마무리합니다."
           fi
-          echo "이전 요청이 모두 끝났습니다."
           rm -f "$BACKUP"
 
-          if [ "$ACTIVE" = app ]; then
-            if docker inspect pheeeew-dev-app >/dev/null 2>&1; then
-              docker stop --time 30 pheeeew-dev-app >/dev/null
-              docker rm -f pheeeew-dev-app >/dev/null
-              echo "이전 단일 컨테이너 pheeeew-dev-app 을 정리했습니다."
-            fi
-          else
-            $APPS stop "$ACTIVE"
-            $APPS rm -f "$ACTIVE"
-          fi
+          $APPS stop "$ACTIVE"
+          $APPS rm -f "$ACTIVE"
 
           echo "배포 성공: $APP_IMAGE ($TARGET)"
           docker image prune -f
