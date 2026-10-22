@@ -38,7 +38,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v2/devices/challenge").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/emotions", "/api/v3/emotions").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v2/emotions/map",
-                                "/api/v2/emotions/map/regions").authenticated()
+                                "/api/v2/emotions/map/regions", "/api/v4/emotions/map/regions").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/emotions", "/api/v2/emotions", "/api/v3/emotions").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v2/emotions/presses").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v2/emotions/presses/me").authenticated()
@@ -47,7 +47,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v2/emotions/press-rankings/daily").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v2/emotions/press-rankings/states/*").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/audio-uploads").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/emotions/*").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/emotions/*", "/api/v4/emotions/*").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/v1/emotions/*", "/api/v3/emotions/*").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/emotions/*").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/v1/emotions/*/emojis/*").authenticated()

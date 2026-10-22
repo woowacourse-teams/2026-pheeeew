@@ -92,7 +92,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 @Import({SecurityConfig.class, AuthenticationErrorHandler.class, AuthWebMvcConfig.class,
         CurrentDeviceArgumentResolver.class, GlobalExceptionHandler.class})
 @WebMvcTest(
-        controllers = EmotionController.class,
+        controllers = {EmotionController.class, EmotionV4Controller.class},
         excludeFilters = @Filter(type = FilterType.ASSIGNABLE_TYPE, classes = AppVersionMetricsFilter.class)
 )
 class EmotionControllerTest {
@@ -170,8 +170,157 @@ class EmotionControllerTest {
     }
 
     @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void v4_상세는_그룹_정보_없이_기존_감정_내용을_반환한다(boolean hasGroup) throws Exception {
+        // given
+        var group = com.pheeeew.groups.fixture.GroupFixture.기본_그룹_빌더().build();
+        var stamp = com.pheeeew.groups.fixture.GroupFixture.기본_스탬프_빌더(group).build();
+        var emotion = 기본_한숨_빌더().groupStamp(hasGroup ? stamp : null).memo("답답한 하루").deviceId(1L).build();
+        ReflectionTestUtils.setField(emotion, "id", 42L);
+        var grouped = EmotionDetailView.of(emotion, detailView(42L, true).emojis(), null,
+                hasGroup ? GroupStampResult.from(stamp) : null, 1L);
+        when(emotionQueryService.findById(42L, DEVICE_PUBLIC_ID)).thenReturn(grouped);
+
+        // when / then: 그룹 필드 이외의 모든 응답 값이 기존 상세와 일치해야 한다.
+        byte[] legacyBody = request(HttpMethod.GET, EMOTION_URI, "access-token").expectStatus().isOk()
+                .expectBody().returnResult().getResponseBody();
+        byte[] v4Body = request(HttpMethod.GET, "/api/v4/emotions/42", "access-token").expectStatus().isOk()
+                .expectHeader().contentType(GEO_JSON)
+                .expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-cache, private")
+                .expectBody().returnResult().getResponseBody();
+        var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        var expected = mapper.readTree(legacyBody);
+        ((com.fasterxml.jackson.databind.node.ObjectNode) expected.get("properties")).remove(List.of("groupId", "groupStamp"));
+        assertThat(mapper.readTree(v4Body)).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"SIDO,11,", "SIGUNGU,11010,11", "EMD,11010530,11010"})
+    void v4_지역_요약은_그룹_없이_기존_지역_응답을_유지한다(
+            RegionLevel level, String code, String parentCode
+    ) {
+        // given
+        var bounds = EmotionSearchBounds.of(127.8, 37.2, 128.2, 37.8);
+        var filter = EmotionSearchFilter.from(null);
+        var region = Region.of(code, level, "검증용 지역", parentCode, 127, 38);
+        var item = EmotionRegionMapItemView.of(region, RegionEmotionSummary.of(3L, EmotionState.ANGRY));
+        when(emotionMapQueryService.findRegionMap(bounds, level, DEVICE_PUBLIC_ID, filter)).thenReturn(List.of(item));
+
+        // when / then
+        request(HttpMethod.GET, "/api/v4/emotions/map/regions" + REGION_BOUNDS_QUERY + "&level=" + level,
+                "access-token").expectStatus().isOk()
+                .expectHeader().contentType(MediaType.APPLICATION_JSON)
+                .expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-cache, private")
+                .expectBody().json("""
+                        [{"type":"Feature","id":"%s",
+                         "geometry":{"type":"Point","coordinates":[127.0,38.0]},
+                         "properties":{"level":"%s","name":"검증용 지역","parentCode":%s,
+                         "totalCount":3,"representativeState":"ANGRY"}}]
+                        """.formatted(code, level, parentCode == null ? "null" : "\"" + parentCode + "\""), JsonCompareMode.STRICT);
+        verify(emotionMapQueryService).findRegionMap(bounds, level, DEVICE_PUBLIC_ID, filter);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"groupId", "groupId=", "groupId=null",
+            "groupId=11111111-1111-1111-1111-111111111111", "groupId=&groupId=invalid", "scope=GROUP"})
+    void v4_조회는_그룹_입력을_값과_무관하게_400으로_거부한다(String query) {
+        // when / then
+        for (String uri : List.of("/api/v4/emotions/42?",
+                "/api/v4/emotions/map/regions" + REGION_BOUNDS_QUERY + "&level=SIDO&")) {
+            request(HttpMethod.GET, uri + query, "access-token").expectStatus().isBadRequest()
+                    .expectBody().jsonPath("$.code").isEqualTo("COMMON-001");
+        }
+        verifyNoInteractions(emotionQueryService, emotionMapQueryService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0", "-1", "invalid"})
+    void v4_상세도_잘못된_감정_ID를_400으로_거부한다(String id) {
+        // when / then
+        request(HttpMethod.GET, "/api/v4/emotions/" + id, "access-token").expectStatus().isBadRequest()
+                .expectBody().jsonPath("$.code").isEqualTo("COMMON-001");
+        verifyNoInteractions(emotionQueryService);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"SIDO,ALL,ALL", "SIGUNGU,MEMO,MY", "EMD,AUDIO,MY"})
+    void v4_지역_요약도_필터와_인증된_기기를_유지한다(
+            RegionLevel level, EmotionContentFilter contentType, EmotionSearchScope scope
+    ) {
+        // given
+        var bounds = EmotionSearchBounds.of(170, 37, -170, 39);
+        var date = LocalDate.of(2026, 10, 1);
+        var filter = EmotionSearchFilter.of(date, date, contentType, scope, null);
+        when(emotionMapQueryService.findRegionMap(bounds, level, DEVICE_PUBLIC_ID, filter)).thenReturn(List.of());
+
+        // when / then
+        request(HttpMethod.GET, "/api/v4/emotions/map/regions?minLongitude=170&minLatitude=37"
+                + "&maxLongitude=-170&maxLatitude=39&level=" + level + "&startDate=" + date + "&endDate=" + date
+                + "&contentType=" + contentType + "&scope=" + scope + "&devicePublicId=" + UUID.randomUUID(),
+                "access-token").expectStatus().isOk().expectBody().json("[]", JsonCompareMode.STRICT);
+        verify(emotionMapQueryService).findRegionMap(bounds, level, DEVICE_PUBLIC_ID, filter);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "&minLatitude=NaN", "&maxLongitude=181", "&minLongitude=128.2",
+            "&minLatitude=37.8", "&level=CITY", "&startDate=2026-10-01",
+            "&startDate=2026-10-02&endDate=2026-10-01", "&contentType=NONE", "&scope=INVALID"})
+    void v4_지역_요약도_잘못된_검색_조건을_거부한다(String query) {
+        // when / then
+        var parameters = new HashMap<>(Map.of("minLongitude", "127.8", "minLatitude", "37.2",
+                "maxLongitude", "128.2", "maxLatitude", "37.8", "level", "SIDO"));
+        if (query.isEmpty()) {
+            parameters.remove("minLatitude");
+        } else {
+            for (String entry : query.substring(1).split("&")) {
+                String[] pair = entry.split("=", 2);
+                parameters.put(pair[0], pair[1]);
+            }
+        }
+        String queryString = parameters.entrySet().stream().map(entry -> entry.getKey() + "=" + entry.getValue())
+                .collect(Collectors.joining("&"));
+        request(HttpMethod.GET, "/api/v4/emotions/map/regions?" + queryString, "access-token").expectStatus().isBadRequest()
+                .expectBody().jsonPath("$.code").isEqualTo("COMMON-001");
+        verifyNoInteractions(emotionQueryService, emotionMapQueryService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v4/emotions/42", "/api/v4/emotions/map/regions"})
+    void v4_조회도_인증이_필요하며_다른_HTTP_메서드를_허용하지_않는다(String uri) {
+        // when / then
+        request(HttpMethod.GET, uri, null).expectStatus().isUnauthorized();
+        request(HttpMethod.GET, uri, "invalid-token").expectStatus().isUnauthorized();
+        request(HttpMethod.PUT, uri, "access-token").expectStatus().isForbidden();
+        verifyNoInteractions(emotionQueryService, emotionMapQueryService, emotionCommandService);
+    }
+
+    @ParameterizedTest
+    @MethodSource("detailFailures")
+    void v4_상세도_기존_조회_오류를_전달한다(RuntimeException exception, int status, String code) {
+        // given
+        when(emotionQueryService.findById(42L, DEVICE_PUBLIC_ID)).thenThrow(exception);
+
+        // when / then
+        request(HttpMethod.GET, "/api/v4/emotions/42", "access-token").expectStatus().isEqualTo(status)
+                .expectBody().jsonPath("$.code").isEqualTo(code);
+    }
+
+    @Test
+    void v4_지역_요약도_준비_실패를_503으로_전달한다() {
+        // given
+        when(emotionMapQueryService.findRegionMap(EmotionSearchBounds.of(127.8, 37.2, 128.2, 37.8),
+                RegionLevel.SIDO, DEVICE_PUBLIC_ID, EmotionSearchFilter.from(null)))
+                .thenThrow(new EmotionException(EmotionErrorCode.EMOTION_REGION_DATA_UNAVAILABLE));
+
+        // when / then
+        request(HttpMethod.GET, "/api/v4/emotions/map/regions" + REGION_BOUNDS_QUERY + "&level=SIDO", "access-token")
+                .expectStatus().isEqualTo(503).expectBody().jsonPath("$.code").isEqualTo("EMOTION-013");
+    }
+
+    @ParameterizedTest
     @CsvSource({
             "/api/v1/emotions/42,$.properties",
+            "/api/v4/emotions/42,$.properties",
             "/api/v1/emotions?minLongitude=126&minLatitude=37&maxLongitude=128&maxLatitude=38,$.items[0].properties",
             "/api/v3/emotions,$.items[0].properties"
     })
