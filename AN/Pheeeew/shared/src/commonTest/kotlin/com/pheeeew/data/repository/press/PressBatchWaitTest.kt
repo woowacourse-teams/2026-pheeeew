@@ -211,7 +211,7 @@ class PressBatchWaitTest {
         runTest {
             val f = Fixture(this, 200)
             f.start()
-            f.nextFailure = PressSendResult.RetryAfter(1_000L)
+            f.nextFailure = PressSendResult.RetryAfter(PressDelayMillis(1_000L))
             f.tap()
             advanceTimeBy(1_599)
             runCurrent()

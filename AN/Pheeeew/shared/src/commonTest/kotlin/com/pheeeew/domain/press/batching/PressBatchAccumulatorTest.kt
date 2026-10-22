@@ -23,8 +23,8 @@ class PressBatchAccumulatorTest {
         val second = assertNotNull(queue.take(30, 100, 0, 2))
         assertEquals(2, first.totalCount)
         assertEquals(3, second.totalCount)
-        assertEquals(before, first.occurredAt)
-        assertEquals(after, second.occurredAt)
+        assertEquals(PressEpochMillis(before), first.occurredAt)
+        assertEquals(PressEpochMillis(after), second.occurredAt)
         assertEquals(0L, queue.size)
     }
 

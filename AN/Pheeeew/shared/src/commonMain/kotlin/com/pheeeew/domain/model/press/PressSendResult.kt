@@ -1,5 +1,7 @@
 package com.pheeeew.domain.model.press
 
+import com.pheeeew.domain.press.time.PressDelayMillis
+
 sealed interface PressSendResult {
     data class Accepted(
         val today: MyDailyPressTotals,
@@ -13,12 +15,8 @@ sealed interface PressSendResult {
 
     /** Definitely not applied; the adapter supplies the server's minimum retry delay. */
     data class RetryAfter(
-        val delayMillis: Long,
-    ) : PressSendResult {
-        init {
-            require(delayMillis >= 0L)
-        }
-    }
+        val delayMillis: PressDelayMillis,
+    ) : PressSendResult
 
     data object OutcomeUnknown : PressSendResult
 

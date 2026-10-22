@@ -162,7 +162,7 @@ internal class PressSession(
     private fun canRetryUnknown(): Boolean =
         writeSession.canRetryUnknown(
             nowMillis(),
-            sender.idempotencyWindowMillis?.takeIf { it >= 0L }?.let { PressDelayMillis(it) },
+            sender.idempotencyWindowMillis,
         )
 
     /** 조회 후 미전송 입력은 최초 대기의 남은 시간만 기다리고, 고정된 쓰기는 재개한다. */
@@ -220,7 +220,7 @@ internal class PressSession(
                 runCatching {
                     monitoring.recordSuccessfulActivity(
                         ActivityType.PERSONAL_PRESS,
-                        write.pending.batch.occurredAt,
+                        write.pending.batch.occurredAt.value,
                     )
                 }
                 val currentPersonalSnapshot = checkNotNull(mutableState.value.myToday)
@@ -253,7 +253,7 @@ internal class PressSession(
                     if (write.uncertain) PressSessionNotice.OutcomeUnknown else PressSessionNotice.RetryRequired
                 publish(mutableState.value.copy(isSending = false, notice = pausedNotice))
                 val retryAfterMillis = (result as? PressSendResult.RetryAfter)?.delayMillis
-                PressDeliveryDecision.Retry(retryAfterMillis?.let { PressDelayMillis(it) } ?: PressDelayMillis.Zero)
+                PressDeliveryDecision.Retry(retryAfterMillis ?: PressDelayMillis.Zero)
             }
 
             PressSendResult.ContractPending -> {

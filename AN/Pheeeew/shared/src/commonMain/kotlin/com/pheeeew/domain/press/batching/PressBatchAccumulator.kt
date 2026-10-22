@@ -61,6 +61,6 @@ internal class PressBatchAccumulator {
             if (remaining == 0) break
         }
         if (day.counts.values.all { it == 0L }) days.remove(entry.key)
-        return PressBatch(sequence, drained.toMap(), occurredAt = day.occurredAt.value)
+        return PressBatch(sequence, drained.toMap(), occurredAt = day.occurredAt)
     }
 }

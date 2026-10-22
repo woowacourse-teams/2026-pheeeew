@@ -195,7 +195,7 @@ class PressRepositoryLongQueueTest {
         runTest {
             val connection = MutableStateFlow(true)
             val server = Server()
-            val sender = Sender(server, PressSendResult.RetryAfter(5_000L))
+            val sender = Sender(server, PressSendResult.RetryAfter(PressDelayMillis(5_000L)))
             val repository = repository(server, sender, connection)
             runCurrent()
             repository.accept(EmotionState.ANGRY)
@@ -227,7 +227,13 @@ class PressRepositoryLongQueueTest {
     fun `lost response retries the same batch inside server idempotency window and applies it once`() =
         runTest {
             val server = Server()
-            val sender = Sender(server, PressSendResult.OutcomeUnknown, window = 10_000L, applyBeforeUnknown = false)
+            val sender =
+                Sender(
+                    server,
+                    PressSendResult.OutcomeUnknown,
+                    window = PressDelayMillis(10_000L),
+                    applyBeforeUnknown = false,
+                )
             val repository = repository(server, sender)
             repository.refreshToday()
             runCurrent()
@@ -405,7 +411,13 @@ class PressRepositoryLongQueueTest {
     fun `unknown batch is not replayed after server id retention expires`() =
         runTest {
             val server = Server()
-            val sender = Sender(server, PressSendResult.OutcomeUnknown, window = 500L, applyBeforeUnknown = false)
+            val sender =
+                Sender(
+                    server,
+                    PressSendResult.OutcomeUnknown,
+                    window = PressDelayMillis(500L),
+                    applyBeforeUnknown = false,
+                )
             val repository = repository(server, sender)
             repository.refreshToday()
             runCurrent()
@@ -577,13 +589,13 @@ class PressRepositoryLongQueueTest {
     private class Sender(
         private val server: Server,
         vararg results: PressSendResult,
-        private val window: Long? = null,
+        private val window: PressDelayMillis? = null,
         private val applyBeforeUnknown: Boolean = true,
         private val time: () -> Long = { 0L },
         private val beforeSend: suspend () -> Unit = {},
         var afterSend: () -> Unit = {},
     ) : PressSender {
-        override val idempotencyWindowMillis: Long? = window
+        override val idempotencyWindowMillis: PressDelayMillis? = window
         private val scripted = ArrayDeque(results.toList())
         private val appliedBatchIds = mutableSetOf<String>()
         val batches = mutableListOf<PressBatch>()

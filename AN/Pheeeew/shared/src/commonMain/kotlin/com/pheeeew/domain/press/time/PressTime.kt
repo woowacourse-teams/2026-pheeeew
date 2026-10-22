@@ -10,13 +10,13 @@ internal value class PressMonotonicMillis(
 
 /** Unix epoch time used for input dates and activity reporting. */
 @JvmInline
-internal value class PressEpochMillis(
+value class PressEpochMillis(
     val value: Long,
 )
 
 /** Non-negative elapsed time or wait passed to coroutine timers. */
 @JvmInline
-internal value class PressDelayMillis(
+value class PressDelayMillis(
     val value: Long,
 ) {
     init {
