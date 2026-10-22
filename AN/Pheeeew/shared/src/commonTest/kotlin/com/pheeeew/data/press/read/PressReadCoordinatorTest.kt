@@ -11,6 +11,7 @@ import com.pheeeew.domain.repository.PressStatisticsDataSource
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
@@ -22,6 +23,67 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PressReadCoordinatorTest {
+    @Test
+    fun `refresh during a direct read queues one pair without overlapping requests`() =
+        runTest {
+            val releasePersonal = CompletableDeferred<Unit>()
+            val releaseAggregate = CompletableDeferred<Unit>()
+            var personalReads = 0
+            var aggregateReads = 0
+            var activePersonalReads = 0
+            var activeAggregateReads = 0
+            var maximumActivePersonalReads = 0
+            var maximumActiveAggregateReads = 0
+            val fixture =
+                Fixture(
+                    this,
+                    source(personal = {
+                        personalReads++
+                        activePersonalReads++
+                        maximumActivePersonalReads = maxOf(maximumActivePersonalReads, activePersonalReads)
+                        try {
+                            if (personalReads == 1) releasePersonal.await()
+                            PressReadResult.Loaded(personalSnapshot())
+                        } finally {
+                            activePersonalReads--
+                        }
+                    }, aggregate = {
+                        aggregateReads++
+                        activeAggregateReads++
+                        maximumActiveAggregateReads = maxOf(maximumActiveAggregateReads, activeAggregateReads)
+                        try {
+                            if (aggregateReads == 1) releaseAggregate.await()
+                            PressReadResult.Loaded(AllDailyPressSnapshot("2026-10-22", 10))
+                        } finally {
+                            activeAggregateReads--
+                        }
+                    }),
+                )
+
+            val directRead = backgroundScope.launch { fixture.coordinator.readNow() }
+            runCurrent()
+            assertEquals(1, personalReads)
+            assertEquals(1, aggregateReads)
+
+            fixture.coordinator.refreshToday(force = true)
+            runCurrent()
+
+            assertEquals(1, personalReads)
+            assertEquals(1, aggregateReads)
+            assertEquals(1, maximumActivePersonalReads)
+            assertEquals(1, maximumActiveAggregateReads)
+
+            releasePersonal.complete(Unit)
+            releaseAggregate.complete(Unit)
+            runCurrent()
+
+            assertEquals(2, personalReads)
+            assertEquals(2, aggregateReads)
+            assertEquals(1, maximumActivePersonalReads)
+            assertEquals(1, maximumActiveAggregateReads)
+            assertTrue(directRead.isCompleted)
+        }
+
     @Test
     fun `refreshes during a pending read coalesce into one subsequent pair`() =
         runTest {

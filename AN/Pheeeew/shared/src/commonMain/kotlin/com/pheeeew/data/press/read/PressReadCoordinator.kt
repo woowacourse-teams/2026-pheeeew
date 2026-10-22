@@ -69,7 +69,10 @@ internal class PressReadCoordinator(
 
     /** 현재 진행 중인 개인·전체 조회가 끝날 때까지 전송을 기다리게 한다. */
     suspend fun awaitCurrentRead() {
-        readJob?.join()
+        while (true) {
+            val currentRead = readJob ?: return
+            currentRead.join()
+        }
     }
 
     /** 개인 쓰기 성공으로 이전 조회를 무효화하고 전체 집계 갱신 필요 상태를 기록한다. */
@@ -84,6 +87,12 @@ internal class PressReadCoordinator(
 
     /** 시작 시점의 쓰기 문맥과 날짜가 일치하는 개인·전체 조회 결과를 전달한다. */
     suspend fun readNow() {
+        if (readJob?.isActive != true) launchRead()
+        awaitCurrentRead()
+    }
+
+    /** 시작 시점의 쓰기 문맥과 날짜가 일치하는 개인·전체 조회 결과를 전달한다. */
+    private suspend fun performReadNow() {
         val startedContext = context
         val generation = state.beginRead()
         onEvent(PressReadEvent.PairStarted)
@@ -153,7 +162,7 @@ internal class PressReadCoordinator(
         launchedRead =
             scope.launch(start = CoroutineStart.LAZY) {
                 try {
-                    readNow()
+                    performReadNow()
                 } finally {
                     if (readJob === launchedRead) readJob = null
                     if (!resumeRequestedRead()) onEvent(PressReadEvent.PairIdle)
