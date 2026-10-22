@@ -8,6 +8,11 @@ on:
       - 'BE/**'
       - '.github/workflows/be-dev-deploy.yml'
   workflow_dispatch:
+    inputs:
+      image_tag:
+        description: '되돌릴 이미지 태그 (예: dev-0e3c40ec...). 비우면 현재 커밋을 빌드합니다'
+        required: false
+        type: string
 
 concurrency:
   group: deploy-dev
@@ -19,6 +24,7 @@ permissions:
 jobs:
   build:
     name: 이미지 빌드 및 푸시
+    if: github.event.inputs.image_tag == ''
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 20
     steps:
@@ -49,6 +55,7 @@ jobs:
 
   deploy:
     name: 개발 서버 배포
+    if: always() && needs.build.result != 'failure' && needs.build.result != 'cancelled'
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -263,7 +270,7 @@ jobs:
 
       - name: 배포
         env:
-          IMAGE: ${{ secrets.DOCKERHUB_IMAGE }}:dev-${{ github.sha }}
+          IMAGE: ${{ secrets.DOCKERHUB_IMAGE }}:${{ github.event.inputs.image_tag || format('dev-{0}', github.sha) }}
         run: |
           set -eu
           ssh -F ~/.ssh/config target "APP_IMAGE='$IMAGE' bash -s" <<'REMOTE'
