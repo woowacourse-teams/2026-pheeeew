@@ -301,7 +301,7 @@ jobs:
 
           served() {
             code=$(curl -sS --resolve "$PROBE_HOST:443:127.0.0.1" \
-                        --connect-timeout 3 --max-time 10 \
+                        --connect-timeout 2 --max-time 5 \
                         -o /tmp/probe.body -D /tmp/probe.head \
                         -w '%{http_code}' "$PROBE_URL") || return 1
             [ "$code" = 200 ] || return 1
@@ -311,10 +311,12 @@ jobs:
 
           wait_served() {
             want=$1
+            deadline=$(($(date +%s) + 30))
             got=
-            for _ in $(seq 1 30); do
+            while :; do
               got=$(served) || got=
               [ "$got" = "$want" ] && return 0
+              [ "$(date +%s)" -ge "$deadline" ] && break
               sleep 1
             done
             echo "엣지가 $want 를 서비스하지 않습니다. 마지막 확인: ${got:-정상 응답 없음}"
@@ -332,8 +334,9 @@ jobs:
           }
 
           wait_drained() {
+            deadline=$(($(date +%s) + 60))
             checked=no
-            for _ in $(seq 1 60); do
+            while :; do
               if left=$(count_shutting_workers); then
                 case "$left" in
                   ''|*[!0-9]*) ;;
@@ -342,6 +345,7 @@ jobs:
                     [ "$left" -eq 0 ] && return 0 ;;
                 esac
               fi
+              [ "$(date +%s)" -ge "$deadline" ] && break
               sleep 1
             done
             [ "$checked" = yes ] \
