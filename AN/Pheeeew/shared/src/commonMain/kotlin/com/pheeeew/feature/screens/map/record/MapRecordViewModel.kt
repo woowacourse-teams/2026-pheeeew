@@ -56,6 +56,7 @@ class MapRecordViewModel(
     val registeredEmotions = registrationEvents.receiveAsFlow()
 
     private var pendingRegistration: EmotionRegistration? = null
+    private var nextNoticeId = 0L
     private val _notice = MutableStateFlow<RecordNoticeUiModel?>(null)
     val notice = _notice.asStateFlow()
     private val _registeredEmotion = MutableStateFlow<RegisteredEmotionUiModel?>(null)
@@ -64,9 +65,22 @@ class MapRecordViewModel(
     fun consumeRegisteredEmotion(): RegisteredEmotionUiModel? =
         _registeredEmotion.value.also { _registeredEmotion.value = null }
 
-    fun dismissNotice() {
-        _notice.value = null
+    fun dismissNotice(id: Long? = null) {
+        if (id == null || _notice.value?.id == id) _notice.value = null
     }
+
+    private fun newNotice(
+        message: String,
+        isError: Boolean,
+        receipt: RecordResultReceipt? = null,
+        suppressWhenOffline: Boolean = false,
+    ) = RecordNoticeUiModel(
+        message = message,
+        isError = isError,
+        receipt = receipt,
+        suppressWhenOffline = suppressWhenOffline,
+        id = ++nextNoticeId,
+    )
 
     private val _groupOptions = MutableStateFlow(listOf(GroupSelectorGroupUiModel(NO_GROUP_ID, "없음", null)))
     val groupOptions: StateFlow<List<GroupSelectorGroupUiModel>> = _groupOptions.asStateFlow()
@@ -298,7 +312,7 @@ class MapRecordViewModel(
                     _uiModel.value = RecordBottomSheetUiModel()
                     pendingRegistration = null
                     _registeredEmotion.value = RegisteredEmotionUiModel(result.id, registration.coordinate)
-                    _notice.value = RecordNoticeUiModel("선택한 위치에 감정을 남겼어요", false, receipt)
+                    _notice.value = newNotice("선택한 위치에 감정을 남겼어요", false, receipt)
                 }
 
                 else -> {
@@ -308,7 +322,7 @@ class MapRecordViewModel(
                         loadMyGroups(restoreLastGroup = false)
                     }
                     _notice.value =
-                        RecordNoticeUiModel(
+                        newNotice(
                             when (result) {
                                 EmotionRegistrationResult.AudioUnavailable -> {
                                     "녹음 파일을 확인할 수 없어요. 다시 녹음해 주세요"
@@ -322,8 +336,8 @@ class MapRecordViewModel(
                                     "감정을 등록하지 못했어요. 다시 시도해 주세요"
                                 }
                             },
-                            true,
-                            receipt,
+                            isError = true,
+                            receipt = receipt,
                         )
                 }
             }
@@ -487,7 +501,7 @@ class MapRecordViewModel(
                         _uiModel.value =
                             _uiModel.value.copy(isGroupSelectorVisible = false, isGroupSelectionLoading = false)
                         _notice.value =
-                            RecordNoticeUiModel(
+                            newNotice(
                                 "그룹 목록을 불러오지 못했어요. 다시 시도해 주세요",
                                 isError = true,
                                 suppressWhenOffline = true,
@@ -518,4 +532,5 @@ data class RecordNoticeUiModel(
     val isError: Boolean,
     val receipt: RecordResultReceipt? = null,
     val suppressWhenOffline: Boolean = false,
+    val id: Long = 0L,
 )

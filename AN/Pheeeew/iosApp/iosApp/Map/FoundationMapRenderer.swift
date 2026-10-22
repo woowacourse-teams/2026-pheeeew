@@ -14,6 +14,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
     private var preferredFramesPerSecondBeforePause: MLNMapViewPreferredFramesPerSecond?
     private var styleIsReady = false
     private var didSetInitialCamera = false
+    private var firstFramePublished = false
     private var initialCameraUsedFallback = false
     private var lastAppliedCameraCommandId: Int64 = 0
     private var currentLocationSource: MLNShapeSource?
@@ -42,9 +43,10 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
     private var recordCameraBounds: RecordCameraBounds?
     private var didConfigureKoreanFontFaces = false
 
-    init(eventSink: FoundationIosMapEventSink) {
+    init(eventSink: FoundationIosMapEventSink, styleURLOverride: String?) {
         self.eventSink = eventSink
-        mapView = MLNMapView(frame: .zero, styleURL: FoundationMapStyle.styleURL)
+        let styleURL = styleURLOverride.flatMap { URL(string: $0) } ?? FoundationMapStyle.styleURL
+        mapView = MLNMapView(frame: .zero, styleURL: styleURL)
         super.init()
         mapView.delegate = self
         mapView.showsLogoView = false
@@ -104,9 +106,11 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
 
     func update(state: FoundationIosMapRenderUiModel) {
         pendingState = state
-        mapView.isHidden = !state.isVisible
+        // Keep rendering underneath splash; logical presentation still controls interaction.
+        mapView.isHidden = !state.isActive
         mapView.isUserInteractionEnabled = state.isVisible
-        if state.isVisible {
+        mapView.accessibilityElementsHidden = !state.isVisible
+        if state.isActive {
             if let previousRate = preferredFramesPerSecondBeforePause {
                 mapView.preferredFramesPerSecond = previousRate
                 preferredFramesPerSecondBeforePause = nil
@@ -115,7 +119,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
             preferredFramesPerSecondBeforePause = mapView.preferredFramesPerSecond
             mapView.preferredFramesPerSecond = MLNMapViewPreferredFramesPerSecond(rawValue: 1)
         }
-        guard state.isVisible, styleIsReady else { return }
+        guard state.isActive, styleIsReady else { return }
         FoundationCurrentLocationLayer.update(currentLocation: state.currentLocation, source: currentLocationSource)
         recordRangeLayer.update(state: state)
         registerSymbolImages(state)
@@ -303,7 +307,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
     func mapViewDidLayoutSubviews() {
         mapView.compassViewMargins = CGPoint(x: 16, y: 16)
         mapView.attributionButtonMargins = CGPoint(x: 16, y: 16)
-        if styleIsReady, let state = pendingState, state.isVisible {
+        if styleIsReady, let state = pendingState, state.isActive {
             applyInitialCameraIfNeeded(state)
         }
         publishViewportIfReady()
@@ -352,6 +356,11 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
     }
 
     func mapViewDidFinishRenderingFrame(_ mapView: MLNMapView, fullyRendered: Bool) {
+        if !firstFramePublished, styleIsReady, didSetInitialCamera,
+           pendingState?.isActive == true, !mapView.bounds.isEmpty {
+            firstFramePublished = true
+            eventSink.onFirstFrameReady()
+        }
         if let state = pendingState, state.isVisible, state.isRecordLocationPicking {
             _ = applyRecordCamera(state)
         }
@@ -449,7 +458,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
 
     private func publishViewportIfReady() {
         publishHighlightedPinPosition()
-        guard pendingState?.isVisible == true, styleIsReady,
+        guard pendingState?.isActive == true, styleIsReady,
               mapView.bounds.width > 0, mapView.bounds.height > 0 else { return }
         let bounds = mapView.visibleCoordinateBounds
         let queryBounds = EmotionMapBounds(

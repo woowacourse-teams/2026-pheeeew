@@ -23,6 +23,33 @@ import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.settings_nickname_character_count
 import pheeeew.shared.generated.resources.settings_nickname_hint
 
+internal fun normalizeNicknameInput(value: String): String =
+    buildString(value.length) {
+        var index = 0
+        while (index < value.length) {
+            when (value[index]) {
+                '\r' -> {
+                    if (index + 1 < value.length && value[index + 1] == '\n') index++
+                    append(' ')
+                }
+
+                '\n', '\u0085', '\u2028', '\u2029' -> {
+                    append(' ')
+                }
+
+                else -> {
+                    append(value[index])
+                }
+            }
+            index++
+        }
+    }
+
+internal fun acceptedNicknameInput(value: String): String? {
+    val normalized = normalizeNicknameInput(value)
+    return normalized.takeIf(DeviceNicknamePolicy::canAcceptInput)
+}
+
 @Composable
 internal fun NicknameInputField(
     value: String,
@@ -34,7 +61,7 @@ internal fun NicknameInputField(
 ) {
     OutlinedTextField(
         value = value,
-        onValueChange = { if (DeviceNicknamePolicy.canAcceptInput(it)) onValueChange(it) },
+        onValueChange = { acceptedNicknameInput(it)?.let(onValueChange) },
         enabled = enabled,
         isError = isError,
         modifier = modifier.fillMaxWidth(),
@@ -45,8 +72,7 @@ internal fun NicknameInputField(
                 fontSize = 14.sp,
             )
         },
-        singleLine = false,
-        maxLines = 3,
+        singleLine = true,
         supportingText = {
             Text(
                 text =

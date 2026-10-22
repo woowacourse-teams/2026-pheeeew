@@ -8,7 +8,12 @@ import re
 import shlex
 import struct
 
-MARKERS = (b"DeveloperToolsInfo", b"DeveloperToolsScreen", b"DebugMainViewController", b"com.pheeeew.developertools")
+MARKERS = (
+    b"DeveloperToolsInitialization", b"initializeDeveloperTools", b"DeveloperToolsSettingsEntry",
+    b"ErrorSimulation", b"LocationSimulation", b"NetworkRequestConditions", b"DebugNetworkEngine", b"NetworkRecoveryController", b"NetworkRecoveryRun",
+    b"DebugLocationProvider", b"DebugAppServiceFactory", b"DeveloperToolsMapStyleOverride", b"GroupDetailProfileViewController", b"DeveloperToolsInfo",
+    b"DeveloperToolsScreen", b"DebugMainViewController", b"com.pheeeew.developertools",
+)
 
 
 def require(condition, message):

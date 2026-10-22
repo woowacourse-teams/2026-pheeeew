@@ -53,7 +53,6 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.security.crypto)
             implementation(libs.compose.uiToolingPreview)
-            implementation(libs.compose.uiTooling)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.kotlinx.coroutines.android)
             implementation(libs.maplibre.android)
@@ -97,14 +96,18 @@ kotlin {
     }
 }
 
-dependencies {
-    androidRuntimeClasspath(libs.compose.uiTooling)
-}
-
 // Resolve both graphs without relying on dead-code elimination or stripped symbols.
 val verifyDeveloperToolsIsolation by tasks.registering {
     group = "verification"
-    description = "Verify shared iOS frameworks never compile/link developerTools."
+    description = "Verify product sources and shared iOS graphs exclude developer tooling."
+    inputs
+        .files(
+            kotlin.targets
+                .flatMap { target ->
+                    target.compilations.filter { it.name == "main" }.flatMap { it.allKotlinSourceSets }
+                }.distinct()
+                .map { it.kotlin },
+        ).withPropertyName("productSources")
     kotlin.targets.withType<org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget>().forEach { target ->
         listOf("main").forEach { name ->
             val compilation = target.compilations.getByName(name)
@@ -131,6 +134,16 @@ val verifyDeveloperToolsIsolation by tasks.registering {
         }
     }
     doLast {
+        val forbidden =
+            Regex(
+                "DeveloperTools|DebugLocationProvider|DebugNetworkEngine|DebugAppServiceFactory|DeveloperToolsMapStyleOverride|NetworkRecoveryController|NetworkRecoveryRun|SimulationDraft|ErrorSimulation|LocationSimulation|NetworkRequestConditions|SimulatedLocation|com\\.pheeeew\\.developertools",
+            )
+        val leaks =
+            inputs.files.files.filter {
+                it.isFile && it.extension == "kt" &&
+                    forbidden.containsMatchIn(it.readText())
+            }
+        check(leaks.isEmpty()) { "Developer reproduction code in product compilation inputs: ${leaks.joinToString()}" }
         inputs.properties.toSortedMap().forEach { (name, value) ->
             if (name.endsWith(".compilation")) {
                 val expected = "main"

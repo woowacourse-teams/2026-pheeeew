@@ -31,10 +31,12 @@ import com.pheeeew.domain.usecase.FindEmotionRegionSnapshotUseCase
 import com.pheeeew.domain.usecase.FindEmotionRegionsUseCase
 import com.pheeeew.domain.usecase.RefreshLocationUseCase
 import com.pheeeew.feature.screens.map.filter.FilterScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
@@ -52,12 +54,145 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class MapViewModelViewportTest {
     @Test
+    fun `splash preloads location without prompting and defers denied permission until start`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                var requests = 0
+                val refreshCompleted = CompletableDeferred<Unit>()
+                val permission =
+                    object : LocationPermissionController {
+                        override suspend fun currentStatus() = LocationPermissionStatus.Denied
+
+                        override suspend fun requestPermission(): LocationPermissionStatus {
+                            requests++
+                            return LocationPermissionStatus.Denied
+                        }
+                    }
+                val location =
+                    object : LocationRepository {
+                        override val state =
+                            MutableStateFlow<LocationState>(LocationState.Unavailable(LocationError.PermissionDenied))
+
+                        override suspend fun refresh() {
+                            refreshCompleted.await()
+                        }
+                    }
+                val pins = QueuedEmotionMapRepository()
+                val vm =
+                    MapViewModel(
+                        RefreshLocationUseCase(permission, location),
+                        FindEmotionMapPageUseCase(pins),
+                        FindEmotionMapSnapshotUseCase(pins),
+                    )
+                vm.prepareCurrentLocation()
+                vm.prepareCurrentLocation()
+                runCurrent()
+                assertEquals(0, requests)
+                assertFalse(vm.uiModel.value.showLocationPermissionDialog)
+                // Even when splash expires during the silent request, permission waits for that request.
+                vm.start()
+                runCurrent()
+                assertEquals(0, requests)
+                refreshCompleted.complete(Unit)
+                runCurrent()
+                assertEquals(1, requests)
+                assertTrue(vm.uiModel.value.showLocationPermissionDialog)
+                vm.start()
+                runCurrent()
+                assertEquals(1, requests)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `location acquired during splash is reused after splash without a duplicate request`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                var refreshes = 0
+                val acquired = LocationState.Available(CurrentLocation(37.5, 127.0, 5f, 0))
+                val permission =
+                    object : LocationPermissionController {
+                        override suspend fun currentStatus() = LocationPermissionStatus.Granted
+
+                        override suspend fun requestPermission(): LocationPermissionStatus = error("Unexpected prompt")
+                    }
+                val location =
+                    object : LocationRepository {
+                        override val state = MutableStateFlow<LocationState>(LocationState.Loading)
+
+                        override suspend fun refresh() {
+                            refreshes++
+                            state.value = acquired
+                        }
+                    }
+                val pins = QueuedEmotionMapRepository()
+                val vm =
+                    MapViewModel(
+                        RefreshLocationUseCase(permission, location),
+                        FindEmotionMapPageUseCase(pins),
+                        FindEmotionMapSnapshotUseCase(pins),
+                    )
+                vm.prepareCurrentLocation()
+                runCurrent()
+                vm.start()
+                runCurrent()
+                assertEquals(1, refreshes)
+                assertEquals(acquired, vm.uiModel.value.locationState)
+                assertFalse(vm.uiModel.value.showLocationPermissionDialog)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `지도 재시도는 복구까지 같은 안내를 유지하고 중복 및 오래된 콜백을 무시한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val repository = QueuedEmotionMapRepository()
+                val vm =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(repository),
+                        FindEmotionMapSnapshotUseCase(repository),
+                    )
+                vm.onMapError(MapErrorUiModel.StyleLoadFailed)
+                val feedback = vm.uiModel.value.primaryFeedback()
+                vm.retryMap()
+                vm.retryMap()
+                assertEquals(1, vm.uiModel.value.mapRevision)
+                assertTrue(vm.uiModel.value.isRetryingMap)
+                assertEquals(feedback, vm.uiModel.value.primaryFeedback())
+                vm.onMapRecovered(revision = 0)
+                vm.onMapError(MapErrorUiModel.RendererUnavailable, revision = 0)
+                assertTrue(vm.uiModel.value.isRetryingMap)
+                assertEquals(feedback, vm.uiModel.value.primaryFeedback())
+                vm.onMapError(MapErrorUiModel.StyleLoadFailed, revision = 1)
+                assertFalse(vm.uiModel.value.isRetryingMap)
+                assertEquals(feedback, vm.uiModel.value.primaryFeedback())
+                vm.retryMap()
+                vm.onMapRecovered(revision = 2)
+                assertFalse(vm.uiModel.value.isRetryingMap)
+                assertEquals(null, vm.uiModel.value.primaryFeedback())
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
     fun `핀 모드에서 삭제되어도 지역 캐시를 무효화한다`() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
             try {
                 var invalidations = 0
-                val pins = QueuedEmotionMapRepository()
+                val pins =
+                    QueuedEmotionMapRepository(
+                        CompletableDeferred(emptyPage()),
+                        CompletableDeferred(emptyPage()),
+                    )
                 val viewModel =
                     MapViewModel(
                         noLocationRefreshUseCase(),
@@ -67,7 +202,9 @@ class MapViewModelViewportTest {
                     )
 
                 viewModel.onViewportChanged(EmotionMapViewport(bounds(127.0, 37.5), 16.0))
+                runCurrent()
                 viewModel.onEmotionDeleted()
+                runCurrent()
 
                 assertEquals(1, invalidations)
             } finally {
@@ -180,7 +317,7 @@ class MapViewModelViewportTest {
                     viewModel.uiModel.value.regionClusters
                         .isEmpty(),
                 )
-                viewModel.retryRegionClusters()
+                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.0, 37.5), 10.0))
                 advanceTimeBy(700)
                 runCurrent()
                 assertEquals(1, requests)
@@ -246,6 +383,61 @@ class MapViewModelViewportTest {
                 runCurrent()
                 assertEquals(1, repository.requestedBounds.size)
                 assertEquals(1, locationRefreshes)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `위치 대기 중 중복 요청은 막고 준비 해제 시 현재 요청을 취소한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                var refreshes = 0
+                var cancelled = false
+                val locationState = MutableStateFlow<LocationState>(LocationState.Loading)
+                val locationRepository =
+                    object : LocationRepository {
+                        override val state = locationState
+
+                        override suspend fun refresh() {
+                            refreshes++
+                            try {
+                                awaitCancellation()
+                            } catch (cancellation: CancellationException) {
+                                cancelled = true
+                                throw cancellation
+                            }
+                        }
+                    }
+                val permission =
+                    object : LocationPermissionController {
+                        override suspend fun currentStatus() = LocationPermissionStatus.Granted
+
+                        override suspend fun requestPermission() = LocationPermissionStatus.Granted
+                    }
+                val pins = QueuedEmotionMapRepository()
+                val viewModel =
+                    MapViewModel(
+                        RefreshLocationUseCase(permission, locationRepository),
+                        FindEmotionMapPageUseCase(pins),
+                        FindEmotionMapSnapshotUseCase(pins),
+                        dataLoadingEnabled = false,
+                    )
+
+                viewModel.updateReadiness(true, 1)
+                runCurrent()
+                assertTrue(viewModel.uiModel.value.isRequestingLocation)
+                viewModel.onMyLocationClick()
+                runCurrent()
+                assertEquals(1, refreshes)
+
+                viewModel.updateReadiness(false, 1)
+                runCurrent()
+
+                assertTrue(cancelled)
+                assertFalse(viewModel.uiModel.value.isRequestingLocation)
+                assertEquals(1, refreshes)
             } finally {
                 Dispatchers.resetMain()
             }
@@ -427,8 +619,8 @@ class MapViewModelViewportTest {
                             ),
                     )
                 viewModel.onViewportChanged(EmotionMapViewport(bounds(127.0, 37.5), 10.0))
-                advanceTimeBy(700)
                 runCurrent()
+                assertEquals(1, calls)
                 viewModel.onViewportChanged(
                     EmotionMapViewport(
                         EmotionMapBounds(-180.0, -85.0, 180.0, 85.0),
@@ -808,13 +1000,13 @@ class MapViewModelViewportTest {
                 viewModel.onViewportChanged(firstBounds)
                 advanceTimeBy(700)
                 runCurrent()
+                firstResponse.complete(page(listOf(outsideLatest, shared)))
+                runCurrent()
+                assertEquals(listOf(1L, 2L), viewModel.pinIds())
+
                 viewModel.onViewportChanged(latestBounds)
                 advanceTimeBy(700)
                 runCurrent()
-                firstResponse.complete(page(listOf(outsideLatest, shared)))
-                runCurrent()
-
-                assertEquals(listOf(2L), viewModel.pinIds())
                 assertEquals(
                     listOf<EmotionMapBounds?>(firstBounds.expandedForPinQuery(), latestBounds.expandedForPinQuery()),
                     repository.requestedBounds,
@@ -854,9 +1046,16 @@ class MapViewModelViewportTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
             try {
                 val firstResponse = CompletableDeferred<EmotionMapPageResult>()
+                val firstPaginationResponse = CompletableDeferred<EmotionMapPageResult>()
                 val latestResponse = CompletableDeferred<EmotionMapPageResult>()
                 val revisitedResponse = CompletableDeferred<EmotionMapPageResult>()
-                val repository = QueuedEmotionMapRepository(firstResponse, latestResponse, revisitedResponse)
+                val repository =
+                    QueuedEmotionMapRepository(
+                        firstResponse,
+                        firstPaginationResponse,
+                        latestResponse,
+                        revisitedResponse,
+                    )
                 val viewModel =
                     MapViewModel(
                         noLocationRefreshUseCase(),
@@ -869,10 +1068,11 @@ class MapViewModelViewportTest {
                 viewModel.onViewportChanged(firstBounds)
                 advanceTimeBy(700)
                 runCurrent()
+                firstResponse.complete(page(listOf(pin(1, 127.02, 37.55)), hasNext = true))
+                runCurrent()
+                assertEquals(listOf(1L), viewModel.pinIds())
                 viewModel.onViewportChanged(latestBounds)
                 advanceTimeBy(700)
-                runCurrent()
-                firstResponse.complete(page(listOf(pin(1, 127.02, 37.55)), hasNext = true))
                 runCurrent()
                 latestResponse.complete(emptyPage())
                 runCurrent()
@@ -884,6 +1084,7 @@ class MapViewModelViewportTest {
                 runCurrent()
                 assertEquals(
                     listOf<EmotionMapBounds?>(
+                        firstBounds.expandedForPinQuery(),
                         firstBounds.expandedForPinQuery(),
                         latestBounds.expandedForPinQuery(),
                         firstBounds.expandedForPinQuery(),
@@ -899,13 +1100,14 @@ class MapViewModelViewportTest {
         }
 
     @Test
-    fun `뷰포트 변경은 700ms 디바운스 후 최신 경계만 순차 요청한다`() =
+    fun `뷰포트 변경은 이전 요청을 취소하고 최신 경계를 즉시 요청한다`() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
             try {
                 val firstResponse = CompletableDeferred<EmotionMapPageResult>()
+                val skippedResponse = CompletableDeferred<EmotionMapPageResult>()
                 val latestResponse = CompletableDeferred<EmotionMapPageResult>()
-                val repository = QueuedEmotionMapRepository(firstResponse, latestResponse)
+                val repository = QueuedEmotionMapRepository(firstResponse, skippedResponse, latestResponse)
                 val viewModel =
                     MapViewModel(
                         refreshLocation = noLocationRefreshUseCase(),
@@ -918,44 +1120,44 @@ class MapViewModelViewportTest {
 
                 viewModel.onViewportChanged(firstBounds)
                 runCurrent()
-                advanceTimeBy(699)
-                runCurrent()
-                assertEquals(emptyList<EmotionMapBounds?>(), repository.requestedBounds)
-
-                advanceTimeBy(1)
-                runCurrent()
                 assertEquals(listOf<EmotionMapBounds?>(firstBounds.expandedForPinQuery()), repository.requestedBounds)
 
                 viewModel.onViewportChanged(skippedBounds)
                 runCurrent()
-                advanceTimeBy(700)
-                runCurrent()
-                assertEquals(listOf<EmotionMapBounds?>(firstBounds.expandedForPinQuery()), repository.requestedBounds)
+                assertEquals(
+                    listOf<EmotionMapBounds?>(firstBounds.expandedForPinQuery(), skippedBounds.expandedForPinQuery()),
+                    repository.requestedBounds,
+                )
 
                 viewModel.onViewportChanged(latestBounds)
                 runCurrent()
-                advanceTimeBy(700)
-                runCurrent()
-                assertEquals(listOf<EmotionMapBounds?>(firstBounds.expandedForPinQuery()), repository.requestedBounds)
-
-                firstResponse.complete(emptyPage())
-                runCurrent()
                 assertEquals(
-                    listOf<EmotionMapBounds?>(firstBounds.expandedForPinQuery(), latestBounds.expandedForPinQuery()),
+                    listOf<EmotionMapBounds?>(
+                        firstBounds.expandedForPinQuery(),
+                        skippedBounds.expandedForPinQuery(),
+                        latestBounds.expandedForPinQuery(),
+                    ),
                     repository.requestedBounds,
                 )
-                assertEquals(1, repository.maximumConcurrentRequests)
 
-                latestResponse.complete(emptyPage())
+                latestResponse.complete(page(listOf(pin(3, 127.12, 37.72))))
                 runCurrent()
-                assertEquals(1, repository.maximumConcurrentRequests)
+                assertEquals(listOf(3L), viewModel.pinIds())
+
+                firstResponse.complete(page(listOf(pin(1, 126.92, 37.52))))
+                skippedResponse.complete(page(listOf(pin(2, 127.02, 37.62))))
+                runCurrent()
+                assertEquals(listOf(3L), viewModel.pinIds())
                 assertEquals(false, viewModel.uiModel.value.isLoadingEmotionPins)
 
                 viewModel.onViewportChanged(EmotionMapBounds(127.1, 37.6, 127.2, 37.5))
-                advanceTimeBy(700)
                 runCurrent()
                 assertEquals(
-                    listOf<EmotionMapBounds?>(firstBounds.expandedForPinQuery(), latestBounds.expandedForPinQuery()),
+                    listOf<EmotionMapBounds?>(
+                        firstBounds.expandedForPinQuery(),
+                        skippedBounds.expandedForPinQuery(),
+                        latestBounds.expandedForPinQuery(),
+                    ),
                     repository.requestedBounds,
                 )
             } finally {
@@ -969,11 +1171,12 @@ class MapViewModelViewportTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
             try {
                 val pins = listOf(pin(1, 127.02, 37.55))
+                val retryResponse = CompletableDeferred<EmotionMapPageResult>()
                 val repository =
                     QueuedEmotionMapRepository(
                         CompletableDeferred(page(pins)),
                         CompletableDeferred(EmotionMapPageResult.Failure(EmotionMapFailure.Unavailable)),
-                        CompletableDeferred(page(pins)),
+                        retryResponse,
                     )
                 val vm =
                     MapViewModel(
@@ -995,7 +1198,17 @@ class MapViewModelViewportTest {
                 )
                 vm.retryEmotionPins()
                 runCurrent()
+                assertEquals(
+                    MapFeedbackAction.RetryPins,
+                    vm.uiModel.value
+                        .primaryFeedback()
+                        ?.action,
+                )
+                assertEquals("감정 핀을 불러오지 못했어요", vm.uiModel.value.emotionPinsError)
+                retryResponse.complete(page(pins))
+                runCurrent()
                 assertEquals(null, vm.uiModel.value.primaryFeedback())
+                assertEquals(null, vm.uiModel.value.emotionPinsError)
                 assertEquals(listOf(1L), vm.pinIds())
             } finally {
                 Dispatchers.resetMain()
@@ -1037,12 +1250,68 @@ class MapViewModelViewportTest {
                 vm.onConnectivityChanged(true)
                 runCurrent()
                 assertEquals(1, vm.uiModel.value.mapRevision)
+                assertEquals(MapErrorUiModel.StyleLoadFailed, vm.uiModel.value.mapError)
+                vm.onMapRecovered()
                 assertEquals(null, vm.uiModel.value.primaryFeedback())
                 assertEquals(listOf(1L), vm.pinIds())
                 assertEquals(2, repository.requestedBounds.size)
                 vm.onConnectivityChanged(true)
                 runCurrent()
                 assertEquals(2, repository.requestedBounds.size)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `실패한 지역 조회는 반복 요청을 막고 재연결 재시도 중 기존 안내를 유지한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                var requests = 0
+                val retryResponse = CompletableDeferred<EmotionRegionResult>()
+                val repository = QueuedEmotionMapRepository()
+                val viewModel =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(repository),
+                        FindEmotionMapSnapshotUseCase(repository),
+                        findRegions =
+                            FindEmotionRegionsUseCase(
+                                regionRepository { _, _, _ ->
+                                    if (++requests == 1) EmotionRegionResult.Failure else retryResponse.await()
+                                },
+                            ),
+                    )
+                val viewport = EmotionMapViewport(bounds(127.0, 37.5), 10.0)
+                viewModel.onViewportChanged(viewport)
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(1, requests)
+                assertEquals("지역별 감정을 불러오지 못했어요", viewModel.uiModel.value.regionClustersError)
+
+                viewModel.onViewportChanged(viewport)
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(1, requests)
+
+                viewModel.onConnectivityChanged(false)
+                viewModel.onConnectivityChanged(true)
+                assertEquals("지역별 감정을 불러오지 못했어요", viewModel.uiModel.value.regionClustersError)
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(2, requests)
+                assertTrue(viewModel.uiModel.value.isLoadingRegionClusters)
+                assertEquals("지역별 감정을 불러오지 못했어요", viewModel.uiModel.value.regionClustersError)
+
+                retryResponse.complete(
+                    EmotionRegionResult.Success(
+                        listOf(EmotionRegion("city", "서울", 127.0, 37.5, 3, null)),
+                    ),
+                )
+                runCurrent()
+                assertEquals(null, viewModel.uiModel.value.regionClustersError)
+                assertEquals(1, viewModel.uiModel.value.regionClusters.size)
             } finally {
                 Dispatchers.resetMain()
             }
@@ -1282,6 +1551,154 @@ class MapViewModelViewportTest {
         }
 
     @Test
+    fun `실제 핀 줌의 지연 조회 중 클러스터를 유지하고 핀 성공 후 교체한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val area = bounds(127.0, 37.5)
+                val delayedPinPage = CompletableDeferred<EmotionMapPageResult>()
+                val pinRepository = QueuedEmotionMapRepository(delayedPinPage)
+                val viewModel =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(pinRepository),
+                        FindEmotionMapSnapshotUseCase(pinRepository),
+                        findRegions =
+                            FindEmotionRegionsUseCase(
+                                regionRepository { _, _, _ ->
+                                    EmotionRegionResult.Success(
+                                        listOf(EmotionRegion("district", "강남구", 127.05, 37.55, 4, null)),
+                                    )
+                                },
+                            ),
+                    )
+
+                viewModel.onViewportChanged(EmotionMapViewport(area, 10.0))
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(EmotionRegionLevel.SIGUNGU, viewModel.uiModel.value.displayedRegionLevel)
+                assertEquals(
+                    "강남구",
+                    viewModel.uiModel.value.regionClusters
+                        .single()
+                        .name,
+                )
+
+                viewModel.onViewportChanged(EmotionMapViewport(area, 15.5))
+                assertEquals(EmotionRegionLevel.SIGUNGU, viewModel.uiModel.value.displayedRegionLevel)
+                assertEquals(
+                    "강남구",
+                    viewModel.uiModel.value.regionClusters
+                        .single()
+                        .name,
+                )
+
+                advanceTimeBy(700)
+                runCurrent()
+                assertTrue(viewModel.uiModel.value.isLoadingEmotionPins)
+                assertEquals(EmotionRegionLevel.SIGUNGU, viewModel.uiModel.value.displayedRegionLevel)
+                assertEquals(
+                    "강남구",
+                    viewModel.uiModel.value.regionClusters
+                        .single()
+                        .name,
+                )
+
+                delayedPinPage.complete(page(listOf(pin(7, 127.02, 37.55))))
+                runCurrent()
+                assertEquals(listOf(7L), viewModel.pinIds())
+                assertEquals(null, viewModel.uiModel.value.displayedRegionLevel)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `핀 줌 조회 실패 뒤에도 클러스터를 남기지 않고 재시도 핀을 표시한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val area = bounds(127.0, 37.5)
+                val pinRepository =
+                    QueuedEmotionMapRepository(
+                        CompletableDeferred(EmotionMapPageResult.Failure(EmotionMapFailure.Unavailable)),
+                        CompletableDeferred(page(listOf(pin(8, 127.02, 37.55)))),
+                    )
+                val viewModel =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(pinRepository),
+                        FindEmotionMapSnapshotUseCase(pinRepository),
+                        findRegions =
+                            FindEmotionRegionsUseCase(
+                                regionRepository { _, _, _ ->
+                                    EmotionRegionResult.Success(
+                                        listOf(EmotionRegion("district", "강남구", 127.05, 37.55, 4, null)),
+                                    )
+                                },
+                            ),
+                    )
+
+                viewModel.onViewportChanged(EmotionMapViewport(area, 10.0))
+                advanceTimeBy(700)
+                runCurrent()
+                viewModel.onViewportChanged(EmotionMapViewport(area, 15.5))
+                advanceTimeBy(700)
+                runCurrent()
+
+                assertEquals(null, viewModel.uiModel.value.displayedRegionLevel)
+                assertEquals(emptyList(), viewModel.uiModel.value.regionClusters)
+                assertEquals("감정 핀을 불러오지 못했어요", viewModel.uiModel.value.emotionPinsError)
+
+                viewModel.retryEmotionPins()
+                runCurrent()
+                assertEquals(listOf(8L), viewModel.pinIds())
+                assertEquals(emptyList(), viewModel.uiModel.value.regionClusters)
+                assertEquals(null, viewModel.uiModel.value.emotionPinsError)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `핀 줌의 정상 빈 응답은 이전 클러스터를 복원하지 않는다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val area = bounds(127.0, 37.5)
+                val pinRepository = QueuedEmotionMapRepository(CompletableDeferred(emptyPage()))
+                val viewModel =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(pinRepository),
+                        FindEmotionMapSnapshotUseCase(pinRepository),
+                        findRegions =
+                            FindEmotionRegionsUseCase(
+                                regionRepository { _, _, _ ->
+                                    EmotionRegionResult.Success(
+                                        listOf(EmotionRegion("district", "강남구", 127.05, 37.55, 4, null)),
+                                    )
+                                },
+                            ),
+                    )
+
+                viewModel.onViewportChanged(EmotionMapViewport(area, 10.0))
+                advanceTimeBy(700)
+                runCurrent()
+                viewModel.onViewportChanged(EmotionMapViewport(area, 15.5))
+                advanceTimeBy(700)
+                runCurrent()
+
+                assertEquals(emptyList(), viewModel.pinIds())
+                assertEquals(emptyList(), viewModel.uiModel.value.regionClusters)
+                assertEquals(null, viewModel.uiModel.value.displayedRegionLevel)
+                assertEquals(null, viewModel.uiModel.value.emotionPinsError)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
     fun `늦은 지역 응답은 새 계층을 덮지 않고 가까운 줌에서 핀으로 전환한다`() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
@@ -1344,19 +1761,75 @@ class MapViewModelViewportTest {
         }
 
     @Test
-    fun `지역 조회 중과 실패 시 기존 핀을 유지하고 성공한 전체 결과로 교체한다`() =
+    fun `전국 지역 응답은 같은 단계 이동 중 재사용하고 최신 화면 범위로 표시한다`() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
             try {
-                val old = EmotionRegion("a", "강남구", 127.05, 37.55, 1, null)
-                val removed = old.copy(id = "b", name = "서초구")
-                val updated = old.copy(count = 9)
-                val added = old.copy(id = "c", name = "송파구")
-                val first = CompletableDeferred<EmotionRegionResult>(EmotionRegionResult.Success(listOf(old, removed)))
-                val next = CompletableDeferred<EmotionRegionResult>()
+                listOf(8.0, 10.0).forEach { zoom ->
+                    val firstBounds = bounds(127.0, 37.5)
+                    val latestBounds = bounds(128.0, 37.5)
+                    val response = CompletableDeferred<EmotionRegionResult>()
+                    val requests = mutableListOf<EmotionMapBounds>()
+                    val regions =
+                        listOf(
+                            EmotionRegion("west", "서쪽", 127.05, 37.55, 1, null),
+                            EmotionRegion("east", "동쪽", 128.05, 37.55, 2, null),
+                        )
+                    val repository = QueuedEmotionMapRepository()
+                    val viewModel =
+                        MapViewModel(
+                            noLocationRefreshUseCase(),
+                            FindEmotionMapPageUseCase(repository),
+                            FindEmotionMapSnapshotUseCase(repository),
+                            filterSettingsRepository = allPeriodSettingsRepository(),
+                            findRegions =
+                                FindEmotionRegionsUseCase(
+                                    regionRepository { bounds, _, _ ->
+                                        requests += bounds
+                                        response.await()
+                                    },
+                                ),
+                        )
+                    runCurrent()
+
+                    viewModel.onViewportChanged(EmotionMapViewport(firstBounds, zoom))
+                    runCurrent()
+                    assertEquals(1, requests.size)
+
+                    viewModel.onViewportChanged(EmotionMapViewport(latestBounds, zoom))
+                    runCurrent()
+                    assertEquals(listOf(firstBounds), requests)
+
+                    response.complete(EmotionRegionResult.Success(regions))
+                    runCurrent()
+                    assertEquals(
+                        listOf("east"),
+                        viewModel.uiModel.value.regionClusters
+                            .map { it.id },
+                    )
+
+                    viewModel.onViewportChanged(EmotionMapViewport(bounds(128.01, 37.5), zoom))
+                    runCurrent()
+                    assertEquals(listOf(firstBounds), requests)
+                    assertEquals(
+                        listOf("east"),
+                        viewModel.uiModel.value.regionClusters
+                            .map { it.id },
+                    )
+                }
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `같은 단계에서 지역 조회가 실패하면 이동은 재시도하지 않고 명시적 재시도는 즉시 요청한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
                 val failed = CompletableDeferred<EmotionRegionResult>()
-                val empty = CompletableDeferred<EmotionRegionResult>()
-                val responses = ArrayDeque(listOf(first, next, failed, empty))
+                val retry = CompletableDeferred<EmotionRegionResult>()
+                var requests = 0
                 val repository = QueuedEmotionMapRepository()
                 val viewModel =
                     MapViewModel(
@@ -1366,48 +1839,79 @@ class MapViewModelViewportTest {
                         filterSettingsRepository = allPeriodSettingsRepository(),
                         findRegions =
                             FindEmotionRegionsUseCase(
-                                regionRepository {
-                                    _,
-                                    _,
-                                    _,
-                                    ->
-                                    responses.removeFirst().await()
+                                regionRepository { _, _, _ ->
+                                    if (requests++ == 0) failed.await() else retry.await()
                                 },
                             ),
                     )
-                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.0, 37.5), 10.0))
-                advanceTimeBy(700)
                 runCurrent()
-                val original = viewModel.uiModel.value.regionClusters
-                assertEquals(listOf("a", "b"), original.map { it.id })
 
-                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.01, 37.5), 10.0))
-                assertEquals(original, viewModel.uiModel.value.regionClusters)
-                advanceTimeBy(700)
+                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.0, 37.5), 8.0))
                 runCurrent()
-                assertEquals(original, viewModel.uiModel.value.regionClusters)
-                assertTrue(viewModel.uiModel.value.isLoadingRegionClusters)
-                next.complete(EmotionRegionResult.Success(listOf(updated, added)))
-                runCurrent()
-                val replacement = viewModel.uiModel.value.regionClusters
-                assertEquals(listOf("a", "c"), replacement.map { it.id })
-                assertEquals(9L, replacement.first().count)
-
-                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.02, 37.5), 10.0))
-                advanceTimeBy(700)
-                runCurrent()
+                assertEquals(1, requests)
                 failed.complete(EmotionRegionResult.Failure)
                 runCurrent()
-                assertEquals(replacement, viewModel.uiModel.value.regionClusters)
-                assertFalse(viewModel.uiModel.value.isLoadingRegionClusters)
+                assertTrue(viewModel.uiModel.value.regionClustersError != null)
 
-                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.03, 37.5), 10.0))
-                advanceTimeBy(700)
+                viewModel.onViewportChanged(EmotionMapViewport(bounds(128.0, 37.5), 8.0))
                 runCurrent()
-                assertEquals(replacement, viewModel.uiModel.value.regionClusters)
-                empty.complete(EmotionRegionResult.Success(emptyList()))
+                assertEquals(1, requests)
+                assertTrue(viewModel.uiModel.value.regionClustersError != null)
+
+                viewModel.retryRegionClusters()
                 runCurrent()
-                assertEquals(emptyList(), viewModel.uiModel.value.regionClusters)
+                assertEquals(2, requests)
+                retry.complete(EmotionRegionResult.Success(emptyList()))
+                runCurrent()
+                assertEquals(null, viewModel.uiModel.value.regionClustersError)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `핀 시도 시군구 전환은 카메라 idle 뒤 대기 없이 조회한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val area = bounds(127.0, 37.5)
+                val pins =
+                    QueuedEmotionMapRepository(
+                        CompletableDeferred(emptyPage()),
+                        CompletableDeferred(emptyPage()),
+                    )
+                val requestedLevels = mutableListOf<EmotionRegionLevel>()
+                val viewModel =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(pins),
+                        FindEmotionMapSnapshotUseCase(pins),
+                        filterSettingsRepository = allPeriodSettingsRepository(),
+                        findRegions =
+                            FindEmotionRegionsUseCase(
+                                regionRepository { _, level, _ ->
+                                    requestedLevels += level
+                                    EmotionRegionResult.Success(emptyList())
+                                },
+                            ),
+                    )
+                runCurrent()
+
+                viewModel.onViewportChanged(EmotionMapViewport(area, 11.0))
+                runCurrent()
+                assertEquals(1, pins.requestedBounds.size)
+
+                viewModel.onViewportChanged(EmotionMapViewport(area, 8.0))
+                runCurrent()
+                assertEquals(listOf(EmotionRegionLevel.SIDO), requestedLevels)
+
+                viewModel.onViewportChanged(EmotionMapViewport(area, 10.0))
+                runCurrent()
+                assertEquals(listOf(EmotionRegionLevel.SIDO, EmotionRegionLevel.SIGUNGU), requestedLevels)
+
+                viewModel.onViewportChanged(EmotionMapViewport(bounds(128.0, 37.5), 11.0))
+                runCurrent()
+                assertEquals(2, pins.requestedBounds.size)
             } finally {
                 Dispatchers.resetMain()
             }
@@ -1545,7 +2049,7 @@ class MapViewModelViewportTest {
                 )
                 assertEquals(EmotionRegionLevel.SIDO, viewModel.uiModel.value.displayedRegionLevel)
 
-                viewModel.onViewportChanged(EmotionMapViewport(area, 10.0))
+                viewModel.retryRegionClusters()
                 advanceTimeBy(700)
                 runCurrent()
                 next.complete(EmotionRegionResult.Success(listOf(city.copy(id = "district", name = "강남구"))))

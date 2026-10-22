@@ -6,6 +6,7 @@ import com.pheeeew.feature.screens.map.detail.EmotionDetailLoadUiModel
 import com.pheeeew.feature.screens.map.record.RecordNoticeUiModel
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 
 class MapFeedbackSelectionTest {
@@ -101,6 +102,15 @@ class MapFeedbackSelectionTest {
                 null,
             ),
         )
+    }
+
+    @Test
+    fun `feedback source is part of the presentation key`() {
+        val recordKey = mapFeedbackPresentationKey(MapFeedbackSource.Record, 1L, 1L, "같은 안내")
+        val messageKey = mapFeedbackPresentationKey(MapFeedbackSource.Message, 1L, 1L, "같은 안내")
+
+        assertNotEquals(recordKey, messageKey)
+        assertEquals(recordKey, mapFeedbackPresentationKey(MapFeedbackSource.Record, 1L, 99L, "다른 안내"))
     }
 
     @Test

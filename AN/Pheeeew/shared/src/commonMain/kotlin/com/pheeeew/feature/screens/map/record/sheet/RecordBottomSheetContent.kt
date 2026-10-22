@@ -31,10 +31,12 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -78,6 +80,7 @@ import com.pheeeew.core.designsystem.input.usesNativeTextEditor
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.navigation.FlowBackHandler
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
 import com.pheeeew.feature.screens.map.record.group.GroupSelectionButton
@@ -117,55 +120,67 @@ fun RecordBottomSheet(
     modifier: Modifier = Modifier,
     voiceRecorder: VoiceRecorder? = null,
     feedbackContent: @Composable () -> Unit = {},
+    isDismissConfirmationVisible: Boolean = false,
+    dismissConfirmationContent: @Composable () -> Unit = {},
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
-    val isKeyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
-    val currentKeyboardVisible by rememberUpdatedState(isKeyboardVisible)
     val focusManager = LocalFocusManager.current
-    var gestureStartedWithKeyboard by remember { mutableStateOf(false) }
+    var dismissRequested by remember { mutableStateOf(false) }
     var showOtherInputDialog by remember { mutableStateOf(false) }
-    val handleDismissRequest by rememberUpdatedState<() -> Unit> {
-        if (isKeyboardVisible) {
+    val currentOnDismissRequest by rememberUpdatedState(onDismissRequest)
+    val currentConfirmationVisible by rememberUpdatedState(isDismissConfirmationVisible)
+    // Keep this callback stable: SheetState uses its identity as a rememberSaveable key.
+    val confirmValueChange: (SheetValue) -> Boolean =
+        remember {
+            { value ->
+                if (value == SheetValue.Hidden) {
+                    if (!currentConfirmationVisible) dismissRequested = true
+                    false
+                } else {
+                    true
+                }
+            }
+        }
+    val sheetState =
+        rememberModalBottomSheetState(
+            skipPartiallyExpanded = true,
+            confirmValueChange = confirmValueChange,
+        )
+    LaunchedEffect(dismissRequested) {
+        if (dismissRequested) {
+            // Consume this attempt without waiting for a cancellable sheet animation.
+            // Material restores the sheet when the Hidden transition is vetoed.
+            dismissRequested = false
             dismissNativeTextKeyboard()
             focusManager.clearFocus()
             keyboardController?.hide()
-        } else {
-            onDismissRequest()
+            currentOnDismissRequest()
         }
     }
     AppModalBottomSheet(
-        onDismissRequest = handleDismissRequest,
-        modifier =
-            modifier.pointerInput(Unit) {
-                awaitEachGesture {
-                    // Remember before the content's outside-tap handler hides the keyboard.
-                    awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                    gestureStartedWithKeyboard = currentKeyboardVisible
-                }
-            },
-        sheetState =
-            rememberModalBottomSheetState(
-                skipPartiallyExpanded = true,
-                confirmValueChange = { value ->
-                    if (value == SheetValue.Hidden) {
-                        if (gestureStartedWithKeyboard || currentKeyboardVisible) {
-                            dismissNativeTextKeyboard()
-                            focusManager.clearFocus()
-                            keyboardController?.hide()
-                        } else {
-                            handleDismissRequest()
-                        }
-                        false
-                    } else {
-                        true
-                    }
-                },
-            ),
+        onDismissRequest = {
+            if (!currentConfirmationVisible) dismissRequested = true
+        },
+        modifier = modifier,
+        sheetState = sheetState,
+        // The default predictive back keeps its scale when Hidden is vetoed for confirmation.
+        properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false),
         shape = AppShapes.BottomSheet,
         containerColor = AppColors.Surface,
         scrimColor = Color.Black.copy(alpha = 0.3f),
         dragHandle = { SheetDragHandle() },
     ) {
+        val isKeyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+        FlowBackHandler(enabled = true) {
+            if (isKeyboardVisible) {
+                dismissNativeTextKeyboard()
+                focusManager.clearFocus()
+                keyboardController?.hide()
+            } else {
+                dismissRequested = true
+            }
+        }
+        dismissConfirmationContent()
         feedbackContent()
         RecordBottomSheetContent(
             selectedEmotion = selectedEmotion,

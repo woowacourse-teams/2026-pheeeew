@@ -71,12 +71,14 @@ private const val FALLBACK_LONGITUDE = 127.147538132656
 internal actual fun NativeMap(
     state: MapUiModel,
     isVisible: Boolean,
+    isActive: Boolean,
     isMounted: Boolean,
     savedCamera: MapCameraSnapshotUiModel?,
     onCameraSaved: (MapCameraSnapshotUiModel) -> Unit,
     onMemoryPressure: () -> Unit,
     onMapError: (MapErrorUiModel) -> Unit,
     onMapRecovered: () -> Unit,
+    onFirstFrameReady: () -> Unit,
     onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
     onViewportChanged: (EmotionMapViewport) -> Unit,
     onCameraMovingChanged: (Boolean) -> Unit,
@@ -85,6 +87,7 @@ internal actual fun NativeMap(
     onMapBackgroundClick: () -> Unit,
     onHighlightedPinPositionChanged: (HighlightedPinPosition?) -> Unit,
     onContentPresented: (String, List<String>) -> Unit,
+    styleUrlOverride: String?,
     modifier: Modifier,
 ) {
     val context = LocalContext.current
@@ -93,7 +96,7 @@ internal actual fun NativeMap(
     val statusBarInset = WindowInsets.statusBars.getTop(density)
     val navigationBarInset = WindowInsets.navigationBars.getBottom(density)
     val currentOnCameraMovingChanged by rememberUpdatedState(onCameraMovingChanged)
-    DisposableEffect(isVisible, isMounted) {
+    DisposableEffect(isVisible, isActive, isMounted) {
         if (!isVisible || !isMounted) currentOnCameraMovingChanged(false)
         onDispose { currentOnCameraMovingChanged(false) }
     }
@@ -105,6 +108,7 @@ internal actual fun NativeMap(
     val currentOnHighlightPosition by rememberUpdatedState(onHighlightedPinPositionChanged)
     val currentOnMapError by rememberUpdatedState(onMapError)
     val currentOnMapRecovered by rememberUpdatedState(onMapRecovered)
+    val currentOnFirstFrameReady by rememberUpdatedState(onFirstFrameReady)
     val currentOnCameraSaved by rememberUpdatedState(onCameraSaved)
     val currentOnMemoryPressure by rememberUpdatedState(onMemoryPressure)
     var appLifecycleState by remember(lifecycleOwner) { mutableStateOf(lifecycleOwner.lifecycle.currentState) }
@@ -114,7 +118,7 @@ internal actual fun NativeMap(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     val host =
-        remember(context, isMounted) {
+        remember(context, isMounted, styleUrlOverride) {
             if (!isMounted) {
                 null
             } else {
@@ -127,9 +131,10 @@ internal actual fun NativeMap(
                         },
                         onMapError = currentOnMapError,
                         onMapRecovered = currentOnMapRecovered,
+                        onFirstFrameReady = { currentOnFirstFrameReady() },
                         onRecordViewportChanged = onRecordViewportChanged,
                         onViewportChanged = onViewportChanged,
-                        onCameraMovingChanged = { currentOnCameraMovingChanged(it) },
+                        onCameraMovingChanged = { if (currentIsVisible) currentOnCameraMovingChanged(it) },
                         onEmotionPinClick = { currentOnEmotionPinClick(it) },
                         onRegionClusterClick = { currentOnRegionClusterClick(it) },
                         onMapBackgroundClick = { currentOnMapBackgroundClick() },
@@ -137,6 +142,7 @@ internal actual fun NativeMap(
                         onContentPresented = { token, ids -> currentOnContentPresented(token, ids) },
                         restoredCamera = savedCamera,
                         onCameraSaved = { currentOnCameraSaved(it) },
+                        styleUrlOverride = styleUrlOverride,
                     )
                 }.getOrNull()
             }
@@ -149,7 +155,7 @@ internal actual fun NativeMap(
     }
 
     SideEffect {
-        host.synchronizeLifecycle(isVisible, appLifecycleState)
+        host.synchronizeLifecycle(isActive, appLifecycleState)
     }
     DisposableEffect(host) {
         onDispose { host.release() }
@@ -177,8 +183,16 @@ internal actual fun NativeMap(
         factory = { host.mapView },
         modifier = modifier,
         update = { view ->
-            view.visibility = if (isVisible) View.VISIBLE else View.INVISIBLE
-            if (isVisible) host.render(state, statusBarInset, navigationBarInset)
+            // Render behind the opaque splash so native first-frame callbacks can arrive.
+            view.visibility = if (isActive) View.VISIBLE else View.INVISIBLE
+            view.importantForAccessibility =
+                if (isVisible) {
+                    View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
+                } else {
+                    View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+                }
+            view.setOnTouchListener { _, _ -> !currentIsVisible }
+            if (isActive) host.render(state, statusBarInset, navigationBarInset)
         },
     )
 }
@@ -187,6 +201,7 @@ private class AndroidFoundationMapHost(
     val mapView: MapView,
     private val onMapError: (MapErrorUiModel) -> Unit,
     private val onMapRecovered: () -> Unit,
+    private val onFirstFrameReady: () -> Unit,
     private val onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
     private val onViewportChanged: (EmotionMapViewport) -> Unit,
     private val onCameraMovingChanged: (Boolean) -> Unit,
@@ -197,6 +212,7 @@ private class AndroidFoundationMapHost(
     private val onContentPresented: (String, List<String>) -> Unit,
     private val restoredCamera: MapCameraSnapshotUiModel?,
     private val onCameraSaved: (MapCameraSnapshotUiModel) -> Unit,
+    private val styleUrlOverride: String?,
 ) {
     private val emotionPinSymbolLayer = EmotionPinSymbolLayer()
     private val regionClusterSymbolLayer = RegionClusterSymbolLayer()
@@ -221,6 +237,17 @@ private class AndroidFoundationMapHost(
     private var isRestoringOriginalStyle = false
     private var lastScheduledPinLoadId: String? = null
     private var lastSavedCamera: MapCameraSnapshotUiModel? = restoredCamera
+
+    private var firstFramePublished = false
+    private val firstFrameListener =
+        MapView.OnDidFinishRenderingFrameListener { _, _, _ ->
+            if (!released && !firstFramePublished && styleLoaded && didSetInitialCamera &&
+                mapView.width > 0 && mapView.height > 0
+            ) {
+                firstFramePublished = true
+                onFirstFrameReady()
+            }
+        }
 
     private val idleListener = MapView.OnDidBecomeIdleListener { publishContent() }
 
@@ -277,6 +304,7 @@ private class AndroidFoundationMapHost(
     init {
         mapView.addOnDidFailLoadingMapListener(mapLoadFailureListener)
         mapView.addOnDidBecomeIdleListener(idleListener)
+        mapView.addOnDidFinishRenderingFrameListener(firstFrameListener)
         mapView.getMapAsync { readyMap ->
             if (released) return@getMapAsync
             map = readyMap
@@ -341,7 +369,7 @@ private class AndroidFoundationMapHost(
                     publishViewport()
                 }
             }
-            readyMap.setStyle(Style.Builder().fromUri(OPEN_FREE_MAP_STYLE_URL)) { loadedStyle ->
+            readyMap.setStyle(Style.Builder().fromUri(styleUrlOverride ?: OPEN_FREE_MAP_STYLE_URL)) { loadedStyle ->
                 if (released) return@setStyle
                 if (!didConfigureKoreanFontFaces) {
                     didConfigureKoreanFontFaces = true
@@ -380,12 +408,12 @@ private class AndroidFoundationMapHost(
     }
 
     fun synchronizeLifecycle(
-        visible: Boolean,
+        active: Boolean,
         lifecycleState: Lifecycle.State,
     ) {
         if (released) return
-        val shouldStart = visible && lifecycleState.isAtLeast(Lifecycle.State.STARTED)
-        val shouldResume = visible && lifecycleState.isAtLeast(Lifecycle.State.RESUMED)
+        val shouldStart = active && lifecycleState.isAtLeast(Lifecycle.State.STARTED)
+        val shouldResume = active && lifecycleState.isAtLeast(Lifecycle.State.RESUMED)
         if (shouldStart && !started) {
             mapView.onStart()
             started = true
@@ -409,7 +437,8 @@ private class AndroidFoundationMapHost(
         saveCamera()
         mapView.removeOnDidFailLoadingMapListener(mapLoadFailureListener)
         mapView.removeOnDidBecomeIdleListener(idleListener)
-        synchronizeLifecycle(visible = false, lifecycleState = Lifecycle.State.DESTROYED)
+        mapView.removeOnDidFinishRenderingFrameListener(firstFrameListener)
+        synchronizeLifecycle(active = false, lifecycleState = Lifecycle.State.DESTROYED)
         released = true
         mapView.onDestroy()
         map = null

@@ -72,11 +72,7 @@ class DeviceSessionRepositoryImpl(
                     )
                 }
             if (credentials.refreshToken == null) {
-                if (credentials.pendingNickname != null) {
-                    register(credentials.pendingNickname, credentials)
-                } else {
-                    DeviceSessionResult.NeedsRegistration()
-                }
+                DeviceSessionResult.NeedsRegistration(credentials.pendingNickname, credentials.nicknameDraft)
             } else {
                 refreshStored(credentials)
             }
@@ -117,9 +113,39 @@ class DeviceSessionRepositoryImpl(
         if (credentials.preservesLegacyIdentity) return failed(DeviceSessionFailureKind.SESSION_CHANGED)
         // A previous invalidation may already have started a user-authorized registration.
         // Keep its request ID so a lost registration response cannot create another device.
-        if (credentials.refreshToken == null) return DeviceSessionResult.NeedsRegistration(credentials.pendingNickname)
+        if (credentials.refreshToken ==
+            null
+        ) {
+            return DeviceSessionResult.NeedsRegistration(credentials.pendingNickname, credentials.nicknameDraft)
+        }
         if (!storage.write(DeviceCredentials(generation = generation))) return failed(DeviceSessionFailureKind.STORAGE)
         return DeviceSessionResult.NeedsRegistration()
+    }
+
+    override suspend fun saveNicknameDraft(nickname: String?): Boolean {
+        return try {
+            val credentials =
+                when (val result = storage.read()) {
+                    is CredentialRead.Found -> result.credentials
+                    CredentialRead.Missing -> DeviceCredentials()
+                    is CredentialRead.Failure -> return false
+                }
+            storage.write(
+                DeviceCredentials(
+                    refreshToken = credentials.refreshToken,
+                    pendingRequestId = credentials.pendingRequestId,
+                    pendingStartedAtMillis = credentials.pendingStartedAtMillis,
+                    pendingNickname = credentials.pendingNickname,
+                    nicknameDraft = nickname,
+                    generation = credentials.generation,
+                    preservesLegacyIdentity = credentials.preservesLegacyIdentity,
+                ),
+            )
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            false
+        }
     }
 
     override suspend fun register(nickname: String): DeviceSessionResult {
@@ -144,12 +170,14 @@ class DeviceSessionRepositoryImpl(
             if (credentials.refreshToken != null) return restore()
             val pending =
                 if (credentials.pendingRequestId != null) {
-                    val preservedNickname = credentials.pendingNickname ?: normalized
-                    if (credentials.pendingNickname == null) {
+                    // The server ignores the nickname when the request already created a device,
+                    // so always send the current input and reconcile through the nickname API.
+                    if (credentials.pendingNickname != normalized) {
                         DeviceCredentials(
                             pendingRequestId = credentials.pendingRequestId,
                             pendingStartedAtMillis = credentials.pendingStartedAtMillis,
-                            pendingNickname = preservedNickname,
+                            pendingNickname = normalized,
+                            nicknameDraft = credentials.nicknameDraft,
                             generation = credentials.generation,
                             preservesLegacyIdentity = credentials.preservesLegacyIdentity,
                         ).also {
@@ -163,10 +191,11 @@ class DeviceSessionRepositoryImpl(
                         pendingRequestId = newRequestId(),
                         pendingStartedAtMillis = now(),
                         pendingNickname = normalized,
+                        nicknameDraft = credentials.nicknameDraft,
                         generation = credentials.generation,
                     ).also { if (!storage.write(it)) return failed(DeviceSessionFailureKind.STORAGE) }
                 }
-            register(pending.pendingNickname ?: normalized, pending)
+            register(normalized, pending)
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: Exception) {
@@ -192,7 +221,9 @@ class DeviceSessionRepositoryImpl(
         if (credentials.refreshToken != null) {
             val result = refreshStored(credentials)
             if (result !is DeviceSessionResult.NeedsRegistration) return result
-            return register(DeviceCredentials(generation = credentials.generation))
+            return register(
+                DeviceCredentials(generation = credentials.generation, nicknameDraft = credentials.nicknameDraft),
+            )
         }
         return register(credentials)
     }
@@ -202,7 +233,13 @@ class DeviceSessionRepositoryImpl(
         val issuedAt = now()
         return when (val result = api.refresh(DeviceRefreshRequestDto(checkNotNull(credentials.refreshToken)))) {
             is ApiResult.Success -> {
-                access(result.value.accessToken, result.value.expiresIn, issuedAt, credentials.generation)
+                access(
+                    result.value.accessToken,
+                    result.value.expiresIn,
+                    issuedAt,
+                    credentials.generation,
+                    credentials.nicknameDraft,
+                )
             }
 
             is ApiResult.Failure -> {
@@ -213,11 +250,15 @@ class DeviceSessionRepositoryImpl(
                     failure(result.reason)
                 } else {
                     // Persist invalidation before registration; preserve credentials on network failures.
-                    val cleared = DeviceCredentials(generation = credentials.generation)
+                    val cleared =
+                        DeviceCredentials(
+                            generation = credentials.generation,
+                            nicknameDraft = credentials.nicknameDraft,
+                        )
                     if (!storage.write(cleared)) {
                         failed(DeviceSessionFailureKind.STORAGE)
                     } else {
-                        DeviceSessionResult.NeedsRegistration()
+                        DeviceSessionResult.NeedsRegistration(nicknameDraft = credentials.nicknameDraft)
                     }
                 }
             }
@@ -239,6 +280,7 @@ class DeviceSessionRepositoryImpl(
                         pendingRequestId = newRequestId(),
                         pendingStartedAtMillis = now(),
                         pendingNickname = nickname,
+                        nicknameDraft = pending.nicknameDraft,
                         generation = pending.generation,
                     )
                 if (!storage.write(pending)) return failed(DeviceSessionFailureKind.STORAGE)
@@ -294,7 +336,7 @@ class DeviceSessionRepositoryImpl(
                         api.register(
                             DeviceV3RegistrationRequestDto(
                                 checkNotNull(pending.pendingRequestId),
-                                pending.pendingNickname ?: nickname,
+                                nickname,
                                 attestation,
                             ),
                         )
@@ -307,11 +349,16 @@ class DeviceSessionRepositoryImpl(
                     ) {
                         return failed(DeviceSessionFailureKind.CONTRACT)
                     }
-                    val ready = access(dto.accessToken, dto.expiresIn, issuedAt, pending.generation + 1)
+                    val ready =
+                        access(dto.accessToken, dto.expiresIn, issuedAt, pending.generation + 1, pending.nicknameDraft)
                     if (ready !is DeviceSessionResult.Ready) return ready
                     // One atomic replacement both saves refresh and removes the pending registration.
                     if (!storage.write(
-                            DeviceCredentials(refreshToken = dto.refreshToken, generation = ready.access.generation),
+                            DeviceCredentials(
+                                refreshToken = dto.refreshToken,
+                                generation = ready.access.generation,
+                                nicknameDraft = pending.nicknameDraft,
+                            ),
                         )
                     ) {
                         return failed(DeviceSessionFailureKind.STORAGE)
@@ -322,18 +369,31 @@ class DeviceSessionRepositoryImpl(
                 is ApiResult.Failure -> {
                     val http = result.reason as? NetworkFailure.HttpStatus
                     if (attempt == 0 && http?.statusCode == 409 && http.error?.code == "DEVICE-002") {
-                        pending = DeviceCredentials(generation = pending.generation)
+                        pending =
+                            DeviceCredentials(generation = pending.generation, nicknameDraft = pending.nicknameDraft)
                     } else if (http?.statusCode == 409 && http.error?.code == "DEVICE-009") {
-                        if (!storage.write(DeviceCredentials(generation = pending.generation))) {
+                        if (!storage.write(
+                                DeviceCredentials(
+                                    generation = pending.generation,
+                                    nicknameDraft = pending.nicknameDraft,
+                                ),
+                            )
+                        ) {
                             return failed(DeviceSessionFailureKind.STORAGE)
                         }
                         return failure(result.reason)
                     } else if (http?.statusCode == 400 && http.error?.code == "DEVICE-008") {
-                        if (!storage.write(DeviceCredentials(generation = pending.generation))) {
+                        if (!storage.write(
+                                DeviceCredentials(
+                                    generation = pending.generation,
+                                    nicknameDraft = pending.nicknameDraft,
+                                ),
+                            )
+                        ) {
                             return failed(DeviceSessionFailureKind.STORAGE)
                         }
                         return failure(result.reason)
-                    } else if (attempt == 0 && retryableRegistration(result.reason)) {
+                    } else if (nickname == null && attempt == 0 && retryableRegistration(result.reason)) {
                         // Preserve requestId even when the server's success body could not be decoded.
                     } else {
                         return failure(result.reason)
@@ -368,11 +428,15 @@ class DeviceSessionRepositoryImpl(
         seconds: Long,
         issuedAt: Long,
         generation: Long,
+        nicknameDraft: String? = null,
     ): DeviceSessionResult {
         if (token.isBlank() || seconds <= 0 || issuedAt < 0 || seconds > (Long.MAX_VALUE - issuedAt) / 1000) {
             return failed(DeviceSessionFailureKind.CONTRACT)
         }
-        return DeviceSessionResult.Ready(DeviceAccess(token, issuedAt, issuedAt + seconds * 1000, generation))
+        return DeviceSessionResult.Ready(
+            DeviceAccess(token, issuedAt, issuedAt + seconds * 1000, generation),
+            nicknameDraft,
+        )
     }
 
     private fun failure(reason: NetworkFailure): DeviceSessionResult.Failed {

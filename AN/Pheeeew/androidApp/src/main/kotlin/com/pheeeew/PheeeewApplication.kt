@@ -7,16 +7,10 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import com.pheeeew.core.di.AndroidAppConfig
 import com.pheeeew.core.di.AppGraph
-import com.pheeeew.core.di.AppMonitoring
 import com.pheeeew.core.di.appCollectionMetadata
-import com.pheeeew.core.di.appMonitoringRegistry
-import com.pheeeew.core.di.createAndroidAppGraph
-import com.pheeeew.core.di.decodeAppMonitoringState
 import com.pheeeew.core.di.device.DeviceSessionBuildConfig
 import com.pheeeew.core.di.monitoringActiveDay
 import com.pheeeew.core.monitoring.MonitoringConfig
-import com.pheeeew.core.monitoring.StateDecoder
-import com.pheeeew.core.monitoring.createAndroidMonitoring
 
 class PheeeewApplication :
     Application(),
@@ -45,7 +39,7 @@ class PheeeewApplication :
                 collection = appCollectionMetadata(BuildConfig.MONITORING_ENVIRONMENT),
             )
         appGraph =
-            createAndroidAppGraph(
+            createApplicationGraph(
                 this,
                 AndroidAppConfig(
                     DeviceSessionBuildConfig(

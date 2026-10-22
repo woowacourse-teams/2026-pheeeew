@@ -9,7 +9,6 @@ import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.ApiRequestExecutor
 import com.pheeeew.core.network.ApiResponseObserver
 import com.pheeeew.core.network.ConnectivityObserver
-import com.pheeeew.core.network.createPlatformApiClient
 import com.pheeeew.core.session.DeviceSessionManager
 import com.pheeeew.data.local.device.DeviceCredentialStorage
 import com.pheeeew.data.local.mapfilter.InMemoryMapFilterSettingsRepository
@@ -65,7 +64,8 @@ internal interface ApiBindings {
         config: ApiConfig,
         observer: MonitoringApiObserver,
         monitoring: Monitoring,
-    ): ApiClient = createPlatformApiClient(config, attemptObserver = observer, monitoring = monitoring)
+        services: AppServiceFactory,
+    ): ApiClient = services.createApiClient(config, null, attemptObserver = observer, monitoring = monitoring)
 
     @Provides
     @SingleIn(AppScope::class)
@@ -148,8 +148,9 @@ internal interface ApiBindings {
         diagnostics: DeviceSessionDiagnostics,
         attemptObserver: MonitoringApiObserver,
         monitoring: Monitoring,
+        services: AppServiceFactory,
     ): ApiClient =
-        createPlatformApiClient(
+        services.createApiClient(
             config,
             session,
             ApiResponseObserver { status ->

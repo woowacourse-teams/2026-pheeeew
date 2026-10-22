@@ -8,6 +8,17 @@ import zipfile
 MARKERS = (
     "com/pheeeew/developertools",
     "com.pheeeew.developertools",
+    "ErrorSimulation",
+    "LocationSimulation",
+    "NetworkRequestConditions",
+    "DebugNetworkEngine", "NetworkRecoveryController", "NetworkRecoveryRun",
+    "DebugLocationProvider",
+    "DebugAppServiceFactory",
+    "DeveloperToolsMapStyleOverride",
+    "GroupDetailProfileViewController",
+    "androidx.compose.ui.tooling.PreviewActivity",
+    "androidx/compose/ui/tooling/PreviewActivity",
+    "DeveloperTools",
     "DeveloperToolsInfo",
     "DeveloperToolsScreenKt",
 )
