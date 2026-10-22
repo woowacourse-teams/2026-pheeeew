@@ -62,7 +62,7 @@ class PressReconcilerTest {
 
     private fun write() =
         PressPendingWrite(
-            batch = PressBatch(1, mapOf(EmotionState.ANGRY to 2)),
+            batch = PressBatch(mapOf(EmotionState.ANGRY to 2)),
             baseline = snapshot(),
         )
 

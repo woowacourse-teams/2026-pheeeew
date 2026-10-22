@@ -31,7 +31,8 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNotEquals
+import kotlin.test.assertNotSame
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -136,13 +137,6 @@ class PressRepositoryLongQueueTest {
             )
             assertTrue(server.counts.values.all { it == 2_000L })
             assertTrue(sender.batches.all { it.totalCount <= 100 && it.counts.values.all { count -> count <= 30 } })
-            assertEquals(
-                sender.batches.size,
-                sender.batches
-                    .map { it.batchId }
-                    .distinct()
-                    .size,
-            )
             assertEquals(1, sender.maxConcurrent)
             assertTrue(sender.times.zipWithNext().all { (before, after) -> after - before >= 10L })
         }
@@ -216,8 +210,8 @@ class PressRepositoryLongQueueTest {
             advanceTimeBy(100)
             runCurrent()
             assertEquals(3, sender.batches.size)
-            assertEquals(sender.batches[0], sender.batches[1])
-            assertNotEquals(sender.batches[1].batchId, sender.batches[2].batchId)
+            assertSame(sender.batches[0], sender.batches[1])
+            assertNotSame(sender.batches[1], sender.batches[2])
             assertEquals(mapOf(EmotionState.ANGRY to 1), sender.batches[1].counts)
             assertEquals(mapOf(EmotionState.FRUSTRATED to 2), sender.batches[2].counts)
             assertEquals(3L, server.counts.values.sum())
@@ -225,7 +219,7 @@ class PressRepositoryLongQueueTest {
         }
 
     @Test
-    fun `lost response retries the same batch inside server idempotency window and applies it once`() =
+    fun `configured retry window replays the same pending batch when the first send was not applied`() =
         runTest {
             val server = Server()
             val sender =
@@ -244,7 +238,7 @@ class PressRepositoryLongQueueTest {
             advanceTimeBy(3_000)
             runCurrent()
             assertEquals(2, sender.batches.size)
-            assertEquals(sender.batches[0], sender.batches[1])
+            assertSame(sender.batches[0], sender.batches[1])
             assertEquals(1L, server.counts.values.sum())
             assertEquals(0L, repository.state.value.pendingPressCount)
             assertFalse(repository.state.value.isOutcomeUnknown)
@@ -264,7 +258,7 @@ class PressRepositoryLongQueueTest {
             repository.retryUnsent()
             advanceTimeBy(120_000)
             runCurrent()
-            assertEquals(1, sender.batches.count { it.batchId == sender.batches.first().batchId })
+            assertEquals(1, sender.batches.count { it === sender.batches.first() })
             assertEquals(0L, repository.state.value.pendingPressCount)
             assertEquals(
                 10_000L,
@@ -317,7 +311,7 @@ class PressRepositoryLongQueueTest {
             advanceTimeBy(1_100)
             runCurrent()
             assertEquals(2, sender.batches.size)
-            assertNotEquals(sender.batches[0].batchId, sender.batches[1].batchId)
+            assertNotSame(sender.batches[0], sender.batches[1])
             assertEquals(
                 2L,
                 repository.state.value.myToday
@@ -457,7 +451,7 @@ class PressRepositoryLongQueueTest {
             advanceTimeBy(100)
             runCurrent()
             assertEquals(2, sender.batches.size)
-            assertNotEquals(sender.batches[0].batchId, sender.batches[1].batchId)
+            assertNotSame(sender.batches[0], sender.batches[1])
             assertEquals(3L, server.counts.values.sum())
             assertEquals(0L, repository.state.value.pendingPressCount)
         }
@@ -595,7 +589,6 @@ class PressRepositoryLongQueueTest {
     ) : PressSender {
         override val idempotencyWindowMillis: PressDelayMillis? = window
         private val scripted = ArrayDeque(results.toList())
-        private val appliedBatchIds = mutableSetOf<String>()
         val batches = mutableListOf<PressBatch>()
         val times = mutableListOf<Long>()
         private var concurrent = 0
@@ -609,11 +602,8 @@ class PressRepositoryLongQueueTest {
                 times += time()
                 beforeSend()
                 val result = if (scripted.isEmpty()) acceptedMarker() else scripted.removeFirst()
-                if ((
-                        result is PressSendResult.Accepted ||
-                            (result == PressSendResult.OutcomeUnknown && applyBeforeUnknown)
-                    ) &&
-                    appliedBatchIds.add(batch.batchId)
+                if (result is PressSendResult.Accepted ||
+                    (result == PressSendResult.OutcomeUnknown && applyBeforeUnknown)
                 ) {
                     server.apply(batch)
                 }

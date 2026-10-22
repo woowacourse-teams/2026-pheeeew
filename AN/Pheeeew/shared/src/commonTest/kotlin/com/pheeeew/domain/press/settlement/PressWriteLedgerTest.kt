@@ -56,5 +56,5 @@ class PressWriteLedgerTest {
         assertEquals(PressWriteCounts(emptyMap(), 1, 0), ledger.snapshot())
     }
 
-    private fun batch() = PressBatch(1, mapOf(EmotionState.ANGRY to 1))
+    private fun batch() = PressBatch(mapOf(EmotionState.ANGRY to 1))
 }

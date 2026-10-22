@@ -84,7 +84,7 @@ class PressWriteSessionTest {
 
     private fun write() =
         PressWriteState(
-            pending = PressPendingWrite(PressBatch(1, mapOf(EmotionState.ANGRY to 1)), snapshot()),
+            pending = PressPendingWrite(PressBatch(mapOf(EmotionState.ANGRY to 1)), snapshot()),
             createdAtMonotonicMillis = PressMonotonicMillis(0),
         )
 

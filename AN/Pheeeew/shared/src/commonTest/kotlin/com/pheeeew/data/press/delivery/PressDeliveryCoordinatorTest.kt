@@ -137,7 +137,7 @@ class PressDeliveryCoordinatorTest {
     private companion object {
         fun sampleWrite(): PressWriteState {
             val baseline = MyDailyPressSnapshot("2026-10-22", EmotionState.entries.associateWith { 0L }, 0L)
-            val batch = PressBatch(1L, mapOf(EmotionState.FRUSTRATED to 1))
+            val batch = PressBatch(mapOf(EmotionState.FRUSTRATED to 1))
             return PressWriteState(PressPendingWrite(batch, baseline), PressMonotonicMillis(0L))
         }
     }

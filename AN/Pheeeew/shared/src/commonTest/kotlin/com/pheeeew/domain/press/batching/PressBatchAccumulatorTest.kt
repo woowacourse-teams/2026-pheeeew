@@ -19,8 +19,8 @@ class PressBatchAccumulatorTest {
         val queue = PressBatchAccumulator()
         queue.add(EmotionState.ANGRY, 2, PressEpochMillis(before))
         queue.add(EmotionState.ANGRY, 3, PressEpochMillis(after))
-        val first = assertNotNull(queue.take(30, 100, 0, 1))
-        val second = assertNotNull(queue.take(30, 100, 0, 2))
+        val first = assertNotNull(queue.take(30, 100, 0))
+        val second = assertNotNull(queue.take(30, 100, 0))
         assertEquals(2, first.totalCount)
         assertEquals(3, second.totalCount)
         assertEquals(PressEpochMillis(before), first.occurredAt)
@@ -42,12 +42,13 @@ class PressBatchAccumulatorTest {
         expected.forEach { (emotion, amount) -> assertTrue(queue.add(emotion, amount)) }
         assertEquals(10_000L, queue.size)
         val drained = EmotionState.entries.associateWith { 0L }.toMutableMap()
-        var sequence = 1L
+        var firstEmotionIndex = 1
         while (queue.isNotEmpty) {
-            val next = assertNotNull(queue.take(30, 100, (sequence % 5).toInt(), sequence++))
+            val next = assertNotNull(queue.take(30, 100, firstEmotionIndex))
             assertTrue(next.totalCount <= 100)
             assertTrue(next.counts.values.all { it in 1..30 })
             next.counts.forEach { (emotion, count) -> drained[emotion] = drained.getValue(emotion) + count }
+            firstEmotionIndex = (firstEmotionIndex + 1) % EmotionState.entries.size
         }
         assertEquals(expected, drained)
         assertEquals(0L, queue.size)
@@ -57,7 +58,7 @@ class PressBatchAccumulatorTest {
     fun `long backlog is narrowed only after limiting request counts`() {
         val queue = PressBatchAccumulator()
         assertTrue(queue.add(EmotionState.ANGRY, Int.MAX_VALUE.toLong() + 42L))
-        val next = assertNotNull(queue.take(30, 100, 0, 1))
+        val next = assertNotNull(queue.take(30, 100, 0))
         assertEquals(30, next.totalCount)
         assertEquals(Int.MAX_VALUE.toLong() + 12L, queue.size)
     }
@@ -68,7 +69,7 @@ class PressBatchAccumulatorTest {
         assertTrue(queue.add(EmotionState.EXHAUSTED, Long.MAX_VALUE))
         assertFalse(queue.add(EmotionState.ANGRY))
         assertEquals(Long.MAX_VALUE, queue.size)
-        val next = assertNotNull(queue.take(30, 100, 0, 1))
+        val next = assertNotNull(queue.take(30, 100, 0))
         assertEquals(mapOf(EmotionState.EXHAUSTED to 30), next.counts)
         assertEquals(Long.MAX_VALUE - 30L, queue.size)
     }

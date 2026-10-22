@@ -42,7 +42,6 @@ internal class PressBatchAccumulator {
         maxPerEmotion: Int,
         maxTotal: Int,
         firstEmotionIndex: Int,
-        sequence: Long,
     ): PressBatch? {
         require(maxPerEmotion > 0 && maxTotal > 0)
         val entry = days.entries.firstOrNull() ?: return null
@@ -61,6 +60,6 @@ internal class PressBatchAccumulator {
             if (remaining == 0) break
         }
         if (day.counts.values.all { it == 0L }) days.remove(entry.key)
-        return PressBatch(sequence, drained.toMap(), occurredAt = day.occurredAt)
+        return PressBatch(drained.toMap(), occurredAt = day.occurredAt)
     }
 }

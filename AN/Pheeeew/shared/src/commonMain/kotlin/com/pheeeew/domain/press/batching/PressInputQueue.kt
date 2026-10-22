@@ -15,7 +15,6 @@ internal class PressInputQueue(
     private val accumulator = PressBatchAccumulator()
     private val flushPolicy = PressFlushPolicy(flushDelayMillis)
     private var flushDeadline: PressMonotonicMillis? = null
-    private var nextSequence = 1L
     private var firstEmotionIndex = 0
 
     init {
@@ -47,9 +46,8 @@ internal class PressInputQueue(
     ): PressDelayMillis = flushPolicy.resumeDelay(flushDeadline, hasPendingWrite, now)
 
     fun takeBatch(): PressBatch? {
-        val next = accumulator.take(maxPerEmotion, maxTotal, firstEmotionIndex, nextSequence) ?: return null
+        val next = accumulator.take(maxPerEmotion, maxTotal, firstEmotionIndex) ?: return null
         if (!accumulator.isNotEmpty) flushDeadline = null
-        nextSequence = if (nextSequence == Long.MAX_VALUE) 1L else nextSequence + 1L
         firstEmotionIndex = (firstEmotionIndex + 1) % EmotionState.entries.size
         return next
     }
