@@ -1,9 +1,5 @@
 package com.pheeeew.core.di
 
-import com.pheeeew.feature.screens.group.create.GroupCreateViewModel
-import com.pheeeew.feature.screens.group.detail.GroupDetailViewModel
-import com.pheeeew.feature.screens.group.home.GroupHomeViewModel
-import com.pheeeew.feature.screens.group.members.GroupMembersViewModel
 import com.pheeeew.feature.screens.map.MapViewModel
 import com.pheeeew.feature.screens.map.detail.EmotionDetailViewModel
 import com.pheeeew.feature.screens.map.nearby.NearbyEmotionViewModel
@@ -28,11 +24,7 @@ internal interface ViewModelBindings {
         press: () -> PressViewModel,
         weekly: () -> WeeklyRankingViewModel,
         pressRanking: () -> PressRankingViewModel,
-        home: () -> GroupHomeViewModel,
-        create: () -> GroupCreateViewModel,
         mapFactory: () -> MapViewModel.Factory,
-        groupDetailFactory: () -> GroupDetailViewModel.Factory,
-        membersFactory: () -> GroupMembersViewModel.Factory,
     ): MetroViewModelFactory =
         AppViewModelFactory(
             mapOf(
@@ -45,13 +37,9 @@ internal interface ViewModelBindings {
                 PressViewModel::class to press,
                 WeeklyRankingViewModel::class to weekly,
                 PressRankingViewModel::class to pressRanking,
-                GroupHomeViewModel::class to home,
-                GroupCreateViewModel::class to create,
             ),
             mapOf(
                 MapViewModel.Factory::class to mapFactory,
-                GroupDetailViewModel.Factory::class to groupDetailFactory,
-                GroupMembersViewModel.Factory::class to membersFactory,
             ),
         )
 }

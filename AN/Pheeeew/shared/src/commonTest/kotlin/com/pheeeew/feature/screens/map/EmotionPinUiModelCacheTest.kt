@@ -68,6 +68,5 @@ class EmotionPinUiModelCacheTest {
         createdAt = createdAt,
         state = EmotionState.ANGRY,
         rotationDegrees = 0.0,
-        groupStamp = null,
     )
 }

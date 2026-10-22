@@ -19,24 +19,13 @@ import kotlinx.serialization.json.Json
 class EmotionApi(
     private val requests: ApiRequestExecutor,
 ) {
-    internal suspend fun list(query: Map<String, String>) =
-        requests.execute(
-            ApiRequest(
-                HttpMethod.Get,
-                PATH,
-                RequestKind.READ,
-                monitoringEndpoint = "emotion_list",
-                queryParameters = query,
-            ),
-        ) { it.body<EmotionPageDto>() }
-
     internal suspend fun listWithoutBounds(query: Map<String, String>) =
         requests.execute(
             ApiRequest(
                 HttpMethod.Get,
-                V3_PATH,
+                V4_PATH,
                 RequestKind.READ,
-                monitoringEndpoint = "emotion_list_v3",
+                monitoringEndpoint = "emotion_list",
                 queryParameters = query,
             ),
         ) { it.body<EmotionPageDto>() }
@@ -47,7 +36,12 @@ class EmotionApi(
     suspend fun findById(id: Long): ApiResult<EmotionDetailDto> {
         require(id > 0)
         return requests.execute(
-            ApiRequest(HttpMethod.Get, "$PATH/$id", RequestKind.READ, monitoringEndpoint = "emotion_detail"),
+            ApiRequest(
+                HttpMethod.Get,
+                "${ApiEndpointPaths.EMOTION_DETAIL}/$id",
+                RequestKind.READ,
+                monitoringEndpoint = "emotion_detail",
+            ),
         ) { detailJson.decodeFromString<EmotionDetailDto>(it.bodyAsText()) }
     }
 
@@ -85,7 +79,7 @@ class EmotionApi(
         requests.execute(
             ApiRequest(
                 method = HttpMethod.Post,
-                path = V3_PATH,
+                path = V4_PATH,
                 kind = RequestKind.WRITE,
                 body = request,
                 replayAfterAuthentication = true,
@@ -95,6 +89,6 @@ class EmotionApi(
 
     private companion object {
         const val PATH = ApiEndpointPaths.EMOTIONS
-        const val V3_PATH = ApiEndpointPaths.EMOTION_REGISTRATION
+        const val V4_PATH = ApiEndpointPaths.EMOTION_REGISTRATION
     }
 }

@@ -12,7 +12,6 @@ internal data class EmotionRegistrationRequestDto(
     val contentType: String,
     val memo: String?,
     val audioUploadId: String?,
-    val groupId: String?,
     val anonymous: Boolean,
 )
 

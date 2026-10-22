@@ -11,7 +11,6 @@ class FindEmotionMapPageUseCase(
 ) {
     suspend operator fun invoke(
         bounds: EmotionMapBounds?,
-        groupId: String? = null,
         cursor: String? = null,
         forceRefresh: Boolean = false,
     ): EmotionMapPageResult {
@@ -25,7 +24,7 @@ class FindEmotionMapPageUseCase(
                 EmotionMapFailure.InvalidResponse,
             )
         }
-        return repository.findPage(bounds, groupId, cursor, forceRefresh)
+        return repository.findPage(bounds, cursor, forceRefresh)
     }
 
     suspend fun withFilter(

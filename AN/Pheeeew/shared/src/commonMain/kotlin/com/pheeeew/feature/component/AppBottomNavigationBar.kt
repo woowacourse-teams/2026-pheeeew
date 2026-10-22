@@ -60,7 +60,6 @@ import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
-import pheeeew.shared.generated.resources.bottom_navigation_group
 import pheeeew.shared.generated.resources.bottom_navigation_map
 import pheeeew.shared.generated.resources.bottom_navigation_press
 import pheeeew.shared.generated.resources.bottom_navigation_ranking
@@ -80,7 +79,6 @@ internal val AppBottomNavigationBarOverlaySpace =
 internal enum class AppDestination {
     Map,
     Press,
-    Group,
     Ranking,
 }
 
@@ -94,7 +92,6 @@ private enum class DestinationIcon(
 ) {
     Map(0.96f),
     Press(1.02f),
-    Group(1.02f),
     Ranking(1.2f),
 }
 
@@ -220,7 +217,6 @@ internal fun AppBottomNavigationBar(
                     when (destination) {
                         AppDestination.Map -> DestinationIcon.Map
                         AppDestination.Press -> DestinationIcon.Press
-                        AppDestination.Group -> DestinationIcon.Group
                         AppDestination.Ranking -> DestinationIcon.Ranking
                     },
                     pressScale = 1f,
@@ -232,7 +228,6 @@ internal fun AppBottomNavigationBar(
                             when (destination) {
                                 AppDestination.Map -> Res.string.bottom_navigation_map
                                 AppDestination.Press -> Res.string.bottom_navigation_press
-                                AppDestination.Group -> Res.string.bottom_navigation_group
                                 AppDestination.Ranking -> Res.string.bottom_navigation_ranking
                             },
                         ),
@@ -491,39 +486,6 @@ private fun DestinationIconView(
                     drawLine(NavigationInk, Offset(12.4f, 5.2f), Offset(12.4f, 17.2f), 1.6f, cap = StrokeCap.Round)
                 }
 
-                DestinationIcon.Group -> {
-                    val stroke = Stroke(width = 1.4f, cap = StrokeCap.Round, join = StrokeJoin.Round)
-
-                    fun personBody(left: Float) =
-                        Path().apply {
-                            moveTo(left, 16.3953f)
-                            lineTo(left, 14.6953f)
-                            cubicTo(left, 11.8953f, left + 1.8f, 10.1953f, left + 4.6f, 10.1953f)
-                            cubicTo(left + 7.4f, 10.1953f, left + 9.2f, 11.8953f, left + 9.2f, 14.6953f)
-                            lineTo(left + 9.2f, 16.3953f)
-                            close()
-                        }
-
-                    fun drawPersonHead(centerX: Float) {
-                        val center = Offset(centerX, 5.7953f)
-                        drawCircle(Color.White, 2.6f, center)
-                        drawCircle(NavigationInk, 2.6f, center, style = stroke)
-                    }
-
-                    fun drawPersonBody(left: Float) {
-                        val body = personBody(left)
-                        drawPath(body, Color.White)
-                        drawPath(body, NavigationInk, style = stroke)
-                    }
-
-                    translate(top = 0.5f) {
-                        drawPersonHead(7.841f)
-                        drawPersonBody(3.241f)
-                        drawPersonHead(12.161f)
-                        drawPersonBody(7.561f)
-                    }
-                }
-
                 DestinationIcon.Ranking -> {
                     val bars =
                         Path().apply {
@@ -575,15 +537,6 @@ private fun AppBottomNavigationBarPreview1() {
 private fun AppBottomNavigationBarPreview2() {
     AppBottomNavigationBar(
         selectedDestination = AppDestination.Map,
-        onDestinationSelected = {},
-    )
-}
-
-@Preview
-@Composable
-private fun AppBottomNavigationBarGroupPreview() {
-    AppBottomNavigationBar(
-        selectedDestination = AppDestination.Group,
         onDestinationSelected = {},
     )
 }

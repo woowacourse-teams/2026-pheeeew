@@ -24,8 +24,6 @@ import com.pheeeew.domain.model.emotion.MapFilterScope
 import com.pheeeew.domain.model.emotion.MapFilterSettings
 import com.pheeeew.domain.model.emotion.SearchDate
 import com.pheeeew.domain.repository.EmotionResult
-import com.pheeeew.domain.repository.GroupStampListLoadResult
-import com.pheeeew.domain.repository.GroupStampListRepository
 import com.pheeeew.domain.repository.MapFilterSettingsRepository
 import com.pheeeew.domain.usecase.FindEmotionMapPageUseCase
 import com.pheeeew.domain.usecase.FindEmotionMapSnapshotUseCase
@@ -45,7 +43,6 @@ import com.pheeeew.feature.screens.map.filter.MapFilterUiModel
 import com.pheeeew.feature.screens.map.monitoring.ContentLoad
 import com.pheeeew.feature.screens.map.monitoring.ContentMonitoring
 import com.pheeeew.feature.screens.map.nearby.NEARBY_COLLAPSED_MAP_HEIGHT_FRACTION
-import com.pheeeew.feature.screens.map.record.group.toSelectorUiModel
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
@@ -70,7 +67,6 @@ class MapViewModel(
     monitoring: Monitoring = NoOpMonitoring,
     private val findRegions: FindEmotionRegionsUseCase? = null,
     private val findRegionSnapshot: FindEmotionRegionSnapshotUseCase? = null,
-    private val groupStampListRepository: GroupStampListRepository? = null,
     private val filterSettingsRepository: MapFilterSettingsRepository? = null,
     @Assisted private val filterListRefresher: MapFilterListRefresher? = null,
     private val pinSnapshotIntervalMillis: Long = MapPinSnapshotPublisher.DEFAULT_INTERVAL_MILLIS,
@@ -117,9 +113,6 @@ class MapViewModel(
 
     fun openFilter() {
         _filterUiModel.value = _filterUiModel.value.copy(visible = true, page = FilterPage.Filters)
-        if (_filterUiModel.value.scope == FilterScope.Groups && _filterUiModel.value.groups.isEmpty()) {
-            loadFilterGroups()
-        }
     }
 
     fun dismissFilter() {
@@ -140,7 +133,7 @@ class MapViewModel(
     }
 
     fun resetFilter() {
-        _filterUiModel.value = MapFilterUiModel(visible = true, groups = _filterUiModel.value.groups)
+        _filterUiModel.value = MapFilterUiModel(visible = true)
     }
 
     fun selectFilterPeriod(period: FilterPeriod) {
@@ -153,7 +146,6 @@ class MapViewModel(
 
     fun selectFilterScope(scope: FilterScope) {
         _filterUiModel.value = _filterUiModel.value.copy(scope = scope, applyError = null)
-        if (scope == FilterScope.Groups) openFilterGroups()
     }
 
     fun openFilterDate(start: Boolean) {
@@ -182,50 +174,6 @@ class MapViewModel(
                     applyError = null,
                 )
             }
-    }
-
-    fun openFilterGroups() {
-        _filterUiModel.value = _filterUiModel.value.copy(page = FilterPage.Groups)
-        loadFilterGroups()
-    }
-
-    private fun loadFilterGroups() {
-        val repository = groupStampListRepository ?: return
-        _filterUiModel.value = _filterUiModel.value.copy(loadingGroups = true, groupLoadFailed = false)
-        viewModelScope.launch {
-            val result =
-                try {
-                    repository.findMyStamps()
-                } catch (cancelled: CancellationException) {
-                    throw cancelled
-                } catch (_: Exception) {
-                    GroupStampListLoadResult.Unavailable
-                }
-            val current = _filterUiModel.value
-            _filterUiModel.value =
-                when (result) {
-                    is GroupStampListLoadResult.Loaded -> {
-                        current.copy(
-                            groups = result.groups.map { it.toSelectorUiModel() },
-                            selectedGroupIds =
-                                current.selectedGroupIds.intersect(
-                                    result.groups.map { it.id.value }.toSet(),
-                                ),
-                            loadingGroups = false,
-                        )
-                    }
-
-                    GroupStampListLoadResult.Unavailable -> {
-                        current.copy(loadingGroups = false, groupLoadFailed = true)
-                    }
-                }
-        }
-    }
-
-    fun toggleFilterGroup(id: String) {
-        val state = _filterUiModel.value
-        if (state.groups.none { it.id == id }) return
-        _filterUiModel.value = state.copy(selectedGroupIds = setOf(id), applyError = null)
     }
 
     fun closeFilterPage() {
@@ -1452,11 +1400,9 @@ private fun MapFilterSettings.toUiModel(current: MapFilterUiModel): MapFilterUiM
             when (scope) {
                 MapFilterScope.ALL -> FilterScope.All
                 MapFilterScope.MY -> FilterScope.Mine
-                MapFilterScope.GROUP -> FilterScope.Groups
             },
         startDate = customStartDate?.let { FilterDate(it.year, it.month, it.day) },
         endDate = customEndDate?.let { FilterDate(it.year, it.month, it.day) },
-        selectedGroupIds = groupId?.let { setOf(it) } ?: emptySet(),
         applying = false,
         applyError = null,
     )
@@ -1465,8 +1411,6 @@ private fun MapFilterUiModel.toSettingsOrNull(): MapFilterSettings? {
     val start = startDate?.let { runCatching { SearchDate(it.year, it.month, it.day) }.getOrNull() }
     val end = endDate?.let { runCatching { SearchDate(it.year, it.month, it.day) }.getOrNull() }
     if (period == FilterPeriod.Custom && (start == null || end == null || start > end)) return null
-    val selectedGroupId = selectedGroupIds.singleOrNull()
-    if (scope == FilterScope.Groups && selectedGroupId == null) return null
     return runCatching {
         MapFilterSettings(
             period =
@@ -1488,9 +1432,7 @@ private fun MapFilterUiModel.toSettingsOrNull(): MapFilterSettings? {
                 when (scope) {
                     FilterScope.All -> MapFilterScope.ALL
                     FilterScope.Mine -> MapFilterScope.MY
-                    FilterScope.Groups -> MapFilterScope.GROUP
                 },
-            groupId = selectedGroupId.takeIf { scope == FilterScope.Groups },
         )
     }.getOrNull()
 }

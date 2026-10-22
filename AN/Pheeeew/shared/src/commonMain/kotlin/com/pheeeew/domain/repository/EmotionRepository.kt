@@ -19,22 +19,14 @@ sealed interface EmotionResult<out T> {
 enum class EmotionFailure { UNAVAILABLE, NOT_FOUND, INVALID_REQUEST, AUTHENTICATION, FORBIDDEN }
 
 interface EmotionRepository {
-    suspend fun firstPage(
-        bounds: EmotionBounds,
-        groupId: String?,
-    ): EmotionResult<EmotionPage>
+    suspend fun firstPage(bounds: EmotionBounds): EmotionResult<EmotionPage>
 
     suspend fun filteredFirstPage(filter: EmotionSearchFilter): EmotionResult<EmotionPage> =
-        firstPage(EmotionBounds(-180.0, -90.0, 180.0, 90.0), filter.groupId)
+        firstPage(EmotionBounds(-180.0, -90.0, 180.0, 90.0))
 
     suspend fun nextPage(cursor: String): EmotionResult<EmotionPage>
 
     suspend fun nextFilteredPage(cursor: String): EmotionResult<EmotionPage> = nextPage(cursor)
-
-    suspend fun feedPage(
-        groupId: String,
-        cursor: String?,
-    ): EmotionResult<EmotionPage>
 
     suspend fun detail(id: Long): EmotionResult<Emotion>
 

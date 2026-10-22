@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -49,8 +48,10 @@ import com.pheeeew.core.designsystem.component.Snackbar
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
-import com.pheeeew.feature.component.stamp.GroupStamp
+import com.pheeeew.feature.emotion.component.EmotionFeedbackCatalog
+import com.pheeeew.feature.emotion.model.EmotionKind
 import com.pheeeew.feature.screens.map.monitoring.rememberMonitoringForeground
+import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
 import com.pheeeew.feature.screens.map.record.noRippleClickable
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -124,47 +125,41 @@ fun EmotionDetailCard(
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        EmotionDetailGroupHeader(uiModel, onDismiss)
+        EmotionDetailHeader(uiModel, onDismiss)
         EmotionDetailEmotionHeader(uiModel, onMoreClick)
         EmotionDetailContentSection(uiModel, onPlaybackClick, onReactionClick)
     }
 }
 
 @Composable
-private fun EmotionDetailGroupHeader(
+private fun EmotionDetailHeader(
     uiModel: EmotionDetailUiModel,
     onDismiss: () -> Unit,
 ) {
+    val emotionColor =
+        EmotionFeedbackCatalog.color(
+            when (uiModel.emotion) {
+                EmotionTypeUiModel.FRUSTRATED -> EmotionKind.Blocked
+                EmotionTypeUiModel.IRRITATED -> EmotionKind.Annoyed
+                EmotionTypeUiModel.EXHAUSTED -> EmotionKind.Tired
+                EmotionTypeUiModel.DISCOURAGED -> EmotionKind.Defeated
+                EmotionTypeUiModel.ANGRY -> EmotionKind.Angry
+            },
+        )
     Row(
         Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        when {
-            uiModel.stamp != null -> {
-                GroupStamp(uiModel.stamp, 32.dp)
-            }
-
-            uiModel.stampText.isNotEmpty() -> {
-                Box(
-                    Modifier
-                        .size(32.dp)
-                        .background(AppColors.Gray100, CircleShape)
-                        .border(AppBorders.Standard, AppColors.GroupInk, CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(uiModel.stampText, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AppColors.GroupInk)
-                }
-            }
-        }
         Text(
-            uiModel.groupName,
-            Modifier.weight(1f).padding(start = 8.dp),
+            stringResource(uiModel.emotion.label),
+            Modifier
+                .background(emotionColor, AppShapes.Pill)
+                .padding(horizontal = 16.dp, vertical = 4.dp),
             color = AppColors.GroupInk,
-            fontSize = 14.sp,
+            fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
         )
+        Spacer(Modifier.weight(1f))
         Box(
             Modifier.size(48.dp).noRippleClickable(true, onDismiss),
             contentAlignment = Alignment.Center,
@@ -194,15 +189,6 @@ private fun EmotionDetailEmotionHeader(
             Modifier.weight(1f).padding(start = 16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text(
-                stringResource(uiModel.emotion.label),
-                Modifier
-                    .background(Color(0xFFF3C6D7), AppShapes.Pill)
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                color = AppColors.GroupInk,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-            )
             Text(
                 uiModel.nickname,
                 color = AppColors.GroupInk,

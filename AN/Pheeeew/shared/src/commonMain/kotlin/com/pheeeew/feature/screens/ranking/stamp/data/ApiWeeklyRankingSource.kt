@@ -24,7 +24,6 @@ class ApiWeeklyRankingSource(
                     rankings =
                         ranking.items.map { item ->
                             RankingMember(
-                                groupId = item.groupId.value,
                                 rank = item.rank,
                                 name = item.name,
                                 score = item.score,

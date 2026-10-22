@@ -1,7 +1,6 @@
 package com.pheeeew.feature.screens.map
 
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
@@ -13,26 +12,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.text.drawText
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import com.pheeeew.feature.component.stamp.StampShapeCatalog
-import com.pheeeew.feature.component.stamp.balanceTwoLines
-import com.pheeeew.feature.component.stamp.stampFontSize
-import com.pheeeew.feature.component.stamp.stampLineHeight
-import com.pheeeew.feature.component.stamp.toStampTextLayout
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -78,13 +65,6 @@ private fun RasterizePinSymbol(
     val layoutDirection = LocalLayoutDirection.current
     val pixels = with(density) { EMOTION_PIN_SIZE.roundToPx() }
     val emotionPainter = painterResource(pin.emotion.icon)
-    val stamp = pin.stamp
-    val shape = stamp?.let { StampShapeCatalog[it.shape] }
-    val backdrop = shape?.let { painterResource(it.backdrop) }
-    val fill = shape?.let { painterResource(it.fill) }
-    val overlay = shape?.overlay?.let { painterResource(it) }
-    val textMeasurer = rememberTextMeasurer()
-    val baseTextStyle = LocalTextStyle.current
 
     LaunchedEffect(
         pin.symbolImageKey(),
@@ -92,10 +72,6 @@ private fun RasterizePinSymbol(
         density,
         layoutDirection,
         emotionPainter,
-        backdrop,
-        fill,
-        overlay,
-        baseTextStyle,
     ) {
         repeat(10) {
             val image =
@@ -107,87 +83,23 @@ private fun RasterizePinSymbol(
                         Canvas(bitmap),
                         Size(pixels.toFloat(), pixels.toFloat()),
                     ) {
-                        if (stamp == null || shape == null || backdrop == null || fill == null) {
-                            val intrinsic = emotionPainter.intrinsicSize
-                            val ratio =
-                                if (intrinsic.width.isFinite() &&
-                                    intrinsic.height > 0
-                                ) {
-                                    intrinsic.width / intrinsic.height
-                                } else {
-                                    1f
-                                }
-                            val fitted =
-                                if (ratio >=
-                                    1f
-                                ) {
-                                    Size(size.width, size.height / ratio)
-                                } else {
-                                    Size(size.width * ratio, size.height)
-                                }
-                            translate((size.width - fitted.width) / 2, (size.height - fitted.height) / 2) {
-                                with(emotionPainter) { draw(fitted) }
+                        val intrinsic = emotionPainter.intrinsicSize
+                        val ratio =
+                            if (intrinsic.width.isFinite() &&
+                                intrinsic.height > 0
+                            ) {
+                                intrinsic.width / intrinsic.height
+                            } else {
+                                1f
                             }
-                        } else {
-                            val fitted =
-                                if (shape.aspectRatio >= 1f) {
-                                    Size(size.width, size.height / shape.aspectRatio)
-                                } else {
-                                    Size(size.width * shape.aspectRatio, size.height)
-                                }
-                            translate((size.width - fitted.width) / 2, (size.height - fitted.height) / 2) {
-                                with(backdrop) { draw(fitted) }
-                                with(fill) {
-                                    draw(
-                                        fitted,
-                                        colorFilter = ColorFilter.tint(Color(stamp.fillArgb.toInt())),
-                                    )
-                                }
-                                overlay?.let { with(it) { draw(fitted) } }
-                                val area = shape.textArea
-                                val layout = stamp.label.toStampTextLayout()
-                                val fontSize = stampFontSize(layout, EMOTION_PIN_SIZE, fontScale = density.fontScale)
-                                val textStyle =
-                                    baseTextStyle.copy(
-                                        color = Color(stamp.textArgb.toInt()),
-                                        fontSize = fontSize,
-                                        lineHeight = stampLineHeight(fontSize),
-                                        fontWeight = FontWeight.Bold,
-                                        textAlign = TextAlign.Center,
-                                    )
-                                val textWidth = (fitted.width * area.widthFraction).roundToInt()
-                                val maxLines = layout.characterCount.coerceAtLeast(1)
-                                val measuredLines =
-                                    textMeasurer
-                                        .measure(
-                                            layout.text,
-                                            style = textStyle,
-                                            overflow = TextOverflow.Clip,
-                                            maxLines = maxLines,
-                                            constraints = Constraints(minWidth = textWidth, maxWidth = textWidth),
-                                        ).lineCount
-                                val text =
-                                    textMeasurer.measure(
-                                        layout.balanceTwoLines(measuredLines),
-                                        style = textStyle,
-                                        overflow = TextOverflow.Clip,
-                                        maxLines = maxLines,
-                                        constraints =
-                                            Constraints(
-                                                minWidth = textWidth,
-                                                maxWidth = textWidth,
-                                                maxHeight = (fitted.height * area.heightFraction).roundToInt(),
-                                            ),
-                                    )
-                                drawText(
-                                    text,
-                                    topLeft =
-                                        Offset(
-                                            fitted.width * (area.centerX - area.widthFraction / 2),
-                                            fitted.height * area.centerY - text.size.height / 2f,
-                                        ),
-                                )
+                        val fitted =
+                            if (ratio >= 1f) {
+                                Size(size.width, size.height / ratio)
+                            } else {
+                                Size(size.width * ratio, size.height)
                             }
+                        translate((size.width - fitted.width) / 2, (size.height - fitted.height) / 2) {
+                            with(emotionPainter) { draw(fitted) }
                         }
                     }
                     bitmap
@@ -205,25 +117,7 @@ private fun RasterizePinSymbol(
     }
 }
 
-internal fun EmotionPinUiModel.symbolImageKey(): String =
-    stamp?.let { appearance ->
-        val labelHash = appearance.label.stableImageHash()
-        listOf(
-            "stamp",
-            appearance.shape.name,
-            appearance.fillArgb.toString(16),
-            appearance.textArgb.toString(16),
-            labelHash,
-        ).joinToString("-")
-    } ?: "emotion-${emotion.name.lowercase()}"
-
-private fun String.stableImageHash(): String {
-    var hash = -3_750_761_039_363_611_039L
-    encodeToByteArray().forEach { byte ->
-        hash = (hash xor (byte.toLong() and 0xff)) * 1_099_511_628_211L
-    }
-    return hash.toULong().toString(16)
-}
+internal fun EmotionPinUiModel.symbolImageKey(): String = "emotion-${emotion.name.lowercase()}"
 
 @Preview(name = "지도 핀 비트맵", widthDp = 120, heightDp = 120, showBackground = true)
 @Composable
@@ -237,7 +131,6 @@ private fun EmotionPinSymbolImagePreview() {
                 createdAt = "2026-09-27T17:17:25Z",
                 rotationDegrees = 0.0,
                 emotion = EmotionTypeUiModel.IRRITATED,
-                stamp = null,
             ),
         )
     val image = rememberEmotionPinSymbolImages(pins).images.firstOrNull()

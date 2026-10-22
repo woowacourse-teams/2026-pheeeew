@@ -283,7 +283,7 @@ internal fun formatCount(value: Long): String =
         .joinToString(",")
         .reversed()
 
-@Preview(widthDp = 354, heightDp = 345, name = "그룹 감정 버튼")
+@Preview(widthDp = 354, heightDp = 345, name = "감정 버튼")
 @Composable
 private fun EmotionPadPreview() {
     EmotionPad(

@@ -20,7 +20,6 @@ class EmotionRegionMapApi(
     suspend fun findRegions(
         bounds: EmotionMapBounds,
         level: EmotionRegionLevel,
-        groupId: String? = null,
         filter: EmotionSearchFilter? = null,
     ): ApiResult<JsonArray> =
         requests.execute(
@@ -36,7 +35,7 @@ class EmotionRegionMapApi(
                         put("maxLongitude", bounds.maxLongitude.toString())
                         put("maxLatitude", bounds.maxLatitude.toString())
                         put("level", level.name)
-                        filter?.let { putAll(it.toQueryParameters()) } ?: groupId?.let { put("groupId", it) }
+                        filter?.let { putAll(it.toQueryParameters()) }
                     },
             ),
         ) { response -> response.body<JsonArray>() }

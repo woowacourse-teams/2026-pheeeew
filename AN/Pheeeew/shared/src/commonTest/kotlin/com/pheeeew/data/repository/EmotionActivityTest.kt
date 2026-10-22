@@ -65,7 +65,6 @@ class EmotionActivityTest {
                         EmotionState.ANGRY,
                         GeoCoordinate(37.0, 127.0),
                         0.0,
-                        null,
                         EmotionRegistrationContent.Memo("기록"),
                         occurredAt = 1234L,
                     )

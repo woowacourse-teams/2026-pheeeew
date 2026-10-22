@@ -1,6 +1,5 @@
 package com.pheeeew.data.remote.dto
 
-import com.pheeeew.data.remote.dto.GroupStampResponseDto
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -26,7 +25,6 @@ internal data class EmotionPropertiesDto(
     val contentType: String,
     val memo: String? = null,
     val emojis: List<NearbyEmotionEmojiDto>,
-    val groupStamp: GroupStampResponseDto? = null,
     val audio: EmotionAudioDto? = null,
 )
 

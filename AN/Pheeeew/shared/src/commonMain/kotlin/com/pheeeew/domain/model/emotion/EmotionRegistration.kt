@@ -8,7 +8,6 @@ data class EmotionRegistration(
     val state: EmotionState,
     val coordinate: GeoCoordinate,
     val rotationDegrees: Double,
-    val groupId: String?,
     val content: EmotionRegistrationContent,
     val anonymous: Boolean = false,
     val occurredAt: Long =

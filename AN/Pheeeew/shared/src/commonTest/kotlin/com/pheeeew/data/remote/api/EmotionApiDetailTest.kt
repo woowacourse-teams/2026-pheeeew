@@ -29,7 +29,7 @@ class EmotionApiDetailTest {
                 createApiClient(
                     MockEngine { request ->
                         calls++
-                        assertEquals("/api/v1/emotions/42", request.url.encodedPath)
+                        assertEquals("/api/v4/emotions/42", request.url.encodedPath)
                         val emojis =
                             EmotionReactionType.entries.joinToString(",") {
                                 """{"type":"${it.name}","count":3000000000,"selected":true}"""
@@ -37,7 +37,7 @@ class EmotionApiDetailTest {
                         respond(
                             """{"id":42,"geometry":{"type":"Point","coordinates":[127.02,37.55]},"properties":{
                     "state":"FRUSTRATED","nickname":"name","createdAt":"2026-10-19T00:00:00Z","isMine":true,
-                    "contentType":"MEMO","memo":"memo","emojis":[$emojis],"groupId":"group-id"}}""",
+                    "contentType":"MEMO","memo":"memo","emojis":[$emojis]}}""",
                             headers = headersOf("Content-Type", "application/geo+json"),
                         )
                     },
@@ -48,7 +48,6 @@ class EmotionApiDetailTest {
                 val api = EmotionApi(client.requests)
                 val detail = assertIs<EmotionDetailResult.Success>(EmotionDetailRepositoryImpl(api).findById(42)).detail
                 val list = assertIs<EmotionResult.Success<Emotion>>(EmotionRepositoryImpl(api).detail(42)).value
-                assertEquals("group-id", detail.groupId)
                 assertEquals(detail.memo, list.memo)
                 assertEquals(detail.nickname, list.nickname)
                 assertEquals(3000000000L, list.reactions.first().count)

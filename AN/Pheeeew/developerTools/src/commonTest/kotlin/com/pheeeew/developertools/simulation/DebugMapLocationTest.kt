@@ -55,15 +55,11 @@ class DebugMapLocationTest {
                 object : EmotionMapRepository {
                     override suspend fun findPage(
                         bounds: EmotionMapBounds?,
-                        groupId: String?,
                         cursor: String?,
                         forceRefresh: Boolean,
                     ): EmotionMapPageResult = error("Unexpected map query")
 
-                    override fun findSnapshot(
-                        bounds: EmotionMapBounds,
-                        groupId: String?,
-                    ): EmotionMapSnapshot? = null
+                    override fun findSnapshot(bounds: EmotionMapBounds): EmotionMapSnapshot? = null
                 }
             try {
                 val factory =

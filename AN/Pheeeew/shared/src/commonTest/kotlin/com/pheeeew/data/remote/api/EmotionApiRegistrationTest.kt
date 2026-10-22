@@ -28,15 +28,16 @@ import kotlin.test.assertIs
 
 class EmotionApiRegistrationTest {
     @Test
-    fun memoRegistrationSendsV3PayloadAndParsesId() =
+    fun memoRegistrationSendsV4PayloadAndParsesId() =
         runTest {
             val client =
                 createApiClient(
                     engine =
                         MockEngine { request ->
-                            assertEquals("/api/v3/emotions", request.url.encodedPath)
+                            assertEquals("/api/v4/emotions", request.url.encodedPath)
                             assertEquals("Bearer token", request.headers[HttpHeaders.Authorization])
                             val body = Json.parseToJsonElement(request.body.toByteArray().decodeToString()).jsonObject
+                            assertEquals(false, "groupId" in body)
                             assertEquals(JsonPrimitive(false), body.getValue("anonymous"))
                             assertEquals("MEMO", body.getValue("contentType").jsonPrimitive.content)
                             assertEquals("답답한 하루", body.getValue("memo").jsonPrimitive.content)
@@ -61,7 +62,6 @@ class EmotionApiRegistrationTest {
                         state = EmotionState.FRUSTRATED,
                         coordinate = GeoCoordinate(37.5665, 126.9780),
                         rotationDegrees = 0.0,
-                        groupId = null,
                         content = EmotionRegistrationContent.Memo("답답한 하루"),
                         anonymous = false,
                     )

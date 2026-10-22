@@ -20,7 +20,6 @@ class EmotionMapApi(
         minLatitude: Double?,
         maxLongitude: Double?,
         maxLatitude: Double?,
-        groupId: String?,
         cursor: String?,
         filter: EmotionSearchFilter? = null,
     ): ApiResult<EmotionMapPageDto> {
@@ -35,7 +34,7 @@ class EmotionMapApi(
                     maxLatitude?.let { put("maxLatitude", it.toString()) }
                     filter?.let { search ->
                         putAll(search.toQueryParameters())
-                    } ?: groupId?.let { put("groupId", it) }
+                    }
                 }
             }
         return requests.execute(

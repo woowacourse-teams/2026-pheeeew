@@ -6,9 +6,6 @@ import kotlinx.serialization.Serializable
 data object MapRootDestination
 
 @Serializable
-data object GroupRootDestination
-
-@Serializable
 data object PressRootDestination
 
 @Serializable

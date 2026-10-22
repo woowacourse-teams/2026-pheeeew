@@ -19,39 +19,17 @@ import kotlinx.coroutines.CancellationException
 internal class EmotionRepositoryImpl(
     private val api: EmotionApi,
 ) : EmotionRepository {
-    override suspend fun firstPage(
-        bounds: EmotionBounds,
-        groupId: String?,
-    ) = api
-        .list(
-            buildMap {
-                put("minLongitude", bounds.west.toString())
-                put("minLatitude", bounds.south.toString())
-                put("maxLongitude", bounds.east.toString())
-                put("maxLatitude", bounds.north.toString())
-                groupId?.let { put("groupId", it) }
-            },
-        ).mapped(EmotionResponseMapper::page)
+    override suspend fun firstPage(bounds: EmotionBounds) =
+        api.listWithoutBounds(emptyMap()).mapped(EmotionResponseMapper::page)
 
     override suspend fun filteredFirstPage(filter: EmotionSearchFilter) =
-        api.listWithoutBounds(filter.toQueryParameters()).mapped(EmotionResponseMapper::page)
+        api.listWithoutBounds(filter.toQueryParameters()).mapped(EmotionResponseMapper::feedPage)
 
     override suspend fun nextPage(cursor: String) =
-        api.list(mapOf("cursor" to cursor)).mapped(EmotionResponseMapper::page)
+        api.listWithoutBounds(mapOf("cursor" to cursor)).mapped(EmotionResponseMapper::feedPage)
 
     override suspend fun nextFilteredPage(cursor: String) =
-        api.listWithoutBounds(mapOf("cursor" to cursor)).mapped(EmotionResponseMapper::page)
-
-    override suspend fun feedPage(
-        groupId: String,
-        cursor: String?,
-    ) = api
-        .listWithoutBounds(
-            buildMap {
-                put("groupId", groupId)
-                cursor?.let { put("cursor", it) }
-            },
-        ).mapped(EmotionResponseMapper::feedPage)
+        api.listWithoutBounds(mapOf("cursor" to cursor)).mapped(EmotionResponseMapper::feedPage)
 
     override suspend fun detail(id: Long) = api.findById(id).mapped(EmotionResponseMapper::emotion)
 

@@ -1,6 +1,5 @@
 package com.pheeeew.feature.screens.map.filter
 
-import com.pheeeew.feature.screens.map.record.group.GroupSelectorGroupUiModel
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.hours
 
@@ -8,9 +7,9 @@ enum class FilterPeriod { TwoWeeks, OneMonth, All, Custom }
 
 enum class FilterContent { All, Memo, Recording }
 
-enum class FilterScope { All, Mine, Groups }
+enum class FilterScope { All, Mine }
 
-enum class FilterPage { Filters, StartDate, EndDate, Groups }
+enum class FilterPage { Filters, StartDate, EndDate }
 
 data class FilterDate(
     val year: Int,
@@ -31,10 +30,6 @@ data class MapFilterUiModel(
     val scope: FilterScope = FilterScope.All,
     val startDate: FilterDate? = null,
     val endDate: FilterDate? = null,
-    val groups: List<GroupSelectorGroupUiModel> = emptyList(),
-    val selectedGroupIds: Set<String> = emptySet(),
-    val loadingGroups: Boolean = false,
-    val groupLoadFailed: Boolean = false,
     val applying: Boolean = false,
     val applyError: String? = null,
 )

@@ -71,29 +71,26 @@ class EmotionRegionMapRepositoryImpl(
 
     override fun findSnapshot(
         level: EmotionRegionLevel,
-        groupId: String?,
         filter: EmotionSearchFilter?,
-    ): List<EmotionRegion>? = cache.snapshot(EmotionRegionQueryKey.create(level, groupId, filter))
+    ): List<EmotionRegion>? = cache.snapshot(EmotionRegionQueryKey.create(level, filter))
 
     override suspend fun findRegions(
         bounds: EmotionMapBounds,
         level: EmotionRegionLevel,
-        groupId: String?,
         forceRefresh: Boolean,
         filter: EmotionSearchFilter?,
     ): EmotionRegionResult {
-        val key = EmotionRegionQueryKey.create(level, groupId, filter)
+        val key = EmotionRegionQueryKey.create(level, filter)
         val (requestKey, request, shouldStart) =
             requestsMutex.withLock {
                 if (forceRefresh) {
-                    cache.invalidateGroup(key.groupId)
-                    inFlight.keys.filter { it.query.groupId == key.groupId }.forEach { staleKey ->
-                        inFlight.remove(staleKey)?.deferred?.cancel()
-                    }
+                    cache.invalidateAll()
+                    inFlight.values.forEach { it.deferred.cancel() }
+                    inFlight.clear()
                 } else {
                     cache.snapshot(key)?.let { return EmotionRegionResult.Success(it) }
                 }
-                val generation = cache.generation(key.groupId)
+                val generation = cache.generation()
                 val activeRequestKey = RequestKey(key, generation)
                 val existing = inFlight[activeRequestKey]?.takeIf { it.deferred.isActive }
                 if (existing != null) {
@@ -106,7 +103,7 @@ class EmotionRegionMapRepositoryImpl(
                         InFlightRequest(
                             deferred =
                                 requestsScope.value.async(start = CoroutineStart.LAZY) {
-                                    fetchAndCache(key, queryBounds, level, groupId, filter, generation)
+                                    fetchAndCache(key, queryBounds, level, filter, generation)
                                 },
                             waiterCount = 1,
                         )
@@ -147,12 +144,11 @@ class EmotionRegionMapRepositoryImpl(
         key: EmotionRegionQueryKey,
         queryBounds: EmotionMapBounds,
         level: EmotionRegionLevel,
-        groupId: String?,
         filter: EmotionSearchFilter?,
         generation: Generation,
     ): EmotionRegionResult =
         try {
-            when (val result = api.findRegions(queryBounds, level, groupId, filter)) {
+            when (val result = api.findRegions(queryBounds, level, filter)) {
                 is ApiResult.Failure -> {
                     EmotionRegionResult.Failure
                 }

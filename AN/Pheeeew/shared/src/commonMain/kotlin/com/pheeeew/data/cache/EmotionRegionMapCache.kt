@@ -13,7 +13,6 @@ internal class EmotionRegionMapCache(
 ) {
     data class Generation(
         val session: Long,
-        val group: Long,
     )
 
     private data class Entry(
@@ -24,7 +23,6 @@ internal class EmotionRegionMapCache(
 
     private data class State(
         val sessionGeneration: Long = 0L,
-        val groupGenerations: Map<String?, Long> = emptyMap(),
         // Keep recency in a list: Map equality ignores insertion order, which would
         // otherwise make StateFlow discard LRU-only updates.
         val entries: List<Entry> = emptyList(),
@@ -53,13 +51,13 @@ internal class EmotionRegionMapCache(
     fun put(
         key: EmotionRegionQueryKey,
         regions: List<EmotionRegion>,
-        generation: Generation = generation(key.groupId),
+        generation: Generation = generation(),
         fetchedAt: Long = nowMillis(),
     ) {
         val entry = Entry(key, regions.toList(), fetchedAt)
         while (true) {
             val current = state.value
-            if (current.generation(key.groupId) != generation) return
+            if (current.generation() != generation) return
             val next = current.entries.filterNot { it.isExpired(entry.fetchedAt) || it.key == key }.toMutableList()
             next += entry
             while (next.count { it.key.level == key.level } > maxRegions) {
@@ -71,20 +69,7 @@ internal class EmotionRegionMapCache(
 
     fun clear(): Long = invalidateAll()
 
-    fun generation(groupId: String?): Generation = state.value.generation(groupId)
-
-    fun invalidateGroup(groupId: String?): Generation {
-        while (true) {
-            val current = state.value
-            val next =
-                current.copy(
-                    groupGenerations =
-                        current.groupGenerations + (groupId to ((current.groupGenerations[groupId] ?: 0L) + 1L)),
-                    entries = current.entries.filterNot { it.key.groupId == groupId },
-                )
-            if (state.compareAndSet(current, next)) return next.generation(groupId)
-        }
-    }
+    fun generation(): Generation = state.value.generation()
 
     fun invalidateAll(): Long {
         while (true) {
@@ -94,8 +79,7 @@ internal class EmotionRegionMapCache(
         }
     }
 
-    private fun State.generation(groupId: String?): Generation =
-        Generation(sessionGeneration, groupGenerations[groupId] ?: 0L)
+    private fun State.generation(): Generation = Generation(sessionGeneration)
 
     private fun Entry.isExpired(now: Long): Boolean = now >= fetchedAt && now - fetchedAt >= ttlMillis
 }

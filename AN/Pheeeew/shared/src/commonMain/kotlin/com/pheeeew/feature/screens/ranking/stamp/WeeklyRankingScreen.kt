@@ -58,7 +58,6 @@ import pheeeew.shared.generated.resources.ranking_stamp_title
 
 @Composable
 fun WeeklyRankingRoute(
-    onGroupClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     onRefreshActionChanged: ((() -> Unit)?) -> Unit = {},
 ) {
@@ -68,13 +67,12 @@ fun WeeklyRankingRoute(
         currentOnRefreshActionChanged(viewModel::onRefresh)
         onDispose { currentOnRefreshActionChanged(null) }
     }
-    WeeklyRankingRoute(viewModel = viewModel, onGroupClick = onGroupClick, modifier = modifier)
+    WeeklyRankingRoute(viewModel = viewModel, modifier = modifier)
 }
 
 @Composable
 fun WeeklyRankingRoute(
     viewModel: WeeklyRankingViewModel,
-    onGroupClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     ProductScreen(viewModel.telemetry, true, "ranking_viewed")
@@ -85,7 +83,6 @@ fun WeeklyRankingRoute(
         onNextWeek = viewModel::onNextWeek,
         onRetry = viewModel::onRetry,
         onRefresh = viewModel::onRefresh,
-        onGroupClick = onGroupClick,
         modifier = modifier,
     )
 }
@@ -97,7 +94,6 @@ fun WeeklyRankingScreen(
     onNextWeek: () -> Unit,
     onRetry: () -> Unit,
     onRefresh: () -> Unit,
-    onGroupClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val pullState = rememberPullToRefreshState()
@@ -180,12 +176,11 @@ fun WeeklyRankingScreen(
                                     modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 96.dp),
                                 )
                             } else if (uiState.rankings.size >= 3) {
-                                TopThreeRanking(members = uiState.rankings.take(3), onGroupClick = onGroupClick)
+                                TopThreeRanking(members = uiState.rankings.take(3))
                                 Spacer(Modifier.height(22.dp))
                                 uiState.rankings.drop(3).forEach { member ->
                                     RankingRow(
                                         member = member,
-                                        onClick = { onGroupClick(member.groupId) },
                                         modifier = Modifier.padding(bottom = 14.dp),
                                     )
                                 }
@@ -193,7 +188,6 @@ fun WeeklyRankingScreen(
                                 uiState.rankings.forEach { member ->
                                     RankingRow(
                                         member = member,
-                                        onClick = { onGroupClick(member.groupId) },
                                         modifier = Modifier.padding(bottom = 14.dp),
                                     )
                                 }
@@ -321,7 +315,6 @@ private fun WeeklyRankingPreviewFrame(uiState: WeeklyRankingUiState) {
             onNextWeek = {},
             onRetry = {},
             onRefresh = {},
-            onGroupClick = {},
         )
     }
 }

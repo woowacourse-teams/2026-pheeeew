@@ -8,12 +8,9 @@ import com.pheeeew.domain.repository.EmotionMapRepository
 class FindEmotionMapSnapshotUseCase(
     private val repository: EmotionMapRepository,
 ) {
-    operator fun invoke(
-        bounds: EmotionMapBounds,
-        groupId: String? = null,
-    ): EmotionMapSnapshot? {
+    operator fun invoke(bounds: EmotionMapBounds): EmotionMapSnapshot? {
         if (!bounds.isValid()) return null
-        return repository.findSnapshot(bounds, groupId)
+        return repository.findSnapshot(bounds)
     }
 
     fun withFilter(

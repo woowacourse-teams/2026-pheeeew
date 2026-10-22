@@ -85,7 +85,7 @@ class AudioUploadApiTest {
                                 }
 
                                 2 -> {
-                                    assertEquals("/api/v3/emotions", request.url.encodedPath)
+                                    assertEquals("/api/v4/emotions", request.url.encodedPath)
                                     assertEquals("Bearer token", request.headers[HttpHeaders.Authorization])
                                     val body =
                                         Json
@@ -134,7 +134,6 @@ class AudioUploadApiTest {
                             coordinate = GeoCoordinate(37.5669, 126.9774),
                             rotationDegrees = 35.5,
                             content = EmotionRegistrationContent.Audio("unused/path.m4a"),
-                            groupId = null,
                             anonymous = true,
                         ).toRequestDto(upload.uploadId)!!,
                     )

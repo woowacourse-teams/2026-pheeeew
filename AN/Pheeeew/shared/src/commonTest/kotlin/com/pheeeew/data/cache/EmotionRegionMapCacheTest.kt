@@ -16,12 +16,11 @@ import kotlin.test.assertNull
 class EmotionRegionMapCacheTest {
     private fun key(
         level: EmotionRegionLevel = EmotionRegionLevel.SIDO,
-        groupId: String? = null,
         filter: EmotionSearchFilter? = null,
-    ) = EmotionRegionQueryKey.create(level, groupId, filter)
+    ) = EmotionRegionQueryKey.create(level, filter)
 
     @Test
-    fun `날짜 내용 범위 그룹이 다른 요약은 섞이지 않고 새로고침은 모든 필터를 무효화한다`() {
+    fun `날짜 내용 범위가 다른 요약은 섞이지 않고 전체 무효화로 제거한다`() {
         val cache = EmotionRegionMapCache(maxRegions = 8)
         val filters =
             listOf(
@@ -30,26 +29,22 @@ class EmotionRegionMapCacheTest {
                 MapFilterSettings(content = MapFilterContent.MEMO),
                 MapFilterSettings(content = MapFilterContent.AUDIO),
                 MapFilterSettings(scope = MapFilterScope.MY),
-                MapFilterSettings(scope = MapFilterScope.GROUP, groupId = "a"),
-                MapFilterSettings(scope = MapFilterScope.GROUP, groupId = "b"),
             ).map { it.toSearchFilter() }
         filters.forEachIndexed { index, filter ->
-            val queryKey = key(groupId = filter.groupId, filter = filter)
+            val queryKey = key(filter = filter)
             assertNull(cache.snapshot(queryKey))
             cache.put(queryKey, regions.map { it.copy(count = index + 1L) })
         }
         filters.forEachIndexed { index, filter ->
             assertEquals(
                 index + 1L,
-                cache.snapshot(key(groupId = filter.groupId, filter = filter))?.single()?.count,
+                cache.snapshot(key(filter = filter))?.single()?.count,
             )
         }
-        cache.invalidateGroup(null)
-        filters.filter { it.groupId == null }.forEach { filter ->
+        cache.invalidateAll()
+        filters.forEach { filter ->
             assertNull(cache.snapshot(key(filter = filter)))
         }
-        assertEquals(6L, cache.snapshot(key(groupId = "a", filter = filters[5]))?.single()?.count)
-        assertEquals(7L, cache.snapshot(key(groupId = "b", filter = filters[6]))?.single()?.count)
     }
 
     // The server may return display points outside the viewport.
@@ -67,13 +62,13 @@ class EmotionRegionMapCacheTest {
     }
 
     @Test
-    fun `조회 범위 안의 화면은 같은 계층 그룹의 전체 요약을 재사용한다`() {
+    fun `조회 범위 안의 화면은 같은 계층의 전체 요약을 재사용한다`() {
         val cache = EmotionRegionMapCache()
         cache.put(key(), regions)
         assertEquals(regions, cache.snapshot(key()))
         assertEquals(regions, cache.snapshot(key()))
         assertNull(cache.snapshot(key(level = EmotionRegionLevel.SIGUNGU)))
-        assertNull(cache.snapshot(key(groupId = "group")))
+        assertNull(cache.snapshot(key(filter = MapFilterSettings(scope = MapFilterScope.MY).toSearchFilter())))
     }
 
     @Test
@@ -127,24 +122,24 @@ class EmotionRegionMapCacheTest {
     }
 
     @Test
-    fun `새로고침은 같은 계층 그룹의 영역들을 무효화한다`() {
+    fun `전체 새로고침은 모든 계층의 영역들을 무효화한다`() {
         val cache = EmotionRegionMapCache()
         cache.put(key(), regions)
         cache.put(key(level = EmotionRegionLevel.SIGUNGU), regions)
-        cache.invalidateGroup(null)
+        cache.invalidateAll()
         assertNull(cache.snapshot(key()))
         assertNull(cache.snapshot(key(level = EmotionRegionLevel.SIGUNGU)))
     }
 
     @Test
-    fun `그룹 무효화는 다른 그룹 요청의 캐시 저장을 막지 않는다`() {
+    fun `전체 무효화 이후 늦게 도착한 이전 응답은 캐시를 채우지 못한다`() {
         val cache = EmotionRegionMapCache()
-        val firstKey = key(groupId = "first")
-        val otherKey = key(groupId = "other")
-        val staleGeneration = cache.generation("first")
-        val otherGeneration = cache.generation("other")
+        val firstKey = key()
+        val otherKey = key(filter = MapFilterSettings(scope = MapFilterScope.MY).toSearchFilter())
+        val staleGeneration = cache.generation()
 
-        cache.invalidateGroup("first")
+        cache.invalidateAll()
+        val otherGeneration = cache.generation()
         cache.put(firstKey, regions, staleGeneration)
         cache.put(otherKey, regions, otherGeneration)
 

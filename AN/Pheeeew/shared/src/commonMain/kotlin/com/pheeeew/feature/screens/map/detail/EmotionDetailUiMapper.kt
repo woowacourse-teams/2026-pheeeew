@@ -2,19 +2,11 @@ package com.pheeeew.feature.screens.map.detail
 
 import com.pheeeew.domain.model.emotion.EmotionDetail
 import com.pheeeew.domain.model.emotion.EmotionReactionType
-import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
-import com.pheeeew.feature.component.stamp.toUiShape
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
 import kotlin.time.Clock
 
 internal fun EmotionDetail.toUiModel() =
     EmotionDetailUiModel(
-        groupName = groupStamp?.text ?: "그룹 없음",
-        stampText = groupStamp?.text.orEmpty(),
-        stamp =
-            groupStamp?.let {
-                StampAppearanceUiModel(it.text, it.frame.toUiShape(), it.backgroundColor.argb, it.textColor.argb)
-            },
         nickname = nickname,
         emotion = EmotionTypeUiModel.valueOf(state.name),
         createdAtLabel = formatEmotionCreatedAt(createdAt, Clock.System.now()),

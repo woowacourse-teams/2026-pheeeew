@@ -171,7 +171,6 @@ class EmotionRegistrationGraphTest {
                 for (value in listOf(
                     registration.requestId,
                     "upload-1",
-                    "group-1",
                     "\"anonymous\":true",
                     "\"latitude\":37.0",
                     "\"longitude\":127.0",
@@ -269,7 +268,6 @@ class EmotionRegistrationGraphTest {
             EmotionState.ANGRY,
             GeoCoordinate(37.0, 127.0),
             0.0,
-            "group-1",
             EmotionRegistrationContent.Audio("test-recording"),
             anonymous = true,
         )

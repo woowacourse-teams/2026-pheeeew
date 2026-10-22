@@ -32,7 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.jetbrains.compose.resources.painterResource
 
-/** 정사각형 슬롯 안에 모양의 비율을 유지해 그룹 스탬프를 그립니다. */
+/** 정사각형 슬롯 안에 모양의 비율을 유지해 스탬프를 그립니다. */
 @Composable
 fun GroupStamp(
     appearance: StampAppearanceUiModel,
@@ -218,7 +218,7 @@ private const val STAMP_LINE_HEIGHT_FACTOR = 1.2f
 private val HIGH_SURROGATES = '\uD800'..'\uDBFF'
 private val LOW_SURROGATES = '\uDC00'..'\uDFFF'
 
-@Preview(name = "그룹 스탬프 모양 10종")
+@Preview(name = "스탬프 모양 10종")
 @Composable
 private fun GroupStampAppearancePreview() {
     Column(modifier = Modifier.padding(12.dp)) {
@@ -249,25 +249,25 @@ private fun GroupStampAppearancePreview() {
     }
 }
 
-@Preview(name = "그룹 스탬프 문구 1자 · 모양 10종", widthDp = 360, heightDp = 160, showBackground = true)
+@Preview(name = "스탬프 문구 1자 · 모양 10종", widthDp = 360, heightDp = 160, showBackground = true)
 @Composable
 private fun GroupStampOneCharacterPreview() {
     GroupStampLengthPreview(label = "숨")
 }
 
-@Preview(name = "그룹 스탬프 문구 2자 · 모양 10종", widthDp = 360, heightDp = 160, showBackground = true)
+@Preview(name = "스탬프 문구 2자 · 모양 10종", widthDp = 360, heightDp = 160, showBackground = true)
 @Composable
 private fun GroupStampTwoCharacterPreview() {
     GroupStampLengthPreview(label = "기록")
 }
 
-@Preview(name = "그룹 스탬프 문구 3자 · 모양 10종", widthDp = 360, heightDp = 160, showBackground = true)
+@Preview(name = "스탬프 문구 3자 · 모양 10종", widthDp = 360, heightDp = 160, showBackground = true)
 @Composable
 private fun GroupStampThreeCharacterPreview() {
     GroupStampLengthPreview(label = "우리집")
 }
 
-@Preview(name = "그룹 스탬프 문구 4자 · 모양 10종", widthDp = 360, heightDp = 160, showBackground = true)
+@Preview(name = "스탬프 문구 4자 · 모양 10종", widthDp = 360, heightDp = 160, showBackground = true)
 @Composable
 private fun GroupStampFourCharacterPreview() {
     GroupStampLengthPreview(label = "우리모임")

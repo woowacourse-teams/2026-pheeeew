@@ -28,13 +28,4 @@ data class EmotionMapPropertiesDto(
     val createdAt: String,
     val state: String,
     val rotationDegrees: Double,
-    val groupStamp: EmotionGroupStampDto? = null,
-)
-
-@Serializable
-data class EmotionGroupStampDto(
-    val text: String,
-    val textColor: String,
-    val backgroundColor: String,
-    val frame: String,
 )

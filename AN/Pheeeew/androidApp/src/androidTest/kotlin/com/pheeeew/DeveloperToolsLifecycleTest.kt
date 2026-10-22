@@ -120,7 +120,7 @@ class DeveloperToolsLifecycleTest {
                                     """{"nickname":"에뮬레이터검증"}"""
                                 }
 
-                                path == "/api/v2/emotions/map" -> {
+                                path == "/api/v4/emotions/map" -> {
                                     pinRequests.incrementAndGet()
                                     """{"features":[],"hasNext":false,"nextCursor":null}"""
                                 }

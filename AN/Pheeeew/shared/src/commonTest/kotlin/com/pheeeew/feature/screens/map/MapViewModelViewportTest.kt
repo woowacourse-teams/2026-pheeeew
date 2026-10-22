@@ -222,14 +222,10 @@ class MapViewModelViewportTest {
                 val staleResponse = CompletableDeferred<EmotionMapPageResult>()
                 val repository =
                     object : EmotionMapRepository {
-                        override fun findSnapshot(
-                            bounds: EmotionMapBounds,
-                            groupId: String?,
-                        ): EmotionMapSnapshot? = null
+                        override fun findSnapshot(bounds: EmotionMapBounds): EmotionMapSnapshot? = null
 
                         override suspend fun findPage(
                             bounds: EmotionMapBounds?,
-                            groupId: String?,
                             cursor: String?,
                             forceRefresh: Boolean,
                         ): EmotionMapPageResult =
@@ -699,14 +695,10 @@ class MapViewModelViewportTest {
                 var requestCount = 0
                 val repository =
                     object : EmotionMapRepository {
-                        override fun findSnapshot(
-                            bounds: EmotionMapBounds,
-                            groupId: String?,
-                        ): EmotionMapSnapshot? = null
+                        override fun findSnapshot(bounds: EmotionMapBounds): EmotionMapSnapshot? = null
 
                         override suspend fun findPage(
                             bounds: EmotionMapBounds?,
-                            groupId: String?,
                             cursor: String?,
                             forceRefresh: Boolean,
                         ): EmotionMapPageResult {
@@ -2082,7 +2074,6 @@ class MapViewModelViewportTest {
             override suspend fun findRegions(
                 bounds: EmotionMapBounds,
                 level: EmotionRegionLevel,
-                groupId: String?,
                 forceRefresh: Boolean,
                 filter: EmotionSearchFilter?,
             ): EmotionRegionResult {
@@ -2092,7 +2083,6 @@ class MapViewModelViewportTest {
 
             override fun findSnapshot(
                 level: EmotionRegionLevel,
-                groupId: String?,
                 filter: EmotionSearchFilter?,
             ) = snapshot(level)
         }
@@ -2127,7 +2117,7 @@ class MapViewModelViewportTest {
         id: Long,
         longitude: Double,
         latitude: Double,
-    ) = EmotionMapPin(id, longitude, latitude, "2026-09-27T00:00:00Z", EmotionState.ANGRY, 0.0, null)
+    ) = EmotionMapPin(id, longitude, latitude, "2026-09-27T00:00:00Z", EmotionState.ANGRY, 0.0)
 
     private fun MapViewModel.pinIds() = uiModel.value.emotionPins.map { it.id }
 
@@ -2158,7 +2148,6 @@ class MapViewModelViewportTest {
 
         override suspend fun findPage(
             bounds: EmotionMapBounds?,
-            groupId: String?,
             cursor: String?,
             forceRefresh: Boolean,
         ): EmotionMapPageResult {
@@ -2184,16 +2173,14 @@ class MapViewModelViewportTest {
             }
         }
 
-        override fun findSnapshot(
-            bounds: EmotionMapBounds,
-            groupId: String?,
-        ) = cachedRegions
-            .filter { it.bounds.intersects(bounds) }
-            .flatMap { it.page.pins }
-            .filter { bounds.contains(it.longitude, it.latitude) }
-            .distinctBy { it.id }
-            .takeIf { it.isNotEmpty() }
-            ?.let(::EmotionMapSnapshot)
+        override fun findSnapshot(bounds: EmotionMapBounds) =
+            cachedRegions
+                .filter { it.bounds.intersects(bounds) }
+                .flatMap { it.page.pins }
+                .filter { bounds.contains(it.longitude, it.latitude) }
+                .distinctBy { it.id }
+                .takeIf { it.isNotEmpty() }
+                ?.let(::EmotionMapSnapshot)
 
         private data class CachedRegion(
             val bounds: EmotionMapBounds,

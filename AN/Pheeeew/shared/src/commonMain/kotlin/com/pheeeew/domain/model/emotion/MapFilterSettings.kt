@@ -6,7 +6,7 @@ enum class MapFilterPeriod { TWO_WEEKS, ONE_MONTH, ALL, CUSTOM }
 
 enum class MapFilterContent { ALL, MEMO, AUDIO }
 
-enum class MapFilterScope { ALL, GROUP, MY }
+enum class MapFilterScope { ALL, MY }
 
 data class SearchDate(
     val year: Int,
@@ -71,13 +71,11 @@ data class MapFilterSettings(
     val customEndDate: SearchDate? = null,
     val content: MapFilterContent = MapFilterContent.ALL,
     val scope: MapFilterScope = MapFilterScope.ALL,
-    val groupId: String? = null,
 ) {
     init {
         require((customStartDate == null) == (customEndDate == null))
         require(customStartDate == null || customStartDate <= customEndDate!!)
         require(period != MapFilterPeriod.CUSTOM || customStartDate != null)
-        require((scope == MapFilterScope.GROUP) == (groupId != null))
     }
 
     fun toSearchFilter(today: SearchDate = SearchDate.todayKst()): EmotionSearchFilter {
@@ -93,7 +91,6 @@ data class MapFilterSettings(
             endDate = dates.second?.toIsoString(),
             content = content,
             scope = scope,
-            groupId = groupId,
         )
     }
 
@@ -107,11 +104,9 @@ data class EmotionSearchFilter(
     val endDate: String?,
     val content: MapFilterContent,
     val scope: MapFilterScope,
-    val groupId: String?,
 ) {
     init {
         require((startDate == null) == (endDate == null))
-        require((scope == MapFilterScope.GROUP) == (groupId != null))
     }
 
     companion object {

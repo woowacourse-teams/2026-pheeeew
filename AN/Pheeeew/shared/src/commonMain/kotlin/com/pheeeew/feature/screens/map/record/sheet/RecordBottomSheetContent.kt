@@ -81,9 +81,7 @@ import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.core.navigation.FlowBackHandler
-import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
-import com.pheeeew.feature.screens.map.record.group.GroupSelectionButton
 import com.pheeeew.feature.screens.map.record.noRippleClickable
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -110,12 +108,9 @@ fun RecordBottomSheet(
     memo: String,
     isAnonymous: Boolean,
     onAnonymousChange: (Boolean) -> Unit,
-    selectedGroupStamp: StampAppearanceUiModel?,
-    isGroupSelectionLoading: Boolean,
     onDismissRequest: () -> Unit,
     onInputModeChange: (RecordInputModeUiModel) -> Unit,
     onMemoChange: (String) -> Unit,
-    onGroupClick: () -> Unit,
     onNext: () -> Unit,
     modifier: Modifier = Modifier,
     voiceRecorder: VoiceRecorder? = null,
@@ -188,11 +183,8 @@ fun RecordBottomSheet(
             memo = memo,
             isAnonymous = isAnonymous,
             onAnonymousChange = onAnonymousChange,
-            selectedGroupStamp = selectedGroupStamp,
-            isGroupSelectionLoading = isGroupSelectionLoading,
             onInputModeChange = onInputModeChange,
             onMemoChange = onMemoChange,
-            onGroupClick = onGroupClick,
             onNext = {
                 val hasOtherInput =
                     when (inputMode) {
@@ -254,11 +246,8 @@ private fun RecordBottomSheetContent(
     memo: String,
     isAnonymous: Boolean,
     onAnonymousChange: (Boolean) -> Unit,
-    selectedGroupStamp: StampAppearanceUiModel?,
-    isGroupSelectionLoading: Boolean,
     onInputModeChange: (RecordInputModeUiModel) -> Unit,
     onMemoChange: (String) -> Unit,
-    onGroupClick: () -> Unit,
     onNext: () -> Unit,
     modifier: Modifier,
     voiceRecorder: VoiceRecorder? = null,
@@ -325,11 +314,6 @@ private fun RecordBottomSheetContent(
                     fontWeight = FontWeight.Bold,
                 )
             }
-            GroupSelectionButton(
-                stamp = selectedGroupStamp,
-                loading = isGroupSelectionLoading,
-                onClick = onGroupClick,
-            )
         }
 
         Spacer(modifier = Modifier.height(4.dp))
@@ -396,16 +380,15 @@ private fun RecordBottomSheetContent(
         RecordSheetActions(
             onNext = onNext,
             enabled =
-                !isGroupSelectionLoading &&
-                    when (inputMode) {
-                        RecordInputModeUiModel.Memo -> {
-                            memo.isNotBlank()
-                        }
+                when (inputMode) {
+                    RecordInputModeUiModel.Memo -> {
+                        memo.isNotBlank()
+                    }
 
-                        RecordInputModeUiModel.Recording -> {
-                            recordingReady
-                        }
-                    },
+                    RecordInputModeUiModel.Recording -> {
+                        recordingReady
+                    }
+                },
         )
     }
 }
@@ -649,11 +632,8 @@ private fun RecordBottomSheetContentPreview() {
         memo = "",
         isAnonymous = false,
         onAnonymousChange = {},
-        selectedGroupStamp = null,
-        isGroupSelectionLoading = false,
         onInputModeChange = {},
         onMemoChange = {},
-        onGroupClick = {},
         onNext = {},
         modifier = Modifier,
     )
@@ -668,11 +648,8 @@ private fun RecordBottomSheetRecordingPreview() {
         memo = "",
         isAnonymous = false,
         onAnonymousChange = {},
-        selectedGroupStamp = null,
-        isGroupSelectionLoading = false,
         onInputModeChange = {},
         onMemoChange = {},
-        onGroupClick = {},
         onNext = {},
         modifier = Modifier,
     )
