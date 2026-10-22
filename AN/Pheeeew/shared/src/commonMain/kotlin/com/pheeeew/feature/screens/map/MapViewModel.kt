@@ -257,12 +257,9 @@ class MapViewModel(
                 val previousGeneration = queryGeneration
                 queryGeneration++
                 pinSnapshotPublisher.begin(queryGeneration)
-                viewportJob?.cancel()
-                emotionMapJob?.cancel()
+                cancelEmotionMapRequest()
                 regionJob?.cancel()
-                pendingEmotionMapRequest = null
                 activeRegionQuery = null
-                activeRegionBounds = null
                 failedEmotionPinsRequestKey = null
                 val searchFilter = candidate.toSearchFilter()
                 val viewport = latestViewport
@@ -319,9 +316,9 @@ class MapViewModel(
                             }
                         }
                     currentCoroutineContext().ensureActive()
-                    // The map may have moved while the map or list request was suspended.
-                    // Reload the candidate for that viewport before committing any settings.
-                    if (latestViewport != viewport || pinViewportBounds != pinViewport) {
+                    // Region responses cover the whole country, so movement within the same
+                    // administrative level does not require reloading the candidate.
+                    if (hasViewportChangedForQuery(regionLevel, viewport, pinViewport)) {
                         _filterUiModel.value = _filterUiModel.value.copy(applying = false)
                         applyFilter()
                         return@launch
@@ -329,7 +326,7 @@ class MapViewModel(
                     filterSettingsRepository?.save(candidate)
                     currentCoroutineContext().ensureActive()
                     appliedFilterSettings = candidate
-                    val viewportChanged = latestViewport != viewport || pinViewportBounds != pinViewport
+                    val viewportChanged = hasViewportChangedForQuery(regionLevel, viewport, pinViewport)
                     needsFreshEmotionPins = false
                     displayedBounds = bounds
                     requestedBounds = bounds
@@ -343,7 +340,10 @@ class MapViewModel(
                         _uiModel.value =
                             _uiModel.value.copy(
                                 emotionPins = if (regionLevel != null) emptyList() else _uiModel.value.emotionPins,
-                                regionClusters = regions?.toClusterUiModels(viewport?.renderBounds) ?: emptyList(),
+                                regionClusters =
+                                    regions
+                                        ?.toClusterUiModels((latestViewport ?: viewport)?.renderBounds)
+                                        ?: emptyList(),
                                 displayedRegionLevel = regionLevel,
                                 regionClustersError = null,
                                 isLoadingEmotionPins = false,
@@ -367,7 +367,6 @@ class MapViewModel(
                         )
                     } else if (!viewportChanged && viewport != null && regionLevel != null) {
                         activeRegionQuery = ActiveRegionQuery(regionLevel, candidate.toSearchFilter())
-                        activeRegionBounds = viewport.bounds
                         regionSnapshot = regions
                         regionSnapshotKey = activeRegionQuery
                     }
@@ -386,7 +385,7 @@ class MapViewModel(
                     if (viewportChanged) {
                         displayedBounds = null
                         requestedBounds = null
-                        latestViewport?.let { updateViewport(it, forceRegionRefresh = true) }
+                        latestViewport?.let { updateViewport(it, forceRegionRefresh = false) }
                             ?: pinViewportBounds?.let(::onViewportChanged)
                     }
                 } catch (cancelled: CancellationException) {
@@ -421,9 +420,7 @@ class MapViewModel(
         val bounds = requestedBounds ?: displayedBounds ?: viewport?.bounds ?: return
         needsFreshEmotionPins = true
         val generation = ++queryGeneration
-        viewportJob?.cancel()
-        pendingEmotionMapRequest = null
-        enqueueEmotionMapRequest(EmotionMapRequest(bounds, generation, bypassCache = true))
+        replaceEmotionMapRequest(EmotionMapRequest(bounds, generation, bypassCache = true))
     }
 
     private suspend fun loadFilteredPins(
@@ -502,7 +499,6 @@ class MapViewModel(
     private var initialLocationStartJob: Job? = null
     private var locationRequestJob: Job? = null
     private var nextCameraCommandId = 0L
-    private var viewportJob: Job? = null
     private var regionJob: Job? = null
     private var latestViewport: EmotionMapViewport? = null
 
@@ -512,14 +508,12 @@ class MapViewModel(
     )
 
     private var activeRegionQuery: ActiveRegionQuery? = null
-    private var activeRegionBounds: EmotionMapBounds? = null
     private var failedEmotionPinsRequestKey: EmotionPinsFailureKey? = null
     private var regionSnapshotKey: ActiveRegionQuery? = null
     private var regionSnapshot: List<EmotionRegion>? = null
     private var emotionMapJob: Job? = null
     private var queryGeneration = 0L
     private var activeEmotionMapRequestId = 0L
-    private var pendingEmotionMapRequest: EmotionMapRequest? = null
     private var needsFreshEmotionPins = false
     private var pinViewportBounds: EmotionMapBounds? = null
     private var requestedBounds: EmotionMapBounds? = null
@@ -574,26 +568,20 @@ class MapViewModel(
     private fun disableDataLoading() {
         dataLoadingEnabled = false
         ++queryGeneration
-        ++activeEmotionMapRequestId
+        cancelEmotionMapRequest()
         pinSnapshotPublisher.begin(queryGeneration)
         exploration.supersede()
-        viewportJob?.cancel()
-        emotionMapJob?.cancel()
         regionJob?.cancel()
         filterApplyJob?.cancel()
         initialLocationStartJob?.cancel()
         initialLocationStartJob = null
         locationRequestJob?.cancel()
-        viewportJob = null
-        emotionMapJob = null
         regionJob = null
         filterApplyJob = null
         locationRequestJob = null
         hasStarted = false
         hasPreloadedLocation = false
-        pendingEmotionMapRequest = null
         activeRegionQuery = null
-        activeRegionBounds = null
         failedEmotionPinsRequestKey = null
         // Retain only the current camera area so READY can query it again.
         requestedBounds = latestViewport?.bounds ?: pinViewportBounds ?: requestedBounds
@@ -750,7 +738,6 @@ class MapViewModel(
             if (activeRegionQuery != null) {
                 ++queryGeneration
                 activeRegionQuery = null
-                activeRegionBounds = null
             }
             _uiModel.value = _uiModel.value.copy(isLoadingRegionClusters = false)
         }
@@ -775,7 +762,7 @@ class MapViewModel(
         pinViewportBounds = bounds
         trimRetainedPins(bounds)
         val queryBounds = bounds.expandedForPinQuery()
-        if (queryBounds == requestedBounds && (viewportJob?.isActive == true || emotionMapJob?.isActive == true)) return
+        if (queryBounds == requestedBounds && emotionMapJob?.isActive == true) return
         if (queryBounds == displayedBounds && emotionMapJob?.isActive != true) return
         if (queryBounds != requestedBounds) {
             failedEmotionPinsRequestKey = null
@@ -791,20 +778,12 @@ class MapViewModel(
         pinSnapshotPublisher.begin(generation)
         exploration.supersede()
         publishSnapshot(queryBounds, generation)
-        viewportJob?.cancel()
-        pendingEmotionMapRequest = null
-        viewportJob =
-            viewModelScope.launch {
-                delay(VIEWPORT_DEBOUNCE_MILLIS)
-                if (generation == queryGeneration) {
-                    enqueueEmotionMapRequest(
-                        EmotionMapRequest(queryBounds, generation, bypassCache = needsFreshEmotionPins),
-                    )
-                }
-            }
+        replaceEmotionMapRequest(
+            EmotionMapRequest(queryBounds, generation, bypassCache = needsFreshEmotionPins),
+        )
     }
 
-    /** Region summaries occupy wide zooms; the existing paged pin flow owns close zooms. */
+    /** Native camera-idle callback; region summaries serve wide zooms and paged pins serve close zooms. */
     fun onViewportChanged(viewport: EmotionMapViewport) {
         updateViewport(viewport, forceRegionRefresh = false)
     }
@@ -827,7 +806,6 @@ class MapViewModel(
                 displayedBounds = null
             }
             activeRegionQuery = null
-            activeRegionBounds = null
             _uiModel.value =
                 _uiModel.value.copy(
                     regionClustersError = null,
@@ -839,35 +817,41 @@ class MapViewModel(
         val filter = appliedFilterSettings.toSearchFilter()
         val query = ActiveRegionQuery(level, filter)
         val activeQuery = activeRegionQuery
-        val isSameRequest = activeQuery == query && activeRegionBounds == viewport.bounds
         if (!forceRegionRefresh && activeQuery == query && regionJob?.isActive == true) {
             if (regionSnapshotKey == query) publishRegionSnapshot(viewport)
             return
         }
-        if (!forceRegionRefresh && isSameRequest && _uiModel.value.regionClustersError != null) {
+        if (!forceRegionRefresh && activeQuery == query && _uiModel.value.regionClustersError != null) {
             if (regionSnapshotKey == query) publishRegionSnapshot(viewport)
             return
         }
-        val preserveCurrentError = isSameRequest
-        activeRegionQuery = query
-        activeRegionBounds = viewport.bounds
-        val generation = ++queryGeneration
-        pinSnapshotPublisher.begin(generation)
-        viewportJob?.cancel()
-        emotionMapJob?.cancel()
-        regionJob?.cancel()
-        exploration.supersede()
-        pendingEmotionMapRequest = null
-        requestedBounds = null
         val cached =
             if (forceRegionRefresh) {
                 null
             } else {
-                findRegionSnapshot?.invoke(
-                    level,
-                    filter = filter,
-                )
+                findRegionSnapshot?.invoke(level, filter = filter)
+                    ?: if (findRegionSnapshot == null && regionSnapshotKey == query) regionSnapshot else null
             }
+        if (!forceRegionRefresh && activeQuery == query && cached != null) {
+            regionSnapshot = cached
+            regionSnapshotKey = query
+            _uiModel.value =
+                _uiModel.value.copy(
+                    regionClusters = cached.toClusterUiModels(viewport.renderBounds),
+                    displayedRegionLevel = level,
+                    isLoadingRegionClusters = false,
+                    regionClustersError = null,
+                )
+            return
+        }
+        val preserveCurrentError = activeQuery == query
+        activeRegionQuery = query
+        val generation = ++queryGeneration
+        pinSnapshotPublisher.begin(generation)
+        cancelEmotionMapRequest()
+        regionJob?.cancel()
+        exploration.supersede()
+        requestedBounds = null
         val currentUiModel = _uiModel.value
         val nextUiModel =
             currentUiModel.copy(
@@ -888,7 +872,6 @@ class MapViewModel(
         }
         regionJob =
             viewModelScope.launch {
-                delay(VIEWPORT_DEBOUNCE_MILLIS)
                 if (generation != queryGeneration) return@launch
                 _uiModel.value = _uiModel.value.copy(isLoadingRegionClusters = true)
                 val result =
@@ -950,6 +933,17 @@ class MapViewModel(
                 )
             }.toList()
 
+    private fun hasViewportChangedForQuery(
+        regionLevel: EmotionRegionLevel?,
+        viewport: EmotionMapViewport?,
+        pinViewport: EmotionMapBounds?,
+    ): Boolean =
+        if (regionLevel != null) {
+            latestViewport?.zoom?.let(MapZoomPolicy::regionLevelForZoom) != regionLevel
+        } else {
+            latestViewport != viewport || pinViewportBounds != pinViewport
+        }
+
     private fun EmotionMapBounds.contains(
         longitude: Double,
         latitude: Double,
@@ -975,9 +969,7 @@ class MapViewModel(
         val bounds = requestedBounds ?: displayedBounds ?: return
         val generation = ++queryGeneration
         pinSnapshotPublisher.begin(generation)
-        viewportJob?.cancel()
-        pendingEmotionMapRequest = null
-        enqueueEmotionMapRequest(EmotionMapRequest(bounds, generation, bypassCache = true))
+        replaceEmotionMapRequest(EmotionMapRequest(bounds, generation, bypassCache = true))
     }
 
     fun retryEmotionPins() {
@@ -990,9 +982,7 @@ class MapViewModel(
         val bounds = displayedBounds ?: requestedBounds ?: return
         val generation = ++queryGeneration
         pinSnapshotPublisher.begin(generation)
-        viewportJob?.cancel()
-        pendingEmotionMapRequest = null
-        enqueueEmotionMapRequest(
+        replaceEmotionMapRequest(
             EmotionMapRequest(
                 bounds = bounds,
                 generation = generation,
@@ -1003,14 +993,17 @@ class MapViewModel(
         )
     }
 
-    private fun enqueueEmotionMapRequest(request: EmotionMapRequest) {
+    private fun replaceEmotionMapRequest(request: EmotionMapRequest) {
         if (!dataLoadingEnabled || request.generation != queryGeneration) return
-        if (emotionMapJob?.isActive == true) {
-            pendingEmotionMapRequest = request
-        } else {
-            pendingEmotionMapRequest = null
-            loadEmotionPins(request)
-        }
+        cancelEmotionMapRequest()
+        loadEmotionPins(request)
+    }
+
+    private fun cancelEmotionMapRequest() {
+        ++activeEmotionMapRequestId
+        val job = emotionMapJob
+        emotionMapJob = null
+        job?.cancel()
     }
 
     private fun loadEmotionPins(request: EmotionMapRequest) {
@@ -1221,11 +1214,6 @@ class MapViewModel(
                     }
                     if (requestId == activeEmotionMapRequestId) {
                         emotionMapJob = null
-                        val pendingRequest = pendingEmotionMapRequest
-                        if (pendingRequest != null) {
-                            pendingEmotionMapRequest = null
-                            enqueueEmotionMapRequest(pendingRequest)
-                        }
                     }
                 }
             }
@@ -1442,8 +1430,6 @@ class MapViewModel(
     companion object {
         private const val FOCUSED_COORDINATE_ZOOM = 15.5
         private const val CURRENT_LOCATION_ZOOM = 16.0
-
-        private const val VIEWPORT_DEBOUNCE_MILLIS = 700L
     }
 }
 
