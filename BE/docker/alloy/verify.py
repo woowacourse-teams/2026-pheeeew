@@ -34,8 +34,6 @@ def verify_metrics(config):
         "pheeeew_map_response_write_seconds_": "count sum bucket max",
         "pheeeew_region_query_seconds_": "count sum bucket max",
         "pheeeew_emotion_press_query_seconds_": "count sum bucket max",
-        "pheeeew_activity_": "dau mau last_aggregated_seconds collection_started_seconds "
-                             "record_failures_total aggregation_failures_total",
         "jvm_gc_pause_seconds_": "count sum max",
         "hikaricp_connections_": "active idle pending max min timeout_total "
                                  "acquire_seconds_count acquire_seconds_sum acquire_seconds_max "
@@ -63,6 +61,9 @@ def verify_metrics(config):
                 "hikaricp_connections_usage_seconds_bucket", "hikaricp_connections_usage_seconds_created",
                 "hikaricp_connections_creation_seconds_count", "hikaricp_connections_creation_seconds_sum",
                 "hikaricp_connections_creation_seconds_max"]
+    rejected.extend("pheeeew_activity_" + suffix for suffix in
+                    ("dau", "mau", "last_aggregated_seconds", "collection_started_seconds",
+                     "record_failures_total", "aggregation_failures_total"))
     rejected.extend(name + "_extra" for name in accepted)
     for name, expected in [(name, True) for name in accepted] + [(name, False) for name in rejected]:
         if bool(re.fullmatch(pattern, name)) != expected:
@@ -76,10 +77,10 @@ def verify_logs(config):
     scheduler = "com.pheeeew.activity.infra.DeviceActivityAggregationScheduler"
     task = "com.pheeeew.common.logging.ScheduledTaskErrorHandler"
     contracts = [(http, "http_request_failed", "ERROR"), (http, "http_request_slow", "WARN"),
-                 (recorder, "device_activity_record_failed", "ERROR"),
-                 (scheduler, "device_activity_aggregation_failed", "ERROR"),
                  (task, "scheduled_task_failed", "ERROR")]
-    events = {event for _, event, _ in contracts} | {"unknown", None}
+    # 제거한 활동 logger/event 조합도 전송이 차단되는지 검증한다.
+    events = {event for _, event, _ in contracts} | {
+        "device_activity_record_failed", "device_activity_aggregation_failed", "unknown", None}
     cases = []
     for logger, event in itertools.product((http, recorder, scheduler, task, "unknown", None),
                                            sorted(events, key=str)):

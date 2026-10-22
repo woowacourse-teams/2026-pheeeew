@@ -110,7 +110,7 @@ Accepted (YYYY-MM-DD)
 | [0023](0023-store-authoring-device-on-sighs.md) | 한숨에 작성 기기 저장 | 사용자 차단을 위해 저장해요. 모으면 생활 반경이 드러나요 |
 | [0024](0024-filter-blocks-with-not-exists.md) | 차단 필터를 `NOT EXISTS` 로 | nullable 컬럼에서 `NOT IN` 은 행을 조용히 지워요 |
 | [0025](0025-check-sigh-expiration-on-detail-request.md) | 한숨의 조회 기간 만료를 상세 재요청 시 판정 | 목록은 이어서 조회하고, 만료된 상세 요청은 전용 코드로 소멸을 안내해요 |
-| [0026](0026-record-device-activity-asynchronously-with-local-cache.md) | 기기 활동 비동기 기록과 로컬 캐시 | 중복 저장 시도를 줄이고 재시작 시 미저장 활동의 유실 가능성을 받아들여요 |
+| [0026](0026-record-device-activity-asynchronously-with-local-cache.md) | 기기 활동 비동기 기록과 로컬 캐시 | Deprecated: #736에서 수집·집계 코드를 제거했으며 기존 데이터는 보존해요 |
 | [0027](0027-use-regions-for-emotion-map.md) | 넓은 지도의 서버 행정구역 집계 | 화면으로 지역을 선택하고 지역 전체 누적 개수·대표 감정을 반환해요. 운영 공개 전 경계·백필 검증이 필요해요 |
 | [0028](0028-assign-nearby-regions-and-restrict-emotion-creation.md) | 경계 밖 감정의 인접 지역 배정과 신규 등록 범위 제한 | 포함 판정을 우선하고 1km 이내만 배정해요. 신규 범위 밖 등록은 거부하고 기존 미매칭은 수동 전환해요 |
 | [0029](0029-log-exception-messages-and-allowed-request-values.md) | 오류 로그의 예외 메시지와 허용한 요청 값 | Proposed: DB가 원인이 아닌 예외의 메시지와 허용한 경로, 쿼리 값을 남겨요. 요청 본문, 위치, 요청자는 남기지 않아요 |
