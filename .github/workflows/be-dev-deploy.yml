@@ -226,7 +226,6 @@ jobs:
           set -eu
           docker network inspect pheeeew-dev >/dev/null 2>&1 || docker network create pheeeew-dev
 
-          # 전환 파일은 어느 색이 활성인지를 들고 있어 배포가 덮어쓰지 않는다. 없을 때만 만든다.
           mkdir -p /opt/pheeeew/nginx/upstream
           if [ ! -f /opt/pheeeew/nginx/upstream/active.conf ]; then
             printf 'set $upstream_app app-blue;\n' > /opt/pheeeew/nginx/upstream/active.conf
@@ -235,8 +234,6 @@ jobs:
             echo "현재 전환 대상: $(sed -n 's/.*set \$upstream_app \([a-z-]*\);.*/\1/p' /opt/pheeeew/nginx/upstream/active.conf)"
           fi
 
-          # Alloy 가 두 색의 로그 볼륨을 external 로 붙는다. 없으면 Alloy 가 기동하지 못하고,
-          # 로그 파일이 없으면 Alloy 가 그 대상을 skipping 으로 영구히 건너뛴다.
           for color in blue green; do
             volume="pheeeew-dev_app-logs-$color"
             docker volume inspect "$volume" >/dev/null 2>&1 || docker volume create "$volume" >/dev/null
@@ -254,13 +251,13 @@ jobs:
 
           docker compose -f compose.nginx.yml up -d --wait --wait-timeout 60
 
-          if ! docker compose -f compose.nginx.yml exec -T nginx nginx -t; then
+          if ! docker compose -f compose.nginx.yml exec -T nginx nginx -t </dev/null; then
             echo "nginx 설정이 올바르지 않습니다. reload 를 건너뛰고 앱 배포도 하지 않습니다."
             echo "엣지는 메모리의 이전 설정으로 계속 동작하므로 서비스는 유지됩니다."
             exit 1
           fi
 
-          docker compose -f compose.nginx.yml exec -T nginx nginx -s reload
+          docker compose -f compose.nginx.yml exec -T nginx nginx -s reload </dev/null
           echo "nginx 설정을 다시 읽었습니다."
           REMOTE
 
@@ -273,41 +270,179 @@ jobs:
           set -eu
           cd /opt/pheeeew
 
-          ACTIVE=$(sed -n 's/.*set \$upstream_app \([a-z-]*\);.*/\1/p' nginx/upstream/active.conf)
+          POINTER=nginx/upstream/active.conf
+          BACKUP=nginx/upstream/active.conf.bak
+          PROBE_HOST=api-dev.pheeeew.com
+          PROBE_URL="https://$PROBE_HOST/api/v3/devices/nicknames/availability?nickname=probe"
+          NGINX="docker compose -f compose.nginx.yml"
+          APPS="docker compose -f compose.yml"
+          WORKER_MARK="[w]orker process is shutting down"
+
+          if command -v python3 >/dev/null 2>&1; then
+            JSON_TOOL=python3
+          elif command -v jq >/dev/null 2>&1; then
+            JSON_TOOL=jq
+          else
+            echo "JSON 검증 도구(python3, jq)가 없어 전환을 검증할 수 없습니다. 배포하지 않습니다."
+            exit 1
+          fi
+
+          read_pointer() {
+            sed -n 's/.*set \$upstream_app \([a-z-]*\);.*/\1/p' "$POINTER"
+          }
+
+          available_is_boolean() {
+            if [ "$JSON_TOOL" = python3 ]; then
+              python3 -c "import json, sys; body = json.load(open(sys.argv[1])); sys.exit(0 if isinstance(body, dict) and isinstance(body.get('available'), bool) else 1)" "$1" 2>/dev/null
+            else
+              jq -e 'type == "object" and has("available") and (.available | type) == "boolean"' "$1" >/dev/null 2>&1
+            fi
+          }
+
+          served() {
+            code=$(curl -sS --resolve "$PROBE_HOST:443:127.0.0.1" \
+                        --connect-timeout 3 --max-time 10 \
+                        -o /tmp/probe.body -D /tmp/probe.head \
+                        -w '%{http_code}' "$PROBE_URL") || return 1
+            [ "$code" = 200 ] || return 1
+            available_is_boolean /tmp/probe.body || return 1
+            sed -n 's/^[Xx]-[Uu]pstream:[[:space:]]*//p' /tmp/probe.head | tr -d '\r\n'
+          }
+
+          wait_served() {
+            want=$1
+            got=
+            for _ in $(seq 1 30); do
+              got=$(served) || got=
+              [ "$got" = "$want" ] && return 0
+              sleep 1
+            done
+            echo "엣지가 $want 를 서비스하지 않습니다. 마지막 확인: ${got:-정상 응답 없음}"
+            return 1
+          }
+
+          count_shutting_workers() {
+            out=$($NGINX exec -T nginx \
+                    sh -c "ps -o args= || exit 9; echo COUNTED" </dev/null 2>/dev/null) || return 1
+            case "$out" in
+              *COUNTED) ;;
+              *) return 1 ;;
+            esac
+            printf '%s\n' "$out" | grep -c "$WORKER_MARK" || true
+          }
+
+          wait_drained() {
+            checked=no
+            for _ in $(seq 1 60); do
+              if left=$(count_shutting_workers); then
+                case "$left" in
+                  ''|*[!0-9]*) ;;
+                  *)
+                    checked=yes
+                    [ "$left" -eq 0 ] && return 0 ;;
+                esac
+              fi
+              sleep 1
+            done
+            [ "$checked" = yes ] \
+              && echo "   제한 시간 안에 종료 중인 nginx 워커가 사라지지 않았습니다." \
+              || echo "   nginx 워커 상태를 한 번도 확인하지 못했습니다."
+            return 1
+          }
+
+          report_mismatch() {
+            echo "!! 복구에 실패했습니다. 전환 파일과 실제 서비스가 어긋날 수 있습니다."
+            echo "   전환 파일: $(read_pointer)"
+            echo "   엣지 응답: $(served || echo '정상 응답 없음')"
+            echo "   $ACTIVE 와 $TARGET 을 모두 남겨 둡니다. 수동 확인이 필요합니다."
+          }
+
+          restore_pointer() {
+            [ -f "$BACKUP" ] || return 1
+            cat "$BACKUP" > "$POINTER"
+            rm -f "$BACKUP"
+            $NGINX exec -T nginx nginx -t </dev/null || return 1
+            $NGINX exec -T nginx nginx -s reload </dev/null || return 1
+            wait_served "$ACTIVE"
+          }
+
+          rollback() {
+            if ! restore_pointer; then
+              report_mismatch
+              return 1
+            fi
+            echo "$ACTIVE 로 복구했고 정상 응답을 확인했습니다."
+            if ! wait_drained; then
+              echo "!! $TARGET 으로 향하던 요청이 끝났는지 확인하지 못했습니다."
+              echo "   $TARGET 을 삭제하지 않고 남깁니다. 진행 중 요청을 확인한 뒤 정리하세요."
+              return 1
+            fi
+            $APPS stop "$TARGET"
+            $APPS rm -f "$TARGET"
+            echo "$TARGET 을 정리했습니다."
+          }
+
+          ACTIVE=$(read_pointer)
+          case "$ACTIVE" in
+            app|app-blue|app-green) ;;
+            *) echo "전환 파일의 값이 올바르지 않습니다: '${ACTIVE:-빈 값}'. 전환하지 않습니다."; exit 1 ;;
+          esac
           [ "$ACTIVE" = app-blue ] && TARGET=app-green || TARGET=app-blue
           echo "현재 $ACTIVE, 새로 띄울 것 $TARGET"
 
-          docker compose -f compose.yml pull "$TARGET"
+          $APPS pull "$TARGET"
 
-          if ! docker compose -f compose.yml up -d --wait --wait-timeout 180 "$TARGET"; then
+          if ! $APPS up -d --wait --wait-timeout 180 "$TARGET"; then
             echo "===== 새 버전 기동 실패 — 로그 ====="
-            docker compose -f compose.yml logs --tail=100 "$TARGET" 2>&1 | grep -a -v -F -e 'http_request_failed' -e 'scheduled_task_failed' || true
-            docker compose -f compose.yml rm -sf "$TARGET"
+            $APPS logs --tail=100 "$TARGET" 2>&1 | grep -a -v -F -e 'http_request_failed' -e 'scheduled_task_failed' || true
+            $APPS rm -sf "$TARGET"
             echo "전환하지 않고 끝냅니다. 트래픽은 $ACTIVE 에 그대로 있습니다."
             exit 1
           fi
 
-          cp nginx/upstream/active.conf nginx/upstream/active.conf.bak
-          printf 'set $upstream_app %s;\n' "$TARGET" > nginx/upstream/active.conf
-          if ! docker compose -f compose.nginx.yml exec -T nginx nginx -t; then
-            mv nginx/upstream/active.conf.bak nginx/upstream/active.conf
-            docker compose -f compose.yml rm -sf "$TARGET"
-            echo "전환 설정이 올바르지 않습니다. 파일을 되돌리고 전환하지 않습니다."
+          cp "$POINTER" "$BACKUP"
+          printf 'set $upstream_app %s;\n' "$TARGET" > "$POINTER"
+
+          if ! $NGINX exec -T nginx nginx -t </dev/null; then
+            echo "전환 설정이 올바르지 않습니다."
+            cat "$BACKUP" > "$POINTER"
+            rm -f "$BACKUP"
+            $APPS rm -sf "$TARGET"
+            echo "전환하지 않고 끝냅니다. 트래픽은 $ACTIVE 에 그대로 있습니다."
             exit 1
           fi
-          docker compose -f compose.nginx.yml exec -T nginx nginx -s reload
-          rm -f nginx/upstream/active.conf.bak
-          echo "$TARGET 으로 전환했습니다."
 
-          # reload 반영과 진행 중 요청 정리를 기다린 뒤 옛 색을 내린다.
-          sleep 5
-          docker compose -f compose.yml rm -sf "$ACTIVE" || true
-
-          SERVED=$(curl -s -o /dev/null -D - "localhost/api/v2/app/version?platform=ANDROID" \
-                   | sed -n 's/^[Xx]-[Uu]pstream: *//p' | tr -d '\r')
-          if [ "$SERVED" != "$TARGET" ]; then
-            echo "전환이 반영되지 않았습니다. 기대 $TARGET, 실제 ${SERVED:-확인 불가}"
+          if ! $NGINX exec -T nginx nginx -s reload </dev/null; then
+            echo "reload 가 실패했습니다. 전환 파일을 되돌립니다."
+            rollback || true
             exit 1
+          fi
+
+          if ! wait_served "$TARGET"; then
+            echo "전환이 반영되지 않았습니다. 전환 파일을 되돌립니다."
+            rollback || true
+            exit 1
+          fi
+          echo "$TARGET 으로 전환했고 정상 응답을 확인했습니다."
+
+          if ! wait_drained; then
+            echo "!! 이전 요청이 끝났는지 확인하지 못했습니다. $ACTIVE 를 삭제하지 않습니다."
+            echo "   전환은 성공했고 트래픽은 $TARGET 이 받고 있습니다."
+            rm -f "$BACKUP"
+            exit 1
+          fi
+          echo "이전 요청이 모두 끝났습니다."
+          rm -f "$BACKUP"
+
+          if [ "$ACTIVE" = app ]; then
+            if docker inspect pheeeew-dev-app >/dev/null 2>&1; then
+              docker stop --time 30 pheeeew-dev-app >/dev/null
+              docker rm -f pheeeew-dev-app >/dev/null
+              echo "이전 단일 컨테이너 pheeeew-dev-app 을 정리했습니다."
+            fi
+          else
+            $APPS stop "$ACTIVE"
+            $APPS rm -f "$ACTIVE"
           fi
 
           echo "배포 성공: $APP_IMAGE ($TARGET)"
