@@ -138,6 +138,7 @@ class NativeNicknameEditorTest {
         view.selectedRange = NSMakeRange(6u, 0u)
         editor.textViewDidChange(view)
         view.selectedRange = NSMakeRange(6u, 0u)
+        editor.textViewDidChangeSelection(view)
 
         CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.02, false)
 
@@ -167,6 +168,28 @@ class NativeNicknameEditorTest {
 
         assertEquals("124567890", view.text)
         assertEquals(TextRange(2), view.selection())
+    }
+
+    @Test
+    fun queuedCaretRestoreDoesNotOverwriteANewerSelection() {
+        val editor = nicknameDelegate()
+        val view =
+            UITextView().apply {
+                delegate = editor
+                text = "1234567890"
+                selectedRange = NSMakeRange(3u, 0u)
+            }
+        editor.textView(view, NSMakeRange(3u, 0u), "123")
+        view.text = "1231234567890"
+        view.selectedRange = NSMakeRange(6u, 0u)
+        editor.textViewDidChange(view)
+        view.selectedRange = NSMakeRange(1u, 0u)
+        editor.textViewDidChangeSelection(view)
+
+        CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.02, false)
+
+        assertEquals("1234567890", view.text)
+        assertEquals(TextRange(1), view.selection())
     }
 
     @Test

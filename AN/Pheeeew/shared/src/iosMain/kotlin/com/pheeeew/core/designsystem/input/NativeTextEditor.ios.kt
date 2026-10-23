@@ -182,6 +182,7 @@ internal class NativeEditorDelegate(
     private val synchronization = TextEditorSynchronization(initialText)
     private var acceptedValue = TextFieldValue(initialText, TextRange(initialText.length))
     private var editRevision = 0L
+    private var pendingCaretRestore: PendingCaretRestore? = null
 
     fun synchronize(
         view: UITextView,
@@ -189,6 +190,7 @@ internal class NativeEditorDelegate(
     ) {
         // Never reflect a screen-state echo into UIKit's active marked-text buffer.
         if (view.markedTextRange != null || !synchronization.acceptExternal(text)) return
+        pendingCaretRestore = null
         editRevision++
         if (view.text != text) {
             val previous = view.selectedRange.useContents { location.toInt() }
@@ -199,6 +201,7 @@ internal class NativeEditorDelegate(
     }
 
     override fun textViewDidChange(textView: UITextView) {
+        pendingCaretRestore = null
         val revision = ++editRevision
         val value = valueOf(textView)
         val raw = value.text
@@ -221,15 +224,32 @@ internal class NativeEditorDelegate(
         }
         if (!accepted) {
             // UIKit이 콜백 뒤에 적용하는 커서 이동도 복구하되, 이후의 새 편집은 덮어쓰지 않는다.
+            val pendingRestore = PendingCaretRestore(settled.selection, value.selection)
+            pendingCaretRestore = pendingRestore
             dispatch_async(dispatch_get_main_queue()) {
-                if (editRevision == revision && textView.delegate === this && textView.text == settled.text) {
-                    textView.selectedRange =
-                        NSMakeRange(settled.selection.min.toULong(), settled.selection.length.toULong())
+                if (pendingCaretRestore === pendingRestore) {
+                    if (!pendingRestore.selectionChangedByUser &&
+                        editRevision == revision &&
+                        textView.delegate === this &&
+                        textView.text == settled.text
+                    ) {
+                        textView.selectedRange =
+                            NSMakeRange(settled.selection.min.toULong(), settled.selection.length.toULong())
+                    }
+                    pendingCaretRestore = null
                 }
             }
         }
         (textView as? EditingTextView)?.updatePlaceholder()
         publish(settled.text)
+    }
+
+    override fun textViewDidChangeSelection(textView: UITextView) {
+        val pendingRestore = pendingCaretRestore ?: return
+        val selection = valueOf(textView).selection
+        if (selection != pendingRestore.selection && selection != pendingRestore.selectionAfterRejectedEdit) {
+            pendingRestore.selectionChangedByUser = true
+        }
     }
 
     override fun textViewDidEndEditing(textView: UITextView) {
@@ -241,6 +261,7 @@ internal class NativeEditorDelegate(
         shouldChangeTextInRange: CValue<NSRange>,
         replacementText: String,
     ): Boolean {
+        pendingCaretRestore = null
         editRevision++
         if (singleLine && replacementText == "\n") {
             textView.resignFirstResponder()
@@ -274,6 +295,12 @@ internal class NativeEditorDelegate(
     private fun publish(text: String) {
         if (synchronization.publish(text)) onChange(text)
     }
+
+    private class PendingCaretRestore(
+        val selection: TextRange,
+        val selectionAfterRejectedEdit: TextRange,
+        var selectionChangedByUser: Boolean = false,
+    )
 }
 
 @OptIn(ExperimentalForeignApi::class)
