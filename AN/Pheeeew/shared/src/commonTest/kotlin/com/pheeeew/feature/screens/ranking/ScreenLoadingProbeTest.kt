@@ -5,10 +5,6 @@ import com.pheeeew.feature.screens.ranking.press.PressRankingLoadResult
 import com.pheeeew.feature.screens.ranking.press.PressRankingSource
 import com.pheeeew.feature.screens.ranking.press.PressRankingStatus
 import com.pheeeew.feature.screens.ranking.press.PressRankingViewModel
-import com.pheeeew.feature.screens.ranking.stamp.WeeklyRankingLoadResult
-import com.pheeeew.feature.screens.ranking.stamp.WeeklyRankingSource
-import com.pheeeew.feature.screens.ranking.stamp.WeeklyRankingStatus
-import com.pheeeew.feature.screens.ranking.stamp.WeeklyRankingViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -52,24 +48,6 @@ class ScreenLoadingProbeTest {
                                 "LOADING_PROBE,$path,$latency,$repetition,${testScheduler.currentTime - start},${calls - before}",
                             )
                         }
-                        val stampSource =
-                            object : WeeklyRankingSource {
-                                override suspend fun load(weeksAgo: Int): WeeklyRankingLoadResult {
-                                    calls++
-                                    delay(latency)
-                                    return WeeklyRankingLoadResult.Loaded(
-                                        "2026-10-19T00:00:00Z",
-                                        "2026-10-26T00:00:00Z",
-                                        true,
-                                        emptyList(),
-                                    )
-                                }
-                            }
-                        lateinit var stamp: WeeklyRankingViewModel
-                        record("stamp_initial") { stamp = WeeklyRankingViewModel(stampSource) }
-                        assertEquals(WeeklyRankingStatus.Ready, stamp.uiState.value.status)
-                        record("stamp_refresh") { stamp.onRefresh() }
-                        record("stamp_previous") { stamp.onPreviousWeek() }
                         val pressSource =
                             object : PressRankingSource {
                                 override suspend fun load(

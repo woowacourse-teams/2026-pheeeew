@@ -6,7 +6,6 @@ import com.pheeeew.feature.screens.map.nearby.NearbyEmotionViewModel
 import com.pheeeew.feature.screens.map.record.MapRecordViewModel
 import com.pheeeew.feature.screens.press.PressViewModel
 import com.pheeeew.feature.screens.ranking.press.PressRankingViewModel
-import com.pheeeew.feature.screens.ranking.stamp.WeeklyRankingViewModel
 import com.pheeeew.feature.screens.settings.AppEntryViewModel
 import com.pheeeew.feature.screens.settings.AppStartupViewModel
 import com.pheeeew.feature.screens.settings.SettingsViewModel
@@ -22,7 +21,6 @@ internal interface ViewModelBindings {
         detail: () -> EmotionDetailViewModel,
         settings: () -> SettingsViewModel,
         press: () -> PressViewModel,
-        weekly: () -> WeeklyRankingViewModel,
         pressRanking: () -> PressRankingViewModel,
         mapFactory: () -> MapViewModel.Factory,
     ): MetroViewModelFactory =
@@ -35,7 +33,6 @@ internal interface ViewModelBindings {
                 EmotionDetailViewModel::class to detail,
                 SettingsViewModel::class to settings,
                 PressViewModel::class to press,
-                WeeklyRankingViewModel::class to weekly,
                 PressRankingViewModel::class to pressRanking,
             ),
             mapOf(

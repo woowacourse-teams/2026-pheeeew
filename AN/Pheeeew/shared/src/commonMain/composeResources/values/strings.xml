@@ -30,9 +30,7 @@
     <!-- 바텀바 -->
     <string name="bottom_navigation_map">지도</string>
     <string name="bottom_navigation_press">프레스</string>
-    <string name="bottom_navigation_ranking">랭킹</string>
-    <string name="bottom_navigation_stamp">스탬프</string>
-    <string name="bottom_navigation_ranking_press">프레스</string>
+    <string name="bottom_navigation_collection">컬렉션</string>
 
     <!-- 공통 내비게이션 및 안내 -->
     <string name="snackbar_close">닫기</string>
@@ -125,14 +123,10 @@
 
     <!-- 랭킹 -->
     <string name="ranking_empty_week">해당 주에 랭킹이 없어요.</string>
-    <string name="ranking_stamp_title">스탬프 주간 랭킹</string>
-    <string name="ranking_weekly_title">주간 랭킹</string>
     <string name="ranking_press_title">프레스 주간 랭킹</string>
     <string name="press_ranking_headline">지금, 어떤 마음이 모였을까?</string>
     <string name="press_ranking_subtitle">개인별 전국 주간 프레스 수</string>
     <string name="press_ranking_person">프레스 랭킹</string>
-    <string name="ranking_stamp_label">감정 스탬프</string>
-    <string name="ranking_score_count">%1$d개</string>
 
     <!-- 신고 -->
     <string name="report_title">신고</string>
@@ -248,4 +242,5 @@
     <string name="emotion_emoji_angry_1">🤬</string>
     <string name="emotion_emoji_angry_2">💢</string>
     <string name="emotion_emoji_angry_3">😡</string>
+    <string name="press_view_ranking">전체 순위 보기</string>
 </resources>

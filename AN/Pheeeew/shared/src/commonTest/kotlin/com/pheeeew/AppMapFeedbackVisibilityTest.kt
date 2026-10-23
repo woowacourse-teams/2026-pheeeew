@@ -25,7 +25,9 @@ class AppMapFeedbackVisibilityTest {
     @Test
     fun `feedback stays scoped to foreground map without modal surfaces`() {
         assertFalse(visible(mainFeaturesReady = false))
-        assertFalse(visible(selectedDestination = AppDestination.Ranking))
+        assertFalse(visible(selectedDestination = null))
+        assertFalse(visible(selectedDestination = AppDestination.Press))
+        assertFalse(visible(selectedDestination = AppDestination.Collection))
         assertFalse(visible(nearbyVisible = true))
         assertFalse(visible(settingsVisible = true))
         assertFalse(visible(hasReportTarget = true))
@@ -33,7 +35,7 @@ class AppMapFeedbackVisibilityTest {
 
     private fun visible(
         mainFeaturesReady: Boolean = true,
-        selectedDestination: AppDestination = AppDestination.Map,
+        selectedDestination: AppDestination? = AppDestination.Map,
         nearbyVisible: Boolean = false,
         detailState: EmotionDetailLoadUiModel = EmotionDetailLoadUiModel.Closed,
         settingsVisible: Boolean = false,
