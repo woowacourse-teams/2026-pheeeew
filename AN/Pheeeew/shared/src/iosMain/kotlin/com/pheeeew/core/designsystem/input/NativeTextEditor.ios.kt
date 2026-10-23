@@ -248,9 +248,21 @@ internal class NativeEditorDelegate(
             onSearch()
             return false
         }
-        // 한글 조합 콜백의 예상 삽입 길이는 실제 편집 결과와 다를 수 있어 결과에서 검증한다.
         val before = normalizeText(valueOf(textView))
         if (acceptText(before.text)) acceptedValue = before
+        // 조합 중인 자모는 확정 때 대체될 수 있으므로 조합 바깥 입력만 UIKit 적용 전에 검사한다.
+        if (textView.markedTextRange == null) {
+            val range =
+                shouldChangeTextInRange.useContents {
+                    TextRange(location.toInt(), (location + length).toInt())
+                }
+            val currentText = textView.text.orEmpty()
+            val start = range.min.coerceIn(0, currentText.length)
+            val end = range.max.coerceIn(start, currentText.length)
+            val proposedText = currentText.replaceRange(start, end, replacementText)
+            val proposedValue = normalizeText(TextFieldValue(proposedText, TextRange(start + replacementText.length)))
+            if (!acceptText(proposedValue.text)) return false
+        }
         return true
     }
 

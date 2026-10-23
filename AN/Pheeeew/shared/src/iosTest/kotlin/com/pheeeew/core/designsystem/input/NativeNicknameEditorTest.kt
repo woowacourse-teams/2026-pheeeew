@@ -53,37 +53,55 @@ class NativeNicknameEditorTest {
     }
 
     @Test
-    fun fullNicknameRestoresTextAndCaretAfterAnOverLimitMiddleInsert() {
+    fun fullNicknameRejectsAnOverLimitMiddleInsertBeforeChangingText() {
         val editor = nicknameDelegate()
+        val original = "가나다라마바사아자차"
         val view =
             UITextView().apply {
-                text = "가나다라마바사아자차"
+                text = original
                 selectedRange = NSMakeRange(3u, 0u)
             }
 
-        assertTrue(editor.textView(view, NSMakeRange(3u, 0u), "입력"))
-        view.text = "가나다입력라마바사아자차"
-        view.selectedRange = NSMakeRange(5u, 0u)
-        editor.textViewDidChange(view)
+        assertFalse(editor.textView(view, NSMakeRange(3u, 0u), "입력"))
 
-        assertEquals("가나다라마바사아자차", view.text)
+        assertEquals(original, view.text)
         assertEquals(TextRange(3), view.selection())
         assertTrue(editor.textView(view, NSMakeRange(3u, 2u), "수정"))
     }
 
     @Test
-    fun tenthKoreanCharacterCanComposeWhenUIKitReportsAnInsertionBeforeReplacingTheJamo() {
+    fun fullNicknameRejectsAnExtraCharacterWithoutReplacingTheLastCharacter() {
+        val published = mutableListOf<String>()
+        val editor = nicknameDelegate(onChange = published::add)
+        val original = "가나다라마바사아자차"
+        val caret = original.length
+        val view =
+            UITextView().apply {
+                text = original
+                selectedRange = NSMakeRange(caret.toULong(), 0u)
+            }
+
+        assertFalse(editor.textView(view, NSMakeRange(caret.toULong(), 0u), "입"))
+
+        assertEquals(original, view.text)
+        assertEquals(TextRange(caret), view.selection())
+        assertTrue(published.isEmpty())
+    }
+
+    @Test
+    fun activeKoreanCompositionCanReplaceItsJamoAtTheLengthBoundary() {
         val published = mutableListOf<String>()
         val editor = nicknameDelegate(onChange = published::add)
         val view =
             UITextView().apply {
-                text = "가나ㅅ라마바사아자차"
-                selectedRange = NSMakeRange(3u, 0u)
+                text = "가나라마바사아자차"
+                selectedRange = NSMakeRange(2u, 0u)
+                setMarkedText("ㅅ", NSMakeRange(1u, 0u))
             }
 
+        assertNotNull(view.markedTextRange)
         assertTrue(editor.textView(view, NSMakeRange(3u, 0u), "ㅜ"))
-        view.text = "가나수라마바사아자차"
-        view.selectedRange = NSMakeRange(3u, 0u)
+        view.setMarkedText("수", NSMakeRange(1u, 0u))
         editor.textViewDidChange(view)
 
         assertEquals("가나수라마바사아자차", view.text)
@@ -92,7 +110,7 @@ class NativeNicknameEditorTest {
     }
 
     @Test
-    fun overLimitPasteRestoresTheSelectedTextAndExistingSuffix() {
+    fun overLimitPasteKeepsTheSelectedTextAndExistingSuffixUntouched() {
         val editor = nicknameDelegate()
         val view =
             UITextView().apply {
@@ -100,10 +118,7 @@ class NativeNicknameEditorTest {
                 selectedRange = NSMakeRange(2u, 3u)
             }
 
-        assertTrue(editor.textView(view, NSMakeRange(2u, 3u), "긴붙여넣기"))
-        view.text = "12긴붙여넣기67890"
-        view.selectedRange = NSMakeRange(7u, 0u)
-        editor.textViewDidChange(view)
+        assertFalse(editor.textView(view, NSMakeRange(2u, 3u), "긴붙여넣기"))
 
         assertEquals("1234567890", view.text)
         assertEquals(TextRange(2, 5), view.selection())
