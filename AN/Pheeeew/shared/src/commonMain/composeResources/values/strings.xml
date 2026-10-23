@@ -30,9 +30,7 @@
     <!-- 바텀바 -->
     <string name="bottom_navigation_map">지도</string>
     <string name="bottom_navigation_press">프레스</string>
-    <string name="bottom_navigation_ranking">랭킹</string>
-    <string name="bottom_navigation_stamp">스탬프</string>
-    <string name="bottom_navigation_ranking_press">프레스</string>
+    <string name="bottom_navigation_collection">컬렉션</string>
 
     <!-- 공통 내비게이션 및 안내 -->
     <string name="snackbar_close">닫기</string>

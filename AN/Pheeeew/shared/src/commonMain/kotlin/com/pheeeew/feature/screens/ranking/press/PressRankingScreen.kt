@@ -38,7 +38,6 @@ import com.pheeeew.core.designsystem.component.LoadErrorContent
 import com.pheeeew.core.designsystem.component.RefreshErrorBanner
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
-import com.pheeeew.feature.component.AppBottomNavigationBarOverlaySpace
 import com.pheeeew.feature.monitoring.product.ProductScreen
 import com.pheeeew.feature.screens.ranking.components.RankingTopBarHeight
 import com.pheeeew.feature.screens.ranking.components.RankingTopBarOverlay
@@ -55,6 +54,7 @@ import pheeeew.shared.generated.resources.ranking_press_title
 
 @Composable
 fun PressRankingRoute(
+    onBack: () -> Unit,
     modifier: Modifier = Modifier,
     onRefreshActionChanged: ((() -> Unit)?) -> Unit = {},
 ) {
@@ -67,6 +67,7 @@ fun PressRankingRoute(
     ProductScreen(viewModel.telemetry, true, "press_ranking_viewed")
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     PressRankingScreen(
+        onBack = onBack,
         uiState = uiState,
         onEmotionSelected = viewModel::onEmotionSelected,
         onPreviousWeek = viewModel::onPreviousWeek,
@@ -79,6 +80,7 @@ fun PressRankingRoute(
 
 @Composable
 internal fun PressRankingScreen(
+    onBack: () -> Unit,
     uiState: PressRankingUiState,
     onEmotionSelected: (PressEmotion) -> Unit,
     onPreviousWeek: () -> Unit,
@@ -194,10 +196,11 @@ internal fun PressRankingScreen(
                         }
                     }
                     Spacer(Modifier.height(28.dp))
-                    Spacer(Modifier.navigationBarsPadding().height(AppBottomNavigationBarOverlaySpace))
+                    Spacer(Modifier.navigationBarsPadding())
                 }
                 RankingTopBarOverlay(
                     title = stringResource(Res.string.ranking_press_title),
+                    onBack = onBack,
                     behavior = topBarBehavior,
                     modifier = Modifier.align(Alignment.TopCenter),
                 )
@@ -211,6 +214,7 @@ internal fun PressRankingScreen(
 private fun PressRankingScreenPreview() {
     AppTheme {
         PressRankingScreen(
+            onBack = {},
             uiState =
                 PressRankingUiState(
                     weekLabel = samplePressWeeks.last(),
