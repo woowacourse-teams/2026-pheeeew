@@ -319,7 +319,7 @@ jobs:
 
           target_answers_api() {
             $NGINX exec -T nginx \
-                 wget -q -O - "http://$TARGET:8080$PROBE_PATH" </dev/null >/tmp/target.body 2>/dev/null \
+                 timeout 5 wget -q -T 5 -O - "http://$TARGET:8080$PROBE_PATH" </dev/null >/tmp/target.body 2>/dev/null \
               || return 1
             available_is_boolean /tmp/target.body
           }

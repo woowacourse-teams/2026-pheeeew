@@ -41,6 +41,8 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
         if parsed.path.startswith('/api/') and os.path.exists(badapi):
+            if open(badapi).read() == 'stall':
+                time.sleep(90)
             self.send_response(503)
             self.end_headers()
             return
@@ -255,8 +257,8 @@ class Fixture:
                 raise Failure(f'{color} 의 느린 요청이 끝나지 않았다')
             time.sleep(0.3)
 
-    def break_api(self, color):
-        (self.appstate / f'badapi-{color}').write_text('1')
+    def break_api(self, color, mode='503'):
+        (self.appstate / f'badapi-{color}').write_text(mode)
 
     def clear_appstate(self):
         for stale in self.appstate.glob('*'):
@@ -558,17 +560,29 @@ def scenario_rollback_waits_for_inflight(fx):
            '복구 확인보다 새 서버 삭제가 먼저다')
 
 
-def scenario_target_api_fails(fx):
+def assert_target_api_rejected(fx, mode):
     fx.point_at('set $upstream_app app-blue;\n')
     fx.start_app('app-blue')
-    fx.break_api('app-green')
+    fx.break_api('app-green', mode)
+    started = time.monotonic()
     result = fx.deploy()
+    elapsed = time.monotonic() - started
     expect(result.returncode == 1, f'종료 코드 {result.returncode}\n{result.stdout}')
     expect(fx.pointer_color() == 'app-blue', f'전환 파일 {fx.pointer_color()}')
     expect(fx.running('app-blue'), 'app-blue 가 내려갔다')
     expect(not fx.exists('app-green'), 'app-green 이 남아 있다')
     expect(not fx.backup_exists(), '전환 전에 멈췄는데 백업이 생겼다')
     expect('최소 API 를 응답하지 않습니다' in result.stdout, '최소 API 실패 안내가 없다')
+    return elapsed
+
+
+def scenario_target_api_fails(fx):
+    assert_target_api_rejected(fx, '503')
+
+
+def scenario_target_api_times_out(fx):
+    elapsed = assert_target_api_rejected(fx, 'stall')
+    expect(elapsed < 60, f'응답 없는 API 검사가 제한 시간을 넘겼다: {elapsed:.1f}초')
 
 
 def scenario_compose_services_match(fx):
@@ -585,6 +599,7 @@ SCENARIOS = (
     ('정상 전환', scenario_normal),
     ('새 버전 기동 실패', scenario_start_fail),
     ('새 버전이 최소 API 를 응답하지 않음', scenario_target_api_fails),
+    ('새 버전의 최소 API 응답이 멈춤', scenario_target_api_times_out),
     ('nginx -t 실패', scenario_conf_test_fail),
     ('reload 명령 실패', scenario_reload_fail),
     ('전환 미반영', scenario_not_reflected),
