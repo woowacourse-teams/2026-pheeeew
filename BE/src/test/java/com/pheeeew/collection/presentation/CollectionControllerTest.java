@@ -22,6 +22,7 @@ import com.pheeeew.collection.application.dto.CollectionCardDetailResult;
 import com.pheeeew.collection.application.dto.CollectionCardResult;
 import com.pheeeew.collection.application.dto.CollectionHistoryResult;
 import com.pheeeew.collection.application.dto.CollectionTodayResult;
+import com.pheeeew.collection.domain.CollectionCardCounts;
 import com.pheeeew.collection.exception.CollectionErrorCode;
 import com.pheeeew.collection.exception.CollectionException;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
@@ -33,6 +34,7 @@ import com.pheeeew.emotion.domain.EmotionState;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -87,7 +89,7 @@ class CollectionControllerTest {
     void 목록은_인증된_기기로_조회하고_빈_커서_응답을_반환한다() {
         // given
         when(service.findHistory(DEVICE_PUBLIC_ID, null, null, null))
-                .thenReturn(CollectionHistoryResult.of(List.of(), false, null));
+                .thenReturn(CollectionHistoryResult.of(List.of(), false, null, CollectionCardCounts.of(Map.of()), null));
 
         // when / then
         client.get().uri("/api/v1/collection-cards")
@@ -103,7 +105,7 @@ class CollectionControllerTest {
     void 다음_페이지의_생략된_감정_필터는_커서와_함께_서비스에_전달한다() {
         // given
         when(service.findHistory(DEVICE_PUBLIC_ID, null, 50, "previous"))
-                .thenReturn(CollectionHistoryResult.of(List.of(), false, null));
+                .thenReturn(CollectionHistoryResult.of(List.of(), false, null, CollectionCardCounts.of(Map.of()), null));
 
         // when / then
         client.get().uri("/api/v1/collection-cards?limit=50&cursor=previous")
@@ -157,7 +159,7 @@ class CollectionControllerTest {
         var item = CollectionCardDetailResult.of(cardId, LocalDate.of(2026, 10, 21),
                 EmotionState.ANGRY, 3, 125, 기본_카드_이미지());
         when(service.findHistory(DEVICE_PUBLIC_ID, EmotionState.ANGRY, 1, "previous"))
-                .thenReturn(CollectionHistoryResult.of(List.of(item), true, "next"));
+                .thenReturn(CollectionHistoryResult.of(List.of(item), true, "next", CollectionCardCounts.of(Map.of()), null));
 
         // when / then
         client.get().uri("/api/v1/collection-cards?emotion=ANGRY&limit=1&cursor=previous&devicePublicId=" + UUID.randomUUID())
