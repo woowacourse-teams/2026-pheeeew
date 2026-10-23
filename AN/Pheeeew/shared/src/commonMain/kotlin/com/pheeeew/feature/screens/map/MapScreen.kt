@@ -293,7 +293,6 @@ fun MapScreen(
     var showDiscardDialog by remember { mutableStateOf(false) }
     val leaveInput = {
         recordFlowCoordinator.dismiss()
-        viewModel.onEmotionSelectorToggle()
     }
     val requestInputBack = {
         val audio = voiceRecorder.state.value
