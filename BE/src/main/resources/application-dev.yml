@@ -33,6 +33,8 @@ management:
         "[spring.data.repository.invocations]": 50ms,100ms,200ms,500ms,1s,3s
 
 pheeeew:
+  collection:
+    card-version: ${COLLECTION_CARD_VERSION}
   emotion-map:
     max-page-size: 1000
   app-attest:

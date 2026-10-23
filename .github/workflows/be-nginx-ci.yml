@@ -6,6 +6,7 @@ on:
     paths:
       - 'BE/docker/nginx/**'
       - 'BE/docker/compose.nginx.dev.yml'
+      - 'BE/docker/compose.dev.yml'
       - 'BE/docker/test-deploy-switch.py'
       - '.github/workflows/be-dev-deploy.yml'
       - '.github/workflows/be-nginx-ci.yml'

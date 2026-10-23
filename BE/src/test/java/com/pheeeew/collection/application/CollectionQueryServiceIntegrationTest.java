@@ -1,15 +1,21 @@
 package com.pheeeew.collection.application;
 
-import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
+import static com.pheeeew.collection.fixture.CollectionCardFixture.기본_카드_빌더;
 import static com.pheeeew.collection.fixture.DeviceDailyStampFixture.일별_스탬프를_저장한다;
+import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static com.pheeeew.emotion.fixture.DeviceDailyPressFixture.개인_프레스를_저장한다;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
+import com.pheeeew.collection.domain.repository.CollectionAssetRepository;
+import com.pheeeew.collection.domain.repository.CollectionCardRepository;
 import com.pheeeew.collection.domain.repository.CollectionProgressRepository;
+import com.pheeeew.collection.domain.repository.CollectionDrawStateRepository;
+import com.pheeeew.collection.domain.repository.DeviceDailyStampRepository;
 import com.pheeeew.collection.exception.CollectionErrorCode;
 import com.pheeeew.collection.exception.CollectionException;
+import com.pheeeew.collection.infra.CollectionAssetConfiguration;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
@@ -20,6 +26,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -27,10 +36,19 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @PostgisDataJpaTest
-@Import({CollectionQueryService.class, CollectionProgressRepository.class})
+@Import({CollectionQueryService.class, CollectionProgressRepository.class,
+        CollectionAssetConfiguration.class, CollectionAssetRepository.class, CollectionClaimService.class})
+@TestPropertySource(properties = {"pheeeew.s3.bucket=collection-test-assets", "pheeeew.s3.region=ap-northeast-2",
+        "pheeeew.s3.key-prefix=pheeeew/development/",
+        "pheeeew.collection.card-version=v1"})
 class CollectionQueryServiceIntegrationTest {
 
     @Autowired
@@ -40,7 +58,22 @@ class CollectionQueryServiceIntegrationTest {
     private DeviceRepository devices;
 
     @Autowired
+    private CollectionClaimService claims;
+
+    @Autowired
+    private CollectionCardRepository cards;
+
+    @Autowired
     private JdbcClient jdbc;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
+    @Autowired
+    private CollectionDrawStateRepository drawStates;
+
+    @Autowired
+    private DeviceDailyStampRepository stamps;
 
     @MockitoBean
     private Clock clock;
@@ -63,6 +96,7 @@ class CollectionQueryServiceIntegrationTest {
         assertThat(result.date()).isEqualTo(LocalDate.of(2026, 10, 22));
         assertThat(result.items()).extracting(item -> item.state()).containsExactly(EmotionState.values());
         assertThat(result.items()).allSatisfy(item -> {
+            assertThat(item.card()).isNull();
             assertThat(item.stamps().count()).isZero();
             assertThat(item.stamps().target()).isEqualTo(1);
             assertThat(item.stamps().remaining()).isEqualTo(1);
@@ -187,5 +221,176 @@ class CollectionQueryServiceIntegrationTest {
         assertThatThrownBy(() -> service.findToday(device.getPublicId()))
                 .isInstanceOfSatisfying(CollectionException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(CollectionErrorCode.COLLECTION_DATE_CHANGED));
+    }
+    @Test
+    void 목표를_달성해도_조회는_카드나_추첨_상태를_생성하지_않는다() {
+        // given
+        var device = devices.saveAndFlush(기본_기기_빌더().build());
+        LocalDate today = LocalDate.of(2026, 10, 22);
+        일별_스탬프를_저장한다(jdbc, device.getId(), today, EmotionState.ANGRY, 1);
+        개인_프레스를_저장한다(jdbc, device.getId(), today, EmotionState.ANGRY, 100);
+
+        // when
+        var result = service.findToday(device.getPublicId());
+
+        // then
+        assertThat(result.items()).allSatisfy(item -> assertThat(item.card()).isNull());
+        assertThat(jdbc.sql("SELECT COUNT(*) FROM collection_cards WHERE device_id = :id")
+                .param("id", device.getId()).query(Long.class).single()).isZero();
+        assertThat(jdbc.sql("SELECT COUNT(*) FROM collection_draw_states WHERE device_id = :id")
+                .param("id", device.getId()).query(Long.class).single()).isZero();
+    }
+
+    @Test
+    void 수령_후_횟수만_증가하고_조회한_카드와_그림은_유지된다() {
+        // given
+        var device = devices.saveAndFlush(기본_기기_빌더().build());
+        LocalDate today = LocalDate.of(2026, 10, 22);
+        일별_스탬프를_저장한다(jdbc, device.getId(), today, EmotionState.ANGRY, 1);
+        개인_프레스를_저장한다(jdbc, device.getId(), today, EmotionState.ANGRY, 100);
+        var claimed = claims.claim(device.getPublicId(), today, EmotionState.ANGRY);
+        var first = service.findToday(device.getPublicId());
+        stamps.increase(today, EmotionState.ANGRY, device.getId(), clock.instant());
+        stamps.increase(today, EmotionState.ANGRY, device.getId(), clock.instant());
+        개인_프레스를_저장한다(jdbc, device.getId(), today, EmotionState.ANGRY, 50);
+
+        // when
+        var result = service.findToday(device.getPublicId());
+
+        // then
+        assertThat(first.items()).filteredOn(item -> item.state() == EmotionState.ANGRY).singleElement()
+                .satisfies(item -> assertThat(item.card()).isEqualTo(claimed));
+        assertThat(result.items()).filteredOn(item -> item.state() == EmotionState.ANGRY).singleElement()
+                .satisfies(item -> {
+                    assertThat(item.stamps().count()).isEqualTo(3);
+                    assertThat(item.presses().count()).isEqualTo(150);
+                    assertThat(item.card()).isEqualTo(claimed);
+                });
+        assertThat(result.items()).filteredOn(item -> item.state() != EmotionState.ANGRY)
+                .allSatisfy(item -> assertThat(item.card()).isNull());
+    }
+
+    @Test
+    void 내_오늘_카드와_집계를_반환하고_다른_기기와_날짜의_카드는_제외한다() {
+        // given
+        var owner = devices.saveAndFlush(기본_기기_빌더().build());
+        var other = devices.saveAndFlush(기본_기기_빌더().requestId(UUID.randomUUID()).build());
+        LocalDate today = LocalDate.of(2026, 10, 22);
+        var own = cards.saveAndFlush(기본_카드_빌더().deviceId(owner.getId()).cardDate(today).combinationIndex(37).build());
+        cards.saveAndFlush(기본_카드_빌더().deviceId(other.getId()).cardDate(today).build());
+        cards.saveAndFlush(기본_카드_빌더().deviceId(owner.getId()).cardDate(today.minusDays(1))
+                .state(EmotionState.IRRITATED).build());
+
+        일별_스탬프를_저장한다(jdbc, owner.getId(), today, EmotionState.ANGRY, 1);
+        개인_프레스를_저장한다(jdbc, owner.getId(), today, EmotionState.ANGRY, 100);
+
+        // when
+        var result = service.findToday(owner.getPublicId());
+
+        // then
+        assertThat(result.items()).filteredOn(item -> item.state() == EmotionState.ANGRY).singleElement()
+                .satisfies(item -> {
+                    assertThat(item.card().cardId()).isEqualTo(own.getPublicId());
+                    assertThat(item.card().images().characterUrl())
+                            .isEqualTo("https://collection-test-assets.s3.ap-northeast-2.amazonaws.com/pheeeew/development/collection-cards/v1/characters/angry/03.png");
+                    assertThat(item.card().images().roundStampUrl())
+                            .isEqualTo("https://collection-test-assets.s3.ap-northeast-2.amazonaws.com/pheeeew/development/collection-cards/v1/stamps-round/angry/06.png");
+                    assertThat(item.card().images().straightStampUrl())
+                            .isEqualTo("https://collection-test-assets.s3.ap-northeast-2.amazonaws.com/pheeeew/development/collection-cards/v1/stamps-straight/angry/06.png");
+                    assertThat(item.stamps().count()).isEqualTo(1);
+                    assertThat(item.presses().count()).isEqualTo(100);
+                });
+        assertThat(result.items()).filteredOn(item -> item.state() != EmotionState.ANGRY)
+                .allSatisfy(item -> assertThat(item.card()).isNull());
+    }
+
+    @Test
+    void 자정을_넘겨_재조회하면_전날_카드도_제외한다() {
+        // given
+        var device = devices.saveAndFlush(기본_기기_빌더().build());
+        cards.saveAndFlush(기본_카드_빌더().deviceId(device.getId()).build());
+        var cardDate = LocalDate.of(2026, 10, 22);
+        일별_스탬프를_저장한다(jdbc, device.getId(), cardDate, EmotionState.ANGRY, 1);
+        개인_프레스를_저장한다(jdbc, device.getId(), cardDate, EmotionState.ANGRY, 100);
+        when(clock.instant()).thenReturn(Instant.parse("2026-10-22T14:59:59.999Z"),
+                Instant.parse("2026-10-22T15:00:00Z"));
+
+        // when
+        var result = service.findToday(device.getPublicId());
+
+        // then
+        assertThat(result.date()).isEqualTo(LocalDate.of(2026, 10, 23));
+        assertThat(result.items()).allSatisfy(item -> assertThat(item.card()).isNull());
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void 수령_잠금이_잡혀_있어도_오늘_조회는_커밋된_카드를_즉시_읽는다() throws Exception {
+        // given
+        var device = devices.saveAndFlush(기본_기기_빌더().build());
+        var locked = new CountDownLatch(1);
+        var release = new CountDownLatch(1);
+        try {
+            var card = cards.saveAndFlush(기본_카드_빌더().deviceId(device.getId()).build());
+            일별_스탬프를_저장한다(jdbc, device.getId(), card.getCardDate(), EmotionState.ANGRY, 1);
+            개인_프레스를_저장한다(jdbc, device.getId(), card.getCardDate(), EmotionState.ANGRY, 100);
+            drawStates.saveIfAbsent(device.getId(), EmotionState.ANGRY);
+            try (var executor = Executors.newFixedThreadPool(2)) {
+                var holder = executor.submit(() -> new TransactionTemplate(transactionManager).execute(status -> {
+                    jdbc.sql("SELECT id FROM collection_draw_states WHERE device_id = :id FOR UPDATE")
+                            .param("id", device.getId()).query(Long.class).single();
+                    locked.countDown();
+                    try {
+                        if (!release.await(10, TimeUnit.SECONDS)) {
+                            throw new IllegalStateException("조회 완료를 기다리다 시간이 초과됐습니다.");
+                        }
+                    } catch (InterruptedException exception) {
+                        Thread.currentThread().interrupt();
+                        throw new IllegalStateException(exception);
+                    }
+                    return null;
+                }));
+                try {
+                    assertThat(locked.await(5, TimeUnit.SECONDS)).isTrue();
+
+                    // when
+                    var result = executor.submit(() -> service.findToday(device.getPublicId())).get(5, TimeUnit.SECONDS);
+
+                    // then
+                    assertThat(result.items()).filteredOn(item -> item.state() == EmotionState.ANGRY)
+                            .singleElement().satisfies(item -> assertThat(item.card().cardId()).isEqualTo(card.getPublicId()));
+                } finally {
+                    release.countDown();
+                }
+                holder.get(5, TimeUnit.SECONDS);
+            }
+        } finally {
+            release.countDown();
+            jdbc.sql("DELETE FROM collection_cards WHERE device_id = :id").param("id", device.getId()).update();
+            jdbc.sql("DELETE FROM collection_draw_states WHERE device_id = :id").param("id", device.getId()).update();
+            jdbc.sql("DELETE FROM device_daily_stamps WHERE device_id = :id").param("id", device.getId()).update();
+            jdbc.sql("DELETE FROM device_daily_presses WHERE device_id = :id").param("id", device.getId()).update();
+            devices.deleteById(device.getId());
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource({"false,false", "true,false", "false,true"})
+    void 오늘_조회도_발급된_카드의_집계_누락을_오류로_알린다(boolean hasStamps, boolean hasPresses) {
+        // given
+        var device = devices.saveAndFlush(기본_기기_빌더().build());
+        var card = cards.saveAndFlush(기본_카드_빌더().deviceId(device.getId()).build());
+        if (hasStamps) {
+            일별_스탬프를_저장한다(jdbc, device.getId(), card.getCardDate(), EmotionState.ANGRY, 1);
+        }
+        if (hasPresses) {
+            개인_프레스를_저장한다(jdbc, device.getId(), card.getCardDate(), EmotionState.ANGRY, 100);
+        }
+
+        // when / then
+        assertThatThrownBy(() -> service.findToday(device.getPublicId()))
+                .isInstanceOfSatisfying(CollectionException.class,
+                        exception -> assertThat(exception.getErrorCode())
+                                .isEqualTo(CollectionErrorCode.COLLECTION_ACTIVITY_COUNTS_MISSING));
     }
 }

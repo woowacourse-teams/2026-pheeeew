@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 import os
+import signal
 import shutil
 import subprocess
 import sys
 import tempfile
 import time
 import uuid
+from contextlib import contextmanager
 from pathlib import Path
 
 import yaml
@@ -14,8 +16,9 @@ REPO = Path(__file__).resolve().parents[2]
 WORKFLOW = REPO / '.github/workflows/be-dev-deploy.yml'
 HTTP_PORT = 18080
 HTTPS_PORT = 18443
-COLORS = ('app', 'app-blue', 'app-green')
-LEGACY = 'pheeeew-dev-app'
+PROBE_PATH = '/api/v3/devices/nicknames/availability?nickname=probe'
+SLOW_PATH = '/api/v3/devices/slow'
+COLORS = ('app-blue', 'app-green')
 
 
 def remote_script():
@@ -25,26 +28,45 @@ def remote_script():
 
 
 APP = '''
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import urlparse, parse_qs
 import json
+import os
 import sys
 import time
 
 name = sys.argv[1]
+marker = '/appstate/inflight-' + name
+badapi = '/appstate/badapi-' + name
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        if 'slow' in self.path:
-            time.sleep(60)
+        parsed = urlparse(self.path)
+        if parsed.path.startswith('/api/') and os.path.exists(badapi):
+            if open(badapi).read() == 'stall':
+                time.sleep(90)
+            self.send_response(503)
+            self.end_headers()
+            return
+        slow = parsed.path.endswith('/slow')
+        if slow:
+            seconds = int(parse_qs(parsed.query).get('seconds', ['20'])[0])
+            open(marker, 'w').close()
+            time.sleep(seconds)
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')
         self.end_headers()
         self.wfile.write(json.dumps({'target': name, 'available': True}).encode())
+        if slow:
+            try:
+                os.remove(marker)
+            except OSError:
+                pass
 
     def log_message(self, *args):
         pass
 
-HTTPServer(('0.0.0.0', 8080), Handler).serve_forever()
+ThreadingHTTPServer(('0.0.0.0', 8080), Handler).serve_forever()
 '''
 
 DOCKER_SHIM = '''#!/bin/sh
@@ -102,12 +124,12 @@ class Fixture:
         self.state = self.dir / 'state'
         self.shim = self.dir / 'shim'
         self.confd = self.dir / 'conf.d'
+        self.appstate = self.dir / 'appstate'
         self.upstream = self.dir / 'nginx' / 'upstream'
-        for path in (self.state, self.shim, self.confd):
+        for path in (self.state, self.shim, self.confd, self.appstate):
             path.mkdir(parents=True)
         self.upstream.mkdir(parents=True)
         self.pointer = self.upstream / 'active.conf'
-        self.made_legacy = False
         self._certs()
         self._shims()
         self._compose()
@@ -131,6 +153,7 @@ class Fixture:
     def _compose(self):
         base = {
             'image': 'python:3.13-alpine',
+            'volumes': [f'{self.appstate}:/appstate'],
             'healthcheck': {
                 'test': ['CMD', 'wget', '-q', '-O', '-', 'http://127.0.0.1:8080/actuator/health'],
                 'interval': '2s', 'timeout': '2s', 'retries': 10, 'start_period': '2s',
@@ -191,12 +214,57 @@ class Fixture:
     def fail_drain(self):
         (self.state / 'fail-drain').write_text('1')
 
-    def slow_request(self):
+    def slow_request(self, seconds=20):
         return subprocess.Popen(
-            ['curl', '-sk', '-o', '/dev/null', '-w', '%{http_code}', '-m', '120',
+            ['curl', '-sk', '-o', '/dev/null', '-w', '%{http_code}', '-m', '150',
              '--resolve', f'api-dev.pheeeew.com:{HTTPS_PORT}:127.0.0.1',
-             f'https://api-dev.pheeeew.com:{HTTPS_PORT}/api/v3/devices/slow'],
-            text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+             f'https://api-dev.pheeeew.com:{HTTPS_PORT}{SLOW_PATH}?seconds={seconds}'],
+            text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
+
+    def served_upstream(self):
+        result = sh('curl', '-sk', '-o', '/dev/null', '-D', '-', '-w', '%{http_code}', '-m', '5',
+                    '--resolve', f'api-dev.pheeeew.com:{HTTPS_PORT}:127.0.0.1',
+                    f'https://api-dev.pheeeew.com:{HTTPS_PORT}{PROBE_PATH}')
+        upstream = ''
+        for line in result.stdout.splitlines():
+            if line.lower().startswith('x-upstream:'):
+                upstream = line.split(':', 1)[1].strip()
+        return result.stdout.strip().splitlines()[-1] if result.stdout else '', upstream
+
+    def wait_edge_serves(self, color, timeout=60):
+        deadline = time.monotonic() + timeout
+        seen = ('', '')
+        while time.monotonic() < deadline:
+            seen = self.served_upstream()
+            if seen == ('200', color):
+                return
+            time.sleep(0.2)
+        raise Failure(f'엣지가 {color} 를 200 으로 서비스하지 않았다. 마지막 확인 {seen}')
+
+    def wait_inflight(self, color, timeout=30):
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if (self.appstate / f'inflight-{color}').exists():
+                return
+            time.sleep(0.2)
+        raise Failure(f'{color} 로 간 느린 요청이 시작되지 않았다')
+
+    def assert_alive_until_inflight_done(self, color, timeout=120):
+        deadline = time.monotonic() + timeout
+        marker = self.appstate / f'inflight-{color}'
+        while marker.exists():
+            if not self.exists(color) and marker.exists():
+                raise Failure(f'{color} 가 진행 중 요청이 끝나기 전에 삭제됐다')
+            if time.monotonic() > deadline:
+                raise Failure(f'{color} 의 느린 요청이 끝나지 않았다')
+            time.sleep(0.3)
+
+    def break_api(self, color, mode='503'):
+        (self.appstate / f'badapi-{color}').write_text(mode)
+
+    def clear_appstate(self):
+        for stale in self.appstate.glob('*'):
+            stale.unlink(missing_ok=True)
 
     def break_nginx_conf(self):
         (self.confd / 'zz-bad.conf').write_text('this is not nginx syntax\n')
@@ -230,24 +298,12 @@ class Fixture:
             self.diagnose()
             raise Failure(f'{color} 가 healthy 가 되지 않았다')
 
-    def start_legacy(self):
-        sh('docker', 'run', '-d', '--name', LEGACY,
-           '--network', f'{self.project}-net', '--network-alias', 'app',
-           'python:3.13-alpine', 'python', '-c', APP, 'app')
-        self.made_legacy = True
-
-    def drop_legacy(self):
-        if self.made_legacy:
-            sh('docker', 'rm', '-f', LEGACY)
-            self.made_legacy = False
-
     def running(self, container):
-        name = container if container.startswith('pheeeew') else f'{self.project}-{container}'
-        return sh('docker', 'inspect', '-f', '{{.State.Running}}', name).stdout.strip() == 'true'
+        return sh('docker', 'inspect', '-f', '{{.State.Running}}',
+                  f'{self.project}-{container}').stdout.strip() == 'true'
 
     def exists(self, container):
-        name = container if container.startswith('pheeeew') else f'{self.project}-{container}'
-        return sh('docker', 'inspect', name).returncode == 0
+        return sh('docker', 'inspect', f'{self.project}-{container}').returncode == 0
 
     def pointer_color(self):
         for line in self.pointer.read_text().splitlines():
@@ -258,7 +314,7 @@ class Fixture:
     def backup_exists(self):
         return (self.upstream / 'active.conf.bak').exists()
 
-    def deploy(self):
+    def deploy_async(self):
         script = remote_script().replace('cd /opt/pheeeew', f'cd {self.dir}')
         env = dict(os.environ)
         env['PATH'] = f'{self.shim}:{env["PATH"]}'
@@ -266,8 +322,38 @@ class Fixture:
         env['SHIM_DIR'] = str(self.state)
         env['SHIM_POINTER'] = str(self.pointer)
         env['APP_IMAGE'] = 'python:3.13-alpine'
-        return subprocess.run(['bash', '-s'], input=script, text=True,
-                              capture_output=True, env=env, cwd=self.dir)
+        proc = subprocess.Popen(['bash', '-s'], stdin=subprocess.PIPE,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                text=True, env=env, cwd=self.dir, start_new_session=True)
+        proc.stdin.write(script)
+        proc.stdin.close()
+        proc.stdin = None
+        return proc
+
+    @contextmanager
+    def capture_processes_on_failure(self):
+        processes = {}
+        try:
+            yield processes
+        except Exception:
+            for name, proc in processes.items():
+                try:
+                    out, err = proc.communicate(timeout=300 if name == 'deploy' else 160)
+                except subprocess.TimeoutExpired:
+                    print(f'    {name}: 결과 수집 시간 초과')
+                    os.killpg(proc.pid, signal.SIGKILL)
+                    out, err = proc.communicate()
+                print(f'    {name}: exit={proc.returncode}')
+                print(f'    {name} stdout:\n{out or "(empty)"}')
+                print(f'    {name} stderr:\n{err or "(empty)"}')
+            raise
+
+    def wait_deploy(self, proc, timeout=300):
+        out, err = proc.communicate(timeout=timeout)
+        return subprocess.CompletedProcess(proc.args, proc.returncode, out, err)
+
+    def deploy(self):
+        return self.wait_deploy(self.deploy_async())
 
     def diagnose(self):
         names = sh('docker', 'ps', '-a', '--filter', f'name={self.project}',
@@ -289,7 +375,6 @@ class Fixture:
         self.compose_nginx('down', '-v', '--remove-orphans')
         self.compose_apps('--profile', 'blue', '--profile', 'green', 'down', '-v',
                           '--remove-orphans')
-        self.drop_legacy()
         sh('docker', 'network', 'rm', f'{self.project}-net')
 
 
@@ -400,16 +485,13 @@ def scenario_restore_fail(fx):
     expect(fx.running('app-blue'), 'app-blue 를 지웠다')
 
 
-def scenario_legacy_app(fx):
+def scenario_retired_pointer(fx):
     fx.point_at('set $upstream_app app;\n')
-    fx.start_legacy()
     result = fx.deploy()
-    expect(result.returncode == 0, f'종료 코드 {result.returncode}\n{result.stdout}{result.stderr}')
-    expect(fx.pointer_color() == 'app-blue', f'전환 파일 {fx.pointer_color()}')
-    expect(fx.running('app-blue'), 'app-blue 가 떠 있지 않다')
-    expect(not fx.exists(LEGACY), '이전 단일 컨테이너가 남아 있다')
-    expect(f'{LEGACY} 을 정리했습니다' in result.stdout, '이관 안내가 없다')
-    fx.made_legacy = False
+    expect(result.returncode == 1, f'종료 코드 {result.returncode}')
+    expect('전환 파일의 값이 올바르지 않습니다' in result.stdout, '이관 전 값을 거부하지 않는다')
+    expect(not fx.exists('app-blue') and not fx.exists('app-green'),
+           '이관 전 값인데 앱을 띄웠다')
 
 
 def scenario_invalid_pointer(fx):
@@ -433,12 +515,13 @@ def scenario_drain_check_fails(fx):
     fx.start_app('app-blue')
     fx.fail_drain()
     result = fx.deploy()
-    expect(result.returncode == 1, f'종료 코드 {result.returncode}')
+    expect(result.returncode == 0, f'종료 코드 {result.returncode}\n{result.stdout}')
     expect(fx.pointer_color() == 'app-green', f'전환 파일 {fx.pointer_color()}')
-    expect(fx.running('app-blue'), '워커 검사가 실패했는데 app-blue 를 지웠다')
     expect(fx.running('app-green'), 'app-green 이 내려갔다')
-    expect('app-blue 를 삭제하지 않습니다' in result.stdout, '보존 안내가 없다')
+    expect(not fx.exists('app-blue'), '워커 검사가 실패했는데 app-blue 를 남겼다')
+    expect('graceful 하게 내립니다' in result.stdout, 'graceful 종료 안내가 없다')
     expect('한 번도 확인하지 못했습니다' in result.stdout, '미확인 상태를 알리지 않는다')
+    expect('배포 성공' in result.stdout, '전환이 성공했는데 배포를 실패로 끝냈다')
 
 
 def scenario_broken_json_body(fx):
@@ -452,29 +535,95 @@ def scenario_broken_json_body(fx):
     expect(not fx.exists('app-green'), 'app-green 이 남아 있다')
 
 
-def scenario_rollback_drains_long_request(fx):
+def scenario_normal_waits_for_inflight(fx):
+    fx.point_at('set $upstream_app app-blue;\n')
+    fx.start_app('app-blue')
+    with fx.capture_processes_on_failure() as processes:
+        inflight = processes['http'] = fx.slow_request(seconds=35)
+        fx.wait_inflight('app-blue')
+        deploy = processes['deploy'] = fx.deploy_async()
+        fx.wait_edge_serves('app-green')
+        expect((fx.appstate / 'inflight-app-blue').exists(),
+               'green 으로 전환된 시점에 blue 요청이 이미 끝나 겹침을 확인하지 못했다')
+        fx.assert_alive_until_inflight_done('app-blue')
+        result = fx.wait_deploy(deploy)
+        code = inflight.communicate(timeout=120)[0].strip()
+        expect(inflight.returncode == 0 and code == '200',
+               f'진행 중이던 요청: curl exit={inflight.returncode}, HTTP={code}')
+        expect(result.returncode == 0, f'종료 코드 {result.returncode}\n{result.stdout}')
+        expect(fx.pointer_color() == 'app-green', f'전환 파일 {fx.pointer_color()}')
+        expect(fx.running('app-green'), 'app-green 이 떠 있지 않다')
+        expect(not fx.exists('app-blue'), '요청이 끝났는데 app-blue 가 남아 있다')
+        expect(result.stdout.index('이전 요청이 모두 끝났습니다')
+               < result.stdout.index('배포 성공'), '드레인 확인보다 배포 성공이 먼저다')
+
+
+def scenario_rollback_waits_for_inflight(fx):
     fx.point_at('set $upstream_app app-blue;\n')
     fx.start_app('app-blue')
     fx.edge('app-green', code='503')
-    inflight = fx.slow_request()
-    time.sleep(2)
-    began = time.monotonic()
+    with fx.capture_processes_on_failure() as processes:
+        deploy = processes['deploy'] = fx.deploy_async()
+        fx.wait_edge_serves('app-green')
+        inflight = processes['http'] = fx.slow_request(seconds=40)
+        fx.wait_inflight('app-green')
+        fx.wait_edge_serves('app-blue')
+        expect((fx.appstate / 'inflight-app-green').exists(),
+               'blue 로 복구된 시점에 green 요청이 이미 끝나 겹침을 확인하지 못했다')
+        fx.assert_alive_until_inflight_done('app-green')
+        result = fx.wait_deploy(deploy)
+        code = inflight.communicate(timeout=150)[0].strip()
+        expect(inflight.returncode == 0 and code == '200',
+               f'green 으로 가던 요청: curl exit={inflight.returncode}, HTTP={code}')
+        expect(result.returncode == 1, f'종료 코드 {result.returncode}')
+        expect(fx.pointer_color() == 'app-blue', f'전환 파일 {fx.pointer_color()}')
+        expect(fx.running('app-blue'), 'app-blue 가 내려갔다')
+        expect(not fx.exists('app-green'), '요청이 끝났는데 app-green 이 남아 있다')
+        expect(result.stdout.index('복구했고 정상 응답을 확인했습니다')
+               < result.stdout.index('app-green 을 정리했습니다'),
+               '복구 확인보다 새 서버 삭제가 먼저다')
+
+
+def assert_target_api_rejected(fx, mode):
+    fx.point_at('set $upstream_app app-blue;\n')
+    fx.start_app('app-blue')
+    fx.break_api('app-green', mode)
+    started = time.monotonic()
     result = fx.deploy()
-    elapsed = time.monotonic() - began
-    served_code = inflight.communicate(timeout=180)[0].strip()
-    expect(result.returncode == 1, f'종료 코드 {result.returncode}')
+    elapsed = time.monotonic() - started
+    expect(result.returncode == 1, f'종료 코드 {result.returncode}\n{result.stdout}')
     expect(fx.pointer_color() == 'app-blue', f'전환 파일 {fx.pointer_color()}')
-    expect(served_code == '200', f'진행 중이던 요청이 {served_code} 로 끝났다')
-    expect(not fx.exists('app-green'), 'drain 후에도 app-green 이 남아 있다')
-    expect(elapsed >= 50, f'drain 을 기다리지 않았다 ({elapsed:.1f}초)')
-    order = result.stdout.index('복구했고 정상 응답을 확인했습니다')
-    expect(order < result.stdout.index('app-green 을 정리했습니다'),
-           '복구 확인보다 새 서버 삭제가 먼저다')
+    expect(fx.running('app-blue'), 'app-blue 가 내려갔다')
+    expect(not fx.exists('app-green'), 'app-green 이 남아 있다')
+    expect(not fx.backup_exists(), '전환 전에 멈췄는데 백업이 생겼다')
+    expect('최소 API 를 응답하지 않습니다' in result.stdout, '최소 API 실패 안내가 없다')
+    return elapsed
+
+
+def scenario_target_api_fails(fx):
+    assert_target_api_rejected(fx, '503')
+
+
+def scenario_target_api_times_out(fx):
+    elapsed = assert_target_api_rejected(fx, 'stall')
+    expect(elapsed < 60, f'응답 없는 API 검사가 제한 시간을 넘겼다: {elapsed:.1f}초')
+
+
+def scenario_compose_services_match(fx):
+    compose = yaml.safe_load((REPO / 'BE/docker/compose.dev.yml').read_text())
+    services = set(compose['services'])
+    expect(services == {'app-blue', 'app-green'},
+           f'배포 스크립트가 왕복하는 두 색과 compose.dev.yml 의 {sorted(services)} 가 다르다')
+    for color in ('blue', 'green'):
+        expect(compose['services'][f'app-{color}'].get('profiles') == [color],
+               f'app-{color} 의 profiles 가 [{color}] 가 아니다')
 
 
 SCENARIOS = (
     ('정상 전환', scenario_normal),
     ('새 버전 기동 실패', scenario_start_fail),
+    ('새 버전이 최소 API 를 응답하지 않음', scenario_target_api_fails),
+    ('새 버전의 최소 API 응답이 멈춤', scenario_target_api_times_out),
     ('nginx -t 실패', scenario_conf_test_fail),
     ('reload 명령 실패', scenario_reload_fail),
     ('전환 미반영', scenario_not_reflected),
@@ -483,27 +632,27 @@ SCENARIOS = (
     ('복구 실패', scenario_restore_fail),
     ('워커 검사 실패', scenario_drain_check_fails),
     ('전환 후 깨진 JSON', scenario_broken_json_body),
-    ('롤백이 긴 요청을 기다린다', scenario_rollback_drains_long_request),
-    ('최초 app 이관', scenario_legacy_app),
+    ('정상 전환이 진행 중 요청을 기다린다', scenario_normal_waits_for_inflight),
+    ('롤백이 진행 중 요청을 기다린다', scenario_rollback_waits_for_inflight),
+    ('이관 전 전환 파일 거부', scenario_retired_pointer),
     ('전환 파일 이상값', scenario_invalid_pointer),
     ('전환 파일 빈 값', scenario_empty_pointer),
+    ('compose 의 색 이름이 배포 스크립트와 일치', scenario_compose_services_match),
 )
 
 
 def reset(fx):
     fx.compose_apps('--profile', 'blue', '--profile', 'green', 'rm', '-sf')
-    fx.drop_legacy()
+    fx.clear_appstate()
     fx.reset_edge()
     fx.fix_nginx_conf()
     fx.restore_app('app-green')
+    fx.point_at('set $upstream_app app-blue;\n')
     fx.compose_nginx('exec', '-T', 'nginx', 'nginx', '-s', 'reload')
 
 
 def main():
     only = sys.argv[1:]
-    if sh('docker', 'inspect', LEGACY).returncode == 0:
-        print(f'{LEGACY} 컨테이너가 이미 있습니다. 이 검사는 그 이름을 쓰므로 중단합니다.')
-        return 1
     with tempfile.TemporaryDirectory() as root:
         fx = Fixture(root)
         failures = []

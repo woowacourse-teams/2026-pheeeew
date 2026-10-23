@@ -44,6 +44,7 @@ services:
       S3_BUCKET: ${S3_BUCKET:?}
       S3_KEY_PREFIX: ${S3_KEY_PREFIX:?}
       S3_REGION: ${S3_REGION:?}
+      COLLECTION_CARD_VERSION: ${COLLECTION_CARD_VERSION:-}
       JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=60"
     volumes:
       - app-logs:/app/logs

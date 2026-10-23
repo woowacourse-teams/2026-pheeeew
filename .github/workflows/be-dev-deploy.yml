@@ -8,6 +8,11 @@ on:
       - 'BE/**'
       - '.github/workflows/be-dev-deploy.yml'
   workflow_dispatch:
+    inputs:
+      image_tag:
+        description: '되돌릴 이미지 태그 (예: dev-0e3c40ec...). 비우면 현재 커밋을 빌드합니다'
+        required: false
+        type: string
 
 concurrency:
   group: deploy-dev
@@ -19,6 +24,7 @@ permissions:
 jobs:
   build:
     name: 이미지 빌드 및 푸시
+    if: github.event.inputs.image_tag == ''
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 20
     steps:
@@ -49,12 +55,20 @@ jobs:
 
   deploy:
     name: 개발 서버 배포
+    if: always() && needs.build.result != 'failure' && needs.build.result != 'cancelled'
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: development
     steps:
       - uses: actions/checkout@v4
+
+      - name: 컬렉션 Secrets 확인
+        env:
+          COLLECTION_CARD_VERSION: ${{ secrets.COLLECTION_CARD_VERSION }}
+        run: |
+          set -eu
+          : "${COLLECTION_CARD_VERSION:?development Secrets에 COLLECTION_CARD_VERSION을 등록해야 합니다.}"
 
       - name: S3 Secrets 확인
         env:
@@ -190,7 +204,7 @@ jobs:
 
       - name: .env 갱신
         env:
-          APP_IMAGE: ${{ secrets.DOCKERHUB_IMAGE }}:dev-${{ github.sha }}
+          APP_IMAGE: ${{ secrets.DOCKERHUB_IMAGE }}:${{ github.event.inputs.image_tag || format('dev-{0}', github.sha) }}
           DB_URL: ${{ secrets.DB_URL }}
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
@@ -201,6 +215,7 @@ jobs:
           S3_BUCKET: ${{ secrets.S3_BUCKET }}
           S3_KEY_PREFIX: ${{ secrets.S3_KEY_PREFIX }}
           S3_REGION: ${{ secrets.S3_REGION }}
+          COLLECTION_CARD_VERSION: ${{ secrets.COLLECTION_CARD_VERSION }}
         run: |
           set -eu
           umask 077
@@ -214,6 +229,7 @@ jobs:
             echo "PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64=$PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64"
             echo "PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=$PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER"
             printf '%s\n' "S3_BUCKET=$S3_BUCKET" "S3_KEY_PREFIX=$S3_KEY_PREFIX" "S3_REGION=$S3_REGION"
+            printf '%s\n' "COLLECTION_CARD_VERSION=$COLLECTION_CARD_VERSION"
           } > env.tmp
           scp -F ~/.ssh/config env.tmp target:/opt/pheeeew/.env.new
           ssh -F ~/.ssh/config target 'set -eu; umask 077; cd /opt/pheeeew; [ -f .env ] && cp .env .env.prev && chmod 600 .env.prev || true; chmod 600 .env.new; mv .env.new .env'
@@ -263,7 +279,7 @@ jobs:
 
       - name: 배포
         env:
-          IMAGE: ${{ secrets.DOCKERHUB_IMAGE }}:dev-${{ github.sha }}
+          IMAGE: ${{ secrets.DOCKERHUB_IMAGE }}:${{ github.event.inputs.image_tag || format('dev-{0}', github.sha) }}
         run: |
           set -eu
           ssh -F ~/.ssh/config target "APP_IMAGE='$IMAGE' bash -s" <<'REMOTE'
@@ -273,7 +289,8 @@ jobs:
           POINTER=nginx/upstream/active.conf
           BACKUP=nginx/upstream/active.conf.bak
           PROBE_HOST=api-dev.pheeeew.com
-          PROBE_URL="https://$PROBE_HOST/api/v3/devices/nicknames/availability?nickname=probe"
+          PROBE_PATH="/api/v3/devices/nicknames/availability?nickname=probe"
+          PROBE_URL="https://$PROBE_HOST$PROBE_PATH"
           NGINX="docker compose -f compose.nginx.yml"
           APPS="docker compose -f compose.yml"
           WORKER_MARK="[w]orker process is shutting down"
@@ -307,6 +324,23 @@ jobs:
             [ "$code" = 200 ] || return 1
             available_is_boolean /tmp/probe.body || return 1
             sed -n 's/^[Xx]-[Uu]pstream:[[:space:]]*//p' /tmp/probe.head | tr -d '\r\n'
+          }
+
+          target_answers_api() {
+            $NGINX exec -T nginx \
+                 timeout 5 wget -q -T 5 -O - "http://$TARGET:8080$PROBE_PATH" </dev/null >/tmp/target.body 2>/dev/null \
+              || return 1
+            available_is_boolean /tmp/target.body
+          }
+
+          wait_target_api() {
+            deadline=$(($(date +%s) + 30))
+            while :; do
+              target_answers_api && return 0
+              [ "$(date +%s)" -ge "$deadline" ] && break
+              sleep 1
+            done
+            return 1
           }
 
           wait_served() {
@@ -376,10 +410,10 @@ jobs:
               return 1
             fi
             echo "$ACTIVE 로 복구했고 정상 응답을 확인했습니다."
-            if ! wait_drained; then
-              echo "!! $TARGET 으로 향하던 요청이 끝났는지 확인하지 못했습니다."
-              echo "   $TARGET 을 삭제하지 않고 남깁니다. 진행 중 요청을 확인한 뒤 정리하세요."
-              return 1
+            if wait_drained; then
+              echo "$TARGET 으로 향하던 요청이 모두 끝났습니다."
+            else
+              echo "$TARGET 으로 향하던 요청이 끝났는지 확인하지 못했습니다."
             fi
             $APPS stop "$TARGET"
             $APPS rm -f "$TARGET"
@@ -388,7 +422,7 @@ jobs:
 
           ACTIVE=$(read_pointer)
           case "$ACTIVE" in
-            app|app-blue|app-green) ;;
+            app-blue|app-green) ;;
             *) echo "전환 파일의 값이 올바르지 않습니다: '${ACTIVE:-빈 값}'. 전환하지 않습니다."; exit 1 ;;
           esac
           [ "$ACTIVE" = app-blue ] && TARGET=app-green || TARGET=app-blue
@@ -403,6 +437,15 @@ jobs:
             echo "전환하지 않고 끝냅니다. 트래픽은 $ACTIVE 에 그대로 있습니다."
             exit 1
           fi
+
+          if ! wait_target_api; then
+            echo "새 버전이 최소 API 를 응답하지 않습니다."
+            $APPS logs --tail=50 "$TARGET" 2>&1 | grep -a -v -F -e 'http_request_failed' -e 'scheduled_task_failed' || true
+            $APPS rm -sf "$TARGET"
+            echo "전환하지 않고 끝냅니다. 트래픽은 $ACTIVE 에 그대로 있습니다."
+            exit 1
+          fi
+          echo "$TARGET 이 최소 API 를 응답합니다."
 
           cp "$POINTER" "$BACKUP"
           printf 'set $upstream_app %s;\n' "$TARGET" > "$POINTER"
@@ -429,25 +472,16 @@ jobs:
           fi
           echo "$TARGET 으로 전환했고 정상 응답을 확인했습니다."
 
-          if ! wait_drained; then
-            echo "!! 이전 요청이 끝났는지 확인하지 못했습니다. $ACTIVE 를 삭제하지 않습니다."
-            echo "   전환은 성공했고 트래픽은 $TARGET 이 받고 있습니다."
-            rm -f "$BACKUP"
-            exit 1
+          if wait_drained; then
+            echo "이전 요청이 모두 끝났습니다."
+          else
+            echo "이전 요청이 끝났는지 확인하지 못했습니다. $ACTIVE 를 graceful 하게 내립니다."
+            echo "   종료 유예 30초 안에서 앱이 남은 요청을 스스로 마무리합니다."
           fi
-          echo "이전 요청이 모두 끝났습니다."
           rm -f "$BACKUP"
 
-          if [ "$ACTIVE" = app ]; then
-            if docker inspect pheeeew-dev-app >/dev/null 2>&1; then
-              docker stop --time 30 pheeeew-dev-app >/dev/null
-              docker rm -f pheeeew-dev-app >/dev/null
-              echo "이전 단일 컨테이너 pheeeew-dev-app 을 정리했습니다."
-            fi
-          else
-            $APPS stop "$ACTIVE"
-            $APPS rm -f "$ACTIVE"
-          fi
+          $APPS stop "$ACTIVE"
+          $APPS rm -f "$ACTIVE"
 
           echo "배포 성공: $APP_IMAGE ($TARGET)"
           docker image prune -f
