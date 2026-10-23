@@ -11,7 +11,28 @@ from pathlib import Path
 import yaml
 
 REPO = Path(__file__).resolve().parents[2]
-WORKFLOW = REPO / '.github/workflows/be-dev-deploy.yml'
+TARGETS = {
+    'dev': {
+        'workflow': '.github/workflows/be-dev-deploy.yml',
+        'nginx_compose': 'BE/docker/compose.nginx.dev.yml',
+        'nginx_conf': 'BE/docker/nginx/api-dev.conf',
+        'app_compose': 'BE/docker/compose.dev.yml',
+        'host': 'api-dev.pheeeew.com',
+        'migrates_from_app': False,
+    },
+    'prod': {
+        'workflow': '.github/workflows/be-deploy.yml',
+        'nginx_compose': 'BE/docker/compose.nginx.yml',
+        'nginx_conf': 'BE/docker/nginx/api.conf',
+        'app_compose': 'BE/docker/compose.prod.yml',
+        'host': 'api.pheeeew.com',
+        'migrates_from_app': True,
+    },
+}
+TARGET = TARGETS[os.environ.get('DEPLOY_TARGET', 'dev')]
+WORKFLOW = REPO / TARGET['workflow']
+HOST = TARGET['host']
+MIGRATES_FROM_APP = TARGET['migrates_from_app']
 HTTP_PORT = 18080
 HTTPS_PORT = 18443
 PROBE_PATH = '/api/v3/devices/nicknames/availability?nickname=probe'
@@ -131,12 +152,12 @@ class Fixture:
         self._certs()
         self._shims()
         self._compose()
-        shutil.copy(REPO / 'BE/docker/nginx/api-dev.conf', self.confd / 'default.conf')
+        shutil.copy(REPO / TARGET['nginx_conf'], self.confd / 'default.conf')
         self.reset_edge()
 
     def _certs(self):
         sh('openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '1',
-           '-subj', '/CN=api-dev.pheeeew.com',
+           '-subj', f'/CN={HOST}',
            '-keyout', str(self.dir / 'origin.key'), '-out', str(self.dir / 'origin.pem'))
         for name in ('origin-pull-ca.pem', 'fullchain.pem', 'chain.pem'):
             shutil.copy(self.dir / 'origin.pem', self.dir / name)
@@ -172,7 +193,7 @@ class Fixture:
             'networks': {'default': {'name': f'{self.project}-net', 'external': True}},
         }))
 
-        model = yaml.safe_load((REPO / 'BE/docker/compose.nginx.dev.yml').read_text())
+        model = yaml.safe_load((REPO / TARGET['nginx_compose']).read_text())
         model['name'] = self.project + '-nginx'
         model['networks'] = {'default': {'name': f'{self.project}-net', 'external': True}}
         nginx = model['services']['nginx']
@@ -183,7 +204,7 @@ class Fixture:
             f'{self.confd}:/etc/nginx/conf.d:ro',
             f'{self.upstream}:/etc/nginx/upstream:ro',
             f'{self.dir}:/etc/ssl/cloudflare:ro',
-            f'{self.dir}:/etc/letsencrypt/live/api-dev.pheeeew.com:ro',
+            f'{self.dir}:/etc/letsencrypt/live/{HOST}:ro',
         ]
         (self.dir / 'compose.nginx.yml').write_text(yaml.safe_dump(model))
 
@@ -215,14 +236,14 @@ class Fixture:
     def slow_request(self, seconds=20):
         return subprocess.Popen(
             ['curl', '-sk', '-o', '/dev/null', '-w', '%{http_code}', '-m', '150',
-             '--resolve', f'api-dev.pheeeew.com:{HTTPS_PORT}:127.0.0.1',
-             f'https://api-dev.pheeeew.com:{HTTPS_PORT}{SLOW_PATH}?seconds={seconds}'],
+             '--resolve', f'{HOST}:{HTTPS_PORT}:127.0.0.1',
+             f'https://{HOST}:{HTTPS_PORT}{SLOW_PATH}?seconds={seconds}'],
             text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
 
     def served_upstream(self):
         result = sh('curl', '-sk', '-o', '/dev/null', '-D', '-', '-w', '%{http_code}', '-m', '5',
-                    '--resolve', f'api-dev.pheeeew.com:{HTTPS_PORT}:127.0.0.1',
-                    f'https://api-dev.pheeeew.com:{HTTPS_PORT}{PROBE_PATH}')
+                    '--resolve', f'{HOST}:{HTTPS_PORT}:127.0.0.1',
+                    f'https://{HOST}:{HTTPS_PORT}{PROBE_PATH}')
         upstream = ''
         for line in result.stdout.splitlines():
             if line.lower().startswith('x-upstream:'):
@@ -465,13 +486,18 @@ def scenario_restore_fail(fx):
     expect(fx.running('app-blue'), 'app-blue 를 지웠다')
 
 
-def scenario_retired_pointer(fx):
+def scenario_legacy_pointer(fx):
     fx.point_at('set $upstream_app app;\n')
     result = fx.deploy()
-    expect(result.returncode == 1, f'종료 코드 {result.returncode}')
-    expect('전환 파일의 값이 올바르지 않습니다' in result.stdout, '이관 전 값을 거부하지 않는다')
-    expect(not fx.exists('app-blue') and not fx.exists('app-green'),
-           '이관 전 값인데 앱을 띄웠다')
+    if MIGRATES_FROM_APP:
+        expect(result.returncode == 0, f'종료 코드 {result.returncode}\n{result.stdout}')
+        expect(fx.pointer_color() == 'app-blue', f'전환 파일 {fx.pointer_color()}')
+        expect(fx.running('app-blue'), '이관 경로인데 app-blue 가 뜨지 않았다')
+    else:
+        expect(result.returncode == 1, f'종료 코드 {result.returncode}')
+        expect('전환 파일의 값이 올바르지 않습니다' in result.stdout, '이관 전 값을 거부하지 않는다')
+        expect(not fx.exists('app-blue') and not fx.exists('app-green'),
+               '이관 전 값인데 앱을 띄웠다')
 
 
 def scenario_invalid_pointer(fx):
@@ -586,10 +612,10 @@ def scenario_target_api_times_out(fx):
 
 
 def scenario_compose_services_match(fx):
-    compose = yaml.safe_load((REPO / 'BE/docker/compose.dev.yml').read_text())
+    compose = yaml.safe_load((REPO / TARGET['app_compose']).read_text())
     services = set(compose['services'])
     expect(services == {'app-blue', 'app-green'},
-           f'배포 스크립트가 왕복하는 두 색과 compose.dev.yml 의 {sorted(services)} 가 다르다')
+           f'배포 스크립트가 왕복하는 두 색과 {TARGET["app_compose"]} 의 {sorted(services)} 가 다르다')
     for color in ('blue', 'green'):
         expect(compose['services'][f'app-{color}'].get('profiles') == [color],
                f'app-{color} 의 profiles 가 [{color}] 가 아니다')
@@ -610,7 +636,7 @@ SCENARIOS = (
     ('전환 후 깨진 JSON', scenario_broken_json_body),
     ('정상 전환이 진행 중 요청을 기다린다', scenario_normal_waits_for_inflight),
     ('롤백이 진행 중 요청을 기다린다', scenario_rollback_waits_for_inflight),
-    ('이관 전 전환 파일 거부', scenario_retired_pointer),
+    ('이관 전 전환 파일 처리', scenario_legacy_pointer),
     ('전환 파일 이상값', scenario_invalid_pointer),
     ('전환 파일 빈 값', scenario_empty_pointer),
     ('compose 의 색 이름이 배포 스크립트와 일치', scenario_compose_services_match),
