@@ -242,4 +242,5 @@
     <string name="emotion_emoji_angry_1">🤬</string>
     <string name="emotion_emoji_angry_2">💢</string>
     <string name="emotion_emoji_angry_3">😡</string>
+    <string name="press_view_ranking">전체 순위 보기</string>
 </resources>

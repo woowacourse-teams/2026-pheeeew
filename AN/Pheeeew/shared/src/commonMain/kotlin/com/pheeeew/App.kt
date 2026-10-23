@@ -694,6 +694,11 @@ private fun AppContent(
                 ) {
                     if (!mainFeaturesReady) return@composable
                     PressRoute(
+                        onOpenRanking = {
+                            if (navController.currentDestination?.hasRoute<PressRootDestination>() == true) {
+                                navController.navigate(RankingRootDestination) { launchSingleTop = true }
+                            }
+                        },
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
