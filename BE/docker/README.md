@@ -10,10 +10,19 @@
 
 ## 전환 흐름
 
+배포마다 아래를 **매번** 수행해요. 검사(CI)에서 통과했다는 이유로 생략하지 않아요.
+
 ```
-새 색 기동 → healthy → 전환 파일 교체 + nginx reload → 정상 응답 검증
-→ 이전 요청 drain → 이전 색 graceful 종료
+1. 새 이미지 pull
+2. 새 색 기동 → 컨테이너 healthcheck 로 readiness 확인 (--wait)
+3. 새 색에 최소 API 직접 확인          nginx 에서 http://<색>:8080 으로 호출, available 이 boolean 인지
+4. 전환 파일 교체 + nginx -t + reload
+5. 전환 검증                          HTTP 200 + JSON 본문 + X-Upstream 이 새 색
+6. 이전 요청 drain                    종료 중인 nginx 워커가 0이 될 때까지
+7. 이전 색 graceful 종료 후 제거
 ```
+
+3번은 컨테이너가 healthy 해도 API 가 아직 못 받는 경우를 전환 **전**에 거르기 위한 거예요. 실패하면 전환하지 않고 새 색만 정리해요.
 
 전환 **전**에 실패하면 전환하지 않고 끝나요. 전환 **후** 검증이 실패하면 이전 색으로 되돌리고 새 색을 정리해요. 어느 쪽이든 트래픽은 검증된 색에 남아요.
 
@@ -58,18 +67,33 @@ docker logs pheeeew-dev-alloy 2>&1 | grep -i skipping
 
 둘 다 `BE Nginx CI` 에서 돌아요. 배포 셸을 바꾸면 테스트가 같은 셸을 읽으므로 따로 고칠 것이 없어요.
 
-### 언제 도나
+### 어떤 검사가 왜, 언제 도나
 
-`be-nginx-ci.yml` 의 `paths` 가 **nginx 설정, nginx compose, 검사 스크립트, 배포 워크플로**를 건드릴 때만 돌게 해요. 기능 PR 은 그 파일을 건드리지 않으면 안 돌아요. 기능 PR 이 배포 워크플로를 함께 고쳤다면 도는 게 맞아요 — 전환·복구 회귀를 거기서 잡아야 해요.
+| | **BE CI** | **BE Nginx CI** |
+| --- | --- | --- |
+| 무엇을 검사하나 | 애플리케이션 코드, ARM64 이미지 빌드 | nginx 설정, **배포 셸** |
+| 잡으려는 회귀 | 로직 오류, 스키마-엔티티 불일치, 마이그레이션 실패, 이미지 빌드 깨짐 | 잘못된 대상 라우팅, 접근 경계 붕괴, 전환 실패 시 잘못된 정리, 복구 누락, 진행 중 요청 유실 |
+| 대상 브랜치 | `main`, `be/dev`, `develop` | `main`, `be/dev`, `develop` |
+| 변경 경로 | `BE/**` | `nginx/**`, `compose.nginx.dev.yml`, `compose.dev.yml`, `test-deploy-switch.py`, `be-dev-deploy.yml` |
+| 실제로 돌리는 것 | 실제 PostgreSQL+PostGIS, 실제 Spring 컨텍스트 | 실제 nginx·Docker·Compose, 워크플로에서 꺼낸 실제 배포 셸 |
+| 가짜로 대체한 것 | `@WebMvcTest` 의 서비스 모킹, 이미지는 빌드만 | 앱은 파이썬 스텁, ALB 는 도커 서브넷. 그리고 네 곳 주입 — `image prune`, `reload` 실패, 워커 검사 실패, 엣지 응답 |
 
-`branches` 는 `main`, `develop` 이에요. **작업 브랜치 → `be/dev` PR 에서는 안 돌아요.** 배포 관련 변경을 머지 전에 확인하려면 아래 둘 중 하나로 직접 돌려요.
+**일반 앱·SQL 변경만 있는 PR 에서는 Nginx CI 가 돌지 않아요.** 다만 `paths` 는 최신 커밋이 아니라 **PR 전체 diff** 로 판정하므로, 그 PR 이 한 번이라도 배포 관련 파일을 바꿨다면 이후 커밋이 SQL 뿐이어도 계속 돌아요. 배포 셸이 바뀐 PR 이면 머지될 때까지 전환·복구를 계속 봐야 하므로 정상이에요.
+
+### 머지 전에 직접 돌리기
 
 ```bash
 python3 BE/docker/test-deploy-switch.py
 python3 BE/docker/nginx/test-alb-health.py
 ```
 
-리눅스 러너와 같은 환경에서 확인하려면 컨테이너 안에서 돌려요. 호스트 포트를 쓰는 `진행 중 요청` 두 시나리오는 이 방식으로 돌릴 수 없어요.
+시나리오 이름을 주면 그것만 돌아요.
+
+```bash
+python3 BE/docker/test-deploy-switch.py '롤백이 진행 중 요청을 기다린다'
+```
+
+리눅스 러너와 같은 환경에서 확인하려면 컨테이너 안에서 돌려요. **`진행 중 요청` 두 시나리오는 호스트에 공개된 nginx 포트로 요청해야 해서 이 방식으로는 못 돌려요.** 그래서 이름을 지정해 나머지를 돌려요.
 
 ```bash
 mkdir -p /tmp/dsw-linux
@@ -77,14 +101,23 @@ docker run --rm \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v /tmp/dsw-linux:/tmp/dsw-linux -v "$PWD:/repo:ro" \
   -e TMPDIR=/tmp/dsw-linux -w /repo docker:28-cli \
-  sh -c 'apk add -q python3 py3-yaml openssl bash curl; python3 BE/docker/test-deploy-switch.py'
+  sh -c 'apk add -q python3 py3-yaml openssl bash curl
+         python3 BE/docker/test-deploy-switch.py \
+           "정상 전환" "새 버전 기동 실패" "새 버전이 최소 API 를 응답하지 않음" \
+           "nginx -t 실패" "reload 명령 실패" "전환 미반영" "전환 후 503"'
 ```
 
-시나리오 이름을 인자로 주면 그것만 돌아요.
+### 검사가 보장하지 않는 것
 
-```bash
-python3 BE/docker/test-deploy-switch.py '롤백이 진행 중 요청을 기다린다'
-```
+| 층 | 무엇을 보나 |
+| --- | --- |
+| **PR 회귀 검사 (CI)** | 전환·복구 **분기가 맞게 짜였는지**. 가짜 앱, 가짜 ALB |
+| **실제 배포 (CD)** | 매 배포마다 실제 이미지로 위 7단계를 수행. 테스트가 아니라 **운영 장치** |
+| **외부 연속 요청 측정** | 사용자가 **몇 건 실패했는지**. CI 도 CD 도 이 값을 모른다 |
+
+CI 는 **실제 앱 이미지의 기동 시간·메모리·DB 커넥션, 실제 ALB 와 공개 도메인 경로, 중단 시간(초)** 을 보장하지 않아요. 오류율 모니터링(Grafana)과 중단 시간 측정은 **배포와 별개 검증**이에요.
+
+같은 서버에 배포가 겹치지 않도록 워크플로가 `concurrency` 로 잠가요. 개발은 `deploy-dev`, 운영은 `deploy-prod` 이고 둘 다 `cancel-in-progress: false` 라 **진행 중인 배포를 중간에 끊지 않아요.** 수동 롤백도 같은 워크플로라 같은 잠금을 써요.
 
 ### 진행 중 요청을 어떻게 재는가
 
