@@ -1,6 +1,7 @@
 package com.pheeeew.collection.fixture;
 
 import com.pheeeew.collection.domain.CollectionCard;
+import com.pheeeew.collection.application.dto.CollectionCardImages;
 import com.pheeeew.collection.domain.CollectionDrawState;
 import com.pheeeew.emotion.domain.EmotionState;
 import java.time.Instant;
@@ -11,6 +12,13 @@ public final class CollectionCardFixture {
     private CollectionCardFixture() {
     }
 
+    public static CollectionCardImages 기본_카드_이미지() {
+        return CollectionCardImages.of(
+                "https://assets.example/v1/characters/angry/01.png",
+                "https://assets.example/v1/stamps-round/angry/01.png",
+                "https://assets.example/v1/stamps-straight/angry/01.png");
+    }
+
     public static CollectionCard.CollectionCardBuilder 기본_카드_빌더() {
         return CollectionCard.builder()
                 .deviceId(1L)
@@ -18,7 +26,7 @@ public final class CollectionCardFixture {
                 .state(EmotionState.ANGRY)
                 .cycle(1)
                 .combinationIndex(0)
-                .cardVersion("test-card-v1")
+                .cardVersion("v1")
                 .claimedAt(Instant.parse("2026-10-22T03:00:00Z"));
     }
 

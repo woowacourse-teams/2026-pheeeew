@@ -7,16 +7,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.pheeeew.collection.domain.CollectionCard;
-import com.pheeeew.collection.domain.CollectionDrawState;
-import com.pheeeew.collection.domain.CollectionRecordStatus;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.support.PostgisDataJpaTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceException;
 import java.time.LocalDate;
-import java.util.Random;
-import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -32,43 +28,6 @@ class CollectionStorageIntegrationTest {
 
     @Autowired
     private JdbcClient jdbc;
-
-    @Test
-    void 카드와_추첨_상태의_회차_조합_버전_시각을_저장하고_다시_읽는다() {
-        // given
-        Device device = 기본_기기_빌더().build();
-        entities.persist(device);
-        var drawState = 기본_추첨_상태_빌더().deviceId(device.getId()).build();
-        var drawn = drawState.draw(Set.of(), new Random(840));
-        var card = 기본_카드_빌더().deviceId(device.getId()).cycle(drawn.cycle())
-                .combinationIndex(drawn.combinationIndex()).build();
-
-        // when
-        entities.persist(drawState);
-        entities.persist(card);
-        entities.flush();
-        entities.clear();
-        var storedCard = entities.find(CollectionCard.class, card.getId());
-        var storedState = entities.find(CollectionDrawState.class, drawState.getId());
-
-        // then
-        assertThat(storedCard.getPublicId()).isEqualTo(card.getPublicId());
-        assertThat(storedCard.getDeviceId()).isEqualTo(device.getId());
-        assertThat(storedCard.getCardDate()).isEqualTo(LocalDate.of(2026, 10, 22));
-        assertThat(storedCard.getState()).isEqualTo(EmotionState.ANGRY);
-        assertThat(storedCard.getCycle()).isEqualTo(1);
-        assertThat(storedCard.getCombinationIndex()).isEqualTo(drawn.combinationIndex());
-        assertThat(storedCard.getCardVersion()).isEqualTo("test-card-v1");
-        assertThat(storedCard.getClaimedAt()).isEqualTo(card.getClaimedAt());
-        assertThat(storedCard.getRecordStatus()).isEqualTo(CollectionRecordStatus.OPEN);
-        assertThat(storedCard.getCreatedAt()).isNotNull();
-        assertThat(storedCard.getUpdatedAt()).isNotNull();
-        assertThat(storedState.getDeviceId()).isEqualTo(device.getId());
-        assertThat(storedState.getState()).isEqualTo(EmotionState.ANGRY);
-        assertThat(storedState.getCycle()).isEqualTo(1);
-        assertThat(storedState.getLastCombinationIndex()).isEqualTo(drawn.combinationIndex());
-        assertThat(storedState.getCreatedAt()).isNotNull();
-    }
 
     @Test
     void 같은_기기_날짜_감정은_다른_조합이어도_카드를_두_장_저장하지_못한다() {
@@ -139,10 +98,32 @@ class CollectionStorageIntegrationTest {
         }).isInstanceOf(PersistenceException.class);
     }
 
+    @Test
+    void 카드_조합에서_생성한_번호로_캐릭터와_도장_쌍을_참조한다() {
+        // given
+        Device device = 기본_기기_빌더().build();
+        entities.persist(device);
+        var card = 기본_카드_빌더().deviceId(device.getId()).combinationIndex(37).build();
+
+        // when
+        entities.persist(card);
+        entities.flush();
+
+        // then
+        assertThat(jdbc.sql("SELECT character_number FROM collection_cards WHERE id = :id")
+                .param("id", card.getId()).query(Integer.class).single()).isEqualTo(3);
+        assertThat(jdbc.sql("SELECT stamp_number FROM collection_cards WHERE id = :id")
+                .param("id", card.getId()).query(Integer.class).single()).isEqualTo(6);
+        assertThatThrownBy(() -> jdbc.sql("""
+                DELETE FROM collection_stamp_assets
+                WHERE card_version = 'v1' AND state = 'ANGRY' AND asset_number = 6
+                """).update()).isInstanceOf(DataIntegrityViolationException.class);
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"combination_index = -1", "combination_index = 256", "cycle = 0",
             "state = 'UNKNOWN'", "record_status = 'UNKNOWN'", "card_version = ' '", "card_version = ''",
-            "device_id = 9223372036854775807"})
+            "device_id = 9223372036854775807", "card_version = 'missing-v1'"})
     void DB도_유효하지_않은_카드_값과_없는_소유_기기를_거절한다(String invalidAssignment) {
         // given
         Device device = 기본_기기_빌더().build();

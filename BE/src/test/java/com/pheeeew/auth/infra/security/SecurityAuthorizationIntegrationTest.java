@@ -156,6 +156,26 @@ class SecurityAuthorizationIntegrationTest {
     }
 
     @Test
+    void 컬렉션_수령은_인증_후에만_요청_본문을_검증한다() {
+        // given
+        String token = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
+        String body = """
+                {"state":"ANGRY"}
+                """;
+
+        // when
+        var unauthenticated = client.post().uri("/api/v1/collection-cards/claim")
+                .contentType(MediaType.APPLICATION_JSON).body(body).exchange();
+        var authenticated = client.post().uri("/api/v1/collection-cards/claim")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).body(body).exchange();
+
+        // then
+        인증_필요를_검증한다(unauthenticated);
+        authenticated.expectStatus().isBadRequest().expectBody().jsonPath("$.code").isEqualTo("COMMON-001");
+    }
+
+    @Test
     void 내_닉네임_조회는_토큰의_기기만_조회하고_식별자나_토큰을_노출하지_않는다() {
         // given
         UUID requestId = UUID.randomUUID();

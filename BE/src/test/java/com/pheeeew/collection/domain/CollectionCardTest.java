@@ -17,7 +17,7 @@ class CollectionCardTest {
         assertThat(card.getPublicId()).isNotNull();
         assertThat(card.getCycle()).isEqualTo(3);
         assertThat(card.getCombinationIndex()).isEqualTo(255);
-        assertThat(card.getCardVersion()).isEqualTo("test-card-v1");
+        assertThat(card.getCardVersion()).isEqualTo("v1");
         assertThat(card.getRecordStatus()).isEqualTo(CollectionRecordStatus.OPEN);
     }
 

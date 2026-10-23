@@ -1,5 +1,7 @@
 package com.pheeeew.collection.presentation;
 
+import com.pheeeew.collection.presentation.dto.CollectionCardResponse;
+import com.pheeeew.collection.presentation.dto.CollectionClaimRequest;
 import com.pheeeew.collection.presentation.dto.CollectionTodayResponse;
 import com.pheeeew.common.exception.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -14,7 +16,7 @@ import java.util.UUID;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
-@Tag(name = "컬렉션", description = "인증된 기기의 컬렉션 진행도 API")
+@Tag(name = "컬렉션", description = "인증된 기기의 컬렉션 진행도 조회 및 카드 수령 API")
 public interface CollectionControllerApi {
 
     @Operation(
@@ -43,5 +45,39 @@ public interface CollectionControllerApi {
     })
     ResponseEntity<CollectionTodayResponse> findToday(
             @Parameter(hidden = true) UUID devicePublicId
+    );
+
+    @Operation(
+            summary = "컬렉션 카드 수령",
+            description = """
+                    인증된 기기가 지정한 날짜·감정의 카드를 직접 수령합니다.
+
+                    - 스탬프 1회 이상과 프레스 100회 이상을 모두 충족해야 합니다. 서버가 실제 저장된 활동으로 재확인합니다.
+                    - 미발급 카드는 한국 시간 기준 당일에만 수령할 수 있습니다. 자정이 지나면 전날 미수령 카드는 발급하지 않습니다.
+                    - 조건 확인 후 발급 직전에 당일 여부를 최종 판정합니다. 자정 전에 최종 확인된 수령은 응답이 다음 날 도착할 수 있습니다.
+                    - 같은 날짜·감정으로 다시 요청하면 기존 카드를 그대로 반환합니다. 이미 수령한 카드는 날짜가 지나도 재요청할 수 있습니다.
+                    - 카드 수령 실패로 이미 저장한 감정·프레스가 취소되지는 않습니다.
+                    - 응답을 받지 못하면 같은 date·state로 다시 요청합니다. 기기는 인증 정보로 결정합니다.
+                    """,
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "신규 수령 또는 기존 수령 결과 반환"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 또는 COLLECTION-002: 미발급 카드의 수령 날짜가 당일이 아님",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "인증 정보 없음·유효하지 않음 또는 인증된 기기가 존재하지 않음",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "COLLECTION-003: 스탬프·프레스 수령 조건 미달",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "503", description = "COLLECTION-004: 카드 자산 준비 중. 당일 재시도 필요",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    ResponseEntity<CollectionCardResponse> claim(
+            @Parameter(hidden = true) UUID devicePublicId,
+            CollectionClaimRequest request
     );
 }

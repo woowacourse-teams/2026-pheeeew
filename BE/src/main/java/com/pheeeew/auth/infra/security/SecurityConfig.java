@@ -32,6 +32,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v3/devices/nicknames/availability").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v3/devices/me/nickname").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/collection-cards/today").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/collection-cards/claim").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/v3/devices/me/nickname").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v2/devices").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v3/devices").permitAll()
