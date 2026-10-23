@@ -1,10 +1,13 @@
 package com.pheeeew.collection.domain.repository;
 
 import com.pheeeew.collection.domain.repository.projection.CollectionActivityCounts;
-import com.pheeeew.collection.domain.repository.projection.CollectionCardDetail;
 import com.pheeeew.collection.domain.repository.projection.CollectionAssetPaths;
+import com.pheeeew.collection.domain.repository.projection.CollectionCardDetail;
+import com.pheeeew.collection.domain.repository.projection.CollectionHistoryCard;
 import com.pheeeew.collection.domain.repository.projection.CollectionTodayProgress;
 import com.pheeeew.emotion.domain.EmotionState;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -32,11 +35,8 @@ public class CollectionProgressRepository {
                 GROUP BY state
                 """;
 
-    private final JdbcClient jdbc;
-
-    public Optional<CollectionCardDetail> findDetail(UUID cardId, Long deviceId) {
-        return jdbc.sql("""
-                SELECT card.public_id, card.card_date, card.state, card.card_version,
+    private static final String CARD_DETAILS_SQL = """
+                SELECT card.id, card.public_id, card.card_date, card.state, card.card_version,
                        activity_stamps.stamp_count AS stamp_count,
                        presses.press_count AS press_count,
                        characters.image_path, stamps.round_image_path, stamps.straight_image_path
@@ -53,16 +53,35 @@ public class CollectionProgressRepository {
                 LEFT JOIN collection_stamp_assets stamps
                   ON stamps.card_version = card.card_version AND stamps.state = card.state
                  AND stamps.asset_number = card.stamp_number
-                WHERE card.public_id = :cardId AND card.device_id = :deviceId
-                """)
+                """;
+
+    private final JdbcClient jdbc;
+
+    public Optional<CollectionCardDetail> findDetail(UUID cardId, Long deviceId) {
+        return jdbc.sql(CARD_DETAILS_SQL + " WHERE card.public_id = :cardId AND card.device_id = :deviceId")
                 .param("cardId", cardId)
                 .param("deviceId", deviceId)
-                .query((row, index) -> CollectionCardDetail.of(row.getObject("public_id", UUID.class),
-                        row.getObject("card_date", LocalDate.class), EmotionState.valueOf(row.getString("state")),
-                        row.getObject("stamp_count", Long.class), row.getObject("press_count", Long.class), row.getString("card_version"),
-                        CollectionAssetPaths.of(row.getString("image_path"), row.getString("round_image_path"),
-                                row.getString("straight_image_path"))))
+                .query((row, index) -> mapDetail(row))
                 .optional();
+    }
+
+    public List<CollectionHistoryCard> findHistory(Long deviceId, LocalDate beforeDate,
+            LocalDate lastDate, long lastId, EmotionState emotion, int fetchSize) {
+        String filter = emotion == null ? "" : " AND card.state = :emotion";
+        var query = jdbc.sql(CARD_DETAILS_SQL + """
+                 WHERE card.device_id = :deviceId AND card.card_date < :beforeDate
+                   AND (card.card_date, card.id) < (:lastDate, :lastId)
+                """ + filter + " ORDER BY card.card_date DESC, card.id DESC LIMIT :fetchSize")
+                .param("deviceId", deviceId)
+                .param("beforeDate", beforeDate)
+                .param("lastDate", lastDate)
+                .param("lastId", lastId)
+                .param("fetchSize", fetchSize);
+        if (emotion != null) {
+            query = query.param("emotion", emotion.name());
+        }
+        return query.query((row, index) -> CollectionHistoryCard.of(row.getLong("id"), mapDetail(row)))
+                .list();
     }
 
     public List<CollectionActivityCounts> findByDateAndDeviceId(LocalDate date, Long deviceId) {
@@ -109,5 +128,13 @@ public class CollectionProgressRepository {
                             row.getObject("stamp_count", Long.class), row.getObject("press_count", Long.class), card);
                 })
                 .list();
+    }
+
+    private CollectionCardDetail mapDetail(ResultSet row) throws SQLException {
+        return CollectionCardDetail.of(row.getObject("public_id", UUID.class),
+                row.getObject("card_date", LocalDate.class), EmotionState.valueOf(row.getString("state")),
+                row.getObject("stamp_count", Long.class), row.getObject("press_count", Long.class),
+                row.getString("card_version"), CollectionAssetPaths.of(row.getString("image_path"),
+                        row.getString("round_image_path"), row.getString("straight_image_path")));
     }
 }
