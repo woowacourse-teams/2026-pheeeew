@@ -7,10 +7,10 @@ import com.pheeeew.collection.presentation.dto.CollectionCardDetailResponse;
 import com.pheeeew.collection.presentation.dto.CollectionCardResponse;
 import com.pheeeew.collection.presentation.dto.CollectionClaimRequest;
 import com.pheeeew.collection.presentation.dto.CollectionHistoryRequest;
+import com.pheeeew.collection.presentation.dto.CollectionHistoryResponse;
 import com.pheeeew.collection.presentation.dto.CollectionTodayResponse;
 import com.pheeeew.common.exception.CommonErrorCode;
 import com.pheeeew.common.exception.PheeeewException;
-import com.pheeeew.common.presentation.dto.CursorResponse;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -36,7 +36,7 @@ public class CollectionController implements CollectionControllerApi {
 
     @Override
     @GetMapping
-    public ResponseEntity<CursorResponse<CollectionCardDetailResponse>> findHistory(
+    public ResponseEntity<CollectionHistoryResponse> findHistory(
             @CurrentDevice UUID devicePublicId,
             @Valid @ModelAttribute CollectionHistoryRequest request,
             @RequestParam MultiValueMap<String, String> parameters
@@ -48,8 +48,7 @@ public class CollectionController implements CollectionControllerApi {
 
         var page = collectionQueryService.findHistory(devicePublicId, request.emotion(), request.limit(), request.cursor());
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
-                .body(CursorResponse.of(page.items().stream().map(CollectionCardDetailResponse::from).toList(),
-                        page.hasNext(), page.nextCursor()));
+                .body(CollectionHistoryResponse.from(page));
     }
 
     @Override
