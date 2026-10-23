@@ -1,9 +1,11 @@
 package com.pheeeew.collection.application;
 
 import static com.pheeeew.collection.exception.CollectionErrorCode.COLLECTION_DATE_CHANGED;
+import static com.pheeeew.collection.exception.CollectionErrorCode.COLLECTION_CARD_NOT_FOUND;
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
 
 import com.pheeeew.collection.application.dto.CollectionCardResult;
+import com.pheeeew.collection.application.dto.CollectionCardDetailResult;
 import com.pheeeew.collection.application.dto.CollectionTodayResult.Item;
 import com.pheeeew.collection.application.dto.CollectionTodayResult;
 import com.pheeeew.collection.domain.repository.CollectionProgressRepository;
@@ -33,6 +35,18 @@ public class CollectionQueryService {
     private final DeviceRepository deviceRepository;
     private final Clock clock;
     private final CollectionAssetService assetService;
+
+    public CollectionCardDetailResult findDetail(UUID devicePublicId, UUID cardId) {
+        Long deviceId = deviceRepository.findByPublicId(devicePublicId)
+                .map(Device::getId)
+                .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
+
+        var card = collectionProgressRepository.findDetail(cardId, deviceId)
+                .orElseThrow(() -> new CollectionException(COLLECTION_CARD_NOT_FOUND));
+
+        return CollectionCardDetailResult.of(card.publicId(), card.date(), card.state(),
+                card.stampCount(), card.pressCount(), assetService.resolveImages(card.version(), card.paths()));
+    }
 
     public CollectionTodayResult findToday(UUID devicePublicId) {
         Long deviceId = deviceRepository.findByPublicId(devicePublicId)

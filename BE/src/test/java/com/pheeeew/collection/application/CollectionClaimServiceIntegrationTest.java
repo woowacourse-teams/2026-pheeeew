@@ -11,7 +11,6 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static com.pheeeew.collection.fixture.CollectionCardFixture.기본_카드_이미지;
 
-import com.pheeeew.collection.domain.CollectionRecordStatus;
 import com.pheeeew.collection.domain.repository.CollectionCardRepository;
 import com.pheeeew.collection.domain.repository.CollectionDrawStateRepository;
 import com.pheeeew.collection.domain.repository.CollectionProgressRepository;
@@ -121,7 +120,6 @@ class CollectionClaimServiceIntegrationTest {
         assertThat(storedCard.getCombinationIndex()).isEqualTo(result.combinationIndex());
         assertThat(storedCard.getCardVersion()).isEqualTo("v1");
         assertThat(storedCard.getClaimedAt()).isEqualTo(result.claimedAt());
-        assertThat(storedCard.getRecordStatus()).isEqualTo(CollectionRecordStatus.OPEN);
         assertThat(storedCard.getCreatedAt()).isNotNull();
         assertThat(storedCard.getUpdatedAt()).isNotNull();
         assertThat(storedState.getDeviceId()).isEqualTo(deviceId);

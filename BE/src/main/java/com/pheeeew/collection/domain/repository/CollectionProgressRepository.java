@@ -1,12 +1,14 @@
 package com.pheeeew.collection.domain.repository;
 
 import com.pheeeew.collection.domain.repository.projection.CollectionActivityCounts;
+import com.pheeeew.collection.domain.repository.projection.CollectionCardDetail;
 import com.pheeeew.collection.domain.repository.projection.CollectionAssetPaths;
 import com.pheeeew.collection.domain.repository.projection.CollectionTodayProgress;
 import com.pheeeew.emotion.domain.EmotionState;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -31,6 +33,37 @@ public class CollectionProgressRepository {
                 """;
 
     private final JdbcClient jdbc;
+
+    public Optional<CollectionCardDetail> findDetail(UUID cardId, Long deviceId) {
+        return jdbc.sql("""
+                SELECT card.public_id, card.card_date, card.state, card.card_version,
+                       COALESCE(activity_stamps.stamp_count, 0) AS stamp_count,
+                       COALESCE(presses.press_count, 0) AS press_count,
+                       characters.image_path, stamps.round_image_path, stamps.straight_image_path
+                FROM collection_cards card
+                LEFT JOIN device_daily_stamps activity_stamps
+                  ON activity_stamps.device_id = card.device_id AND activity_stamps.stamp_date = card.card_date
+                 AND activity_stamps.state = card.state
+                LEFT JOIN device_daily_presses presses
+                  ON presses.device_id = card.device_id AND presses.press_date = card.card_date
+                 AND presses.state = card.state
+                LEFT JOIN collection_character_assets characters
+                  ON characters.card_version = card.card_version AND characters.state = card.state
+                 AND characters.asset_number = card.character_number
+                LEFT JOIN collection_stamp_assets stamps
+                  ON stamps.card_version = card.card_version AND stamps.state = card.state
+                 AND stamps.asset_number = card.stamp_number
+                WHERE card.public_id = :cardId AND card.device_id = :deviceId
+                """)
+                .param("cardId", cardId)
+                .param("deviceId", deviceId)
+                .query((row, index) -> CollectionCardDetail.of(row.getObject("public_id", UUID.class),
+                        row.getObject("card_date", LocalDate.class), EmotionState.valueOf(row.getString("state")),
+                        row.getLong("stamp_count"), row.getLong("press_count"), row.getString("card_version"),
+                        CollectionAssetPaths.of(row.getString("image_path"), row.getString("round_image_path"),
+                                row.getString("straight_image_path"))))
+                .optional();
+    }
 
     public List<CollectionActivityCounts> findByDateAndDeviceId(LocalDate date, Long deviceId) {
         return jdbc.sql(ACTIVITY_COUNTS_SQL)

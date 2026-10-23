@@ -14,6 +14,7 @@ import com.pheeeew.auth.presentation.resolver.CurrentDeviceArgumentResolver;
 import com.pheeeew.collection.application.CollectionClaimService;
 import com.pheeeew.collection.application.CollectionQueryService;
 import com.pheeeew.collection.application.dto.CollectionCardResult;
+import com.pheeeew.collection.application.dto.CollectionCardDetailResult;
 import com.pheeeew.collection.application.dto.CollectionTodayResult;
 import com.pheeeew.collection.exception.CollectionErrorCode;
 import com.pheeeew.collection.exception.CollectionException;
@@ -70,6 +71,70 @@ class CollectionControllerTest {
     @BeforeEach
     void setUp() {
         when(jwtDecoder.decode("access-token")).thenReturn(AccessTokenFixture.액세스_토큰_클레임(DEVICE_PUBLIC_ID));
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = "invalid-token")
+    void 상세_조회도_유효한_인증이_필요하다(String token) {
+        // given
+        when(jwtDecoder.decode("invalid-token")).thenThrow(new BadJwtException("invalid token"));
+        var request = client.get().uri("/api/v1/collection-cards/" + UUID.randomUUID());
+        if (token != null) {
+            request.header(HttpHeaders.AUTHORIZATION, "Bearer " + token);
+        }
+
+        // when / then
+        request.exchange().expectStatus().isUnauthorized().expectBody()
+                .jsonPath("$.code").isEqualTo("AUTH-001");
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void 없는_카드나_다른_기기_카드는_공통_404_계약으로_응답한다() {
+        // given
+        UUID cardId = UUID.randomUUID();
+        when(service.findDetail(DEVICE_PUBLIC_ID, cardId))
+                .thenThrow(new CollectionException(CollectionErrorCode.COLLECTION_CARD_NOT_FOUND));
+
+        // when / then
+        client.get().uri("/api/v1/collection-cards/" + cardId)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
+                .expectStatus().isNotFound().expectBody().json("""
+                        {"code":"COLLECTION-005","message":"카드를 찾을 수 없습니다."}
+                        """, JsonCompareMode.STRICT);
+    }
+
+    @Test
+    void 잘못된_카드_식별자는_400으로_거절한다() {
+        // when / then
+        client.get().uri("/api/v1/collection-cards/not-a-uuid")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
+                .expectStatus().isBadRequest();
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void 카드_상세는_현재_횟수와_고정_이미지만_캐시하지_않고_반환한다() {
+        // given
+        UUID cardId = UUID.fromString("20769cf2-1f8a-4b62-8dbe-5b594d5ffb5d");
+        when(service.findDetail(DEVICE_PUBLIC_ID, cardId)).thenReturn(CollectionCardDetailResult.of(
+                cardId, LocalDate.of(2026, 10, 21), EmotionState.ANGRY, 3, 125, 기본_카드_이미지()));
+
+        // when
+        var response = client.get().uri("/api/v1/collection-cards/" + cardId)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange();
+
+        // then
+        response.expectStatus().isOk().expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
+                .expectBody().json("""
+                        {"cardId":"20769cf2-1f8a-4b62-8dbe-5b594d5ffb5d","date":"2026-10-21","state":"ANGRY",
+                         "stampCount":3,"pressCount":125,
+                         "images":{"characterUrl":"https://assets.example/v1/characters/angry/01.png",
+                                   "roundStampUrl":"https://assets.example/v1/stamps-round/angry/01.png",
+                                   "straightStampUrl":"https://assets.example/v1/stamps-straight/angry/01.png"}}
+                        """, JsonCompareMode.STRICT);
+        verify(service).findDetail(DEVICE_PUBLIC_ID, cardId);
     }
 
     @Test

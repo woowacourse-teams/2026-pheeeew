@@ -1,6 +1,54 @@
-# 컬렉션 진행도·직접 수령과 감정 수정 계약
+# 컬렉션 진행도·직접 수령·상세 조회와 감정 수정 계약
 
-관련 이슈: [#839](https://github.com/woowacourse-teams/2026-pheeeew/issues/839), [#840](https://github.com/woowacourse-teams/2026-pheeeew/issues/840)
+관련 이슈: [#839](https://github.com/woowacourse-teams/2026-pheeeew/issues/839), [#840](https://github.com/woowacourse-teams/2026-pheeeew/issues/840), [#842](https://github.com/woowacourse-teams/2026-pheeeew/issues/842)
+
+## 카드 상세 조회
+
+`GET /api/v1/collection-cards/{cardId}`에 기기 access token을 전달합니다.
+오늘과 과거 날짜의 본인 수령 카드를 조회하며 응답은 `Cache-Control: no-store`입니다.
+카드 ID는 수령 또는 오늘 조회 응답에서 얻습니다. 지난 카드 목록과 페이지네이션은 #843 범위입니다.
+
+```json
+{
+  "cardId": "20769cf2-1f8a-4b62-8dbe-5b594d5ffb5d",
+  "date": "2026-10-21",
+  "state": "ANGRY",
+  "stampCount": 3,
+  "pressCount": 125,
+  "images": {
+    "characterUrl": "https://techcourse-project-2026.s3.ap-northeast-2.amazonaws.com/pheeeew/development/collection-cards/v1/characters/angry/03.png",
+    "roundStampUrl": "https://techcourse-project-2026.s3.ap-northeast-2.amazonaws.com/pheeeew/development/collection-cards/v1/stamps-round/angry/06.png",
+    "straightStampUrl": "https://techcourse-project-2026.s3.ap-northeast-2.amazonaws.com/pheeeew/development/collection-cards/v1/stamps-straight/angry/06.png"
+  }
+}
+```
+
+- 날짜·감정·캐릭터·도장 조합은 수령 당시 값으로 고정합니다. `state`는 카드 감정입니다.
+- 횟수는 해당 기기·날짜·감정의 `device_daily_stamps`·`device_daily_presses`에서 읽습니다.
+  두 횟수와 카드·자산 경로는 한 SQL의 조회 시점을 공유하며 원본 활동 전체를 다시 세지 않습니다.
+- 늦게 저장된 전날 활동은 다음 조회에 반영됩니다. 자정 정산, 최종 횟수 고정, 활동 저장 대기나 정산용 잠금은 없습니다.
+  자정 전에 허용됐지만 늦게 커밋한 카드도 저장 완료 후 조회할 수 있습니다.
+- `cycle`, `combinationIndex`, `cardVersion`, `claimedAt`은 응답에 포함하지 않습니다.
+  정산 상태·이미지 작업 상태·서버 완성 이미지 URL도 제공하지 않습니다.
+- 앱은 세 PNG와 횟수를 고정 배치·폰트로 조합합니다. 저장·공유한 파일은 생성 당시 모습으로 남으며 이후 조회 숫자와 다를 수 있습니다.
+
+| HTTP | 코드 | 의미 |
+| --- | --- | --- |
+| 400 | 기존 공통 오류 코드 | 잘못된 UUID |
+| 401 | 기존 인증·기기 오류 코드 | 미인증·유효하지 않은 토큰 또는 존재하지 않는 인증 기기 |
+| 404 | `COLLECTION-005` | 없는 카드 또는 다른 기기의 카드. 두 경우 모두 `카드를 찾을 수 없습니다.` |
+| 503 | `COLLECTION-004` | 카드 자산이나 이미지 주소 설정 미비 |
+
+### 집계·자산 보존과 누락 확인
+
+보유 카드의 일별 집계와 고정 자산은 과거 조회의 원본이므로 삭제하거나 보존 기간을 단축하지 않습니다.
+스탬프 원본을 삭제해도 누적 횟수나 카드 소유는 회수하지 않습니다.
+집계 행이 없으면 해당 횟수는 기존 오늘 조회처럼 0으로 반환하며 카드는 유지합니다.
+정상 수령에는 스탬프 1회·프레스 100회 이상이 필요하므로, 수령 카드의 횟수가 이보다 작으면
+운영자는 해당 기기·카드 날짜·감정의 집계 행과 데이터 변경 이력을 확인해야 합니다.
+조회가 원본을 재집계하거나 카드를 자동 회수하지는 않습니다.
+공개 자산 URL에는 서명 만료가 없지만 S3 객체 보존과 읽기 권한이 필요합니다.
+신규 발급 버전이 비활성화돼도 기존 카드는 저장된 버전으로 조회할 수 있습니다.
 
 ## 오늘 진행도 조회
 
@@ -197,4 +245,14 @@ v1·v3의 그룹 선택 규칙과 v4의 기존 그룹 연결 유지·`groupId` �
 
 이 문서는 BE 계약과 클라이언트 연동 안내입니다. 앱 화면 구현·검증과 배포는 별도 작업입니다.
 모든 쓰기 서버가 집계를 반영하는 버전으로 전환됐는지 확인하고 완전한 한국 시간 날짜부터 활성화합니다.
-과거 기록의 백필·소급 카드 발급은 포함하지 않습니다. 완전한 컬렉션 날짜 마감 경로가 준비되기 전에는 중간 단계만 운영 활성화하지 않습니다.
+과거 기록의 백필·소급 카드 발급은 포함하지 않습니다. 날짜 마감이나 서버 이미지 생성은 활성화 조건이 아닙니다.
+앱 상세 화면 연동과 환경별 자산 접근을 확인한 뒤 활성화하며 운영 배포는 별도 승인으로 진행합니다.
+
+## 정산 상태 컬럼의 호환성
+
+#842부터 Java 도메인은 `record_status`를 사용하지 않습니다.
+새 마이그레이션 `V20261023_2__default_legacy_collection_record_status.sql`은 기존 컬럼에 `OPEN` 기본값을 추가합니다.
+이 기본값은 구버전 서버와의 호환성을 위한 값이며 정산 상태를 뜻하지 않습니다.
+구버전 서버는 컬럼을 계속 읽고 쓸 수 있고, 새 서버는 컬럼 없이 INSERT할 수 있습니다.
+기존 생성 마이그레이션과 기존 데이터는 변경하지 않습니다.
+컬럼 자체의 삭제는 구버전 서버와 롤백 대상이 더 이상 의존하지 않는 것을 확인한 후 별도 배포에서 진행합니다.

@@ -90,4 +90,18 @@ class CollectionQueryDisabledIssuanceIntegrationTest {
                 });
         assertThat(cards.count()).isEqualTo(1);
     }
+    @Test
+    void 신규_수령이_비활성화돼도_과거_카드_상세는_조회한다() {
+        // given
+        var device = devices.saveAndFlush(기본_기기_빌더().build());
+        var card = cards.saveAndFlush(기본_카드_빌더().deviceId(device.getId())
+                .cardDate(TODAY.minusDays(1)).build());
+
+        // when
+        var result = service.findDetail(device.getPublicId(), card.getPublicId());
+
+        // then
+        assertThat(result.cardId()).isEqualTo(card.getPublicId());
+        assertThat(result.images().characterUrl()).endsWith("/v1/characters/angry/01.png");
+    }
 }

@@ -1,6 +1,7 @@
 package com.pheeeew.collection.presentation;
 
 import com.pheeeew.collection.presentation.dto.CollectionCardResponse;
+import com.pheeeew.collection.presentation.dto.CollectionCardDetailResponse;
 import com.pheeeew.collection.presentation.dto.CollectionClaimRequest;
 import com.pheeeew.collection.presentation.dto.CollectionTodayResponse;
 import com.pheeeew.common.exception.ErrorResponse;
@@ -18,6 +19,33 @@ import org.springframework.http.ResponseEntity;
 
 @Tag(name = "컬렉션", description = "인증된 기기의 컬렉션 진행도 조회 및 카드 수령 API")
 public interface CollectionControllerApi {
+
+    @Operation(
+            summary = "컬렉션 카드 상세 조회",
+            description = """
+                    본인 기기가 수령한 오늘 또는 과거 카드를 조회합니다.
+                    카드 조합은 수령 당시 값이며 횟수는 해당 날짜·감정의 조회 시점 누적 집계입니다.
+                    늦게 저장된 활동은 다음 조회에 반영되며 자정 정산이나 최종 횟수 고정은 하지 않습니다.
+                    집계 행이 없으면 0회를 반환하며 카드 소유와 조합은 유지합니다.
+                    이미지 URL 3개로 앱에서 카드를 조합합니다. 조회는 카드를 생성하거나 재추첨하지 않습니다.
+                    """,
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 카드 UUID",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "유효한 기기 인증 없음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "COLLECTION-005: 없는 카드 또는 다른 기기 카드",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "503", description = "COLLECTION-004: 카드 자산·이미지 주소 설정 미비",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    ResponseEntity<CollectionCardDetailResponse> findDetail(
+            @Parameter(hidden = true) UUID devicePublicId,
+            @Parameter(description = "수령한 카드의 공개 식별자") UUID cardId
+    );
 
     @Operation(
             summary = "오늘 컬렉션 진행도 조회",

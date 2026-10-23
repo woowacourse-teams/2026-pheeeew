@@ -56,10 +56,6 @@ public class CollectionCard extends BaseEntity {
     @Column(name = "claimed_at", nullable = false, updatable = false)
     private Instant claimedAt;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "record_status", nullable = false, length = 20)
-    private CollectionRecordStatus recordStatus;
-
     @Builder
     private CollectionCard(Long deviceId, LocalDate cardDate, EmotionState state, long cycle, int combinationIndex,
             String cardVersion, Instant claimedAt) {
@@ -77,7 +73,6 @@ public class CollectionCard extends BaseEntity {
         this.combinationIndex = combinationIndex;
         this.cardVersion = requireVersion(cardVersion);
         this.claimedAt = Objects.requireNonNull(claimedAt);
-        this.recordStatus = CollectionRecordStatus.OPEN;
     }
 
     private String requireVersion(String version) {
