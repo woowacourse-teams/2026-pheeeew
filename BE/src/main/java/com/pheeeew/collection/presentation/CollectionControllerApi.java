@@ -4,9 +4,9 @@ import com.pheeeew.collection.presentation.dto.CollectionCardDetailResponse;
 import com.pheeeew.collection.presentation.dto.CollectionCardResponse;
 import com.pheeeew.collection.presentation.dto.CollectionClaimRequest;
 import com.pheeeew.collection.presentation.dto.CollectionHistoryRequest;
+import com.pheeeew.collection.presentation.dto.CollectionHistoryResponse;
 import com.pheeeew.collection.presentation.dto.CollectionTodayResponse;
 import com.pheeeew.common.exception.ErrorResponse;
-import com.pheeeew.common.presentation.dto.CursorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -24,10 +24,14 @@ import org.springframework.util.MultiValueMap;
 @Tag(name = "컬렉션", description = "인증된 기기의 컬렉션 진행도 조회 및 카드 수령 API")
 public interface CollectionControllerApi {
 
-    @Operation(summary = "지난 컬렉션 카드 목록 조회", description = """
-            인증된 기기의 지난 카드를 카드 날짜·내부 식별자 내림차순으로 조회합니다.
-            첫 요청의 한국 날짜보다 이전 카드만 포함하며 페이지 이동 중 날짜 상한과 감정 필터를 유지합니다.
-            오늘 카드는 /today에서 조회합니다. 새로고침은 커서를 생략합니다.
+    @Operation(summary = "수령한 컬렉션 카드 목록 조회", description = """
+            인증된 기기가 수령한 오늘·과거 카드를 카드 날짜·내부 식별자 내림차순으로 조회합니다.
+            첫 요청의 한국 날짜 당일까지 포함하며 페이지 이동 중 날짜 상한과 감정 필터를 유지합니다.
+            /today는 오늘 진행도·수령 여부를 조회합니다. 수령 직후·자정 전환·새로고침은 커서를 생략합니다.
+            기존 커서는 저장된 날짜 범위를 유지합니다.
+            최상위 nickname은 현재 기기 닉네임이며 미설정이면 null입니다. 카드별로 이름을 저장하지 않습니다.
+            counts는 감정 필터·커서 위치와 무관한 같은 날짜 범위의 전체·5감정 보유 장수입니다.
+            빈 목록에도 nickname과 counts를 반환하며, 목록과 개수는 같은 SQL 조회 시점을 사용합니다.
 
             늦게 저장된 카드가 이미 지나간 위치에 있으면 새로고침해야 하며 아직 읽지 않은 위치면 다음 페이지에 포함될 수 있습니다.
 
@@ -47,7 +51,7 @@ public interface CollectionControllerApi {
             @ApiResponse(responseCode = "503", description = "COLLECTION-004: 카드 자산·이미지 주소 설정 미비",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
-    ResponseEntity<CursorResponse<CollectionCardDetailResponse>> findHistory(
+    ResponseEntity<CollectionHistoryResponse> findHistory(
             @Parameter(hidden = true) UUID devicePublicId,
             @ParameterObject CollectionHistoryRequest request,
             @Parameter(hidden = true) MultiValueMap<String, String> parameters

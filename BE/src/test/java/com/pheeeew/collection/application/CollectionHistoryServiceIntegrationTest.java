@@ -28,6 +28,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Base64;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -83,37 +84,74 @@ class CollectionHistoryServiceIntegrationTest {
     }
 
     @Test
-    void 활동이_없으면_빈_이력을_반환한다() {
+    void 조건을_달성해도_수령_카드가_없으면_목록과_개수는_비어있다() {
         // given
         var owner = devices.saveAndFlush(기본_기기_빌더().build());
+
+        일별_스탬프를_저장한다(jdbc, owner.getId(), LocalDate.of(2026, 10, 22), EmotionState.ANGRY, 1);
+        개인_프레스를_저장한다(jdbc, owner.getId(), LocalDate.of(2026, 10, 22), EmotionState.ANGRY, 100);
 
         // when
         var result = service.findHistory(owner.getPublicId(), null, null, null);
 
         // then
+        assertThat(result.nickname()).isNull();
+        assertThat(result.counts().total()).isZero();
+        assertThat(result.counts().byEmotion()).isEqualTo(Map.of(
+                EmotionState.ANGRY, 0L, EmotionState.EXHAUSTED, 0L,
+                EmotionState.FRUSTRATED, 0L, EmotionState.IRRITATED, 0L, EmotionState.DISCOURAGED, 0L));
         assertThat(result.items()).isEmpty();
         assertThat(result.hasNext()).isFalse();
         assertThat(result.nextCursor()).isNull();
     }
 
     @Test
-    void 본인의_지난_카드만_상세와_동일한_내용으로_최신순_조회한다() {
+    void 오늘까지_본인의_수령_카드를_상세와_동일하게_조회한다() {
         // given
         var owner = devices.saveAndFlush(기본_기기_빌더().build());
         var other = devices.saveAndFlush(기본_기기_빌더().requestId(UUID.randomUUID()).build());
         var older = 카드를_저장한다(owner.getId(), LocalDate.of(2026, 10, 20), EmotionState.ANGRY, 0);
         var newer = 카드를_저장한다(owner.getId(), LocalDate.of(2026, 10, 21), EmotionState.EXHAUSTED, 37);
-        카드를_저장한다(owner.getId(), LocalDate.of(2026, 10, 22), EmotionState.ANGRY, 1);
+        var today = 카드를_저장한다(owner.getId(), LocalDate.of(2026, 10, 22), EmotionState.ANGRY, 1);
+        카드를_저장한다(owner.getId(), LocalDate.of(2026, 10, 23), EmotionState.ANGRY, 2);
         카드를_저장한다(other.getId(), LocalDate.of(2026, 10, 21), EmotionState.ANGRY, 0);
 
         // when
         var result = service.findHistory(owner.getPublicId(), null, null, null);
 
         // then
-        assertThat(result.items()).containsExactly(service.findDetail(owner.getPublicId(), newer.getPublicId()),
+        assertThat(result.counts().total()).isEqualTo(3);
+        assertThat(result.counts().byEmotion()).isEqualTo(Map.of(
+                EmotionState.ANGRY, 2L, EmotionState.EXHAUSTED, 1L,
+                EmotionState.FRUSTRATED, 0L, EmotionState.IRRITATED, 0L, EmotionState.DISCOURAGED, 0L));
+        assertThat(result.items()).containsExactly(service.findDetail(owner.getPublicId(), today.getPublicId()),
+                service.findDetail(owner.getPublicId(), newer.getPublicId()),
                 service.findDetail(owner.getPublicId(), older.getPublicId()));
         assertThat(result.hasNext()).isFalse();
         assertThat(result.nextCursor()).isNull();
+    }
+
+    @Test
+    void 카드_발급_당시가_아닌_현재_기기의_닉네임을_반환한다() {
+        // given
+        var owner = devices.saveAndFlush(기본_기기_빌더().nickname("처음이름").build());
+        devices.saveAndFlush(기본_기기_빌더().nickname("다른기기").build());
+        카드를_저장한다(owner.getId(), LocalDate.of(2026, 10, 22), EmotionState.ANGRY, 0);
+        var before = service.findHistory(owner.getPublicId(), null, 20, null);
+        owner.updateNickname("바뀐이름");
+        devices.saveAndFlush(owner);
+
+        // when
+        var after = service.findHistory(owner.getPublicId(), null, 20, null);
+        var empty = service.findHistory(owner.getPublicId(), EmotionState.EXHAUSTED, 20, null);
+
+        // then
+        assertThat(before.nickname()).isEqualTo("처음이름");
+        assertThat(after.nickname()).isEqualTo("바뀐이름");
+        assertThat(after.items()).isEqualTo(before.items());
+        assertThat(after.counts()).isEqualTo(before.counts());
+        assertThat(empty.items()).isEmpty();
+        assertThat(empty.nickname()).isEqualTo("바뀐이름");
     }
 
     @Test
@@ -155,6 +193,61 @@ class CollectionHistoryServiceIntegrationTest {
         // then
         assertThat(first.items()).extracting(item -> item.cardId()).containsExactly(newer.getPublicId());
         assertThat(next.items()).extracting(item -> item.cardId()).containsExactly(older.getPublicId());
+        assertThat(first.counts().total()).isEqualTo(3);
+        assertThat(first.counts().byEmotion()).containsEntry(EmotionState.ANGRY, 2L)
+                .containsEntry(EmotionState.EXHAUSTED, 1L);
+        assertThat(next.counts()).isEqualTo(first.counts());
+        var empty = service.findHistory(owner.getPublicId(), EmotionState.IRRITATED, 20, null);
+        assertThat(empty.items()).isEmpty();
+        assertThat(empty.hasNext()).isFalse();
+        assertThat(empty.nextCursor()).isNull();
+        assertThat(empty.counts()).isEqualTo(first.counts());
+    }
+
+    @Test
+    void 다섯_감정의_개수를_구분하고_마지막_페이지_이후에도_전체_개수를_유지한다() {
+        // given
+        var owner = devices.saveAndFlush(기본_기기_빌더().build());
+        var date = LocalDate.of(2026, 10, 22);
+        var expected = Map.of(EmotionState.FRUSTRATED, 1L, EmotionState.IRRITATED, 2L,
+                EmotionState.EXHAUSTED, 3L, EmotionState.DISCOURAGED, 4L, EmotionState.ANGRY, 5L);
+        expected.forEach((state, count) -> {
+            for (int i = 0; i < count; i++) {
+                카드를_저장한다(owner.getId(), date.minusDays(i), state, i);
+            }
+        });
+
+        // when
+        var result = service.findHistory(owner.getPublicId(), null, 20, null);
+        String cursor = Base64.getUrlEncoder().withoutPadding().encodeToString(
+                "1|2026-10-23||2026-10-17|1".getBytes(StandardCharsets.UTF_8));
+        var empty = service.findHistory(owner.getPublicId(), null, 20, cursor);
+
+        // then
+        assertThat(result.items()).hasSize(15);
+        assertThat(result.counts().total()).isEqualTo(15);
+        assertThat(result.counts().byEmotion()).isEqualTo(expected);
+        assertThat(empty.items()).isEmpty();
+        assertThat(empty.counts()).isEqualTo(result.counts());
+    }
+
+    @Test
+    void 기존_커서의_오늘_제외_범위는_목록과_개수에서_유지한다() {
+        // given
+        var owner = devices.saveAndFlush(기본_기기_빌더().build());
+        var old = 카드를_저장한다(owner.getId(), LocalDate.of(2026, 10, 20), EmotionState.ANGRY, 0);
+        var last = 카드를_저장한다(owner.getId(), LocalDate.of(2026, 10, 21), EmotionState.ANGRY, 1);
+        카드를_저장한다(owner.getId(), LocalDate.of(2026, 10, 22), EmotionState.ANGRY, 2);
+        String cursor = Base64.getUrlEncoder().withoutPadding().encodeToString(
+                ("1|2026-10-22||2026-10-21|" + last.getId()).getBytes(StandardCharsets.UTF_8));
+
+        // when
+        var result = service.findHistory(owner.getPublicId(), null, 20, cursor);
+
+        // then
+        assertThat(result.items()).extracting(item -> item.cardId()).containsExactly(old.getPublicId());
+        assertThat(result.counts().total()).isEqualTo(2);
+        assertThat(result.counts().byEmotion()).containsEntry(EmotionState.ANGRY, 2L);
     }
 
     @Test
@@ -186,7 +279,7 @@ class CollectionHistoryServiceIntegrationTest {
     @ParameterizedTest
     @ValueSource(strings = {"", "not-a-cursor", "1|2026-10-22||2026-10-21|1|extra",
             "2|2026-10-22||2026-10-21|1", "1|2026-10-22|UNKNOWN|2026-10-21|1",
-            "1|2026-10-23||2026-10-21|1", "1|2026-10-22||2026-10-22|1",
+            "1|2026-10-24||2026-10-21|1", "1|2026-10-22||2026-10-22|1",
             "1|2026-10-22||2026-10-21|0", "1|2026-10-22||2026-10-21|-1",
             "1|2026-10-22||2026-02-30|1", "1|2026-10-22||0000-01-01|1"})
     void 잘못된_커서는_거절한다(String payload) {
@@ -267,18 +360,24 @@ class CollectionHistoryServiceIntegrationTest {
         // given
         var owner = devices.saveAndFlush(기본_기기_빌더().build());
         var old = 카드를_저장한다(owner.getId(), LocalDate.of(2026, 10, 20), EmotionState.ANGRY, 0);
-        카드를_저장한다(owner.getId(), LocalDate.of(2026, 10, 21), EmotionState.ANGRY, 1);
+        var yesterday = 카드를_저장한다(owner.getId(), LocalDate.of(2026, 10, 21), EmotionState.ANGRY, 1);
         var today = 카드를_저장한다(owner.getId(), LocalDate.of(2026, 10, 22), EmotionState.ANGRY, 2);
         var first = service.findHistory(owner.getPublicId(), null, 1, null);
         when(clock.instant()).thenReturn(Instant.parse("2026-10-22T15:00:00Z"));
+        var tomorrow = 카드를_저장한다(owner.getId(), LocalDate.of(2026, 10, 23), EmotionState.ANGRY, 3);
 
         // when
         var next = service.findHistory(owner.getPublicId(), null, 20, first.nextCursor());
         var refreshed = service.findHistory(owner.getPublicId(), null, 20, null);
 
         // then
-        assertThat(next.items()).extracting(item -> item.cardId()).containsExactly(old.getPublicId());
-        assertThat(refreshed.items().getFirst().cardId()).isEqualTo(today.getPublicId());
+        assertThat(first.items()).extracting(item -> item.cardId()).containsExactly(today.getPublicId());
+        assertThat(next.items()).extracting(item -> item.cardId())
+                .containsExactly(yesterday.getPublicId(), old.getPublicId());
+        assertThat(first.counts().total()).isEqualTo(3);
+        assertThat(next.counts().total()).isEqualTo(3);
+        assertThat(refreshed.items().getFirst().cardId()).isEqualTo(tomorrow.getPublicId());
+        assertThat(refreshed.counts().total()).isEqualTo(4);
     }
 
     @Test
@@ -355,11 +454,13 @@ class CollectionHistoryServiceIntegrationTest {
                             .get(5, TimeUnit.SECONDS);
                     assertThat(first.items()).extracting(item -> item.cardId()).containsExactly(firstCard.getPublicId());
                     assertThat(first.hasNext()).isTrue();
+                    assertThat(first.counts().total()).isEqualTo(2);
                 } finally {
                     release.countDown();
                 }
                 UUID committedId = pending.get(5, TimeUnit.SECONDS);
                 var next = service.findHistory(owner.getPublicId(), null, 20, first.nextCursor());
+                assertThat(next.counts().total()).isEqualTo(3);
                 if (behindCursor) {
                     assertThat(next.items()).extracting(item -> item.cardId()).containsExactly(committedId, oldest.getPublicId());
                 } else {

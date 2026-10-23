@@ -1,19 +1,24 @@
 package com.pheeeew.collection.domain.repository;
 
+import com.pheeeew.collection.domain.CollectionCardCounts;
 import com.pheeeew.collection.domain.repository.projection.CollectionActivityCounts;
 import com.pheeeew.collection.domain.repository.projection.CollectionAssetPaths;
 import com.pheeeew.collection.domain.repository.projection.CollectionCardDetail;
 import com.pheeeew.collection.domain.repository.projection.CollectionHistoryCard;
+import com.pheeeew.collection.domain.repository.projection.CollectionHistoryPage;
 import com.pheeeew.collection.domain.repository.projection.CollectionTodayProgress;
 import com.pheeeew.emotion.domain.EmotionState;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -65,13 +70,28 @@ public class CollectionProgressRepository {
                 .optional();
     }
 
-    public List<CollectionHistoryCard> findHistory(Long deviceId, LocalDate beforeDate,
+    public CollectionHistoryPage findHistory(Long deviceId, LocalDate beforeDate,
             LocalDate lastDate, long lastId, EmotionState emotion, int fetchSize) {
         String filter = emotion == null ? "" : " AND card.state = :emotion";
-        var query = jdbc.sql(CARD_DETAILS_SQL + """
+        var query = jdbc.sql("""
+                WITH counts AS (
+                    SELECT COUNT(*) FILTER (WHERE state = 'FRUSTRATED') AS count_frustrated,
+                           COUNT(*) FILTER (WHERE state = 'IRRITATED') AS count_irritated,
+                           COUNT(*) FILTER (WHERE state = 'EXHAUSTED') AS count_exhausted,
+                           COUNT(*) FILTER (WHERE state = 'DISCOURAGED') AS count_discouraged,
+                           COUNT(*) FILTER (WHERE state = 'ANGRY') AS count_angry
+                    FROM collection_cards
+                    WHERE device_id = :deviceId AND card_date < :beforeDate
+                ), page AS (
+                """ + CARD_DETAILS_SQL + """
                  WHERE card.device_id = :deviceId AND card.card_date < :beforeDate
                    AND (card.card_date, card.id) < (:lastDate, :lastId)
-                """ + filter + " ORDER BY card.card_date DESC, card.id DESC LIMIT :fetchSize")
+                """ + filter + " ORDER BY card.card_date DESC, card.id DESC LIMIT :fetchSize" + """
+                )
+                SELECT page.*, counts.*
+                FROM counts LEFT JOIN page ON TRUE
+                ORDER BY page.card_date DESC, page.id DESC
+                """)
                 .param("deviceId", deviceId)
                 .param("beforeDate", beforeDate)
                 .param("lastDate", lastDate)
@@ -80,8 +100,22 @@ public class CollectionProgressRepository {
         if (emotion != null) {
             query = query.param("emotion", emotion.name());
         }
-        return query.query((row, index) -> CollectionHistoryCard.of(row.getLong("id"), mapDetail(row)))
-                .list();
+        return query.query((ResultSetExtractor<CollectionHistoryPage>) rows -> {
+            rows.next(); // 집계는 카드가 없어도 한 행을 반환한다.
+            var counts = new EnumMap<EmotionState, Long>(EmotionState.class);
+            counts.put(EmotionState.FRUSTRATED, rows.getLong("count_frustrated"));
+            counts.put(EmotionState.IRRITATED, rows.getLong("count_irritated"));
+            counts.put(EmotionState.EXHAUSTED, rows.getLong("count_exhausted"));
+            counts.put(EmotionState.DISCOURAGED, rows.getLong("count_discouraged"));
+            counts.put(EmotionState.ANGRY, rows.getLong("count_angry"));
+            var cards = new ArrayList<CollectionHistoryCard>();
+            do {
+                if (rows.getObject("id") != null) {
+                    cards.add(CollectionHistoryCard.of(rows.getLong("id"), mapDetail(rows)));
+                }
+            } while (rows.next());
+            return CollectionHistoryPage.of(cards, CollectionCardCounts.of(counts));
+        });
     }
 
     public List<CollectionActivityCounts> findByDateAndDeviceId(LocalDate date, Long deviceId) {
