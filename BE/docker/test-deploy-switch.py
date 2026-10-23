@@ -35,10 +35,15 @@ import time
 
 name = sys.argv[1]
 marker = '/appstate/inflight-' + name
+badapi = '/appstate/badapi-' + name
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
+        if parsed.path.startswith('/api/') and os.path.exists(badapi):
+            self.send_response(503)
+            self.end_headers()
+            return
         slow = parsed.path.endswith('/slow')
         if slow:
             seconds = int(parse_qs(parsed.query).get('seconds', ['20'])[0])
@@ -250,9 +255,12 @@ class Fixture:
                 raise Failure(f'{color} 의 느린 요청이 끝나지 않았다')
             time.sleep(0.3)
 
-    def clear_inflight(self):
-        for marker in self.appstate.glob('inflight-*'):
-            marker.unlink(missing_ok=True)
+    def break_api(self, color):
+        (self.appstate / f'badapi-{color}').write_text('1')
+
+    def clear_appstate(self):
+        for stale in self.appstate.glob('*'):
+            stale.unlink(missing_ok=True)
 
     def break_nginx_conf(self):
         (self.confd / 'zz-bad.conf').write_text('this is not nginx syntax\n')
@@ -508,9 +516,12 @@ def scenario_broken_json_body(fx):
 def scenario_normal_waits_for_inflight(fx):
     fx.point_at('set $upstream_app app-blue;\n')
     fx.start_app('app-blue')
-    inflight = fx.slow_request(seconds=20)
+    inflight = fx.slow_request(seconds=35)
     fx.wait_inflight('app-blue')
     deploy = fx.deploy_async()
+    fx.wait_edge_serves('app-green')
+    expect((fx.appstate / 'inflight-app-blue').exists(),
+           'green 으로 전환된 시점에 blue 요청이 이미 끝나 겹침을 확인하지 못했다')
     fx.assert_alive_until_inflight_done('app-blue')
     result = fx.wait_deploy(deploy)
     code = inflight.communicate(timeout=120)[0].strip()
@@ -531,6 +542,9 @@ def scenario_rollback_waits_for_inflight(fx):
     fx.wait_edge_serves('app-green')
     inflight = fx.slow_request(seconds=40)
     fx.wait_inflight('app-green')
+    fx.wait_edge_serves('app-blue')
+    expect((fx.appstate / 'inflight-app-green').exists(),
+           'blue 로 복구된 시점에 green 요청이 이미 끝나 겹침을 확인하지 못했다')
     fx.assert_alive_until_inflight_done('app-green')
     result = fx.wait_deploy(deploy)
     code = inflight.communicate(timeout=150)[0].strip()
@@ -544,9 +558,33 @@ def scenario_rollback_waits_for_inflight(fx):
            '복구 확인보다 새 서버 삭제가 먼저다')
 
 
+def scenario_target_api_fails(fx):
+    fx.point_at('set $upstream_app app-blue;\n')
+    fx.start_app('app-blue')
+    fx.break_api('app-green')
+    result = fx.deploy()
+    expect(result.returncode == 1, f'종료 코드 {result.returncode}\n{result.stdout}')
+    expect(fx.pointer_color() == 'app-blue', f'전환 파일 {fx.pointer_color()}')
+    expect(fx.running('app-blue'), 'app-blue 가 내려갔다')
+    expect(not fx.exists('app-green'), 'app-green 이 남아 있다')
+    expect(not fx.backup_exists(), '전환 전에 멈췄는데 백업이 생겼다')
+    expect('최소 API 를 응답하지 않습니다' in result.stdout, '최소 API 실패 안내가 없다')
+
+
+def scenario_compose_services_match(fx):
+    compose = yaml.safe_load((REPO / 'BE/docker/compose.dev.yml').read_text())
+    services = set(compose['services'])
+    expect(services == {'app-blue', 'app-green'},
+           f'배포 스크립트가 왕복하는 두 색과 compose.dev.yml 의 {sorted(services)} 가 다르다')
+    for color in ('blue', 'green'):
+        expect(compose['services'][f'app-{color}'].get('profiles') == [color],
+               f'app-{color} 의 profiles 가 [{color}] 가 아니다')
+
+
 SCENARIOS = (
     ('정상 전환', scenario_normal),
     ('새 버전 기동 실패', scenario_start_fail),
+    ('새 버전이 최소 API 를 응답하지 않음', scenario_target_api_fails),
     ('nginx -t 실패', scenario_conf_test_fail),
     ('reload 명령 실패', scenario_reload_fail),
     ('전환 미반영', scenario_not_reflected),
@@ -560,12 +598,13 @@ SCENARIOS = (
     ('이관 전 전환 파일 거부', scenario_retired_pointer),
     ('전환 파일 이상값', scenario_invalid_pointer),
     ('전환 파일 빈 값', scenario_empty_pointer),
+    ('compose 의 색 이름이 배포 스크립트와 일치', scenario_compose_services_match),
 )
 
 
 def reset(fx):
     fx.compose_apps('--profile', 'blue', '--profile', 'green', 'rm', '-sf')
-    fx.clear_inflight()
+    fx.clear_appstate()
     fx.reset_edge()
     fx.fix_nginx_conf()
     fx.restore_app('app-green')
