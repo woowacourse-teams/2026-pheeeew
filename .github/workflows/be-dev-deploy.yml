@@ -204,7 +204,7 @@ jobs:
 
       - name: .env 갱신
         env:
-          APP_IMAGE: ${{ secrets.DOCKERHUB_IMAGE }}:dev-${{ github.sha }}
+          APP_IMAGE: ${{ secrets.DOCKERHUB_IMAGE }}:${{ github.event.inputs.image_tag || format('dev-{0}', github.sha) }}
           DB_URL: ${{ secrets.DB_URL }}
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
