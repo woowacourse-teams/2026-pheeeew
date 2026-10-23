@@ -22,6 +22,7 @@ import com.pheeeew.collection.application.dto.CollectionCardDetailResult;
 import com.pheeeew.collection.application.dto.CollectionCardResult;
 import com.pheeeew.collection.application.dto.CollectionHistoryResult;
 import com.pheeeew.collection.application.dto.CollectionTodayResult;
+import com.pheeeew.collection.domain.CollectionCardCounts;
 import com.pheeeew.collection.exception.CollectionErrorCode;
 import com.pheeeew.collection.exception.CollectionException;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
@@ -33,6 +34,7 @@ import com.pheeeew.emotion.domain.EmotionState;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -87,23 +89,41 @@ class CollectionControllerTest {
     void 목록은_인증된_기기로_조회하고_빈_커서_응답을_반환한다() {
         // given
         when(service.findHistory(DEVICE_PUBLIC_ID, null, null, null))
-                .thenReturn(CollectionHistoryResult.of(List.of(), false, null));
+                .thenReturn(CollectionHistoryResult.of(List.of(), false, null, CollectionCardCounts.of(Map.of()), null));
 
         // when / then
         client.get().uri("/api/v1/collection-cards")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
                 .expectStatus().isOk().expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
                 .expectBody().json("""
-                        {"items":[],"hasNext":false,"nextCursor":null}
+                        {"nickname":null,"items":[],"hasNext":false,"nextCursor":null,
+                         "counts":{"total":0,"byEmotion":{"FRUSTRATED":0,"IRRITATED":0,"EXHAUSTED":0,"DISCOURAGED":0,"ANGRY":0}}}
                         """, JsonCompareMode.STRICT);
         verify(service).findHistory(DEVICE_PUBLIC_ID, null, null, null);
+    }
+
+    @Test
+    void 필터_결과가_비어도_현재_닉네임과_전체_개수는_반환한다() {
+        // given
+        when(service.findHistory(DEVICE_PUBLIC_ID, EmotionState.EXHAUSTED, null, null))
+                .thenReturn(CollectionHistoryResult.of(List.of(), false, null,
+                        CollectionCardCounts.of(Map.of(EmotionState.ANGRY, 2L)), "현재이름"));
+
+        // when / then
+        client.get().uri("/api/v1/collection-cards?emotion=EXHAUSTED")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
+                .expectStatus().isOk().expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
+                .expectBody().json("""
+                        {"nickname":"현재이름","items":[],"hasNext":false,"nextCursor":null,
+                         "counts":{"total":2,"byEmotion":{"FRUSTRATED":0,"IRRITATED":0,"EXHAUSTED":0,"DISCOURAGED":0,"ANGRY":2}}}
+                        """, JsonCompareMode.STRICT);
     }
 
     @Test
     void 다음_페이지의_생략된_감정_필터는_커서와_함께_서비스에_전달한다() {
         // given
         when(service.findHistory(DEVICE_PUBLIC_ID, null, 50, "previous"))
-                .thenReturn(CollectionHistoryResult.of(List.of(), false, null));
+                .thenReturn(CollectionHistoryResult.of(List.of(), false, null, CollectionCardCounts.of(Map.of()), null));
 
         // when / then
         client.get().uri("/api/v1/collection-cards?limit=50&cursor=previous")
@@ -157,19 +177,20 @@ class CollectionControllerTest {
         var item = CollectionCardDetailResult.of(cardId, LocalDate.of(2026, 10, 21),
                 EmotionState.ANGRY, 3, 125, 기본_카드_이미지());
         when(service.findHistory(DEVICE_PUBLIC_ID, EmotionState.ANGRY, 1, "previous"))
-                .thenReturn(CollectionHistoryResult.of(List.of(item), true, "next"));
+                .thenReturn(CollectionHistoryResult.of(List.of(item), true, "next", CollectionCardCounts.of(Map.of(EmotionState.ANGRY, 2L, EmotionState.EXHAUSTED, 1L)), "스타크"));
 
         // when / then
         client.get().uri("/api/v1/collection-cards?emotion=ANGRY&limit=1&cursor=previous&devicePublicId=" + UUID.randomUUID())
                 .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
                 .expectStatus().isOk().expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
                 .expectBody().json("""
-                        {"items":[{"cardId":"20769cf2-1f8a-4b62-8dbe-5b594d5ffb5d","date":"2026-10-21","state":"ANGRY",
+                        {"nickname":"스타크","items":[{"cardId":"20769cf2-1f8a-4b62-8dbe-5b594d5ffb5d","date":"2026-10-21","state":"ANGRY",
                          "stampCount":3,"pressCount":125,
                          "images":{"characterUrl":"https://assets.example/v1/characters/angry/01.png",
                                    "roundStampUrl":"https://assets.example/v1/stamps-round/angry/01.png",
                                    "straightStampUrl":"https://assets.example/v1/stamps-straight/angry/01.png"}}],
-                         "hasNext":true,"nextCursor":"next"}
+                         "hasNext":true,"nextCursor":"next",
+                         "counts":{"total":3,"byEmotion":{"FRUSTRATED":0,"IRRITATED":0,"EXHAUSTED":1,"DISCOURAGED":0,"ANGRY":2}}}
                         """, JsonCompareMode.STRICT);
         verify(service).findHistory(DEVICE_PUBLIC_ID, EmotionState.ANGRY, 1, "previous");
     }

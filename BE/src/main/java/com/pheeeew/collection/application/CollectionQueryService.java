@@ -42,9 +42,9 @@ public class CollectionQueryService {
     private final CollectionAssetService assetService;
 
     public CollectionHistoryResult findHistory(UUID devicePublicId, EmotionState emotion, Integer limit, String encodedCursor) {
-        Long deviceId = deviceRepository.findByPublicId(devicePublicId)
-                .map(Device::getId)
+        Device device = deviceRepository.findByPublicId(devicePublicId)
                 .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
+        Long deviceId = device.getId();
 
         int pageSize = limit == null ? 20 : limit;
         if (pageSize < 1 || pageSize > 50) {
@@ -58,9 +58,10 @@ public class CollectionQueryService {
             cursor.validateRequest(today, emotion);
         }
 
-        var rows = collectionProgressRepository.findHistory(deviceId, cursor.beforeDate(), cursor.lastDate(),
+        var history = collectionProgressRepository.findHistory(deviceId, cursor.beforeDate(), cursor.lastDate(),
                 cursor.lastId(), cursor.emotion(), pageSize + 1);
 
+        var rows = history.cards();
         boolean hasNext = rows.size() > pageSize;
         var page = rows.subList(0, Math.min(rows.size(), pageSize));
         var items = page.stream().map(row -> toDetailResult(row.detail())).toList();
@@ -70,7 +71,7 @@ public class CollectionQueryService {
             nextCursor = CollectionHistoryCursorCodec.encode(cursor.next(last.detail().date(), last.id()));
         }
 
-        return CollectionHistoryResult.of(items, hasNext, nextCursor);
+        return CollectionHistoryResult.of(items, hasNext, nextCursor, history.counts(), device.getNickname());
     }
 
     public CollectionCardDetailResult findDetail(UUID devicePublicId, UUID cardId) {

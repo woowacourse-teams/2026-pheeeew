@@ -8,7 +8,8 @@ import java.time.LocalDate;
 
 public record CollectionHistoryCursor(LocalDate beforeDate, EmotionState emotion, LocalDate lastDate, long lastId) {
 
-    public static CollectionHistoryCursor initial(LocalDate beforeDate, EmotionState emotion) {
+    public static CollectionHistoryCursor initial(LocalDate today, EmotionState emotion) {
+        LocalDate beforeDate = today.plusDays(1);
         return new CollectionHistoryCursor(beforeDate, emotion, beforeDate, Long.MAX_VALUE);
     }
 
@@ -17,7 +18,7 @@ public record CollectionHistoryCursor(LocalDate beforeDate, EmotionState emotion
     }
 
     public void validateRequest(LocalDate today, EmotionState requestedEmotion) {
-        if (beforeDate.getYear() < 1 || beforeDate.getYear() > 9999 || beforeDate.isAfter(today)
+        if (beforeDate.getYear() < 1 || beforeDate.getYear() > 9999 || beforeDate.isAfter(today.plusDays(1))
                 || lastDate.getYear() < 1 || !lastDate.isBefore(beforeDate) || lastId < 1
                 || requestedEmotion != null && requestedEmotion != emotion) {
             throw new CollectionException(COLLECTION_INVALID_CURSOR);
