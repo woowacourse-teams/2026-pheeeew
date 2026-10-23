@@ -28,7 +28,10 @@ public interface CollectionControllerApi {
                     - 활동이 없으면 횟수는 0입니다. 스탬프 목표는 1회, 프레스 목표는 100회입니다.
                     - 프레스는 서버가 인정하여 저장한 횟수이며, 목표를 초과해도 실제 횟수를 유지합니다.
                     - 부족분은 목표에서 현재 횟수를 뺀 값이며 최소 0입니다.
-                    - card는 발급된 카드 정보이며 미발급 상태이면 null입니다. 조회로 활동이나 카드를 생성하지 않습니다.
+                    - card는 수령 API와 같은 카드·이미지 URL 정보이며 미발급 상태이면 null입니다.
+                    - 진행도와 카드는 같은 시점의 저장 상태를 읽습니다. 수령 후에도 횟수는 갱신되고 카드와 그림은 유지됩니다.
+                    - card가 있으면 수령 완료, 없고 두 부족분이 0이면 수령 가능, 나머지는 조건 미달입니다.
+                    - 조회로 활동이나 카드를 생성하지 않습니다.
 
                     조회 중 날짜가 바뀌면 새 날짜로 다시 조회합니다. 날짜가 계속 바뀌어 503이 반환되면 재시도합니다.
                     """,
@@ -39,7 +42,7 @@ public interface CollectionControllerApi {
             @ApiResponse(responseCode = "401", description = "인증 정보 없음·유효하지 않음 또는 인증된 기기가 존재하지 않음",
                     content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "503", description = "COLLECTION-001: 조회 중 날짜 변경이 반복됨. 재시도 필요",
+            @ApiResponse(responseCode = "503", description = "COLLECTION-001: 날짜 변경 반복 또는 COLLECTION-004: 수령 카드의 자산·이미지 주소 설정 미비",
                     content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ErrorResponse.class)))
     })

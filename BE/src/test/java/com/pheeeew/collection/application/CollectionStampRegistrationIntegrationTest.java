@@ -12,6 +12,8 @@ import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_STATE_CHANG
 import static org.mockito.Mockito.when;
 
 import com.pheeeew.collection.domain.repository.CollectionProgressRepository;
+import com.pheeeew.collection.domain.repository.CollectionAssetRepository;
+import com.pheeeew.collection.infra.CollectionAssetConfiguration;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.emotion.application.command.EmotionCommandService;
@@ -47,7 +49,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 @PostgisDataJpaTest
 @Import({EmotionCommandService.class, EmotionContentResolver.class,
-        CollectionQueryService.class, CollectionProgressRepository.class})
+        CollectionQueryService.class, CollectionProgressRepository.class,
+        CollectionAssetConfiguration.class, CollectionAssetRepository.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class CollectionStampRegistrationIntegrationTest {
 

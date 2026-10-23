@@ -1,9 +1,13 @@
 package com.pheeeew.collection.domain.repository;
 
 import com.pheeeew.collection.domain.repository.projection.CollectionActivityCounts;
+import com.pheeeew.collection.domain.repository.projection.CollectionAssetPaths;
+import com.pheeeew.collection.domain.repository.projection.CollectionTodayProgress;
 import com.pheeeew.emotion.domain.EmotionState;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -12,10 +16,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class CollectionProgressRepository {
 
-    private final JdbcClient jdbc;
-
-    public List<CollectionActivityCounts> findByDateAndDeviceId(LocalDate date, Long deviceId) {
-        return jdbc.sql("""
+    private static final String ACTIVITY_COUNTS_SQL = """
                 SELECT state, SUM(stamp_count) AS stamp_count, SUM(press_count) AS press_count
                 FROM (
                     SELECT state, stamp_count, 0::bigint AS press_count
@@ -27,11 +28,53 @@ public class CollectionProgressRepository {
                     WHERE press_date = :date AND device_id = :deviceId
                 ) activity
                 GROUP BY state
-                """)
+                """;
+
+    private final JdbcClient jdbc;
+
+    public List<CollectionActivityCounts> findByDateAndDeviceId(LocalDate date, Long deviceId) {
+        return jdbc.sql(ACTIVITY_COUNTS_SQL)
                 .param("date", date)
                 .param("deviceId", deviceId)
                 .query((row, index) -> CollectionActivityCounts.of(EmotionState.valueOf(row.getString("state")),
                         row.getLong("stamp_count"), row.getLong("press_count")))
+                .list();
+    }
+
+    public List<CollectionTodayProgress> findTodayByDateAndDeviceId(LocalDate date, Long deviceId) {
+        return jdbc.sql("WITH activity AS (" + ACTIVITY_COUNTS_SQL + """
+                ), cards AS (
+                    SELECT * FROM collection_cards
+                    WHERE card_date = :date AND device_id = :deviceId
+                )
+                SELECT COALESCE(activity.state, cards.state) AS state,
+                       COALESCE(activity.stamp_count, 0) AS stamp_count,
+                       COALESCE(activity.press_count, 0) AS press_count,
+                       cards.public_id, cards.card_date, cards.cycle, cards.combination_index,
+                       cards.card_version, cards.claimed_at,
+                       characters.image_path, stamps.round_image_path, stamps.straight_image_path
+                FROM activity
+                FULL OUTER JOIN cards ON cards.state = activity.state
+                LEFT JOIN collection_character_assets characters
+                  ON characters.card_version = cards.card_version AND characters.state = cards.state
+                 AND characters.asset_number = cards.character_number
+                LEFT JOIN collection_stamp_assets stamps
+                  ON stamps.card_version = cards.card_version AND stamps.state = cards.state
+                 AND stamps.asset_number = cards.stamp_number
+                """)
+                .param("date", date)
+                .param("deviceId", deviceId)
+                .query((row, index) -> {
+                    UUID publicId = row.getObject("public_id", UUID.class);
+                    var card = publicId == null ? null : CollectionTodayProgress.Card.of(
+                            publicId, row.getObject("card_date", LocalDate.class), row.getLong("cycle"),
+                            row.getInt("combination_index"), row.getString("card_version"),
+                            row.getObject("claimed_at", OffsetDateTime.class).toInstant(),
+                            CollectionAssetPaths.of(row.getString("image_path"),
+                                    row.getString("round_image_path"), row.getString("straight_image_path")));
+                    return CollectionTodayProgress.of(EmotionState.valueOf(row.getString("state")),
+                            row.getLong("stamp_count"), row.getLong("press_count"), card);
+                })
                 .list();
     }
 }

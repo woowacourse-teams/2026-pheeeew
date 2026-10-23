@@ -235,4 +235,44 @@ class CollectionControllerTest {
         // then
         response.expectStatus().isEqualTo(status).expectBody().jsonPath("$.code").isEqualTo(code);
     }
+    @Test
+    void 오늘_조회는_수령한_카드와_이미지를_반환하고_내부_추첨_정보는_노출하지_않는다() {
+        // given
+        var card = CollectionCardResult.of(기본_카드_빌더().build(), 기본_카드_이미지());
+        var items = Arrays.stream(EmotionState.values())
+                .map(state -> CollectionTodayResult.Item.of(state, 1, 100,
+                        state == EmotionState.ANGRY ? card : null)).toList();
+        when(service.findToday(DEVICE_PUBLIC_ID)).thenReturn(CollectionTodayResult.of(card.date(), items));
+
+        // when
+        var response = client.get().uri(URI).header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange();
+
+        // then
+        response.expectStatus().isOk().expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
+                .expectBody().jsonPath("$.items[4].card.cardId").isEqualTo(card.cardId().toString())
+                .jsonPath("$.items[4].card.date").isEqualTo(card.date().toString())
+                .jsonPath("$.items[4].card.state").isEqualTo("ANGRY")
+                .jsonPath("$.items[4].card.images.characterUrl").isEqualTo(card.images().characterUrl())
+                .jsonPath("$.items[4].card.images.roundStampUrl").isEqualTo(card.images().roundStampUrl())
+                .jsonPath("$.items[4].card.images.straightStampUrl").isEqualTo(card.images().straightStampUrl())
+                .jsonPath("$.items[4].card.cycle").doesNotHaveJsonPath()
+                .jsonPath("$.items[4].card.combinationIndex").doesNotHaveJsonPath()
+                .jsonPath("$.items[4].card.cardVersion").doesNotHaveJsonPath()
+                .jsonPath("$.items[4].card.claimedAt").doesNotHaveJsonPath()
+                .jsonPath("$.items[0].card").isEmpty();
+        verifyNoInteractions(claims);
+    }
+
+    @Test
+    void 오늘_카드의_이미지_주소를_구성하지_못하면_503을_반환한다() {
+        // given
+        when(service.findToday(DEVICE_PUBLIC_ID))
+                .thenThrow(new CollectionException(CollectionErrorCode.COLLECTION_ASSETS_NOT_READY));
+
+        // when / then
+        client.get().uri(URI).header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
+                .expectStatus().isEqualTo(503).expectBody().jsonPath("$.code").isEqualTo("COLLECTION-004");
+        verifyNoInteractions(claims);
+    }
+
 }

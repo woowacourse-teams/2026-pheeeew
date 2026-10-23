@@ -23,11 +23,12 @@ public record CollectionTodayResponse(
             Progress presses,
             @JsonInclude(JsonInclude.Include.ALWAYS)
             @Schema(description = "발급된 카드 정보. 미발급 상태이면 null입니다.", nullable = true)
-            Void card
+            CollectionCardResponse card
     ) {
 
         public static Item from(CollectionTodayResult.Item item) {
-            return new Item(item.state(), Progress.from(item.stamps()), Progress.from(item.presses()), null);
+            return new Item(item.state(), Progress.from(item.stamps()), Progress.from(item.presses()),
+                    item.card() == null ? null : CollectionCardResponse.from(item.card()));
         }
     }
 
