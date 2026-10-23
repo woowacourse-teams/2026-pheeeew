@@ -56,6 +56,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: 컬렉션 Secrets 확인
+        env:
+          COLLECTION_CARD_VERSION: ${{ secrets.COLLECTION_CARD_VERSION }}
+        run: |
+          set -eu
+          : "${COLLECTION_CARD_VERSION:?development Secrets에 COLLECTION_CARD_VERSION을 등록해야 합니다.}"
+
       - name: S3 Secrets 확인
         env:
           S3_BUCKET: ${{ secrets.S3_BUCKET }}
@@ -201,6 +208,7 @@ jobs:
           S3_BUCKET: ${{ secrets.S3_BUCKET }}
           S3_KEY_PREFIX: ${{ secrets.S3_KEY_PREFIX }}
           S3_REGION: ${{ secrets.S3_REGION }}
+          COLLECTION_CARD_VERSION: ${{ secrets.COLLECTION_CARD_VERSION }}
         run: |
           set -eu
           umask 077
@@ -214,6 +222,7 @@ jobs:
             echo "PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64=$PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64"
             echo "PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=$PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER"
             printf '%s\n' "S3_BUCKET=$S3_BUCKET" "S3_KEY_PREFIX=$S3_KEY_PREFIX" "S3_REGION=$S3_REGION"
+            printf '%s\n' "COLLECTION_CARD_VERSION=$COLLECTION_CARD_VERSION"
           } > env.tmp
           scp -F ~/.ssh/config env.tmp target:/opt/pheeeew/.env.new
           ssh -F ~/.ssh/config target 'set -eu; umask 077; cd /opt/pheeeew; [ -f .env ] && cp .env .env.prev && chmod 600 .env.prev || true; chmod 600 .env.new; mv .env.new .env'

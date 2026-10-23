@@ -12,6 +12,8 @@ import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_STATE_CHANG
 import static org.mockito.Mockito.when;
 
 import com.pheeeew.collection.domain.repository.CollectionProgressRepository;
+import com.pheeeew.collection.domain.repository.CollectionAssetRepository;
+import com.pheeeew.collection.infra.CollectionAssetConfiguration;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.emotion.application.command.EmotionCommandService;
@@ -40,14 +42,18 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+@TestPropertySource(properties = {"pheeeew.s3.bucket=collection-test-assets",
+        "pheeeew.s3.region=ap-northeast-2", "pheeeew.s3.key-prefix=pheeeew/development/"})
 @PostgisDataJpaTest
 @Import({EmotionCommandService.class, EmotionContentResolver.class,
-        CollectionQueryService.class, CollectionProgressRepository.class})
+        CollectionQueryService.class, CollectionProgressRepository.class,
+        CollectionAssetConfiguration.class, CollectionAssetRepository.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class CollectionStampRegistrationIntegrationTest {
 

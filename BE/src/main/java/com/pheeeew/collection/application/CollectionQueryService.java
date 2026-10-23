@@ -3,8 +3,9 @@ package com.pheeeew.collection.application;
 import static com.pheeeew.collection.exception.CollectionErrorCode.COLLECTION_DATE_CHANGED;
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
 
-import com.pheeeew.collection.application.dto.CollectionTodayResult;
+import com.pheeeew.collection.application.dto.CollectionCardResult;
 import com.pheeeew.collection.application.dto.CollectionTodayResult.Item;
+import com.pheeeew.collection.application.dto.CollectionTodayResult;
 import com.pheeeew.collection.domain.repository.CollectionProgressRepository;
 import com.pheeeew.collection.exception.CollectionException;
 import com.pheeeew.device.domain.Device;
@@ -31,6 +32,7 @@ public class CollectionQueryService {
     private final CollectionProgressRepository collectionProgressRepository;
     private final DeviceRepository deviceRepository;
     private final Clock clock;
+    private final CollectionAssetService assetService;
 
     public CollectionTodayResult findToday(UUID devicePublicId) {
         Long deviceId = deviceRepository.findByPublicId(devicePublicId)
@@ -50,8 +52,12 @@ public class CollectionQueryService {
 
     private CollectionTodayResult findByDate(LocalDate date, Long deviceId) {
         Map<EmotionState, Item> progress = new EnumMap<>(EmotionState.class);
-        collectionProgressRepository.findByDateAndDeviceId(date, deviceId)
-                .forEach(counts -> progress.put(counts.state(), Item.of(counts.state(), counts.stampCount(), counts.pressCount())));
+        collectionProgressRepository.findTodayByDateAndDeviceId(date, deviceId)
+                .forEach(row -> {
+                    var card = row.card() == null ? null : CollectionCardResult.of(row.card(), row.state(),
+                            assetService.resolveImages(row.card().version(), row.card().paths()));
+                    progress.put(row.state(), Item.of(row.state(), row.stampCount(), row.pressCount(), card));
+                });
 
         return CollectionTodayResult.of(date, Arrays.stream(EmotionState.values())
                 .map(state -> progress.getOrDefault(state, Item.of(state, 0, 0)))

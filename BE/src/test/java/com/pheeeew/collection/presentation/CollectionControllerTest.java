@@ -1,14 +1,19 @@
 package com.pheeeew.collection.presentation;
 
-import static org.mockito.Mockito.when;
+import static com.pheeeew.collection.fixture.CollectionCardFixture.기본_카드_빌더;
+import static com.pheeeew.collection.fixture.CollectionCardFixture.기본_카드_이미지;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 import com.pheeeew.auth.fixture.AccessTokenFixture;
 import com.pheeeew.auth.infra.security.AuthenticationErrorHandler;
 import com.pheeeew.auth.infra.security.SecurityConfig;
 import com.pheeeew.auth.presentation.config.AuthWebMvcConfig;
 import com.pheeeew.auth.presentation.resolver.CurrentDeviceArgumentResolver;
+import com.pheeeew.collection.application.CollectionClaimService;
 import com.pheeeew.collection.application.CollectionQueryService;
+import com.pheeeew.collection.application.dto.CollectionCardResult;
 import com.pheeeew.collection.application.dto.CollectionTodayResult;
 import com.pheeeew.collection.exception.CollectionErrorCode;
 import com.pheeeew.collection.exception.CollectionException;
@@ -22,6 +27,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +38,7 @@ import org.springframework.boot.security.autoconfigure.web.servlet.ServletWebSec
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.BadJwtException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -53,6 +60,9 @@ class CollectionControllerTest {
 
     @MockitoBean
     private CollectionQueryService service;
+
+    @MockitoBean
+    private CollectionClaimService claims;
 
     @MockitoBean
     private JwtDecoder jwtDecoder;
@@ -139,4 +149,130 @@ class CollectionControllerTest {
                 {"code":"COLLECTION-001","message":"조회 중 날짜가 변경되었습니다. 잠시 후 다시 시도해 주세요."}
                 """, JsonCompareMode.STRICT);
     }
+
+    @Test
+    void 인증된_기기가_날짜와_감정을_지정해_카드를_수령한다() {
+        // given
+        var card = CollectionCardResult.of(기본_카드_빌더().build(), 기본_카드_이미지());
+        when(claims.claim(DEVICE_PUBLIC_ID, LocalDate.of(2026, 10, 22), EmotionState.ANGRY)).thenReturn(card);
+
+        // when
+        var response = client.post().uri("/api/v1/collection-cards/claim")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("""
+                        {"date":"2026-10-22","state":"ANGRY"}
+                        """).exchange();
+
+        // then
+        response.expectStatus().isOk().expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
+                .expectBody().jsonPath("$.cardId").isEqualTo(card.cardId().toString())
+                .jsonPath("$.date").isEqualTo("2026-10-22")
+                .jsonPath("$.state").isEqualTo("ANGRY")
+                .jsonPath("$.cycle").doesNotHaveJsonPath()
+                .jsonPath("$.combinationIndex").doesNotHaveJsonPath()
+                .jsonPath("$.images.characterUrl").isEqualTo("https://assets.example/v1/characters/angry/01.png")
+                .jsonPath("$.images.roundStampUrl").isEqualTo("https://assets.example/v1/stamps-round/angry/01.png")
+                .jsonPath("$.images.straightStampUrl").isEqualTo("https://assets.example/v1/stamps-straight/angry/01.png")
+                .jsonPath("$.cardVersion").doesNotHaveJsonPath()
+                .jsonPath("$.claimedAt").doesNotHaveJsonPath();
+        verify(claims).claim(DEVICE_PUBLIC_ID, LocalDate.of(2026, 10, 22), EmotionState.ANGRY);
+        verifyNoInteractions(service);
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = "invalid-token")
+    void 인증이_없거나_잘못되면_카드를_수령할_수_없다(String token) {
+        // given
+        when(jwtDecoder.decode("invalid-token")).thenThrow(new BadJwtException("invalid token"));
+        var request = client.post().uri("/api/v1/collection-cards/claim")
+                .contentType(MediaType.APPLICATION_JSON).body("""
+                        {"date":"2026-10-22","state":"ANGRY"}
+                        """);
+        if (token != null) {
+            request.header(HttpHeaders.AUTHORIZATION, "Bearer " + token);
+        }
+
+        // when
+        var response = request.exchange();
+
+        // then
+        response.expectStatus().isUnauthorized().expectBody().jsonPath("$.code").isEqualTo("AUTH-001");
+        verifyNoInteractions(claims);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"date\":\"2026-10-22\"}", "{\"state\":\"ANGRY\"}",
+            "{\"date\":null,\"state\":null}", "{\"date\":\"2026-99-99\",\"state\":\"ANGRY\"}",
+            "{\"date\":\"2026-10-22\",\"state\":\"UNKNOWN\"}"})
+    void 날짜와_감정이_없거나_잘못된_수령_요청은_400을_반환한다(String body) {
+        // given / when
+        var response = client.post().uri("/api/v1/collection-cards/claim")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+                .contentType(MediaType.APPLICATION_JSON).body(body).exchange();
+
+        // then
+        response.expectStatus().isBadRequest().expectBody().jsonPath("$.code").isEqualTo("COMMON-001");
+        verifyNoInteractions(claims);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"COLLECTION_CLAIM_DATE_INVALID,400,COLLECTION-002", "COLLECTION_REQUIREMENTS_NOT_MET,409,COLLECTION-003",
+            "COLLECTION_ASSETS_NOT_READY,503,COLLECTION-004"})
+    void 수령_거절_이유별_상태와_오류_코드를_반환한다(CollectionErrorCode errorCode, int status, String code) {
+        // given
+        when(claims.claim(DEVICE_PUBLIC_ID, LocalDate.of(2026, 10, 22), EmotionState.ANGRY))
+                .thenThrow(new CollectionException(errorCode));
+
+        // when
+        var response = client.post().uri("/api/v1/collection-cards/claim")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+                .contentType(MediaType.APPLICATION_JSON).body("""
+                        {"date":"2026-10-22","state":"ANGRY"}
+                        """).exchange();
+
+        // then
+        response.expectStatus().isEqualTo(status).expectBody().jsonPath("$.code").isEqualTo(code);
+    }
+    @Test
+    void 오늘_조회는_수령한_카드와_이미지를_반환하고_내부_추첨_정보는_노출하지_않는다() {
+        // given
+        var card = CollectionCardResult.of(기본_카드_빌더().build(), 기본_카드_이미지());
+        var items = Arrays.stream(EmotionState.values())
+                .map(state -> CollectionTodayResult.Item.of(state, 1, 100,
+                        state == EmotionState.ANGRY ? card : null)).toList();
+        when(service.findToday(DEVICE_PUBLIC_ID)).thenReturn(CollectionTodayResult.of(card.date(), items));
+
+        // when
+        var response = client.get().uri(URI).header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange();
+
+        // then
+        response.expectStatus().isOk().expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
+                .expectBody().jsonPath("$.items[4].card.cardId").isEqualTo(card.cardId().toString())
+                .jsonPath("$.items[4].card.date").isEqualTo(card.date().toString())
+                .jsonPath("$.items[4].card.state").isEqualTo("ANGRY")
+                .jsonPath("$.items[4].card.images.characterUrl").isEqualTo(card.images().characterUrl())
+                .jsonPath("$.items[4].card.images.roundStampUrl").isEqualTo(card.images().roundStampUrl())
+                .jsonPath("$.items[4].card.images.straightStampUrl").isEqualTo(card.images().straightStampUrl())
+                .jsonPath("$.items[4].card.cycle").doesNotHaveJsonPath()
+                .jsonPath("$.items[4].card.combinationIndex").doesNotHaveJsonPath()
+                .jsonPath("$.items[4].card.cardVersion").doesNotHaveJsonPath()
+                .jsonPath("$.items[4].card.claimedAt").doesNotHaveJsonPath()
+                .jsonPath("$.items[0].card").isEmpty();
+        verifyNoInteractions(claims);
+    }
+
+    @Test
+    void 오늘_카드의_이미지_주소를_구성하지_못하면_503을_반환한다() {
+        // given
+        when(service.findToday(DEVICE_PUBLIC_ID))
+                .thenThrow(new CollectionException(CollectionErrorCode.COLLECTION_ASSETS_NOT_READY));
+
+        // when / then
+        client.get().uri(URI).header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
+                .expectStatus().isEqualTo(503).expectBody().jsonPath("$.code").isEqualTo("COLLECTION-004");
+        verifyNoInteractions(claims);
+    }
+
 }

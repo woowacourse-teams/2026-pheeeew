@@ -10,13 +10,17 @@ public record CollectionTodayResult(LocalDate date, List<Item> items) {
         return new CollectionTodayResult(date, List.copyOf(items));
     }
 
-    public record Item(EmotionState state, Progress stamps, Progress presses) {
+    public record Item(EmotionState state, Progress stamps, Progress presses, CollectionCardResult card) {
 
         private static final long STAMP_TARGET = 1;
         private static final long PRESS_TARGET = 100;
 
         public static Item of(EmotionState state, long stampCount, long pressCount) {
-            return new Item(state, Progress.of(stampCount, STAMP_TARGET), Progress.of(pressCount, PRESS_TARGET));
+            return of(state, stampCount, pressCount, null);
+        }
+
+        public static Item of(EmotionState state, long stampCount, long pressCount, CollectionCardResult card) {
+            return new Item(state, Progress.of(stampCount, STAMP_TARGET), Progress.of(pressCount, PRESS_TARGET), card);
         }
     }
 
