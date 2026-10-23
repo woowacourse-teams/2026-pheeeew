@@ -245,9 +245,9 @@ class CollectionClaimServiceIntegrationTest {
         jdbc.sql("""
                 INSERT INTO collection_cards
                     (public_id, device_id, card_date, state, cycle, combination_index, card_version,
-                     claimed_at, record_status, created_at, updated_at)
+                     claimed_at, created_at, updated_at)
                 SELECT gen_random_uuid(), :deviceId, CAST(:today AS date) - (n + 1), 'ANGRY', 1, n, 'v1',
-                       CURRENT_TIMESTAMP, 'OPEN', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                       CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
                 FROM generate_series(0, 254) AS n
                 """).param("deviceId", device.getId()).param("today", TODAY).update();
         일별_스탬프를_저장한다(jdbc, device.getId(), TODAY, EmotionState.ANGRY, 1);

@@ -122,7 +122,7 @@ class CollectionStorageIntegrationTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"combination_index = -1", "combination_index = 256", "cycle = 0",
-            "state = 'UNKNOWN'", "record_status = 'UNKNOWN'", "card_version = ' '", "card_version = ''",
+            "state = 'UNKNOWN'", "card_version = ' '", "card_version = ''",
             "device_id = 9223372036854775807", "card_version = 'missing-v1'"})
     void DB도_유효하지_않은_카드_값과_없는_소유_기기를_거절한다(String invalidAssignment) {
         // given
