@@ -361,6 +361,11 @@ private fun AppContent(
         assistedMetroViewModel<MapViewModel, MapViewModel.Factory> {
             create(nearbyViewModel)
         }
+    val mapRendererActive = mapVisible || shouldPrepareMapDuringSplash
+    DisposableEffect(mapViewModel, mapRendererActive) {
+        mapViewModel.setMapRendererActive(mapRendererActive)
+        onDispose { mapViewModel.setMapRendererActive(false) }
+    }
     LaunchedEffect(mapViewModel, mainFeaturesReady, sessionGeneration, shouldPrepareMapDuringSplash) {
         mapViewModel.updateReadiness(
             ready = mainFeaturesReady,
@@ -484,7 +489,7 @@ private fun AppContent(
             LocalMapRenderer.current.Content(
                 state = nativeMapState,
                 isVisible = mapVisible && !shouldPrepareMapDuringSplash,
-                isActive = mapVisible || shouldPrepareMapDuringSplash,
+                isActive = mapRendererActive,
                 isMounted = mapMounted,
                 savedCamera = savedMapCamera,
                 onCameraSaved = { savedMapCamera = it },

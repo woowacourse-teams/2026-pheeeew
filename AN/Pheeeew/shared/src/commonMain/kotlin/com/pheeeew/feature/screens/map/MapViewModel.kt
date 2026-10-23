@@ -411,7 +411,6 @@ class MapViewModel(
 
     fun contentVisibility(visible: Boolean) {
         val visibilityChanged = exploration.visibility(visible)
-        if (!visible) pinSnapshotPublisher.setActive(false)
         if (visibilityChanged && visible && _uiModel.value.emotionContentLoad != null) {
             val load =
                 exploration
@@ -422,7 +421,10 @@ class MapViewModel(
                     ).also { it.ready() }
             _uiModel.value = _uiModel.value.copy(emotionContentLoad = load)
         }
-        if (visible) pinSnapshotPublisher.setActive(true)
+    }
+
+    fun setMapRendererActive(active: Boolean) {
+        pinSnapshotPublisher.setActive(active)
     }
 
     override fun onCleared() {
