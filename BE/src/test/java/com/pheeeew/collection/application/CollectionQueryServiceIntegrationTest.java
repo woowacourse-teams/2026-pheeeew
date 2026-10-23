@@ -271,7 +271,7 @@ class CollectionQueryServiceIntegrationTest {
     }
 
     @Test
-    void 활동이_없어도_내_오늘_카드는_반환하고_다른_기기와_날짜의_카드는_제외한다() {
+    void 내_오늘_카드와_집계를_반환하고_다른_기기와_날짜의_카드는_제외한다() {
         // given
         var owner = devices.saveAndFlush(기본_기기_빌더().build());
         var other = devices.saveAndFlush(기본_기기_빌더().requestId(UUID.randomUUID()).build());
@@ -280,6 +280,9 @@ class CollectionQueryServiceIntegrationTest {
         cards.saveAndFlush(기본_카드_빌더().deviceId(other.getId()).cardDate(today).build());
         cards.saveAndFlush(기본_카드_빌더().deviceId(owner.getId()).cardDate(today.minusDays(1))
                 .state(EmotionState.IRRITATED).build());
+
+        일별_스탬프를_저장한다(jdbc, owner.getId(), today, EmotionState.ANGRY, 1);
+        개인_프레스를_저장한다(jdbc, owner.getId(), today, EmotionState.ANGRY, 100);
 
         // when
         var result = service.findToday(owner.getPublicId());
@@ -294,8 +297,8 @@ class CollectionQueryServiceIntegrationTest {
                             .isEqualTo("https://collection-test-assets.s3.ap-northeast-2.amazonaws.com/pheeeew/development/collection-cards/v1/stamps-round/angry/06.png");
                     assertThat(item.card().images().straightStampUrl())
                             .isEqualTo("https://collection-test-assets.s3.ap-northeast-2.amazonaws.com/pheeeew/development/collection-cards/v1/stamps-straight/angry/06.png");
-                    assertThat(item.stamps().count()).isZero();
-                    assertThat(item.presses().count()).isZero();
+                    assertThat(item.stamps().count()).isEqualTo(1);
+                    assertThat(item.presses().count()).isEqualTo(100);
                 });
         assertThat(result.items()).filteredOn(item -> item.state() != EmotionState.ANGRY)
                 .allSatisfy(item -> assertThat(item.card()).isNull());
@@ -306,6 +309,9 @@ class CollectionQueryServiceIntegrationTest {
         // given
         var device = devices.saveAndFlush(기본_기기_빌더().build());
         cards.saveAndFlush(기본_카드_빌더().deviceId(device.getId()).build());
+        var cardDate = LocalDate.of(2026, 10, 22);
+        일별_스탬프를_저장한다(jdbc, device.getId(), cardDate, EmotionState.ANGRY, 1);
+        개인_프레스를_저장한다(jdbc, device.getId(), cardDate, EmotionState.ANGRY, 100);
         when(clock.instant()).thenReturn(Instant.parse("2026-10-22T14:59:59.999Z"),
                 Instant.parse("2026-10-22T15:00:00Z"));
 
@@ -326,6 +332,8 @@ class CollectionQueryServiceIntegrationTest {
         var release = new CountDownLatch(1);
         try {
             var card = cards.saveAndFlush(기본_카드_빌더().deviceId(device.getId()).build());
+            일별_스탬프를_저장한다(jdbc, device.getId(), card.getCardDate(), EmotionState.ANGRY, 1);
+            개인_프레스를_저장한다(jdbc, device.getId(), card.getCardDate(), EmotionState.ANGRY, 100);
             drawStates.saveIfAbsent(device.getId(), EmotionState.ANGRY);
             try (var executor = Executors.newFixedThreadPool(2)) {
                 var holder = executor.submit(() -> new TransactionTemplate(transactionManager).execute(status -> {
@@ -360,8 +368,29 @@ class CollectionQueryServiceIntegrationTest {
             release.countDown();
             jdbc.sql("DELETE FROM collection_cards WHERE device_id = :id").param("id", device.getId()).update();
             jdbc.sql("DELETE FROM collection_draw_states WHERE device_id = :id").param("id", device.getId()).update();
+            jdbc.sql("DELETE FROM device_daily_stamps WHERE device_id = :id").param("id", device.getId()).update();
+            jdbc.sql("DELETE FROM device_daily_presses WHERE device_id = :id").param("id", device.getId()).update();
             devices.deleteById(device.getId());
         }
     }
 
+    @ParameterizedTest
+    @CsvSource({"false,false", "true,false", "false,true"})
+    void 오늘_조회도_발급된_카드의_집계_누락을_오류로_알린다(boolean hasStamps, boolean hasPresses) {
+        // given
+        var device = devices.saveAndFlush(기본_기기_빌더().build());
+        var card = cards.saveAndFlush(기본_카드_빌더().deviceId(device.getId()).build());
+        if (hasStamps) {
+            일별_스탬프를_저장한다(jdbc, device.getId(), card.getCardDate(), EmotionState.ANGRY, 1);
+        }
+        if (hasPresses) {
+            개인_프레스를_저장한다(jdbc, device.getId(), card.getCardDate(), EmotionState.ANGRY, 100);
+        }
+
+        // when / then
+        assertThatThrownBy(() -> service.findToday(device.getPublicId()))
+                .isInstanceOfSatisfying(CollectionException.class,
+                        exception -> assertThat(exception.getErrorCode())
+                                .isEqualTo(CollectionErrorCode.COLLECTION_ACTIVITY_COUNTS_MISSING));
+    }
 }

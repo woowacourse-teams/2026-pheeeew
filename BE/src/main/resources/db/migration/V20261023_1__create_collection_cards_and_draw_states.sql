@@ -248,7 +248,6 @@ CREATE TABLE collection_cards
     character_number  INTEGER GENERATED ALWAYS AS (combination_index / 16 + 1) STORED,
     stamp_number      INTEGER GENERATED ALWAYS AS (combination_index % 16 + 1) STORED,
     claimed_at        TIMESTAMPTZ NOT NULL,
-    record_status     VARCHAR(20) NOT NULL,
     created_at        TIMESTAMPTZ NOT NULL,
     updated_at        TIMESTAMPTZ NOT NULL,
     CONSTRAINT uk_collection_cards_public_id UNIQUE (public_id),
@@ -264,6 +263,5 @@ CREATE TABLE collection_cards
         CHECK (state IN ('FRUSTRATED', 'IRRITATED', 'EXHAUSTED', 'DISCOURAGED', 'ANGRY')),
     CONSTRAINT ck_collection_cards_cycle CHECK (cycle > 0),
     CONSTRAINT ck_collection_cards_combination CHECK (combination_index BETWEEN 0 AND 255),
-    CONSTRAINT ck_collection_cards_card_version CHECK (length(trim(card_version)) > 0),
-    CONSTRAINT ck_collection_cards_record_status CHECK (record_status IN ('OPEN', 'FINALIZING', 'FINALIZED'))
+    CONSTRAINT ck_collection_cards_card_version CHECK (length(trim(card_version)) > 0)
 );

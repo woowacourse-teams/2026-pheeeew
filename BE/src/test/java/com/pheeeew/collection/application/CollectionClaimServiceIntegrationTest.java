@@ -11,7 +11,6 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static com.pheeeew.collection.fixture.CollectionCardFixture.기본_카드_이미지;
 
-import com.pheeeew.collection.domain.CollectionRecordStatus;
 import com.pheeeew.collection.domain.repository.CollectionCardRepository;
 import com.pheeeew.collection.domain.repository.CollectionDrawStateRepository;
 import com.pheeeew.collection.domain.repository.CollectionProgressRepository;
@@ -121,7 +120,6 @@ class CollectionClaimServiceIntegrationTest {
         assertThat(storedCard.getCombinationIndex()).isEqualTo(result.combinationIndex());
         assertThat(storedCard.getCardVersion()).isEqualTo("v1");
         assertThat(storedCard.getClaimedAt()).isEqualTo(result.claimedAt());
-        assertThat(storedCard.getRecordStatus()).isEqualTo(CollectionRecordStatus.OPEN);
         assertThat(storedCard.getCreatedAt()).isNotNull();
         assertThat(storedCard.getUpdatedAt()).isNotNull();
         assertThat(storedState.getDeviceId()).isEqualTo(deviceId);
@@ -247,9 +245,9 @@ class CollectionClaimServiceIntegrationTest {
         jdbc.sql("""
                 INSERT INTO collection_cards
                     (public_id, device_id, card_date, state, cycle, combination_index, card_version,
-                     claimed_at, record_status, created_at, updated_at)
+                     claimed_at, created_at, updated_at)
                 SELECT gen_random_uuid(), :deviceId, CAST(:today AS date) - (n + 1), 'ANGRY', 1, n, 'v1',
-                       CURRENT_TIMESTAMP, 'OPEN', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                       CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
                 FROM generate_series(0, 254) AS n
                 """).param("deviceId", device.getId()).param("today", TODAY).update();
         일별_스탬프를_저장한다(jdbc, device.getId(), TODAY, EmotionState.ANGRY, 1);
