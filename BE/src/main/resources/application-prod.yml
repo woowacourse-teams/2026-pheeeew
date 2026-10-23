@@ -31,6 +31,9 @@ management:
         "[spring.data.repository.invocations]": 50ms,100ms,200ms,500ms,1s,3s
 
 pheeeew:
+  collection:
+    card-version: ${COLLECTION_CARD_VERSION:}
+    asset-base-url: ${COLLECTION_ASSET_BASE_URL:}
   play-integrity:
     require-attestation: true
   app-attest:
