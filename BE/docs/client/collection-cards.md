@@ -146,7 +146,7 @@ DB 등록은 실제 PNG 파일의 보존을 대신하지 않으므로 발급에 
 
 ### 테이블 생성과 초기 데이터
 
-`src/main/resources/db/migration/V20261022_3__create_collection_cards_and_draw_states.sql`에
+`src/main/resources/db/migration/V20261023_1__create_collection_cards_and_draw_states.sql`에
 자산 테이블 생성, v1 캐릭터 80행·도장 쌍 80행 INSERT, 카드·추첨 상태 테이블 생성이 포함됩니다.
 개발·운영 모두 동일한 상대 경로 데이터를 사용하고 기본 주소만 환경별로 다르게 설정합니다.
 스크립트는 이미지 파일을 업로드하지 않습니다. 수동 SQL 실행 후 Flyway가 중복 실행되게 하지 않습니다.
