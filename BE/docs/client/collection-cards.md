@@ -1,12 +1,101 @@
-# 컬렉션 진행도·직접 수령·상세 조회와 감정 수정 계약
+# 컬렉션 진행도·직접 수령·목록·상세 조회와 감정 수정 계약
 
-관련 이슈: [#839](https://github.com/woowacourse-teams/2026-pheeeew/issues/839), [#840](https://github.com/woowacourse-teams/2026-pheeeew/issues/840), [#842](https://github.com/woowacourse-teams/2026-pheeeew/issues/842)
+관련 이슈: [#839](https://github.com/woowacourse-teams/2026-pheeeew/issues/839), [#840](https://github.com/woowacourse-teams/2026-pheeeew/issues/840), [#842](https://github.com/woowacourse-teams/2026-pheeeew/issues/842), [#843](https://github.com/woowacourse-teams/2026-pheeeew/issues/843)
+
+## 지난 카드 목록 조회
+
+`GET /api/v1/collection-cards`에 기기 access token을 `Authorization: Bearer ...`로 전달합니다.
+목록과 상세 모두 인증된 기기 소유만 조회하며 응답에 `Cache-Control: no-store`를 적용합니다.
+쿼리로 조회 기기를 선택할 수 없습니다. 목록은 카드마다 상세 API를 추가 호출하지 않고 집계·이미지 정보를 함께 제공합니다.
+
+| 쿼리 | 규칙 |
+| --- | --- |
+| `emotion` | 선택. `FRUSTRATED`, `IRRITATED`, `EXHAUSTED`, `DISCOURAGED`, `ANGRY`. 첫 페이지에서 생략하면 전체 감정 |
+| `limit` | 선택. 생략하면 20, 1~50 허용. 페이지마다 지정할 수 있으며 커서에 저장하지 않음 |
+| `cursor` | 첫 페이지와 새로고침에서 생략. 다음 페이지는 받은 `nextCursor`를 URL 인코딩해 그대로 전달. 최대 512자 |
+
+`emotion=` 또는 `limit=`처럼 빈 값을 명시하면 400입니다. `cursor=`도 잘못된 커서로 400입니다.
+
+```http
+GET /api/v1/collection-cards?emotion=ANGRY&limit=20
+GET /api/v1/collection-cards?limit=20&cursor=<nextCursor>
+```
+
+두 번째 요청에서 감정을 생략하면 커서의 `ANGRY` 필터를 유지합니다. 같은 감정을 다시 지정해도 됩니다.
+다른 감정과 기존 커서를 섞으면 400입니다. 필터를 바꾸려면 커서를 버리고 첫 페이지부터 조회합니다.
+
+```json
+{
+  "items": [
+    {
+      "cardId": "20769cf2-1f8a-4b62-8dbe-5b594d5ffb5d",
+      "date": "2026-10-21",
+      "state": "ANGRY",
+      "stampCount": 3,
+      "pressCount": 125,
+      "images": {
+        "characterUrl": "https://techcourse-project-2026.s3.ap-northeast-2.amazonaws.com/pheeeew/development/collection-cards/v1/characters/angry/03.png",
+        "roundStampUrl": "https://techcourse-project-2026.s3.ap-northeast-2.amazonaws.com/pheeeew/development/collection-cards/v1/stamps-round/angry/06.png",
+        "straightStampUrl": "https://techcourse-project-2026.s3.ap-northeast-2.amazonaws.com/pheeeew/development/collection-cards/v1/stamps-straight/angry/06.png"
+      }
+    }
+  ],
+  "hasNext": false,
+  "nextCursor": null
+}
+```
+
+각 항목은 상세 응답과 같은 필드를 사용합니다. 항목을 선택하면 `cardId`로 상세 API에 연결합니다.
+빈 목록은 `{"items":[],"hasNext":false,"nextCursor":null}`이며 200입니다.
+`hasNext=true`일 때만 `nextCursor`로 이어서 조회하고, 마지막 페이지는 `nextCursor=null`입니다.
+
+### 날짜 범위와 늦은 저장
+
+첫 요청의 한국 날짜(`Asia/Seoul`)보다 이전 카드를 카드 날짜·내부 ID 내림차순으로 조회합니다.
+오늘 카드는 `/today`에서 표시합니다. 예를 들어 10월 23일 첫 조회는 10월 22일까지 포함하며,
+페이지 이동 중 10월 24일이 되어도 같은 커서는 10월 22일까지 조회합니다.
+커서를 버리고 새로고침하면 10월 23일 카드도 지난 카드 목록에 포함됩니다.
+앱은 날짜가 바뀌었을 때 오늘 영역과 지난 목록을 함께 새로고침해 두 영역의 기준을 맞춥니다.
+
+커서는 날짜 범위·감정 필터·마지막 정렬 위치를 유지하며 카드 집합이나 활동 횟수의 스냅샷을 고정하지 않습니다.
+
+| 페이지 사이 늦게 커밋된 카드 위치 | 처리 |
+| --- | --- |
+| 이미 지나간 위치 | 이어보기에서 되돌아가지 않음. 새로고침하면 확인 가능 |
+| 아직 읽지 않은 위치 | 다음 페이지에 포함될 수 있음 |
+
+조회는 다른 트랜잭션의 카드 저장·집계 변경이 끝날 때까지 기다리지 않고 커밋된 데이터를 읽습니다.
+이후 조회는 새로 커밋된 집계를 반영하므로 목록과 나중에 연 상세의 숫자가 다를 수 있습니다.
+카드 ID·날짜·감정·그림 조합은 그대로입니다. 자정 정산·서버 이미지 생성·추가 쓰기 잠금은 없습니다.
+
+### 목록 오류 처리
+
+| HTTP | 코드 | 처리 |
+| --- | --- | --- |
+| 400 | `COMMON-001` | 잘못된 감정·페이지 크기·요청 형식 또는 커서 길이 초과 |
+| 400 | `COLLECTION-007` | 잘못된 커서 또는 요청 감정과 커서 필터 불일치. 커서 없이 다시 조회 |
+| 400 | `COLLECTION-008` | 서비스의 페이지 크기 방어 검증. HTTP 요청 범위 검증은 `COMMON-001` 사용 |
+| 401 | 기존 인증·기기 오류 코드 | 유효한 기기 인증 없음 |
+| 500 | `COLLECTION-006` | 반환 대상 카드의 스탬프·프레스 집계 중 하나 이상 누락 |
+| 503 | `COLLECTION-004` | 카드 자산 또는 이미지 주소 설정 미비 |
+
+반환할 카드 중 집계가 누락되면 페이지 전체를 오류로 반환합니다. 해당 카드를 빼거나 횟수를 0으로 대체하지 않습니다.
+다음 페이지 존재 여부만 확인하는 추가 한 건은 이번 응답의 집계 검증 대상이 아닙니다.
+500은 기존 서버 ERROR 로그에 오류 코드와 correlationId가 남습니다. 자동 복구를 뜻하지 않으며 앱은 무한 재시도하지 않습니다.
+이미지 다운로드 실패는 API 오류와 별개로 처리합니다. 공개 PNG URL에는 서명 만료가 없지만 객체 보존·읽기 권한은 필요합니다.
+
+### 앱에서 남은 연동 확인
+
+- 오늘 영역과 지난 목록의 날짜 범위를 맞추고 새로고침 시 기존 커서를 폐기합니다.
+- 감정 필터 변경, 빈 목록, 이어보기 종료, 목록에서 상세로 이동을 연결합니다.
+- 이미지 URL 3개를 조합하고 최신 횟수를 표시합니다. 이미지 로딩 실패와 API 오류를 구분합니다.
+- 실제 기기에서 자정 전환·새로고침·숫자 갱신·고정 조합·배치와 잘림을 확인합니다.
 
 ## 카드 상세 조회
 
 `GET /api/v1/collection-cards/{cardId}`에 기기 access token을 전달합니다.
 오늘과 과거 날짜의 본인 수령 카드를 조회하며 응답은 `Cache-Control: no-store`입니다.
-카드 ID는 수령 또는 오늘 조회 응답에서 얻습니다. 지난 카드 목록과 페이지네이션은 #843 범위입니다.
+카드 ID는 수령·오늘 조회 또는 지난 카드 목록 응답에서 얻습니다.
 
 ```json
 {
@@ -44,7 +133,7 @@
 
 보유 카드의 일별 집계와 고정 자산은 과거 조회의 원본이므로 삭제하거나 보존 기간을 단축하지 않습니다.
 스탬프 원본을 삭제해도 누적 횟수나 카드 소유는 회수하지 않습니다.
-발급된 카드의 스탬프 또는 프레스 집계 행이 없으면 상세·오늘 조회는 `500 / COLLECTION-006`을 반환합니다.
+발급된 카드의 스탬프 또는 프레스 집계 행이 없으면 목록·상세·오늘 조회는 `500 / COLLECTION-006`을 반환합니다.
 응답 메시지는 `카드의 활동 횟수를 조회할 수 없습니다.`이며 누락된 횟수를 0으로 표시하지 않습니다.
 미발급 감정의 오늘 진행도는 기존처럼 활동이 없으면 0회를 반환합니다.
 공통 서버 오류 로그에 `http_request_failed`, 오류 코드, 요청 경로와 correlationId가 남습니다.

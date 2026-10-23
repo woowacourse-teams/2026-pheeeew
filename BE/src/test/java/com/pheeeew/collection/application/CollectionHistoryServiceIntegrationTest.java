@@ -8,10 +8,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
+import com.pheeeew.collection.application.dto.CollectionHistoryResult;
 import com.pheeeew.collection.domain.CollectionCard;
 import com.pheeeew.collection.domain.repository.CollectionAssetRepository;
 import com.pheeeew.collection.domain.repository.CollectionCardRepository;
 import com.pheeeew.collection.domain.repository.CollectionProgressRepository;
+import com.pheeeew.collection.domain.repository.DeviceDailyStampRepository;
 import com.pheeeew.collection.exception.CollectionErrorCode;
 import com.pheeeew.collection.exception.CollectionException;
 import com.pheeeew.collection.infra.CollectionAssetConfiguration;
@@ -27,6 +29,9 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Base64;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -37,6 +42,10 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @PostgisDataJpaTest
 @Import({CollectionQueryService.class, CollectionProgressRepository.class,
@@ -57,6 +66,12 @@ class CollectionHistoryServiceIntegrationTest {
 
     @Autowired
     private JdbcClient jdbc;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
+    @Autowired
+    private DeviceDailyStampRepository stamps;
 
     @MockitoBean
     private Clock clock;
@@ -312,6 +327,96 @@ class CollectionHistoryServiceIntegrationTest {
                         error -> assertThat(error.getErrorCode()).isEqualTo(DeviceErrorCode.DEVICE_NOT_FOUND));
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void 미커밋_카드를_기다리지_않고_커밋_후_커서_위치에_따라_노출한다(boolean behindCursor) throws Exception {
+        // given
+        var owner = devices.saveAndFlush(기본_기기_빌더().build());
+        var written = new CountDownLatch(1);
+        var release = new CountDownLatch(1);
+        try {
+            var firstCard = 카드를_저장한다(owner.getId(), LocalDate.of(2026, 10, 21), EmotionState.ANGRY, 0);
+            var oldest = 카드를_저장한다(owner.getId(), LocalDate.of(2026, 10, 19), EmotionState.ANGRY, 1);
+            try (var executor = Executors.newFixedThreadPool(2)) {
+                var pending = executor.submit(() -> new TransactionTemplate(transactionManager).execute(status -> {
+                    var date = LocalDate.of(2026, 10, behindCursor ? 20 : 21);
+                    var card = 카드를_저장한다(owner.getId(), date, EmotionState.EXHAUSTED, 0);
+                    written.countDown();
+                    커밋_허용을_기다린다(release);
+                    return card.getPublicId();
+                }));
+                CollectionHistoryResult first;
+                try {
+                    assertThat(written.await(5, TimeUnit.SECONDS)).isTrue();
+
+                    // when / then: 미커밋 카드가 있어도 읽기는 완료된다.
+                    first = executor.submit(() -> service.findHistory(owner.getPublicId(), null, 1, null))
+                            .get(5, TimeUnit.SECONDS);
+                    assertThat(first.items()).extracting(item -> item.cardId()).containsExactly(firstCard.getPublicId());
+                    assertThat(first.hasNext()).isTrue();
+                } finally {
+                    release.countDown();
+                }
+                UUID committedId = pending.get(5, TimeUnit.SECONDS);
+                var next = service.findHistory(owner.getPublicId(), null, 20, first.nextCursor());
+                if (behindCursor) {
+                    assertThat(next.items()).extracting(item -> item.cardId()).containsExactly(committedId, oldest.getPublicId());
+                } else {
+                    assertThat(next.items()).extracting(item -> item.cardId()).containsExactly(oldest.getPublicId());
+                }
+                assertThat(service.findHistory(owner.getPublicId(), null, 20, null).items())
+                        .extracting(item -> item.cardId()).contains(committedId);
+            }
+        } finally {
+            release.countDown();
+            기기_테스트_데이터를_삭제한다(owner.getId());
+        }
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void 미커밋_집계_변경을_기다리지_않고_커밋_후_최신_횟수를_조회한다() throws Exception {
+        // given
+        var owner = devices.saveAndFlush(기본_기기_빌더().build());
+        var written = new CountDownLatch(1);
+        var release = new CountDownLatch(1);
+        try {
+            var card = 카드를_저장한다(owner.getId(), LocalDate.of(2026, 10, 21), EmotionState.ANGRY, 37);
+            var original = service.findHistory(owner.getPublicId(), null, 20, null).items().getFirst();
+            try (var executor = Executors.newFixedThreadPool(2)) {
+                var pending = executor.submit(() -> new TransactionTemplate(transactionManager).execute(status -> {
+                    stamps.increase(card.getCardDate(), EmotionState.ANGRY, owner.getId(), clock.instant());
+                    개인_프레스를_저장한다(jdbc, owner.getId(), card.getCardDate(), EmotionState.ANGRY, 5);
+                    written.countDown();
+                    커밋_허용을_기다린다(release);
+                    return null;
+                }));
+                try {
+                    assertThat(written.await(5, TimeUnit.SECONDS)).isTrue();
+
+                    // when / then
+                    var before = executor.submit(() -> service.findHistory(owner.getPublicId(), null, 20, null))
+                            .get(5, TimeUnit.SECONDS).items().getFirst();
+                    assertThat(before.stampCount()).isEqualTo(3);
+                    assertThat(before.pressCount()).isEqualTo(125);
+                } finally {
+                    release.countDown();
+                }
+                pending.get(5, TimeUnit.SECONDS);
+            }
+            var after = service.findHistory(owner.getPublicId(), null, 20, null).items().getFirst();
+            assertThat(after.stampCount()).isEqualTo(4);
+            assertThat(after.pressCount()).isEqualTo(130);
+            assertThat(after.cardId()).isEqualTo(original.cardId());
+            assertThat(after.date()).isEqualTo(original.date());
+            assertThat(after.images()).isEqualTo(original.images());
+        } finally {
+            release.countDown();
+            기기_테스트_데이터를_삭제한다(owner.getId());
+        }
+    }
+
     private CollectionCard 카드를_저장한다(
             Long deviceId, LocalDate date, EmotionState state, int combination) {
         var card = cards.saveAndFlush(기본_카드_빌더().deviceId(deviceId).cardDate(date)
@@ -319,5 +424,23 @@ class CollectionHistoryServiceIntegrationTest {
         일별_스탬프를_저장한다(jdbc, deviceId, date, state, 3);
         개인_프레스를_저장한다(jdbc, deviceId, date, state, 125);
         return card;
+    }
+
+    private void 커밋_허용을_기다린다(CountDownLatch release) {
+        try {
+            if (!release.await(10, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("커밋 대기 시간 초과");
+            }
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(exception);
+        }
+    }
+
+    private void 기기_테스트_데이터를_삭제한다(Long deviceId) {
+        jdbc.sql("DELETE FROM collection_cards WHERE device_id = :id").param("id", deviceId).update();
+        jdbc.sql("DELETE FROM device_daily_stamps WHERE device_id = :id").param("id", deviceId).update();
+        jdbc.sql("DELETE FROM device_daily_presses WHERE device_id = :id").param("id", deviceId).update();
+        devices.deleteById(deviceId);
     }
 }
