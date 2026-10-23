@@ -32,6 +32,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.CsvSource;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
@@ -124,19 +125,24 @@ class CollectionDetailServiceIntegrationTest {
         }
     }
 
-    @Test
-    void 오늘_카드의_집계가_없어도_카드는_유지하고_영회를_반환한다() {
+    @ParameterizedTest
+    @CsvSource({"false,false", "true,false", "false,true"})
+    void 발급된_카드의_집계가_하나라도_없으면_오류를_반환한다(boolean hasStamps, boolean hasPresses) {
         // given
         var owner = devices.saveAndFlush(기본_기기_빌더().build());
         var card = cards.saveAndFlush(기본_카드_빌더().deviceId(owner.getId()).build());
+        if (hasStamps) {
+            일별_스탬프를_저장한다(jdbc, owner.getId(), card.getCardDate(), EmotionState.ANGRY, 1);
+        }
+        if (hasPresses) {
+            개인_프레스를_저장한다(jdbc, owner.getId(), card.getCardDate(), EmotionState.ANGRY, 100);
+        }
 
-        // when
-        var result = service.findDetail(owner.getPublicId(), card.getPublicId());
-
-        // then
-        assertThat(result.cardId()).isEqualTo(card.getPublicId());
-        assertThat(result.stampCount()).isZero();
-        assertThat(result.pressCount()).isZero();
+        // when / then
+        assertThatThrownBy(() -> service.findDetail(owner.getPublicId(), card.getPublicId()))
+                .isInstanceOfSatisfying(CollectionException.class,
+                        exception -> assertThat(exception.getErrorCode().getCode()).isEqualTo("COLLECTION-006"));
+        assertThat(cards.findById(card.getId())).isPresent();
     }
 
     @Test

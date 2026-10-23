@@ -2,6 +2,7 @@ package com.pheeeew.collection.application;
 
 import static com.pheeeew.collection.fixture.CollectionCardFixture.기본_카드_빌더;
 import static com.pheeeew.collection.fixture.DeviceDailyStampFixture.일별_스탬프를_저장한다;
+import static com.pheeeew.emotion.fixture.DeviceDailyPressFixture.개인_프레스를_저장한다;
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
@@ -77,6 +78,8 @@ class CollectionQueryDisabledIssuanceIntegrationTest {
         // given
         var device = devices.saveAndFlush(기본_기기_빌더().build());
         cards.saveAndFlush(기본_카드_빌더().deviceId(device.getId()).build());
+        일별_스탬프를_저장한다(jdbc, device.getId(), TODAY, EmotionState.ANGRY, 1);
+        개인_프레스를_저장한다(jdbc, device.getId(), TODAY, EmotionState.ANGRY, 100);
 
         // when
         var result = service.findToday(device.getPublicId());
@@ -96,6 +99,9 @@ class CollectionQueryDisabledIssuanceIntegrationTest {
         var device = devices.saveAndFlush(기본_기기_빌더().build());
         var card = cards.saveAndFlush(기본_카드_빌더().deviceId(device.getId())
                 .cardDate(TODAY.minusDays(1)).build());
+
+        일별_스탬프를_저장한다(jdbc, device.getId(), TODAY.minusDays(1), EmotionState.ANGRY, 1);
+        개인_프레스를_저장한다(jdbc, device.getId(), TODAY.minusDays(1), EmotionState.ANGRY, 100);
 
         // when
         var result = service.findDetail(device.getPublicId(), card.getPublicId());

@@ -5,9 +5,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
-public record CollectionTodayProgress(EmotionState state, long stampCount, long pressCount, Card card) {
+public record CollectionTodayProgress(EmotionState state, Long stampCount, Long pressCount, Card card) {
 
-    public static CollectionTodayProgress of(EmotionState state, long stampCount, long pressCount, Card card) {
+    public static CollectionTodayProgress of(EmotionState state, Long stampCount, Long pressCount, Card card) {
         return new CollectionTodayProgress(state, stampCount, pressCount, card);
     }
 

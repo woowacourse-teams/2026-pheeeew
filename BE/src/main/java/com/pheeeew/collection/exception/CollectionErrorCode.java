@@ -16,7 +16,9 @@ public enum CollectionErrorCode implements ErrorCode {
             HttpStatus.CONFLICT),
     COLLECTION_ASSETS_NOT_READY("COLLECTION-004", "카드 자산을 준비 중입니다. 잠시 후 다시 시도해 주세요.",
             HttpStatus.SERVICE_UNAVAILABLE),
-    COLLECTION_CARD_NOT_FOUND("COLLECTION-005", "카드를 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
+    COLLECTION_CARD_NOT_FOUND("COLLECTION-005", "카드를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
+    COLLECTION_ACTIVITY_COUNTS_MISSING("COLLECTION-006", "카드의 활동 횟수를 조회할 수 없습니다.",
+            HttpStatus.INTERNAL_SERVER_ERROR);
 
     private final String code;
     private final String message;

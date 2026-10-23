@@ -1,7 +1,8 @@
 package com.pheeeew.collection.application;
 
-import static com.pheeeew.collection.exception.CollectionErrorCode.COLLECTION_DATE_CHANGED;
+import static com.pheeeew.collection.exception.CollectionErrorCode.COLLECTION_ACTIVITY_COUNTS_MISSING;
 import static com.pheeeew.collection.exception.CollectionErrorCode.COLLECTION_CARD_NOT_FOUND;
+import static com.pheeeew.collection.exception.CollectionErrorCode.COLLECTION_DATE_CHANGED;
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
 
 import com.pheeeew.collection.application.dto.CollectionCardResult;
@@ -44,6 +45,8 @@ public class CollectionQueryService {
         var card = collectionProgressRepository.findDetail(cardId, deviceId)
                 .orElseThrow(() -> new CollectionException(COLLECTION_CARD_NOT_FOUND));
 
+        validateCardCounts(card.stampCount(), card.pressCount());
+
         return CollectionCardDetailResult.of(card.publicId(), card.date(), card.state(),
                 card.stampCount(), card.pressCount(), assetService.resolveImages(card.version(), card.paths()));
     }
@@ -68,13 +71,27 @@ public class CollectionQueryService {
         Map<EmotionState, Item> progress = new EnumMap<>(EmotionState.class);
         collectionProgressRepository.findTodayByDateAndDeviceId(date, deviceId)
                 .forEach(row -> {
+                    if (row.card() != null) {
+                        validateCardCounts(row.stampCount(), row.pressCount());
+                    }
                     var card = row.card() == null ? null : CollectionCardResult.of(row.card(), row.state(),
                             assetService.resolveImages(row.card().version(), row.card().paths()));
-                    progress.put(row.state(), Item.of(row.state(), row.stampCount(), row.pressCount(), card));
+                    progress.put(row.state(), Item.of(row.state(), countOrZero(row.stampCount()),
+                            countOrZero(row.pressCount()), card));
                 });
 
         return CollectionTodayResult.of(date, Arrays.stream(EmotionState.values())
                 .map(state -> progress.getOrDefault(state, Item.of(state, 0, 0)))
                 .toList());
+    }
+
+    private void validateCardCounts(Long stampCount, Long pressCount) {
+        if (stampCount == null || pressCount == null) {
+            throw new CollectionException(COLLECTION_ACTIVITY_COUNTS_MISSING);
+        }
+    }
+
+    private long countOrZero(Long count) {
+        return count == null ? 0 : count;
     }
 }

@@ -19,13 +19,13 @@ import org.springframework.stereotype.Repository;
 public class CollectionProgressRepository {
 
     private static final String ACTIVITY_COUNTS_SQL = """
-                SELECT state, SUM(stamp_count) AS stamp_count, SUM(press_count) AS press_count
+                SELECT state, SUM(stamp_count)::bigint AS stamp_count, SUM(press_count)::bigint AS press_count
                 FROM (
-                    SELECT state, stamp_count, 0::bigint AS press_count
+                    SELECT state, stamp_count, NULL::bigint AS press_count
                     FROM device_daily_stamps
                     WHERE stamp_date = :date AND device_id = :deviceId
                     UNION ALL
-                    SELECT state, 0::bigint AS stamp_count, press_count
+                    SELECT state, NULL::bigint AS stamp_count, press_count
                     FROM device_daily_presses
                     WHERE press_date = :date AND device_id = :deviceId
                 ) activity
@@ -37,8 +37,8 @@ public class CollectionProgressRepository {
     public Optional<CollectionCardDetail> findDetail(UUID cardId, Long deviceId) {
         return jdbc.sql("""
                 SELECT card.public_id, card.card_date, card.state, card.card_version,
-                       COALESCE(activity_stamps.stamp_count, 0) AS stamp_count,
-                       COALESCE(presses.press_count, 0) AS press_count,
+                       activity_stamps.stamp_count AS stamp_count,
+                       presses.press_count AS press_count,
                        characters.image_path, stamps.round_image_path, stamps.straight_image_path
                 FROM collection_cards card
                 LEFT JOIN device_daily_stamps activity_stamps
@@ -59,7 +59,7 @@ public class CollectionProgressRepository {
                 .param("deviceId", deviceId)
                 .query((row, index) -> CollectionCardDetail.of(row.getObject("public_id", UUID.class),
                         row.getObject("card_date", LocalDate.class), EmotionState.valueOf(row.getString("state")),
-                        row.getLong("stamp_count"), row.getLong("press_count"), row.getString("card_version"),
+                        row.getObject("stamp_count", Long.class), row.getObject("press_count", Long.class), row.getString("card_version"),
                         CollectionAssetPaths.of(row.getString("image_path"), row.getString("round_image_path"),
                                 row.getString("straight_image_path"))))
                 .optional();
@@ -81,8 +81,8 @@ public class CollectionProgressRepository {
                     WHERE card_date = :date AND device_id = :deviceId
                 )
                 SELECT COALESCE(activity.state, cards.state) AS state,
-                       COALESCE(activity.stamp_count, 0) AS stamp_count,
-                       COALESCE(activity.press_count, 0) AS press_count,
+                       activity.stamp_count AS stamp_count,
+                       activity.press_count AS press_count,
                        cards.public_id, cards.card_date, cards.cycle, cards.combination_index,
                        cards.card_version, cards.claimed_at,
                        characters.image_path, stamps.round_image_path, stamps.straight_image_path
@@ -106,7 +106,7 @@ public class CollectionProgressRepository {
                             CollectionAssetPaths.of(row.getString("image_path"),
                                     row.getString("round_image_path"), row.getString("straight_image_path")));
                     return CollectionTodayProgress.of(EmotionState.valueOf(row.getString("state")),
-                            row.getLong("stamp_count"), row.getLong("press_count"), card);
+                            row.getObject("stamp_count", Long.class), row.getObject("press_count", Long.class), card);
                 })
                 .list();
     }
