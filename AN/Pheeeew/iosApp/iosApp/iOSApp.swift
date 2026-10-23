@@ -3,6 +3,7 @@ import Shared
 
 @main
 struct iOSApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @Environment(\.scenePhase) private var scenePhase
 #if DEBUG
     @State private var monitoringSmokeTestScheduled = false
