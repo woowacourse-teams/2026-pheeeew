@@ -110,14 +110,14 @@ class RegisteredEmotionRefreshTest {
                 )
             try {
                 val repository = EmotionMapRepositoryImpl(EmotionMapApi(client.requests))
-                val oldRequest = async { repository.findPage(wide, null, null) }
+                val oldRequest = async { repository.findPage(wide, null) }
                 runCurrent()
                 assertEquals(1, requestCount)
-                repository.findPage(small, null, null, forceRefresh = true)
+                repository.findPage(small, null, forceRefresh = true)
                 oldResponse.complete(Unit)
                 oldRequest.await()
                 assertEquals(listOf(1L, 2L), repository.findSnapshot(finalView)?.pins?.map { it.id })
-                repository.findPage(finalView, null, null)
+                repository.findPage(finalView, null)
                 assertEquals(3, requestCount)
             } finally {
                 client.close()
@@ -186,7 +186,7 @@ class RegisteredEmotionRefreshTest {
     private fun pinsJson(ids: List<Int>): String {
         val items =
             ids.joinToString(",") { id ->
-                """{"type":"Feature","id":$id,"geometry":{"type":"Point","coordinates":[127.0,37.0]},"properties":{"createdAt":"2026-09-28T00:00:00Z","state":"ANGRY","rotationDegrees":0,"groupStamp":null}}"""
+                """{"type":"Feature","id":$id,"geometry":{"type":"Point","coordinates":[127.0,37.0]},"properties":{"createdAt":"2026-09-28T00:00:00Z","state":"ANGRY","rotationDegrees":0}}"""
             }
         return """{"items":[$items],"hasNext":false,"nextCursor":null}"""
     }

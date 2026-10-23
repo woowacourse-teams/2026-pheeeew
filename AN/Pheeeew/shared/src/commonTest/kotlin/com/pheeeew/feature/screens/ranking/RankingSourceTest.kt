@@ -15,9 +15,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
-class RankingSourceGroupIdTest {
+class RankingSourceTest {
     @Test
-    fun `스탬프 랭킹의 그룹 ID를 상세 이동용 모델에 보존한다`() =
+    fun `스탬프 랭킹의 순위 이름 점수와 스탬프를 표시 모델에 매핑한다`() =
         runTest {
             val repository =
                 object : GroupRankingRepository {
@@ -53,7 +53,13 @@ class RankingSourceGroupIdTest {
 
             val result = assertIs<WeeklyRankingLoadResult.Loaded>(ApiWeeklyRankingSource(repository).load(0))
 
-            assertEquals(GROUP_ID, result.rankings.single().groupId)
+            val ranking = result.rankings.single()
+            assertEquals(1, ranking.rank)
+            assertEquals("그룹", ranking.name)
+            assertEquals(42, ranking.score)
+            assertEquals("히유", ranking.stamp.label)
+            assertEquals(0xFFFFFFFFL, ranking.stamp.textArgb)
+            assertEquals(0xFF4A90D9L, ranking.stamp.fillArgb)
         }
 
     private companion object {

@@ -1,14 +1,5 @@
 package com.pheeeew.feature.screens.ranking
 
-import com.pheeeew.feature.screens.group.home.GroupHomeContent
-import com.pheeeew.feature.screens.group.home.GroupHomeViewModel
-import com.pheeeew.feature.screens.group.home.GroupListResult
-import com.pheeeew.feature.screens.group.home.GroupListSource
-import com.pheeeew.feature.screens.group.home.explore.InMemoryGroupExploreSource
-import com.pheeeew.feature.screens.group.join.GroupJoinDependencies
-import com.pheeeew.feature.screens.group.join.GroupJoinResult
-import com.pheeeew.feature.screens.group.join.GroupLookupResult
-import com.pheeeew.feature.screens.group.model.GroupOperationKeyAllocator
 import com.pheeeew.feature.screens.ranking.press.PressEmotion
 import com.pheeeew.feature.screens.ranking.press.PressRankingLoadResult
 import com.pheeeew.feature.screens.ranking.press.PressRankingSource
@@ -52,12 +43,11 @@ class ScreenLoadingProbeTest {
                             advanceUntilIdle()
                             val expected =
                                 when (path) {
-                                    "group_clean_reentry" -> 0L
                                     "press_previous" -> latency + 150L
                                     else -> latency
                                 }
                             assertEquals(expected, testScheduler.currentTime - start, path)
-                            assertEquals(if (path == "group_clean_reentry") 0 else 1, calls - before, path)
+                            assertEquals(1, calls - before, path)
                             println(
                                 "LOADING_PROBE,$path,$latency,$repetition,${testScheduler.currentTime - start},${calls - before}",
                             )
@@ -102,36 +92,6 @@ class ScreenLoadingProbeTest {
                         record("press_refresh") { press.onRefresh() }
                         record("press_filter") { press.onEmotionSelected(PressEmotion.Angry) }
                         record("press_previous") { press.onPreviousWeek() }
-                        val groups =
-                            object : GroupListSource {
-                                override suspend fun loadGroups(): GroupListResult {
-                                    calls++
-                                    delay(latency)
-                                    return GroupListResult.Success(emptyList())
-                                }
-                            }
-                        lateinit var home: GroupHomeViewModel
-                        record("group_initial") {
-                            home =
-                                GroupHomeViewModel(
-                                    groupListSource = groups,
-                                    groupJoinDependencies =
-                                        GroupJoinDependencies(
-                                            lookupGroupAction = { GroupLookupResult.Unavailable },
-                                            joinGroupAction = { _, _ -> GroupJoinResult.Unavailable },
-                                            errorReporter = {},
-                                            operationKeyAllocator = GroupOperationKeyAllocator("loading-probe"),
-                                        ),
-                                    groupExploreSource = InMemoryGroupExploreSource(emptyList()),
-                                )
-                        }
-                        assertIs<GroupHomeContent.Empty>(home.uiState.value.content)
-                        record("group_refresh") { home.refresh() }
-                        record("group_clean_reentry") { home.refreshIfDirty() }
-                        record("group_dirty_reentry") {
-                            home.invalidateMembership()
-                            home.refreshIfDirty()
-                        }
                     }
                 }
             } finally {

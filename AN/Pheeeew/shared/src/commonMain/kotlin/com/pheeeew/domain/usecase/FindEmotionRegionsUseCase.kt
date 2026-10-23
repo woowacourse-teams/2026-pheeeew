@@ -12,11 +12,10 @@ class FindEmotionRegionsUseCase(
     suspend operator fun invoke(
         bounds: EmotionMapBounds,
         level: EmotionRegionLevel,
-        groupId: String? = null,
         forceRefresh: Boolean = false,
         filter: EmotionSearchFilter? = null,
     ): EmotionRegionResult {
         if (!bounds.isValid()) return EmotionRegionResult.Failure
-        return repository.findRegions(bounds, level, groupId, forceRefresh, filter)
+        return repository.findRegions(bounds, level, forceRefresh, filter)
     }
 }

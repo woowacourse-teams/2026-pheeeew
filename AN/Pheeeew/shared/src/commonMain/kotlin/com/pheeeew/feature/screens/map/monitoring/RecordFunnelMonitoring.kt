@@ -39,7 +39,7 @@ object RecordFunnelEvents {
             properties =
                 flow +
                     mapOf(
-                        "step" to text("input", "location", "group"),
+                        "step" to text("input", "location"),
                         "step_view_id" to text(),
                     ),
         )
@@ -67,7 +67,6 @@ object RecordFunnelEvents {
                     mapOf(
                         "registration_key" to text(),
                         "input_mode" to text("text", "voice", "none"),
-                        "group_selection" to text("none", "group"),
                     ),
         )
     val definitions =
@@ -200,7 +199,6 @@ class RecordFunnelMonitoring(
     fun submit(
         registrationKey: String,
         mode: String,
-        hasGroup: Boolean,
     ): RecordSubmission? {
         val fields = flowFields() ?: return null
         submissionContext = context(flowContext)
@@ -210,7 +208,6 @@ class RecordFunnelMonitoring(
                 mapOf(
                     "registration_key" to registrationKey,
                     "input_mode" to mode,
-                    "group_selection" to if (hasGroup) "group" else "none",
                 )
         val submission = RecordSubmission(monitoring, context, submissionFields)
         emit(RecordFunnelEvents.submit, context, submissionFields)

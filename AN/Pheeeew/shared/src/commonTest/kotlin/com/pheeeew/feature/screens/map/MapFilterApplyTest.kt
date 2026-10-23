@@ -467,15 +467,11 @@ class MapFilterApplyTest {
             mapOverride ?: object : EmotionMapRepository {
                 override suspend fun findPage(
                     bounds: EmotionMapBounds?,
-                    groupId: String?,
                     cursor: String?,
                     forceRefresh: Boolean,
                 ) = EmotionMapPageResult.Success(EmotionMapPage(emptyList(), false, null, 0))
 
-                override fun findSnapshot(
-                    bounds: EmotionMapBounds,
-                    groupId: String?,
-                ): EmotionMapSnapshot? = null
+                override fun findSnapshot(bounds: EmotionMapBounds): EmotionMapSnapshot? = null
             }
         return MapViewModel(
             refreshLocation =
@@ -517,14 +513,12 @@ class MapFilterApplyTest {
             override suspend fun findRegions(
                 bounds: EmotionMapBounds,
                 level: EmotionRegionLevel,
-                groupId: String?,
                 forceRefresh: Boolean,
                 filter: EmotionSearchFilter?,
             ) = load(bounds, filter)
 
             override fun findSnapshot(
                 level: EmotionRegionLevel,
-                groupId: String?,
                 filter: EmotionSearchFilter?,
             ): List<EmotionRegion>? = null
         }
@@ -535,7 +529,6 @@ class MapFilterApplyTest {
     ) : EmotionMapRepository {
         override suspend fun findPage(
             bounds: EmotionMapBounds?,
-            groupId: String?,
             cursor: String?,
             forceRefresh: Boolean,
         ): EmotionMapPageResult = error("Filtered queries must include the applied settings")
@@ -547,10 +540,8 @@ class MapFilterApplyTest {
             forceRefresh: Boolean,
         ) = load(bounds, filter, cursor)
 
-        override fun findSnapshot(
-            bounds: EmotionMapBounds,
-            groupId: String?,
-        ): EmotionMapSnapshot? = error("Filtered snapshots must include the applied settings")
+        override fun findSnapshot(bounds: EmotionMapBounds): EmotionMapSnapshot? =
+            error("Filtered snapshots must include the applied settings")
 
         override fun findFilteredSnapshot(
             bounds: EmotionMapBounds,
@@ -560,7 +551,7 @@ class MapFilterApplyTest {
 
     private fun MapViewModel.pinIds() = uiModel.value.emotionPins.map { it.id }
 
-    private fun pin(id: Long) = EmotionMapPin(id, 127.0, 37.55, "2026-10-13T00:00:00Z", EmotionState.ANGRY, 0.0, null)
+    private fun pin(id: Long) = EmotionMapPin(id, 127.0, 37.55, "2026-10-13T00:00:00Z", EmotionState.ANGRY, 0.0)
 
     private fun page(
         pin: EmotionMapPin,

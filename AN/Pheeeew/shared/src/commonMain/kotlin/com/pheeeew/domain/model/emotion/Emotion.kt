@@ -1,7 +1,6 @@
 package com.pheeeew.domain.model.emotion
 
 import com.pheeeew.domain.model.GeoCoordinate
-import com.pheeeew.domain.model.group.GroupStamp
 import kotlin.time.Instant
 
 data class EmotionBounds(
@@ -39,7 +38,6 @@ data class Emotion(
     val contentType: EmotionContentType,
     val memo: String?,
     val reactions: List<ReactionCount>,
-    val groupStamp: GroupStamp?,
     val audio: EmotionAudio?,
     val coordinate: GeoCoordinate? = null,
 )

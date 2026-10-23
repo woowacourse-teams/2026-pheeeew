@@ -38,10 +38,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -59,7 +57,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.toRoute
 import com.pheeeew.core.audio.LocalAudioFactories
 import com.pheeeew.core.audio.rememberVoiceRecorder
 import com.pheeeew.core.designsystem.component.AppAlertDialog
@@ -71,7 +68,6 @@ import com.pheeeew.core.di.AppGraph
 import com.pheeeew.core.di.UiGraph
 import com.pheeeew.core.navigation.DoubleBackToExitHandler
 import com.pheeeew.core.navigation.FlowBackHandler
-import com.pheeeew.core.navigation.GroupRootDestination
 import com.pheeeew.core.navigation.MapRootDestination
 import com.pheeeew.core.navigation.PressRootDestination
 import com.pheeeew.core.navigation.RankingRootDestination
@@ -82,12 +78,6 @@ import com.pheeeew.feature.component.AppBottomNavigationBarBottomSpacing
 import com.pheeeew.feature.component.AppDestination
 import com.pheeeew.feature.component.RankingBottomNavigationDestination
 import com.pheeeew.feature.monitoring.product.LocalProductMonitoringVisible
-import com.pheeeew.feature.screens.group.detail.GroupCopyCodeResult
-import com.pheeeew.feature.screens.group.detail.GroupDetailRoute
-import com.pheeeew.feature.screens.group.detail.GroupDetailViewModel
-import com.pheeeew.feature.screens.group.model.GroupId
-import com.pheeeew.feature.screens.group.navigation.GroupDetailDestination
-import com.pheeeew.feature.screens.group.navigation.GroupFeatureHost
 import com.pheeeew.feature.screens.map.EmotionPinUiModel
 import com.pheeeew.feature.screens.map.HighlightedPinPosition
 import com.pheeeew.feature.screens.map.MapContentRenderState
@@ -366,12 +356,16 @@ private fun AppContent(
         LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { apiDependencies.appSession.onForeground() }
     }
 
-    val groupStampListRepository = uiGraph.groupStampListRepository
     val nearbyViewModel: NearbyEmotionViewModel = metroViewModel()
     val mapViewModel: MapViewModel =
         assistedMetroViewModel<MapViewModel, MapViewModel.Factory> {
             create(nearbyViewModel)
         }
+    val mapRendererActive = mapVisible || shouldPrepareMapDuringSplash
+    DisposableEffect(mapViewModel, mapRendererActive) {
+        mapViewModel.setMapRendererActive(mapRendererActive)
+        onDispose { mapViewModel.setMapRendererActive(false) }
+    }
     LaunchedEffect(mapViewModel, mainFeaturesReady, sessionGeneration, shouldPrepareMapDuringSplash) {
         mapViewModel.updateReadiness(
             ready = mainFeaturesReady,
@@ -400,7 +394,6 @@ private fun AppContent(
     }
     val mapUiModel by mapViewModel.uiModel.collectAsStateWithLifecycle()
     val recordUiModel by mapRecordViewModel.uiModel.collectAsStateWithLifecycle()
-    val groupOptions by mapRecordViewModel.groupOptions.collectAsStateWithLifecycle()
     val detailViewModel: EmotionDetailViewModel = metroViewModel()
     val detailState by detailViewModel.uiModel.collectAsStateWithLifecycle()
 
@@ -441,7 +434,6 @@ private fun AppContent(
                     createdAt = "",
                     rotationDegrees = 0.0,
                     emotion = recordUiModel.selectedEmotion ?: EmotionTypeUiModel.FRUSTRATED,
-                    stamp = groupOptions.firstOrNull { group -> group.id == recordUiModel.selectedGroupId }?.stamp,
                 )
             }
     val pinImageModels =
@@ -497,7 +489,7 @@ private fun AppContent(
             LocalMapRenderer.current.Content(
                 state = nativeMapState,
                 isVisible = mapVisible && !shouldPrepareMapDuringSplash,
-                isActive = mapVisible || shouldPrepareMapDuringSplash,
+                isActive = mapRendererActive,
                 isMounted = mapMounted,
                 savedCamera = savedMapCamera,
                 onCameraSaved = { savedMapCamera = it },
@@ -565,21 +557,13 @@ private fun AppContent(
         val audioRepository = remember(uiGraph) { uiGraph.audioRepository }
         val moderation = remember(uiGraph) { uiGraph.moderation }
 
-        val clipboardManager = LocalClipboardManager.current
         val navController = rememberNavController()
         val currentBackStackEntry by navController.currentBackStackEntryAsState()
 
-        val isRankingGroupDetailVisible =
-            currentBackStackEntry?.destination?.hasRoute<GroupDetailDestination>() == true
         val selectedDestination =
             when {
                 currentBackStackEntry?.destination?.hasRoute<PressRootDestination>() == true -> AppDestination.Press
-
-                currentBackStackEntry?.destination?.hasRoute<GroupRootDestination>() == true -> AppDestination.Group
-
-                currentBackStackEntry?.destination?.hasRoute<RankingRootDestination>() == true ||
-                    isRankingGroupDetailVisible -> AppDestination.Ranking
-
+                currentBackStackEntry?.destination?.hasRoute<RankingRootDestination>() == true -> AppDestination.Ranking
                 else -> AppDestination.Map
             }
 
@@ -587,9 +571,6 @@ private fun AppContent(
         var reportTarget by remember { mutableStateOf<Triple<Long, DrawableResource, String>?>(null) }
         var moderationMessage by remember { mutableStateOf<MapTransientNoticeUiModel?>(null) }
         var nextModerationMessageId by remember { mutableStateOf(0L) }
-        var isGroupDetailVisible by remember { mutableStateOf(false) }
-        var isGroupCreateVisible by remember { mutableStateOf(false) }
-        var refreshGroup by remember { mutableStateOf<(() -> Unit)?>(null) }
         var refreshStampRanking by remember { mutableStateOf<(() -> Unit)?>(null) }
         var refreshPressRanking by remember { mutableStateOf<(() -> Unit)?>(null) }
         var rankingDestination by remember { mutableStateOf(RankingBottomNavigationDestination.Stamp) }
@@ -723,29 +704,6 @@ private fun AppContent(
                     }
                 }
 
-                composable<GroupRootDestination>(
-                    enterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
-                    exitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
-                    popEnterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
-                    popExitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
-                ) {
-                    if (!mainFeaturesReady) return@composable
-                    CompositionLocalProvider(
-                        LocalProductMonitoringVisible provides
-                            (!isSettingsVisible && reportTarget == null),
-                    ) {
-                        GroupFeatureHost(
-                            modifier = Modifier.fillMaxSize(),
-                            onGroupDetailVisibilityChanged = { isGroupDetailVisible = it },
-                            onGroupCreateVisibilityChanged = { isGroupCreateVisible = it },
-                            onMembershipChanged = {
-                                groupStampListRepository.invalidate()
-                            },
-                            onRefreshActionChanged = { refreshGroup = it },
-                        )
-                    }
-                }
-
                 composable<PressRootDestination>(
                     enterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
                     exitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
@@ -763,15 +721,9 @@ private fun AppContent(
                     exitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
                     popEnterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
                     popExitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
-                ) { entry ->
+                ) {
                     if (!mainFeaturesReady) return@composable
-                    val openGroupDetail: (String) -> Unit = { groupId ->
-                        if (navController.currentBackStackEntry == entry) {
-                            navController.navigate(GroupDetailDestination(groupId)) {
-                                launchSingleTop = true
-                            }
-                        }
-                    }
+
                     AnimatedContent(
                         targetState = rankingDestination,
                         modifier = Modifier.fillMaxSize(),
@@ -796,7 +748,6 @@ private fun AppContent(
                             when (destination) {
                                 RankingBottomNavigationDestination.Stamp -> {
                                     WeeklyRankingRoute(
-                                        onGroupClick = openGroupDetail,
                                         modifier = Modifier.fillMaxSize(),
                                         onRefreshActionChanged = { refreshStampRanking = it },
                                     )
@@ -810,43 +761,6 @@ private fun AppContent(
                                 }
                             }
                         }
-                    }
-                }
-
-                composable<GroupDetailDestination> { entry ->
-                    if (!mainFeaturesReady) return@composable
-                    val destination = entry.toRoute<GroupDetailDestination>()
-                    val groupId = GroupId(destination.groupId)
-                    val groupDetailViewModel: GroupDetailViewModel =
-                        assistedMetroViewModel<GroupDetailViewModel, GroupDetailViewModel.Factory>(
-                            viewModelStoreOwner = entry,
-                        ) {
-                            create(groupId)
-                        }
-
-                    fun returnToRanking() {
-                        groupStampListRepository.invalidate()
-                        navController.popBackStack()
-                    }
-
-                    CompositionLocalProvider(
-                        LocalProductMonitoringVisible provides (!isSettingsVisible && reportTarget == null),
-                    ) {
-                        GroupDetailRoute(
-                            viewModel = groupDetailViewModel,
-                            isCurrentDestination = currentBackStackEntry == entry,
-                            onBack = { navController.popBackStack() },
-                            onReturnHome = { returnToRanking() },
-                            onJoined = groupStampListRepository::invalidate,
-                            onLeft = { _, _ -> returnToRanking() },
-                            onMembershipUnavailable = { _, _, _ -> returnToRanking() },
-                            onCopyCode = { code, _ ->
-                                clipboardManager.setText(AnnotatedString(code))
-                                GroupCopyCodeResult.Copied
-                            },
-                            onMoodBlockClick = null,
-                            onMoodReportClick = null,
-                        )
                     }
                 }
             }
@@ -876,10 +790,7 @@ private fun AppContent(
                 )
             }
 
-            if (reportTarget == null && !isSettingsVisible && !nearbyState.visible && !isEmotionRecordFlowActive &&
-                !isRankingGroupDetailVisible &&
-                (selectedDestination != AppDestination.Group || (!isGroupDetailVisible && !isGroupCreateVisible))
-            ) {
+            if (reportTarget == null && !isSettingsVisible && !nearbyState.visible && !isEmotionRecordFlowActive) {
                 AppBottomNavigationBar(
                     modifier =
                         Modifier
@@ -893,7 +804,6 @@ private fun AppContent(
                             when (previousMainDestination) {
                                 AppDestination.Map, AppDestination.Ranking -> MapRootDestination
                                 AppDestination.Press -> PressRootDestination
-                                AppDestination.Group -> GroupRootDestination
                             }
                         navController.navigate(route) {
                             popUpTo<MapRootDestination> { saveState = true }
@@ -919,7 +829,6 @@ private fun AppContent(
                             when (destination) {
                                 AppDestination.Map -> MapRootDestination
                                 AppDestination.Press -> PressRootDestination
-                                AppDestination.Group -> GroupRootDestination
                                 AppDestination.Ranking -> RankingRootDestination
                             }
 
@@ -927,7 +836,6 @@ private fun AppContent(
                             when (destination) {
                                 AppDestination.Map -> mapViewModel.refreshEmotionPins()
                                 AppDestination.Press -> Unit
-                                AppDestination.Group -> refreshGroup?.invoke()
                                 AppDestination.Ranking -> refreshRanking?.invoke()
                             }
                         } else {
@@ -1027,8 +935,7 @@ private fun androidx.navigation.NavDestination.rootTabIndex(): Int? =
     when {
         hasRoute<MapRootDestination>() -> 0
         hasRoute<PressRootDestination>() -> 1
-        hasRoute<GroupRootDestination>() -> 2
-        hasRoute<RankingRootDestination>() -> 3
+        hasRoute<RankingRootDestination>() -> 2
         else -> null
     }
 

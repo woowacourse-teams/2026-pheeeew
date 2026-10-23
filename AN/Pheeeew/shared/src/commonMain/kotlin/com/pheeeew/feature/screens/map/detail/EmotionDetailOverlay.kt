@@ -322,17 +322,9 @@ private object PreviewActionRepositories : BlockRepository, EmotionRepository {
 
     override suspend fun delete(emotionId: Long) = EmotionModerationResult.Success
 
-    override suspend fun firstPage(
-        bounds: EmotionBounds,
-        groupId: String?,
-    ): Nothing = error("Preview does not load data")
+    override suspend fun firstPage(bounds: EmotionBounds): Nothing = error("Preview does not load data")
 
     override suspend fun nextPage(cursor: String): Nothing = error("Preview does not load data")
-
-    override suspend fun feedPage(
-        groupId: String,
-        cursor: String?,
-    ): Nothing = error("Preview does not load data")
 
     override suspend fun detail(id: Long): Nothing = error("Preview does not load data")
 

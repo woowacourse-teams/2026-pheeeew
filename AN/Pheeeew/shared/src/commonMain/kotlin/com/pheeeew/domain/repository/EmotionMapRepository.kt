@@ -8,7 +8,6 @@ import com.pheeeew.domain.model.emotion.EmotionSearchFilter
 interface EmotionMapRepository {
     suspend fun findPage(
         bounds: EmotionMapBounds?,
-        groupId: String?,
         cursor: String?,
         forceRefresh: Boolean = false,
     ): EmotionMapPageResult
@@ -18,15 +17,12 @@ interface EmotionMapRepository {
         filter: EmotionSearchFilter,
         cursor: String?,
         forceRefresh: Boolean = false,
-    ): EmotionMapPageResult = findPage(bounds, filter.groupId, cursor, forceRefresh)
+    ): EmotionMapPageResult = findPage(bounds, cursor, forceRefresh)
 
-    fun findSnapshot(
-        bounds: EmotionMapBounds,
-        groupId: String? = null,
-    ): EmotionMapSnapshot?
+    fun findSnapshot(bounds: EmotionMapBounds): EmotionMapSnapshot?
 
     fun findFilteredSnapshot(
         bounds: EmotionMapBounds,
         filter: EmotionSearchFilter,
-    ): EmotionMapSnapshot? = findSnapshot(bounds, filter.groupId)
+    ): EmotionMapSnapshot? = findSnapshot(bounds)
 }

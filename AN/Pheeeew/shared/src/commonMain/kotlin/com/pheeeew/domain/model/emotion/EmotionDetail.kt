@@ -1,7 +1,5 @@
 package com.pheeeew.domain.model.emotion
 
-import com.pheeeew.domain.model.group.GroupStamp
-
 data class EmotionDetail(
     val id: Long,
     val state: EmotionState,
@@ -9,8 +7,6 @@ data class EmotionDetail(
     val createdAt: String,
     val memo: String?,
     val audio: EmotionPlayback?,
-    val groupStamp: GroupStamp?,
-    val groupId: String?,
     val isMine: Boolean,
     val reactions: List<EmotionReaction>,
 )

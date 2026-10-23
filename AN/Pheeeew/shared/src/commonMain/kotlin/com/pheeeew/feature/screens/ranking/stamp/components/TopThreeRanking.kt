@@ -15,7 +15,6 @@ import com.pheeeew.feature.screens.ranking.stamp.sampleRankings
 @Composable
 fun TopThreeRanking(
     members: List<RankingMember>,
-    onGroupClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -23,14 +22,14 @@ fun TopThreeRanking(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.Bottom,
     ) {
-        RankingMemberCard(members[1], onClick = { onGroupClick(members[1].groupId) }, modifier = Modifier.weight(1f))
-        RankingMemberCard(members[0], onClick = { onGroupClick(members[0].groupId) }, modifier = Modifier.weight(1f))
-        RankingMemberCard(members[2], onClick = { onGroupClick(members[2].groupId) }, modifier = Modifier.weight(1f))
+        RankingMemberCard(members[1], modifier = Modifier.weight(1f))
+        RankingMemberCard(members[0], modifier = Modifier.weight(1f))
+        RankingMemberCard(members[2], modifier = Modifier.weight(1f))
     }
 }
 
 @Preview
 @Composable
 private fun TopThreeRankingPreview() {
-    TopThreeRanking(sampleRankings.take(3), onGroupClick = {})
+    TopThreeRanking(sampleRankings.take(3))
 }

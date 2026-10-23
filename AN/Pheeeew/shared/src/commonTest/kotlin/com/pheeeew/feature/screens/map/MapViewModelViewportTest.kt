@@ -54,6 +54,83 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class MapViewModelViewportTest {
     @Test
+    fun `목록 노출 모니터링이 꺼져도 활성 지도에 새로 조회한 핀을 표시한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val target = pin(2, 128.02, 37.55)
+                val repository =
+                    QueuedEmotionMapRepository(
+                        CompletableDeferred(page(listOf(pin(1, 127.02, 37.55)))),
+                        CompletableDeferred(page(listOf(target))),
+                    )
+                val viewModel =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(repository),
+                        FindEmotionMapSnapshotUseCase(repository),
+                    )
+                viewModel.setMapRendererActive(true)
+                viewModel.onViewportChanged(bounds(127.0, 37.5))
+                runCurrent()
+                assertEquals(listOf(1L), viewModel.pinIds())
+
+                // The nearby list hides map monitoring while the native map remains active.
+                viewModel.contentVisibility(false)
+                assertTrue(viewModel.focusOnEmotion(target.id, GeoCoordinate(target.latitude, target.longitude)))
+                viewModel.onViewportChanged(bounds(128.0, 37.5))
+                runCurrent()
+                advanceTimeBy(1_000)
+                runCurrent()
+
+                assertEquals(2, repository.requestedBounds.size)
+                assertTrue(target.id in viewModel.pinIds())
+                assertTrue(repository.findSnapshot(bounds(128.0, 37.5))!!.pins.any { it.id == target.id })
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `비활성 지도에서 대기한 핀은 렌더러 복귀 때 표시한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val target = pin(2, 128.02, 37.55)
+                val repository =
+                    QueuedEmotionMapRepository(
+                        CompletableDeferred(page(listOf(pin(1, 127.02, 37.55)))),
+                        CompletableDeferred(page(listOf(target))),
+                    )
+                val viewModel =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(repository),
+                        FindEmotionMapSnapshotUseCase(repository),
+                    )
+                viewModel.onViewportChanged(bounds(127.0, 37.5))
+                runCurrent()
+                assertEquals(listOf(1L), viewModel.pinIds())
+
+                viewModel.setMapRendererActive(false)
+                assertTrue(viewModel.focusOnEmotion(target.id, GeoCoordinate(target.latitude, target.longitude)))
+                viewModel.onViewportChanged(bounds(128.0, 37.5))
+                runCurrent()
+                advanceTimeBy(1_000)
+                runCurrent()
+
+                assertFalse(target.id in viewModel.pinIds())
+                assertTrue(repository.findSnapshot(bounds(128.0, 37.5))!!.pins.any { it.id == target.id })
+
+                viewModel.setMapRendererActive(true)
+
+                assertTrue(target.id in viewModel.pinIds())
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
     fun `splash preloads location without prompting and defers denied permission until start`() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
@@ -222,14 +299,10 @@ class MapViewModelViewportTest {
                 val staleResponse = CompletableDeferred<EmotionMapPageResult>()
                 val repository =
                     object : EmotionMapRepository {
-                        override fun findSnapshot(
-                            bounds: EmotionMapBounds,
-                            groupId: String?,
-                        ): EmotionMapSnapshot? = null
+                        override fun findSnapshot(bounds: EmotionMapBounds): EmotionMapSnapshot? = null
 
                         override suspend fun findPage(
                             bounds: EmotionMapBounds?,
-                            groupId: String?,
                             cursor: String?,
                             forceRefresh: Boolean,
                         ): EmotionMapPageResult =
@@ -699,14 +772,10 @@ class MapViewModelViewportTest {
                 var requestCount = 0
                 val repository =
                     object : EmotionMapRepository {
-                        override fun findSnapshot(
-                            bounds: EmotionMapBounds,
-                            groupId: String?,
-                        ): EmotionMapSnapshot? = null
+                        override fun findSnapshot(bounds: EmotionMapBounds): EmotionMapSnapshot? = null
 
                         override suspend fun findPage(
                             bounds: EmotionMapBounds?,
-                            groupId: String?,
                             cursor: String?,
                             forceRefresh: Boolean,
                         ): EmotionMapPageResult {
@@ -2082,7 +2151,6 @@ class MapViewModelViewportTest {
             override suspend fun findRegions(
                 bounds: EmotionMapBounds,
                 level: EmotionRegionLevel,
-                groupId: String?,
                 forceRefresh: Boolean,
                 filter: EmotionSearchFilter?,
             ): EmotionRegionResult {
@@ -2092,7 +2160,6 @@ class MapViewModelViewportTest {
 
             override fun findSnapshot(
                 level: EmotionRegionLevel,
-                groupId: String?,
                 filter: EmotionSearchFilter?,
             ) = snapshot(level)
         }
@@ -2127,7 +2194,7 @@ class MapViewModelViewportTest {
         id: Long,
         longitude: Double,
         latitude: Double,
-    ) = EmotionMapPin(id, longitude, latitude, "2026-09-27T00:00:00Z", EmotionState.ANGRY, 0.0, null)
+    ) = EmotionMapPin(id, longitude, latitude, "2026-09-27T00:00:00Z", EmotionState.ANGRY, 0.0)
 
     private fun MapViewModel.pinIds() = uiModel.value.emotionPins.map { it.id }
 
@@ -2158,7 +2225,6 @@ class MapViewModelViewportTest {
 
         override suspend fun findPage(
             bounds: EmotionMapBounds?,
-            groupId: String?,
             cursor: String?,
             forceRefresh: Boolean,
         ): EmotionMapPageResult {
@@ -2184,16 +2250,14 @@ class MapViewModelViewportTest {
             }
         }
 
-        override fun findSnapshot(
-            bounds: EmotionMapBounds,
-            groupId: String?,
-        ) = cachedRegions
-            .filter { it.bounds.intersects(bounds) }
-            .flatMap { it.page.pins }
-            .filter { bounds.contains(it.longitude, it.latitude) }
-            .distinctBy { it.id }
-            .takeIf { it.isNotEmpty() }
-            ?.let(::EmotionMapSnapshot)
+        override fun findSnapshot(bounds: EmotionMapBounds) =
+            cachedRegions
+                .filter { it.bounds.intersects(bounds) }
+                .flatMap { it.page.pins }
+                .filter { bounds.contains(it.longitude, it.latitude) }
+                .distinctBy { it.id }
+                .takeIf { it.isNotEmpty() }
+                ?.let(::EmotionMapSnapshot)
 
         private data class CachedRegion(
             val bounds: EmotionMapBounds,

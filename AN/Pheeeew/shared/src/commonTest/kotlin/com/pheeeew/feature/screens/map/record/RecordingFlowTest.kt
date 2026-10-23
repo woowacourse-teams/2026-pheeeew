@@ -5,13 +5,13 @@ import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.model.emotion.EmotionRegistration
 import com.pheeeew.domain.model.emotion.EmotionRegistrationResult
 import com.pheeeew.domain.repository.EmotionRegistrationRepository
-import com.pheeeew.domain.repository.GroupStampListLoadResult
-import com.pheeeew.domain.repository.GroupStampListRepository
 import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
 import com.pheeeew.feature.screens.map.record.sheet.RecordFlowStepUiModel
 import com.pheeeew.feature.screens.map.record.sheet.RecordInputModeUiModel
+import com.pheeeew.feature.screens.map.symbolImageKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -23,7 +23,6 @@ import kotlin.test.assertNull
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class RecordingFlowTest {
-    private val unusedGroups = GroupStampListRepository { GroupStampListLoadResult.Loaded(emptyList()) }
     private val unusedRepository =
         object : EmotionRegistrationRepository {
             override suspend fun register(registration: EmotionRegistration): EmotionRegistrationResult =
@@ -47,8 +46,6 @@ class RecordingFlowTest {
                     MapRecordViewModel(
                         IsWithinEmotionRecordRadiusUseCase(),
                         repository,
-                        unusedGroups,
-                        InMemoryLastRecordedGroupRepository(),
                     )
                 // Registering at the same location again must produce another consumable result.
                 repeat(2) {
@@ -61,6 +58,9 @@ class RecordingFlowTest {
                     assertNull(model.registeredEmotion.value)
                     advanceUntilIdle()
                     assertEquals(RecordFlowStepUiModel.Closed, model.uiModel.value.step)
+                    val pin = model.registeredEmotions.first()
+                    assertEquals(42L, pin.id)
+                    assertEquals("emotion-frustrated", pin.symbolImageKey())
                     assertEquals(RegisteredEmotionUiModel(42, selected), model.registeredEmotion.value)
                     assertEquals(RegisteredEmotionUiModel(42, selected), model.consumeRegisteredEmotion())
                     assertNull(model.consumeRegisteredEmotion())
@@ -81,8 +81,6 @@ class RecordingFlowTest {
                     MapRecordViewModel(
                         IsWithinEmotionRecordRadiusUseCase(),
                         unusedRepository,
-                        unusedGroups,
-                        InMemoryLastRecordedGroupRepository(),
                     )
                 model.open(EmotionTypeUiModel.FRUSTRATED)
                 advanceUntilIdle()
@@ -108,8 +106,6 @@ class RecordingFlowTest {
                     MapRecordViewModel(
                         IsWithinEmotionRecordRadiusUseCase(),
                         unusedRepository,
-                        unusedGroups,
-                        InMemoryLastRecordedGroupRepository(),
                     )
                 model.open(EmotionTypeUiModel.FRUSTRATED)
                 advanceUntilIdle()
@@ -132,8 +128,6 @@ class RecordingFlowTest {
                     MapRecordViewModel(
                         IsWithinEmotionRecordRadiusUseCase(),
                         unusedRepository,
-                        unusedGroups,
-                        InMemoryLastRecordedGroupRepository(),
                     )
                 model.open(EmotionTypeUiModel.FRUSTRATED)
                 advanceUntilIdle()

@@ -10,7 +10,6 @@ class FindEmotionRegionSnapshotUseCase(
 ) {
     operator fun invoke(
         level: EmotionRegionLevel,
-        groupId: String? = null,
         filter: EmotionSearchFilter? = null,
-    ): List<EmotionRegion>? = repository.findSnapshot(level, groupId, filter)
+    ): List<EmotionRegion>? = repository.findSnapshot(level, filter)
 }

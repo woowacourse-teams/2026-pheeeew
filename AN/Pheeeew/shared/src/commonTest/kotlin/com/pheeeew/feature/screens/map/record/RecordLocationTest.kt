@@ -6,8 +6,6 @@ import com.pheeeew.domain.model.emotion.EmotionRegistration
 import com.pheeeew.domain.model.emotion.EmotionRegistrationContent
 import com.pheeeew.domain.model.emotion.EmotionRegistrationResult
 import com.pheeeew.domain.repository.EmotionRegistrationRepository
-import com.pheeeew.domain.repository.GroupStampListLoadResult
-import com.pheeeew.domain.repository.GroupStampListRepository
 import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
 import com.pheeeew.feature.screens.map.record.location.RECORD_RADIUS_METERS
 import com.pheeeew.feature.screens.map.record.location.constrainToRecordRadius
@@ -32,7 +30,6 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class RecordLocationTest {
     private val origin = GeoCoordinate(37.5665, 126.9780)
-    private val unusedGroups = GroupStampListRepository { GroupStampListLoadResult.Loaded(emptyList()) }
 
     @Test
     fun clampsOutsideCoordinatesTo500Meters() {
@@ -98,8 +95,6 @@ class RecordLocationTest {
                     MapRecordViewModel(
                         IsWithinEmotionRecordRadiusUseCase(),
                         repository,
-                        unusedGroups,
-                        InMemoryLastRecordedGroupRepository(),
                     )
                 model.open(EmotionTypeUiModel.FRUSTRATED)
                 advanceUntilIdle()
@@ -232,8 +227,6 @@ class RecordLocationTest {
         MapRecordViewModel(
             IsWithinEmotionRecordRadiusUseCase(),
             repository,
-            unusedGroups,
-            InMemoryLastRecordedGroupRepository(),
         ).also {
             it.open(EmotionTypeUiModel.FRUSTRATED)
         }

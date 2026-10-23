@@ -1,6 +1,6 @@
 package com.pheeeew.feature.component.stamp
 
-/** 그룹 스탬프를 화면에 표시하기 위한 값 객체입니다. 색상은 0xAARRGGBB 형식입니다. */
+/** 스탬프를 화면에 표시하기 위한 값 객체입니다. 색상은 0xAARRGGBB 형식입니다. */
 data class StampAppearanceUiModel(
     val label: String,
     val shape: StampShapeId,

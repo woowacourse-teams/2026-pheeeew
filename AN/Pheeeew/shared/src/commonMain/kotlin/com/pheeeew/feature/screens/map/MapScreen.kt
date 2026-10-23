@@ -43,9 +43,6 @@ import com.pheeeew.feature.screens.map.overlay.selectMapFeedback
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
 import com.pheeeew.feature.screens.map.record.MapRecordViewModel
 import com.pheeeew.feature.screens.map.record.RegisteredEmotionUiModel
-import com.pheeeew.feature.screens.map.record.group.GroupSelectorContent
-import com.pheeeew.feature.screens.map.record.group.GroupSelectorGroupUiModel
-import com.pheeeew.feature.screens.map.record.group.groupSelectorDialogProperties
 import com.pheeeew.feature.screens.map.record.location.RecordLocationSelectionContent
 import com.pheeeew.feature.screens.map.record.location.RecordMapViewport
 import com.pheeeew.feature.screens.map.record.rememberRecordConnectionMessage
@@ -168,7 +165,6 @@ fun MapScreen(
     val activePermissionDialog =
         permissionDialog ?: PermissionDialogUiModel.Location.takeIf { uiModel.showLocationPermissionDialog }
     val recordUiModel by recordViewModel.uiModel.collectAsState()
-    val groupOptions by recordViewModel.groupOptions.collectAsState()
     val contentVisible =
         monitoringResumed && monitoringVisible && uiModel.mapError == null &&
             !uiModel.isEmotionSelectorExpanded && recordUiModel.step == RecordFlowStepUiModel.Closed &&
@@ -276,14 +272,12 @@ fun MapScreen(
         monitoringResumed,
         monitoringVisible,
         recordUiModel.step,
-        recordUiModel.isGroupSelectorVisible,
     ) {
         recordViewModel.funnel.stepShown(
             if (!monitoringResumed || !monitoringVisible) {
                 null
             } else {
                 when {
-                    recordUiModel.isGroupSelectorVisible -> "group"
                     recordUiModel.step == RecordFlowStepUiModel.Input -> "input"
                     recordUiModel.step == RecordFlowStepUiModel.LocationSelection -> "location"
                     else -> null
@@ -317,7 +311,6 @@ fun MapScreen(
         when {
             recordUiModel.isSubmitting -> Unit
             showDiscardDialog -> showDiscardDialog = false
-            recordUiModel.isGroupSelectorVisible -> recordViewModel.onGroupSelectorDismiss()
             recordUiModel.step == RecordFlowStepUiModel.LocationSelection -> recordFlowCoordinator.backToInput()
             else -> requestInputBack()
         }
@@ -370,7 +363,6 @@ fun MapScreen(
             recordViewport = recordViewport.value,
             onRecordCoordinateSelected = recordViewModel::onLocationSelected,
             onRecordPreviewScaleChanged = onRecordPreviewScaleChanged,
-            groupOptions = groupOptions,
             mapContent = { _, mapModifier ->
                 Box(mapModifier) {
                     val highlightPosition = highlightedPinPosition.value
@@ -456,15 +448,9 @@ fun MapScreen(
             onRecordInputModeChange = recordFlowCoordinator::changeInputMode,
             onRecordAnonymousChange = recordViewModel::onAnonymousChange,
             onRecordMemoChange = recordViewModel::onMemoChange,
-            onRecordGroupClick = recordViewModel::onGroupSelectorOpen,
             onRecordNext = { recordFlowCoordinator.next(currentLocation) },
             onRecordBackToInput = recordFlowCoordinator::backToInput,
             onRecordConfirmLocation = recordFlowCoordinator::confirmLocation,
-            onRecordGroupSelectorDismiss = recordViewModel::onGroupSelectorDismiss,
-            onRecordGroupDialProgressChange = recordViewModel::onGroupDialProgressChange,
-            onRecordGroupDialProgressSettle = recordViewModel::onGroupDialProgressSettle,
-            onRecordPendingGroupChange = recordViewModel::onPendingGroupChange,
-            onRecordGroupSelectionComplete = recordViewModel::onGroupSelectionComplete,
             feedbackContent = {
                 if (shouldShowFeedback) {
                     MapFeedbackOverlay(
@@ -587,8 +573,6 @@ private fun MapFilterLayer(viewModel: MapViewModel) {
         onScope = viewModel::selectFilterScope,
         onOpenDate = viewModel::openFilterDate,
         onConfirmDate = viewModel::confirmFilterDate,
-        onOpenGroups = viewModel::openFilterGroups,
-        onToggleGroup = viewModel::toggleFilterGroup,
         onClosePage = viewModel::closeFilterPage,
         onApply = viewModel::applyFilter,
     )
@@ -598,7 +582,6 @@ private fun MapFilterLayer(viewModel: MapViewModel) {
 internal fun MapScreenContent(
     uiModel: MapUiModel,
     recordUiModel: RecordBottomSheetUiModel,
-    groupOptions: List<GroupSelectorGroupUiModel>,
     mapContent: @Composable (MapUiModel, Modifier) -> Unit,
     onListClick: () -> Unit,
     onSettingClick: () -> Unit,
@@ -611,15 +594,9 @@ internal fun MapScreenContent(
     onRecordInputModeChange: (RecordInputModeUiModel) -> Unit,
     onRecordAnonymousChange: (Boolean) -> Unit,
     onRecordMemoChange: (String) -> Unit,
-    onRecordGroupClick: () -> Unit,
     onRecordNext: () -> Unit,
     onRecordBackToInput: () -> Unit,
     onRecordConfirmLocation: () -> Unit,
-    onRecordGroupSelectorDismiss: () -> Unit,
-    onRecordGroupDialProgressChange: (Float) -> Unit,
-    onRecordGroupDialProgressSettle: (Float) -> Unit,
-    onRecordPendingGroupChange: (GroupSelectorGroupUiModel) -> Unit,
-    onRecordGroupSelectionComplete: (GroupSelectorGroupUiModel) -> Unit,
     modifier: Modifier,
     voiceRecorder: VoiceRecorder? = null,
     recordViewport: RecordMapViewport? = null,
@@ -671,38 +648,13 @@ internal fun MapScreenContent(
                     isAnonymous = recordUiModel.isAnonymous,
                     onAnonymousChange = onRecordAnonymousChange,
                     voiceRecorder = voiceRecorder,
-                    selectedGroupStamp = groupOptions.firstOrNull { it.id == recordUiModel.selectedGroupId }?.stamp,
-                    isGroupSelectionLoading = recordUiModel.isGroupSelectionLoading,
                     onInputModeChange = onRecordInputModeChange,
                     onMemoChange = onRecordMemoChange,
-                    onGroupClick = onRecordGroupClick,
                     onNext = onRecordNext,
                     feedbackContent = {
-                        if (!recordUiModel.isGroupSelectorVisible) feedbackContent()
+                        feedbackContent()
                     },
                 )
-                if (recordUiModel.isGroupSelectorVisible) {
-                    AppDialog(
-                        onDismissRequest = onRecordGroupSelectorDismiss,
-                        properties = groupSelectorDialogProperties(),
-                    ) {
-                        Box(Modifier.fillMaxSize()) {
-                            GroupSelectorContent(
-                                isVisible = true,
-                                groups = groupOptions,
-                                selectedGroupId = recordUiModel.pendingGroupId,
-                                dialProgress = recordUiModel.groupDialProgress,
-                                onDialProgressChange = onRecordGroupDialProgressChange,
-                                onDialProgressSettle = onRecordGroupDialProgressSettle,
-                                onSelectedGroupChange = onRecordPendingGroupChange,
-                                onDismiss = onRecordGroupSelectorDismiss,
-                                onComplete = onRecordGroupSelectionComplete,
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                            feedbackContent()
-                        }
-                    }
-                }
             }
 
             RecordFlowStepUiModel.LocationSelection -> {
@@ -716,7 +668,6 @@ internal fun MapScreenContent(
                     onCoordinateSelected = onRecordCoordinateSelected,
                     onStampScaleChanged = onRecordPreviewScaleChanged,
                     selectedEmotion = recordUiModel.selectedEmotion ?: EmotionTypeUiModel.FRUSTRATED,
-                    selectedGroupStamp = groupOptions.firstOrNull { it.id == recordUiModel.selectedGroupId }?.stamp,
                     isSubmitting = recordUiModel.isSubmitting,
                     canConfirm =
                         recordUiModel.isSelectedCoordinateInRange && recordViewport != null &&
@@ -737,10 +688,6 @@ private fun MapScreenContentPreview() {
     MapScreenContent(
         uiModel = MapUiModel(),
         recordUiModel = RecordBottomSheetUiModel(),
-        groupOptions =
-            listOf(
-                GroupSelectorGroupUiModel("none", "없음", null),
-            ),
         mapContent = { _, modifier -> Box(modifier.background(Color(0xFFECEAE5))) },
         onListClick = {},
         onSettingClick = {},
@@ -753,15 +700,9 @@ private fun MapScreenContentPreview() {
         onRecordInputModeChange = {},
         onRecordAnonymousChange = {},
         onRecordMemoChange = {},
-        onRecordGroupClick = {},
         onRecordNext = {},
         onRecordBackToInput = {},
         onRecordConfirmLocation = {},
-        onRecordGroupSelectorDismiss = {},
-        onRecordGroupDialProgressChange = {},
-        onRecordGroupDialProgressSettle = {},
-        onRecordPendingGroupChange = {},
-        onRecordGroupSelectionComplete = {},
         modifier = Modifier.fillMaxSize(),
     )
 }

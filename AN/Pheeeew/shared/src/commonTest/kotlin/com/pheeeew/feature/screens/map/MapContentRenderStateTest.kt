@@ -209,6 +209,5 @@ class MapContentRenderStateTest {
             "2026-10-12T00:00:00Z",
             0.0,
             EmotionTypeUiModel.ANGRY,
-            null,
         )
 }

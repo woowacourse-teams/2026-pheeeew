@@ -16,8 +16,8 @@ class EmotionMapCacheTest {
         val wide = EmotionMapBounds(127.0, 37.0, 128.0, 38.0)
         val small = EmotionMapBounds(127.1, 37.1, 127.3, 37.3)
         val moved = EmotionMapBounds(127.05, 37.05, 127.4, 37.4)
-        cache.appendPage(wide, null, null, EmotionMapPage(listOf(pin(1, 127.2)), false, null, 0))
-        cache.appendPage(small, null, null, EmotionMapPage(listOf(pin(1, 127.2), pin(2, 127.2)), false, null, 0))
+        cache.appendPage(wide, null, EmotionMapPage(listOf(pin(1, 127.2)), false, null, 0))
+        cache.appendPage(small, null, EmotionMapPage(listOf(pin(1, 127.2), pin(2, 127.2)), false, null, 0))
 
         assertEquals(listOf(1L, 2L), cache.snapshot(moved, null)?.pins?.map { it.id })
         assertNull(cache.completePage(moved, null))
@@ -31,7 +31,7 @@ class EmotionMapCacheTest {
         val outer = EmotionMapBounds(127.0, 37.0, 128.0, 38.0)
         val inner = EmotionMapBounds(127.1, 37.1, 127.3, 37.3)
         val pins = listOf(pin(1, 127.2), pin(2, 127.8))
-        cache.appendPage(outer, null, null, EmotionMapPage(pins, false, null, 0))
+        cache.appendPage(outer, null, EmotionMapPage(pins, false, null, 0))
 
         assertEquals(listOf(1L), cache.completePage(inner, null)?.pins?.map { it.id })
         now = 180_000L
@@ -46,10 +46,10 @@ class EmotionMapCacheTest {
         val second = EmotionMapBounds(128.0, 37.0, 128.1, 38.0)
         val third = EmotionMapBounds(129.0, 37.0, 129.1, 38.0)
         val page = EmotionMapPage(emptyList(), false, null, 0)
-        cache.appendPage(first, null, null, page)
-        cache.appendPage(second, null, null, page)
+        cache.appendPage(first, null, page)
+        cache.appendPage(second, null, page)
         assertNotNull(cache.completePage(first, null))
-        cache.appendPage(third, null, null, page)
+        cache.appendPage(third, null, page)
 
         assertNull(cache.completePage(second, null))
         assertNotNull(cache.completePage(first, null))
@@ -61,7 +61,7 @@ class EmotionMapCacheTest {
         val cache = EmotionMapCache()
         val bounds = EmotionMapBounds(179.0, 37.0, -179.0, 38.0)
         val pins = listOf(pin(1, 179.5), pin(2, -179.5), pin(3, 127.0))
-        cache.appendPage(bounds, null, null, EmotionMapPage(pins, true, "next", 0))
+        cache.appendPage(bounds, null, EmotionMapPage(pins, true, "next", 0))
 
         assertEquals(listOf(1L, 2L), cache.snapshot(bounds, null)?.pins?.map { it.id })
         assertNull(cache.completePage(bounds, null))
@@ -74,22 +74,20 @@ class EmotionMapCacheTest {
         val inner = EmotionMapBounds(127.1, 37.1, 127.3, 37.3)
         val distant = EmotionMapBounds(129.0, 37.0, 130.0, 38.0)
         val empty = EmotionMapPage(emptyList(), false, null, 0)
-        cache.appendPage(outer, null, null, empty)
-        cache.appendPage(outer, "group", null, empty)
-        cache.appendPage(distant, null, null, empty)
+        cache.appendPage(outer, null, empty)
+        cache.appendPage(distant, null, empty)
 
         cache.invalidate(inner, null)
-        cache.appendPage(inner, null, null, empty.copy(pins = listOf(pin(42, 127.2))))
+        cache.appendPage(inner, null, empty.copy(pins = listOf(pin(42, 127.2))))
 
         assertNull(cache.completePage(outer, null))
         assertEquals(listOf(42L), cache.snapshot(outer, null)?.pins?.map { it.id })
         assertEquals(listOf(42L), cache.completePage(inner, null)?.pins?.map { it.id })
-        assertNotNull(cache.completePage(outer, "group"))
         assertNotNull(cache.completePage(distant, null))
     }
 
     private fun pin(
         id: Long,
         longitude: Double,
-    ) = EmotionMapPin(id, longitude, 37.2, "2026-09-27T00:00:00Z", EmotionState.ANGRY, 0.0, null)
+    ) = EmotionMapPin(id, longitude, 37.2, "2026-09-27T00:00:00Z", EmotionState.ANGRY, 0.0)
 }

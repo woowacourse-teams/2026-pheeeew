@@ -28,8 +28,6 @@ import com.pheeeew.feature.component.emotion.EmotionChatItem
 import com.pheeeew.feature.component.emotion.EmotionChatItemUiModel
 import com.pheeeew.feature.component.emotion.face
 import com.pheeeew.feature.component.emotion.label
-import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
-import com.pheeeew.feature.component.stamp.StampShapeId
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 
@@ -80,7 +78,6 @@ private fun NearbyEmotionItemUiModel.toChatItemUiModel() =
                 EmotionContentType.AUDIO -> EmotionChatContentUiModel.Audio(null)
             },
         reactions = reactions,
-        stamp = stamp,
     )
 
 private fun relativeTime(item: NearbyEmotionItemUiModel): String {
@@ -94,7 +91,6 @@ private fun relativeTime(item: NearbyEmotionItemUiModel): String {
 }
 
 internal fun nearbyPreviewItems(): List<NearbyEmotionItemUiModel> {
-    val previewStamp = StampAppearanceUiModel("산책", StampShapeId.FLOWER, 0xFFACD9EE, 0xFF252826)
     val emotion =
         NearbyEmotionItemUiModel(
             id = 1L,
@@ -105,18 +101,16 @@ internal fun nearbyPreviewItems(): List<NearbyEmotionItemUiModel> {
             contentType = EmotionContentType.NONE,
             memo = null,
             reactions = emptyList(),
-            stamp = null,
             audio = null,
         )
     return listOf(
         emotion,
-        emotion.copy(id = 2L, nickname = "산책하는 토끼", isMine = false, stamp = previewStamp),
+        emotion.copy(id = 2L, nickname = "산책하는 토끼", isMine = false),
         emotion.copy(
             id = 3L,
             state = EmotionState.FRUSTRATED,
             contentType = EmotionContentType.MEMO,
             memo = "오늘은 조금 지쳤지만, 잠깐 쉬어 가려고요.",
-            stamp = previewStamp,
             reactions =
                 EmotionReactionType.entries.mapIndexed { index, type ->
                     ReactionCount(type, (index + 1).toLong(), selected = index == 0)

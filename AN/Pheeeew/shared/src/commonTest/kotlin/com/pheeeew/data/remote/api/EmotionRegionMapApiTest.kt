@@ -204,8 +204,7 @@ class EmotionRegionMapApiTest {
                     MapFilterSettings(period = MapFilterPeriod.ALL).toSearchFilter(today),
                     MapFilterSettings(scope = MapFilterScope.MY, content = MapFilterContent.MEMO).toSearchFilter(today),
                     MapFilterSettings(
-                        scope = MapFilterScope.GROUP,
-                        groupId = "group",
+                        scope = MapFilterScope.ALL,
                         content = MapFilterContent.AUDIO,
                     ).toSearchFilter(today),
                 )
@@ -228,8 +227,7 @@ class EmotionRegionMapApiTest {
                         "startDate" to "2026-09-13",
                         "endDate" to "2026-10-13",
                         "contentType" to "AUDIO",
-                        "scope" to "GROUP",
-                        "groupId" to "group",
+                        "scope" to "ALL",
                     ),
                 )
             var calls = 0
@@ -316,8 +314,8 @@ class EmotionRegionMapApiTest {
                 repository.findRegions(area, EmotionRegionLevel.SIGUNGU, forceRefresh = true)
                 repository.findRegions(area, EmotionRegionLevel.SIDO)
                 assertEquals(4, calls)
-                repository.findRegions(area, EmotionRegionLevel.SIGUNGU, groupId = "group")
-                assertEquals(5, calls)
+                repository.findRegions(area, EmotionRegionLevel.SIGUNGU)
+                assertEquals(4, calls)
             } finally {
                 client.close()
             }
@@ -374,7 +372,7 @@ class EmotionRegionMapApiTest {
                 createApiClient(
                     engine =
                         MockEngine { request ->
-                            assertEquals("/api/v2/emotions/map/regions", request.url.encodedPath)
+                            assertEquals("/api/v4/emotions/map/regions", request.url.encodedPath)
                             assertEquals("126.75", request.url.parameters["minLongitude"])
                             assertEquals("37.375", request.url.parameters["minLatitude"])
                             assertEquals("127.25", request.url.parameters["maxLongitude"])

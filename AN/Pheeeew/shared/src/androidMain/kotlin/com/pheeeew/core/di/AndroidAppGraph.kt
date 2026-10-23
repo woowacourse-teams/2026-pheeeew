@@ -23,8 +23,6 @@ import com.pheeeew.core.permission.AndroidAppSettingsLauncher
 import com.pheeeew.core.permission.AppSettingsLauncher
 import com.pheeeew.data.local.device.AndroidDeviceCredentialStorage
 import com.pheeeew.data.local.device.DeviceCredentialStorage
-import com.pheeeew.data.local.group.AndroidGroupCreateSessionStore
-import com.pheeeew.data.local.group.AndroidLastRecordedGroupRepository
 import com.pheeeew.data.location.platform.android.AndroidLocationPermissionController
 import com.pheeeew.data.location.platform.android.AndroidPlatformLocationProvider
 import com.pheeeew.data.remote.attestation.AndroidPlayIntegrityProofProvider
@@ -32,17 +30,10 @@ import com.pheeeew.data.remote.attestation.DeviceAttestationPolicy
 import com.pheeeew.data.repository.AppVersionRepositoryImpl
 import com.pheeeew.data.repository.EmotionMapRepositoryImpl
 import com.pheeeew.data.repository.EmotionRegionMapRepositoryImpl
-import com.pheeeew.data.repository.GroupDetailRepositoryImpl
-import com.pheeeew.data.repository.GroupListRepositoryImpl
-import com.pheeeew.data.repository.GroupStampListRepositoryImpl
 import com.pheeeew.domain.model.device.DevicePlatform
 import com.pheeeew.domain.permission.LocationPermissionController
 import com.pheeeew.domain.repository.AppVersionRepository
-import com.pheeeew.domain.repository.LastRecordedGroupRepository
 import com.pheeeew.domain.repository.OnboardingStore
-import com.pheeeew.feature.screens.group.create.GroupCreateSessionStore
-import com.pheeeew.feature.screens.group.create.ProcessGroupCreateSessionStore
-import com.pheeeew.feature.screens.group.model.GroupOperationKeyAllocator
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.GraphExtension
 import dev.zacsweers.metro.Provides
@@ -132,15 +123,6 @@ internal interface AndroidAppGraph :
 
     @Provides
     @SingleIn(AppScope::class)
-    fun lastGroup(context: Context): LastRecordedGroupRepository = AndroidLastRecordedGroupRepository(context)
-
-    @Provides
-    @SingleIn(AppScope::class)
-    fun groupDraft(context: Context): GroupCreateSessionStore =
-        ProcessGroupCreateSessionStore(AndroidGroupCreateSessionStore(context))
-
-    @Provides
-    @SingleIn(AppScope::class)
     fun onboarding(context: Context): OnboardingStore = AndroidOnboardingStore(context)
 
     @Provides
@@ -176,17 +158,10 @@ internal interface ActivityRetainedGraph :
     fun services(
         map: EmotionMapRepositoryImpl,
         regions: EmotionRegionMapRepositoryImpl,
-        stamps: GroupStampListRepositoryImpl,
-        list: GroupListRepositoryImpl,
-        detail: GroupDetailRepositoryImpl,
     ): UiServices =
         UiServices(
             map,
             regions,
-            stamps,
-            list,
-            detail,
-            GroupOperationKeyAllocator("group-${Random.nextLong().toULong().toString(16)}"),
         )
 
     @Provides fun permission(owner: AttachedLocationPermission): LocationPermissionController = owner.controller

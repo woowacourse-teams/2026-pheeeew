@@ -42,7 +42,7 @@ class DebugNetworkBoundaryTest {
                     ErrorSimulationMode.NEXT,
                     ErrorSimulation.mode(ErrorSimulationScenario.EmotionRegistrationUnavailable),
                 )
-                assertEquals(HttpStatusCode.ServiceUnavailable, client.post("https://api.test/api/v3/emotions").status)
+                assertEquals(HttpStatusCode.ServiceUnavailable, client.post("https://api.test/api/v4/emotions").status)
                 assertEquals(null, ErrorSimulation.mode(ErrorSimulationScenario.EmotionRegistrationUnavailable))
             } finally {
                 client.close()
@@ -57,11 +57,11 @@ class DebugNetworkBoundaryTest {
             val engine = DebugNetworkEngine(MockEngine { respond("ok") }, "https://api.test")
             val client = HttpClient(engine)
             try {
-                assertEquals(HttpStatusCode.OK, client.get("https://other.test/api/v2/emotions/map").status)
-                assertEquals(HttpStatusCode.OK, client.get("https://api.test:444/api/v2/emotions/map").status)
-                assertEquals(HttpStatusCode.OK, client.put("https://api.test/api/v2/emotions/map").status)
+                assertEquals(HttpStatusCode.OK, client.get("https://other.test/api/v4/emotions/map").status)
+                assertEquals(HttpStatusCode.OK, client.get("https://api.test:444/api/v4/emotions/map").status)
+                assertEquals(HttpStatusCode.OK, client.put("https://api.test/api/v4/emotions/map").status)
                 assertEquals(ErrorSimulationMode.NEXT, ErrorSimulation.mode(ErrorSimulationScenario.MapPins))
-                assertTrue(runCatching { client.get("https://api.test/api/v2/emotions/map") }.isFailure)
+                assertTrue(runCatching { client.get("https://api.test/api/v4/emotions/map") }.isFailure)
             } finally {
                 client.close()
                 engine.close()

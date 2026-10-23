@@ -10,20 +10,10 @@ struct iOSApp: App {
 
     init() {
 #if DEBUG
-        if !ProcessInfo.processInfo.arguments.contains("-group-detail-profile") {
-            DeveloperToolsInitializationKt.initializeDeveloperTools()
-            _ = IosMonitoring.shared.instance
-        }
+        DeveloperToolsInitializationKt.initializeDeveloperTools()
+        _ = IosMonitoring.shared.instance
 #else
         _ = IosMonitoring.shared.instance
-#endif
-    }
-
-    private var isGroupDetailProfileMode: Bool {
-#if DEBUG
-        ProcessInfo.processInfo.arguments.contains("-group-detail-profile")
-#else
-        false
 #endif
     }
 
@@ -31,13 +21,11 @@ struct iOSApp: App {
         WindowGroup {
             ContentView()
                 .onChange(of: scenePhase) { phase in
-                    if !isGroupDetailProfileMode {
-                        if phase == .active { IosMonitoring.shared.foreground() }
-                        if phase == .background { IosMonitoring.shared.background() }
-                    }
+                    if phase == .active { IosMonitoring.shared.foreground() }
+                    if phase == .background { IosMonitoring.shared.background() }
                 }
                 .onAppear {
-                    if !isGroupDetailProfileMode, scenePhase == .active { IosMonitoring.shared.foreground() }
+                    if scenePhase == .active { IosMonitoring.shared.foreground() }
 #if DEBUG
                     if !monitoringSmokeTestScheduled,
                        ["1", "crash"].contains(ProcessInfo.processInfo.environment["MONITORING_SMOKE_TEST"] ?? ""),
