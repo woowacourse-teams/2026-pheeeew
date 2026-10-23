@@ -1,12 +1,15 @@
-# 개발 서버 배포 안내
+# 서버 배포 안내
 
-`develop` 에 푸시하면 `BE DEV CD` 가 돌면서 `app-blue` 와 `app-green` 을 번갈아 띄워요. 한 번에 한 색만 떠 있고, 교체 구간에만 둘이 함께 떠요.
+`develop` 에 푸시하면 `BE DEV CD`, `main` 에 푸시하면 `BE CD` 가 돌면서 `app-blue` 와 `app-green` 을 번갈아 띄워요. 한 번에 한 색만 떠 있고, 교체 구간에만 둘이 함께 떠요. **두 환경의 배포 흐름은 같아요.**
 
-| 파일 | 역할 |
-| --- | --- |
-| `compose.dev.yml` | `app-blue`, `app-green`. 색마다 로그 볼륨이 따로예요 |
-| `compose.nginx.dev.yml` | nginx. 앱 배포와 분리돼 있어 앱만 교체돼요 |
-| `nginx/upstream/active.conf` | 지금 어느 색이 트래픽을 받는지. **서버에만 있고 배포가 덮지 않아요** |
+| 역할 | 개발 | 운영 |
+| --- | --- | --- |
+| 앱 두 색 | `compose.dev.yml` | `compose.prod.yml` |
+| nginx (앱과 분리) | `compose.nginx.dev.yml` | `compose.nginx.yml` |
+| nginx 설정 | `nginx/api-dev.conf` | `nginx/api.conf` |
+| 공유 네트워크 | `pheeeew-dev` | `pheeeew-prod` |
+
+`nginx/upstream/active.conf` 가 지금 어느 색이 트래픽을 받는지 들고 있어요. **서버에만 있고 배포가 덮지 않아요.**
 
 ## 전환 흐름
 
@@ -30,6 +33,19 @@
 정상 응답 검증은 상태 코드 200, 본문의 `available` 이 boolean, `X-Upstream` 이 새 색인지를 함께 봐요. 503 에도 `X-Upstream` 은 붙으므로 헤더만으로 판단하지 않아요.
 
 복구까지 실패하면 **두 색을 모두 남기고** 전환 파일과 실제 응답을 함께 보고해요. 그때는 사람이 확인해야 해요.
+
+## 운영의 첫 배포
+
+운영은 `app` 한 색에서 출발해요. 첫 배포만 **이관 경로**를 타요.
+
+```
+전환 파일 없음 → 준비 단계가 pheeeew-prod-app 존재를 보고 app 으로 만든다
+ACTIVE=app → TARGET=app-blue → 전환 → 검증 → 드레인 → pheeeew-prod-app 정리
+```
+
+준비 단계가 **이전 프로젝트의 nginx 도 정리**해요. 분리 전 `compose.prod.yml` 이 nginx 와 app 을 한 프로젝트에 두고 `:80`, `:443` 을 잡고 있어서, 새 프로젝트의 nginx 가 뜨려면 먼저 비워야 해요. 같은 단계 안에서 바로 다시 띄우므로 사람이 손댈 일은 없어요.
+
+이관이 끝나면 `app` 허용과 정리 분기는 지워요. 개발은 #897 에서 지웠어요.
 
 ## 되돌리기
 
@@ -111,6 +127,14 @@ docker run --rm \
            "이관 전 전환 파일 거부" "전환 파일 이상값" "전환 파일 빈 값" \
            "compose 의 색 이름이 배포 스크립트와 일치"'
 ```
+
+`test-deploy-switch.py` 는 `DEPLOY_TARGET` 으로 두 환경을 모두 검사해요. 기본은 `dev` 예요.
+
+```bash
+DEPLOY_TARGET=prod python3 BE/docker/test-deploy-switch.py
+```
+
+`test-alb-health.py` 는 **개발 설정만** 봐요. `api.conf` 에는 ALB 경유 경로가 없어 같은 검사를 그대로 쓸 수 없어요. 운영 nginx 의 라우팅은 전환 검사가 실제 `api.conf` 를 띄워 거치는 범위까지만 덮여요.
 
 ### 검사가 보장하지 않는 것
 
