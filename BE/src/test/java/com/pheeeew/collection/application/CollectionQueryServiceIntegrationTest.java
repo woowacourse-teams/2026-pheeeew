@@ -46,7 +46,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 @PostgisDataJpaTest
 @Import({CollectionQueryService.class, CollectionProgressRepository.class,
         CollectionAssetConfiguration.class, CollectionAssetRepository.class, CollectionClaimService.class})
-@TestPropertySource(properties = {"pheeeew.collection.asset-base-url=https://assets.example/collection-cards/",
+@TestPropertySource(properties = {"pheeeew.s3.bucket=collection-test-assets", "pheeeew.s3.region=ap-northeast-2",
+        "pheeeew.s3.key-prefix=pheeeew/development/",
         "pheeeew.collection.card-version=v1"})
 class CollectionQueryServiceIntegrationTest {
 
@@ -288,11 +289,11 @@ class CollectionQueryServiceIntegrationTest {
                 .satisfies(item -> {
                     assertThat(item.card().cardId()).isEqualTo(own.getPublicId());
                     assertThat(item.card().images().characterUrl())
-                            .isEqualTo("https://assets.example/collection-cards/v1/characters/angry/03.png");
+                            .isEqualTo("https://collection-test-assets.s3.ap-northeast-2.amazonaws.com/pheeeew/development/collection-cards/v1/characters/angry/03.png");
                     assertThat(item.card().images().roundStampUrl())
-                            .isEqualTo("https://assets.example/collection-cards/v1/stamps-round/angry/06.png");
+                            .isEqualTo("https://collection-test-assets.s3.ap-northeast-2.amazonaws.com/pheeeew/development/collection-cards/v1/stamps-round/angry/06.png");
                     assertThat(item.card().images().straightStampUrl())
-                            .isEqualTo("https://assets.example/collection-cards/v1/stamps-straight/angry/06.png");
+                            .isEqualTo("https://collection-test-assets.s3.ap-northeast-2.amazonaws.com/pheeeew/development/collection-cards/v1/stamps-straight/angry/06.png");
                     assertThat(item.stamps().count()).isZero();
                     assertThat(item.presses().count()).isZero();
                 });

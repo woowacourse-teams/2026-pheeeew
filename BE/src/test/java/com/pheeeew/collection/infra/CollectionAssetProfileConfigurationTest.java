@@ -21,34 +21,28 @@ class CollectionAssetProfileConfigurationTest {
         var environment = load("dev");
 
         // when / then
-        assertThatThrownBy(() -> environment.getProperty("pheeeew.collection.asset-base-url"))
-                .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> environment.getProperty("pheeeew.collection.card-version"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
-    void 운영은_환경_변수가_없으면_주소와_버전을_비워_발급을_활성화하지_않는다() throws IOException {
+    void 운영은_환경_변수가_없으면_버전을_비워_발급을_활성화하지_않는다() throws IOException {
         // given
         var environment = load("prod");
 
         // when / then
-        assertThat(environment.getProperty("pheeeew.collection.asset-base-url")).isEmpty();
         assertThat(environment.getProperty("pheeeew.collection.card-version")).isEmpty();
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"dev", "prod"})
-    void 환경_변수로_환경별_자산_주소와_버전을_덮어쓸_수_있다(String profile) throws IOException {
+    void 환경_변수로_발급_버전을_덮어쓸_수_있다(String profile) throws IOException {
         // given
         var environment = load(profile);
         environment.getPropertySources().addFirst(new MapPropertySource("collection-environment", Map.of(
-                "COLLECTION_ASSET_BASE_URL", "https://assets.example/production/collection-cards/",
                 "COLLECTION_CARD_VERSION", "v2")));
 
         // when / then
-        assertThat(environment.getProperty("pheeeew.collection.asset-base-url"))
-                .isEqualTo("https://assets.example/production/collection-cards/");
         assertThat(environment.getProperty("pheeeew.collection.card-version")).isEqualTo("v2");
     }
 
@@ -58,11 +52,9 @@ class CollectionAssetProfileConfigurationTest {
         // given
         var environment = load(profile);
         environment.getPropertySources().addFirst(new MapPropertySource("collection-environment", Map.of(
-                "COLLECTION_ASSET_BASE_URL", "",
                 "COLLECTION_CARD_VERSION", "")));
 
         // when / then
-        assertThat(environment.getProperty("pheeeew.collection.asset-base-url")).isEmpty();
         assertThat(environment.getProperty("pheeeew.collection.card-version")).isEmpty();
     }
 

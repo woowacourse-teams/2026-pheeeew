@@ -42,11 +42,14 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+@TestPropertySource(properties = {"pheeeew.s3.bucket=collection-test-assets",
+        "pheeeew.s3.region=ap-northeast-2", "pheeeew.s3.key-prefix=pheeeew/development/"})
 @PostgisDataJpaTest
 @Import({EmotionCommandService.class, EmotionContentResolver.class,
         CollectionQueryService.class, CollectionProgressRepository.class,

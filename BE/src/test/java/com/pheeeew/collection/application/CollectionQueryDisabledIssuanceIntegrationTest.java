@@ -1,17 +1,14 @@
 package com.pheeeew.collection.application;
 
-import static com.pheeeew.collection.exception.CollectionErrorCode.COLLECTION_ASSETS_NOT_READY;
 import static com.pheeeew.collection.fixture.CollectionCardFixture.기본_카드_빌더;
 import static com.pheeeew.collection.fixture.DeviceDailyStampFixture.일별_스탬프를_저장한다;
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 import com.pheeeew.collection.domain.repository.CollectionAssetRepository;
 import com.pheeeew.collection.domain.repository.CollectionCardRepository;
 import com.pheeeew.collection.domain.repository.CollectionProgressRepository;
-import com.pheeeew.collection.exception.CollectionException;
 import com.pheeeew.collection.infra.CollectionAssetConfiguration;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.emotion.domain.EmotionState;
@@ -31,8 +28,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 @PostgisDataJpaTest
 @Import({CollectionQueryService.class, CollectionProgressRepository.class, CollectionAssetConfiguration.class,
         CollectionAssetRepository.class})
-@TestPropertySource(properties = {"pheeeew.collection.asset-base-url=", "pheeeew.collection.card-version="})
-class CollectionQueryDisabledAssetsIntegrationTest {
+@TestPropertySource(properties = {"pheeeew.s3.bucket=collection-test-assets", "pheeeew.s3.region=ap-northeast-2",
+        "pheeeew.s3.key-prefix=pheeeew/development/", "pheeeew.collection.card-version="})
+class CollectionQueryDisabledIssuanceIntegrationTest {
 
     private static final LocalDate TODAY = LocalDate.of(2026, 10, 22);
 
@@ -58,7 +56,7 @@ class CollectionQueryDisabledAssetsIntegrationTest {
     }
 
     @Test
-    void 자산_설정이_비어도_미수령_진행도는_조회할_수_있다() {
+    void 발급_버전이_비어도_미수령_진행도는_조회할_수_있다() {
         // given
         var device = devices.saveAndFlush(기본_기기_빌더().build());
         일별_스탬프를_저장한다(jdbc, device.getId(), TODAY, EmotionState.ANGRY, 1);
@@ -75,15 +73,21 @@ class CollectionQueryDisabledAssetsIntegrationTest {
     }
 
     @Test
-    void 수령한_카드의_이미지_주소를_만들_수_없으면_미수령으로_숨기지_않고_오류를_반환한다() {
+    void 발급_버전이_비어도_기존_카드의_이미지는_공통_S3_설정으로_조회한다() {
         // given
         var device = devices.saveAndFlush(기본_기기_빌더().build());
         cards.saveAndFlush(기본_카드_빌더().deviceId(device.getId()).build());
 
-        // when / then
-        assertThatThrownBy(() -> service.findToday(device.getPublicId()))
-                .isInstanceOfSatisfying(CollectionException.class,
-                        failure -> assertThat(failure.getErrorCode()).isEqualTo(COLLECTION_ASSETS_NOT_READY));
+        // when
+        var result = service.findToday(device.getPublicId());
+
+        // then
+        assertThat(result.items()).filteredOn(item -> item.state() == EmotionState.ANGRY)
+                .singleElement().satisfies(item -> {
+                    assertThat(item.card()).isNotNull();
+                    assertThat(item.card().images().characterUrl()).startsWith(
+                            "https://collection-test-assets.s3.ap-northeast-2.amazonaws.com/pheeeew/development/collection-cards/v1/");
+                });
         assertThat(cards.count()).isEqualTo(1);
     }
 }

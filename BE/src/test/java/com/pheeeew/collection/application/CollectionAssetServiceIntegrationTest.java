@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.pheeeew.collection.domain.repository.CollectionAssetRepository;
 import com.pheeeew.collection.exception.CollectionException;
 import com.pheeeew.collection.infra.CollectionAssetConfiguration;
+import com.pheeeew.common.infra.s3.S3Properties;
 import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.support.PostgisDataJpaTest;
 import java.util.Locale;
@@ -22,12 +23,13 @@ import org.springframework.test.context.TestPropertySource;
 @PostgisDataJpaTest
 @Import({CollectionAssetConfiguration.class, CollectionAssetRepository.class})
 @TestPropertySource(properties = {
-        "pheeeew.collection.asset-base-url=https://assets.example/development/collection-cards/",
+        "pheeeew.s3.bucket=collection-test-assets", "pheeeew.s3.region=ap-northeast-2",
+        "pheeeew.s3.key-prefix=pheeeew/development/",
         "pheeeew.collection.card-version=v1"
 })
 class CollectionAssetServiceIntegrationTest {
 
-    private static final String BASE_URL = "https://assets.example/development/collection-cards/";
+    private static final String BASE_URL = "https://collection-test-assets.s3.ap-northeast-2.amazonaws.com/pheeeew/development/collection-cards/";
 
     @Autowired
     private JdbcClient jdbc;
@@ -116,4 +118,28 @@ class CollectionAssetServiceIntegrationTest {
         assertThat(service.findImages("v1", EmotionState.ANGRY, 37).characterUrl())
                 .isEqualTo(BASE_URL + "v1/characters/angry/03.png");
     }
+    @ParameterizedTest
+    @CsvSource({
+            "collection-test-assets,ap-northeast-2,pheeeew/development/",
+            "collection-prod-assets,ap-northeast-2,pheeeew/production/",
+            "collection-other-assets,us-west-2,another-prefix/"
+    })
+    void 기존_S3_버킷과_리전과_접두사로_세_이미지의_공개_URL을_만든다(
+            String bucket, String region, String prefix) {
+        // given
+        var properties = new S3Properties(bucket, prefix, region);
+        var configuredService = new CollectionAssetConfiguration()
+                .collectionAssetService(assetRepository, properties, "v1");
+        String expectedBase = "https://" + bucket + ".s3." + region + ".amazonaws.com/"
+                + prefix + "collection-cards/v1/";
+
+        // when
+        var images = configuredService.findImages("v1", EmotionState.ANGRY, 37);
+
+        // then
+        assertThat(images.characterUrl()).isEqualTo(expectedBase + "characters/angry/03.png");
+        assertThat(images.roundStampUrl()).isEqualTo(expectedBase + "stamps-round/angry/06.png");
+        assertThat(images.straightStampUrl()).isEqualTo(expectedBase + "stamps-straight/angry/06.png");
+    }
+
 }

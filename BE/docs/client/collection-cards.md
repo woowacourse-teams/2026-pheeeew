@@ -102,38 +102,44 @@ JSON 다운로드·조합 번호 계산·기본 URL 조립은 필요하지 않�
 같은 버전의 그림은 유지하고 변경 시 새 버전의 자산을 등록합니다. 자산 수정 API는 제공하지 않습니다.
 
 DB의 경로는 `v1/characters/angry/03.png`처럼 `collection-cards/` 기준 상대 경로입니다.
-서버는 환경별 `pheeeew.collection.asset-base-url`에 이 경로를 붙여 공개 이미지 URL을 만듭니다.
-개발 기본 주소는 `https://techcourse-project-2026.s3.ap-northeast-2.amazonaws.com/pheeeew/development/collection-cards/`입니다.
+서버는 녹음에서 사용하는 기존 `S3Properties`의 버킷·리전·접두사를 재사용합니다.
+AWS SDK의 URL 생성 기능으로 `S3_KEY_PREFIX + collection-cards/ + DB 상대 경로`의 공개 이미지 URL을 만듭니다.
+URL 생성 시 S3 네트워크 요청이나 서명·임시 접근 권한 발급은 하지 않습니다.
+녹음의 업로드·재생은 기존 만료형 서명 URL 방식을 그대로 유지합니다.
+
+개발의 기존 S3 설정이 다음과 같다면:
+
+```text
+S3_BUCKET=techcourse-project-2026
+S3_REGION=ap-northeast-2
+S3_KEY_PREFIX=pheeeew/development/
+```
+
+이미지 기본 주소는 `https://techcourse-project-2026.s3.ap-northeast-2.amazonaws.com/pheeeew/development/collection-cards/`입니다.
+운영은 같은 버킷·리전과 `S3_KEY_PREFIX=pheeeew/production/`을 사용하면 운영 경로가 됩니다.
+기존 Secret의 실제 값이 다른 경우 그 값으로 URL을 생성하므로 업로드 경로와 일치하는지 확인해야 합니다.
 카드에 저장된 버전의 자산을 사용하므로 활성 발급 버전이 바뀌어도 기존 카드를 새 그림으로 대체하지 않습니다.
 
 신규 수령은 `pheeeew.collection.card-version`의 자산 80행·80행이 완전해야 허용합니다.
-활성 버전 미설정은 신규 수령만 차단합니다. 기존 카드 응답은 저장된 버전의 자산과 기본 주소가 있으면 반환합니다.
-필요한 설정·자산이 없으면 `COLLECTION-004`를 반환하며 카드 재추첨이나 다른 버전 대체를 하지 않습니다.
+활성 발급 버전이 비어 있으면 신규 수령은 `COLLECTION-004`로 차단합니다.
+기존 카드 응답은 활성 발급 버전과 무관하게 저장된 버전의 자산과 공통 S3 설정으로 반환합니다.
+필요한 자산이 없으면 `COLLECTION-004`를 반환하며 카드 재추첨이나 다른 버전 대체를 하지 않습니다.
 
-개발·운영 모두 환경 변수로 자산 설정을 주입할 수 있습니다.
-
-| 환경 변수 | 개발 기본값 | 운영 기본값 |
+| 환경 변수 | 개발 | 운영 |
 | --- | --- | --- |
-| `COLLECTION_ASSET_BASE_URL` | 없음 — 필수 등록 | 빈 값 |
-| `COLLECTION_CARD_VERSION` | 없음 — 필수 등록 | 빈 값 |
+| `S3_BUCKET`, `S3_REGION`, `S3_KEY_PREFIX` | 기존 녹음용 필수 Secret 재사용 | 기존 녹음용 필수 Secret 재사용 |
+| `COLLECTION_CARD_VERSION` | 기본값 없음 — 필수 등록 | 미등록 시 빈 값, 신규 수령 비활성 |
 
-개발은 두 환경 변수를 반드시 등록해야 합니다. 기본값은 없으며 누락 시 Spring 설정을 해석할 수 없습니다.
-개발 배포 workflow와 Compose도 누락·빈 값을 거부합니다.
-운영은 개발 주소나 버전을 기본값으로 사용하지 않습니다. 실제 이미지 업로드·검증과 날짜 마감 경로 준비 후
-`COLLECTION_ASSET_BASE_URL=https://techcourse-project-2026.s3.ap-northeast-2.amazonaws.com/pheeeew/production/collection-cards/`와
-`COLLECTION_CARD_VERSION=v1`을 배포 환경에 주입합니다. 기본 주소는 HTTPS이며 끝에 `/`가 있어야 합니다.
-운영 환경 변수가 없으면 신규 수령은 `COLLECTION-004`로 차단합니다.
-
-GitHub 저장소 Settings → Environments → `development` / `production` → Environment secrets에서
-`COLLECTION_ASSET_BASE_URL`과 `COLLECTION_CARD_VERSION`을 등록합니다. Variables가 아니라 Secrets를 사용합니다.
-개발 Secret 값은 위 개발 이미지 주소와 `v1`입니다.
+GitHub 저장소 Settings → Environments → `development` / `production` → Environment secrets에서 관리합니다.
+추가 등록할 Secret은 `COLLECTION_CARD_VERSION` 하나이며, 개발 값은 `v1`입니다.
+별도의 이미지 기본 URL Secret은 사용하지 않습니다.
 배포 workflow가 Secret을 서버 `/opt/pheeeew/.env`에 기록하고 Compose가 앱 컨테이너에 전달합니다.
-개발 Secret은 필수이고 운영 Secret은 미등록 시 빈 값으로 전달해 수령 비활성 상태를 유지합니다.
+개발 배포 workflow와 Compose는 발급 버전의 누락·빈 값을 거부합니다.
+운영 발급 버전은 실제 이미지 업로드·검증과 날짜 마감 경로 준비 후 `v1`로 설정합니다.
 서버 .env만 수정하면 다음 배포에서 덮어써지므로 지속 설정은 GitHub Environment secrets에서 관리합니다.
 등록·변경한 Secret은 다음 배포로 앱 컨테이너를 다시 생성할 때 반영됩니다.
+공통 S3 설정은 기존 녹음과 동일하게 필수이며 잘못된 설정은 애플리케이션 시작 시 거부합니다.
 
-카드 없는 오늘 진행도는 자산 설정 없이도 조회할 수 있지만, 기존 카드가 있는데 이미지 주소 설정이 없으면
-카드를 숨기거나 `null`로 대체하지 않고 `COLLECTION-004`를 반환합니다.
 자산 테이블에 초기 데이터가 들어가는 것만으로 운영 수령을 활성화하지 않습니다.
 이번 개발 업로드에서는 240개 이미지 공개 URL의 로딩과 원본 해상도를 검증했습니다.
 DB 등록은 실제 PNG 파일의 보존을 대신하지 않으므로 발급에 사용한 S3 객체는 덮어쓰거나 삭제하지 않습니다.

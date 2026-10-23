@@ -33,7 +33,6 @@ management:
 pheeeew:
   collection:
     card-version: ${COLLECTION_CARD_VERSION:}
-    asset-base-url: ${COLLECTION_ASSET_BASE_URL:}
   play-integrity:
     require-attestation: true
   app-attest:
