@@ -280,7 +280,8 @@ jobs:
           POINTER=nginx/upstream/active.conf
           BACKUP=nginx/upstream/active.conf.bak
           PROBE_HOST=api-dev.pheeeew.com
-          PROBE_URL="https://$PROBE_HOST/api/v3/devices/nicknames/availability?nickname=probe"
+          PROBE_PATH="/api/v3/devices/nicknames/availability?nickname=probe"
+          PROBE_URL="https://$PROBE_HOST$PROBE_PATH"
           NGINX="docker compose -f compose.nginx.yml"
           APPS="docker compose -f compose.yml"
           WORKER_MARK="[w]orker process is shutting down"
@@ -314,6 +315,23 @@ jobs:
             [ "$code" = 200 ] || return 1
             available_is_boolean /tmp/probe.body || return 1
             sed -n 's/^[Xx]-[Uu]pstream:[[:space:]]*//p' /tmp/probe.head | tr -d '\r\n'
+          }
+
+          target_answers_api() {
+            $NGINX exec -T nginx \
+                 wget -q -O - "http://$TARGET:8080$PROBE_PATH" </dev/null >/tmp/target.body 2>/dev/null \
+              || return 1
+            available_is_boolean /tmp/target.body
+          }
+
+          wait_target_api() {
+            deadline=$(($(date +%s) + 30))
+            while :; do
+              target_answers_api && return 0
+              [ "$(date +%s)" -ge "$deadline" ] && break
+              sleep 1
+            done
+            return 1
           }
 
           wait_served() {
@@ -410,6 +428,15 @@ jobs:
             echo "전환하지 않고 끝냅니다. 트래픽은 $ACTIVE 에 그대로 있습니다."
             exit 1
           fi
+
+          if ! wait_target_api; then
+            echo "새 버전이 최소 API 를 응답하지 않습니다."
+            $APPS logs --tail=50 "$TARGET" 2>&1 | grep -a -v -F -e 'http_request_failed' -e 'scheduled_task_failed' || true
+            $APPS rm -sf "$TARGET"
+            echo "전환하지 않고 끝냅니다. 트래픽은 $ACTIVE 에 그대로 있습니다."
+            exit 1
+          fi
+          echo "$TARGET 이 최소 API 를 응답합니다."
 
           cp "$POINTER" "$BACKUP"
           printf 'set $upstream_app %s;\n' "$TARGET" > "$POINTER"
