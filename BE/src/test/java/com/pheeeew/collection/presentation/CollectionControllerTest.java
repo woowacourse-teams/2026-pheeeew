@@ -18,19 +18,21 @@ import com.pheeeew.auth.presentation.config.AuthWebMvcConfig;
 import com.pheeeew.auth.presentation.resolver.CurrentDeviceArgumentResolver;
 import com.pheeeew.collection.application.CollectionClaimService;
 import com.pheeeew.collection.application.CollectionQueryService;
-import com.pheeeew.collection.application.dto.CollectionCardResult;
 import com.pheeeew.collection.application.dto.CollectionCardDetailResult;
+import com.pheeeew.collection.application.dto.CollectionCardResult;
+import com.pheeeew.collection.application.dto.CollectionHistoryResult;
 import com.pheeeew.collection.application.dto.CollectionTodayResult;
 import com.pheeeew.collection.exception.CollectionErrorCode;
 import com.pheeeew.collection.exception.CollectionException;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
-import com.pheeeew.common.logging.RequestLoggingConfiguration;
 import com.pheeeew.common.logging.RequestLogWriter;
+import com.pheeeew.common.logging.RequestLoggingConfiguration;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.emotion.domain.EmotionState;
 import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,8 +50,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.BadJwtException;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.json.JsonCompareMode;
 import org.springframework.test.web.servlet.client.RestTestClient;
@@ -81,6 +83,123 @@ class CollectionControllerTest {
         when(jwtDecoder.decode("access-token")).thenReturn(AccessTokenFixture.액세스_토큰_클레임(DEVICE_PUBLIC_ID));
     }
 
+    @Test
+    void 목록은_인증된_기기로_조회하고_빈_커서_응답을_반환한다() {
+        // given
+        when(service.findHistory(DEVICE_PUBLIC_ID, null, null, null))
+                .thenReturn(CollectionHistoryResult.of(List.of(), false, null));
+
+        // when / then
+        client.get().uri("/api/v1/collection-cards")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
+                .expectStatus().isOk().expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
+                .expectBody().json("""
+                        {"items":[],"hasNext":false,"nextCursor":null}
+                        """, JsonCompareMode.STRICT);
+        verify(service).findHistory(DEVICE_PUBLIC_ID, null, null, null);
+    }
+
+    @Test
+    void 다음_페이지의_생략된_감정_필터는_커서와_함께_서비스에_전달한다() {
+        // given
+        when(service.findHistory(DEVICE_PUBLIC_ID, null, 50, "previous"))
+                .thenReturn(CollectionHistoryResult.of(List.of(), false, null));
+
+        // when / then
+        client.get().uri("/api/v1/collection-cards?limit=50&cursor=previous")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange().expectStatus().isOk();
+        verify(service).findHistory(DEVICE_PUBLIC_ID, null, 50, "previous");
+    }
+
+    @Test
+    void 목록_커서의_길이_제한을_초과하면_거절한다() {
+        // when / then
+        client.get().uri("/api/v1/collection-cards?cursor=" + "a".repeat(513))
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
+                .expectStatus().isBadRequest().expectBody().jsonPath("$.code").isEqualTo("COMMON-001");
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void 목록을_요청한_인증_기기가_없으면_기존_401을_반환한다() {
+        // given
+        when(service.findHistory(DEVICE_PUBLIC_ID, null, null, null))
+                .thenThrow(new DeviceException(DeviceErrorCode.DEVICE_NOT_FOUND));
+
+        // when / then
+        client.get().uri("/api/v1/collection-cards")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
+                .expectStatus().isUnauthorized().expectBody()
+                .jsonPath("$.code").isEqualTo(DeviceErrorCode.DEVICE_NOT_FOUND.getCode());
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = "invalid-token")
+    void 목록_조회는_유효한_기기_인증이_필요하다(String token) {
+        // given
+        when(jwtDecoder.decode("invalid-token")).thenThrow(new BadJwtException("invalid token"));
+        var request = client.get().uri("/api/v1/collection-cards");
+        if (token != null) {
+            request.header(HttpHeaders.AUTHORIZATION, "Bearer " + token);
+        }
+
+        // when / then
+        request.exchange().expectStatus().isUnauthorized().expectBody()
+                .jsonPath("$.code").isEqualTo("AUTH-001");
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void 목록_조건을_전달하고_상세와_같은_카드_응답을_반환한다() {
+        // given
+        UUID cardId = UUID.fromString("20769cf2-1f8a-4b62-8dbe-5b594d5ffb5d");
+        var item = CollectionCardDetailResult.of(cardId, LocalDate.of(2026, 10, 21),
+                EmotionState.ANGRY, 3, 125, 기본_카드_이미지());
+        when(service.findHistory(DEVICE_PUBLIC_ID, EmotionState.ANGRY, 1, "previous"))
+                .thenReturn(CollectionHistoryResult.of(List.of(item), true, "next"));
+
+        // when / then
+        client.get().uri("/api/v1/collection-cards?emotion=ANGRY&limit=1&cursor=previous&devicePublicId=" + UUID.randomUUID())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
+                .expectStatus().isOk().expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
+                .expectBody().json("""
+                        {"items":[{"cardId":"20769cf2-1f8a-4b62-8dbe-5b594d5ffb5d","date":"2026-10-21","state":"ANGRY",
+                         "stampCount":3,"pressCount":125,
+                         "images":{"characterUrl":"https://assets.example/v1/characters/angry/01.png",
+                                   "roundStampUrl":"https://assets.example/v1/stamps-round/angry/01.png",
+                                   "straightStampUrl":"https://assets.example/v1/stamps-straight/angry/01.png"}}],
+                         "hasNext":true,"nextCursor":"next"}
+                        """, JsonCompareMode.STRICT);
+        verify(service).findHistory(DEVICE_PUBLIC_ID, EmotionState.ANGRY, 1, "previous");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"emotion=UNKNOWN", "emotion=", "limit=0", "limit=-1", "limit=51", "limit=abc", "limit="})
+    void 잘못된_목록_요청은_서비스_호출_전에_거절한다(String query) {
+        // when / then
+        client.get().uri("/api/v1/collection-cards?" + query)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
+                .expectStatus().isBadRequest().expectBody().jsonPath("$.code").isEqualTo("COMMON-001");
+        verifyNoInteractions(service);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"COLLECTION_INVALID_CURSOR,400,COLLECTION-007", "COLLECTION_INVALID_LIMIT,400,COLLECTION-008",
+            "COLLECTION_ASSETS_NOT_READY,503,COLLECTION-004"})
+    void 목록_서비스_오류도_공통_응답으로_전달한다(CollectionErrorCode error, int status, String code) {
+        // given
+        when(service.findHistory(DEVICE_PUBLIC_ID, null, null, "invalid"))
+                .thenThrow(new CollectionException(error));
+
+        // when / then
+        client.get().uri("/api/v1/collection-cards?cursor=invalid")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
+                .expectStatus().isEqualTo(status).expectBody()
+                .jsonPath("$.code").isEqualTo(code)
+                .jsonPath("$.message").isEqualTo(error.getMessage());
+    }
+
     @ParameterizedTest
     @NullSource
     @ValueSource(strings = "invalid-token")
@@ -99,11 +218,13 @@ class CollectionControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"today", "20769cf2-1f8a-4b62-8dbe-5b594d5ffb5d"})
+    @ValueSource(strings = {"", "today", "20769cf2-1f8a-4b62-8dbe-5b594d5ffb5d"})
     void 집계_누락은_500_오류와_서버_오류_로그로_남긴다(String path) {
         // given
         var failure = new CollectionException(CollectionErrorCode.COLLECTION_ACTIVITY_COUNTS_MISSING);
-        if (path.equals("today")) {
+        if (path.isEmpty()) {
+            when(service.findHistory(DEVICE_PUBLIC_ID, null, null, null)).thenThrow(failure);
+        } else if (path.equals("today")) {
             when(service.findToday(DEVICE_PUBLIC_ID)).thenThrow(failure);
         } else {
             when(service.findDetail(DEVICE_PUBLIC_ID, UUID.fromString(path))).thenThrow(failure);
@@ -114,7 +235,7 @@ class CollectionControllerTest {
         logger.addAppender(appender);
         try {
             // when / then
-            client.get().uri("/api/v1/collection-cards/" + path)
+            client.get().uri("/api/v1/collection-cards" + (path.isEmpty() ? "" : "/" + path))
                     .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
                     .expectStatus().isEqualTo(500).expectBody().json("""
                             {"code":"COLLECTION-006","message":"카드의 활동 횟수를 조회할 수 없습니다."}
