@@ -3,13 +3,14 @@ import UserNotifications
 import FirebaseCore
 import FirebaseMessaging
 
-final class AppDelegate: NSObject, UIApplicationDelegate {
+final class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate {
     func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions:
             [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         FirebaseApp.configure()
+        Messaging.messaging().delegate = self
 
         UNUserNotificationCenter.current().requestAuthorization(
             options: [.alert, .badge, .sound]
@@ -39,4 +40,16 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     ) {
         print("APNs 등록 실패:", error.localizedDescription)
     }
+
+    func messaging(
+        _ messaging: Messaging,
+        didReceiveRegistrationToken fcmToken: String?
+    ) {
+#if DEBUG
+        if let fcmToken {
+            print("FCM 테스트 토큰:", fcmToken)
+        }
+#endif
+    }
+
 }
