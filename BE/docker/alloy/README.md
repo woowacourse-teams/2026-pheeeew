@@ -16,7 +16,7 @@
 
 로컬 프로젝트에 `.env.alloy`를 만들 필요는 없어요. 이 파일은 운영 배포 시 생성하며, IntelliJ에서 앱을 실행할 때는 사용하지 않아요. 필요한 변수 목록은 아래 표에서 관리해요.
 
-두 Compose 프로젝트는 기존 `pheeeew-prod_default` 네트워크와 `pheeeew-prod_app-logs` 볼륨을 공유해요. 따라서 운영 앱 Compose를 먼저 실행해야 해요. 로그 볼륨은 Alloy에 읽기 전용으로 연결하고 Docker 소켓은 연결하지 않아요. 개발 환경에는 적용하지 않아요.
+운영 앱·Nginx·Alloy는 external `pheeeew-prod` 네트워크를 공유해요. 로그는 `pheeeew-prod_app-logs-blue`, `pheeeew-prod_app-logs-green` 볼륨을 각각 `/var/log/pheeeew-blue`, `/var/log/pheeeew-green`에 읽기 전용으로 연결해요. CD 준비 단계가 네트워크·로그 볼륨과 활성 로그 파일을 먼저 만들어요. Docker 소켓은 연결하지 않아요. 개발은 대응하는 `compose.monitoring.dev.yml`·`config.dev.alloy`와 `pheeeew-dev` 네트워크를 사용해요.
 
 ## 최초 연결
 
@@ -64,7 +64,7 @@
    up{job="pheeeew-api",environment="prod"}
    ```
 
-   값이 `1`이면 마지막 앱 지표 수집이 성공했어요. `0`이면 Alloy는 실행 중이지만 앱 지표 수집에 실패한 것이에요. 지표 자체가 없으면 Alloy 기동·전송 URL·권한·데이터 소스·조회 시간 범위를 확인해요.
+   활성 색의 값이 `1`이면 마지막 앱 지표 수집이 성공했어요. 중지된 비활성 색의 `up=0`은 정상이지만 두 색이 모두 `0`이면 앱 연결을 확인해요. 지표 자체가 없으면 Alloy 기동·전송 URL·권한·데이터 소스·조회 시간 범위를 확인해요. 색별 `instance`와 알림 쿼리는 [Grafana 안내](../grafana/README.md#blue-green-적용-후-instance-를-고정하지-않아요)를 참고해요.
 
    ```logql
    {job="pheeeew-api",environment="prod"} | json
@@ -130,7 +130,7 @@ docker compose --env-file .env.alloy -f compose.monitoring.yml stop alloy
 
 ## Cloudflare와 AWS
 
-SSH를 위한 Cloudflare 터널은 그대로 사용해요. 수집은 `Alloy → Docker 내부 app:8080`으로 이루어져 nginx나 Cloudflare Access를 통과하지 않아요. 공개 nginx의 Actuator 차단을 해제하거나 8080·12345 인바운드 포트를 열 필요가 없어요.
+SSH를 위한 Cloudflare 터널은 그대로 사용해요. 수집은 `Alloy → Docker 내부 app-blue:8080 / app-green:8080`으로 이루어져 nginx나 Cloudflare Access를 통과하지 않아요. 공개 nginx의 Actuator 차단을 해제하거나 8080·12345 인바운드 포트를 열 필요가 없어요.
 
 외부 전송은 `Alloy → Grafana Cloud HTTPS(443)` 방향이에요. EC2의 DNS와 outbound HTTPS 연결은 필요하며, outbound를 제한했다면 실제 두 전송 호스트에 대한 허용을 확인해요. SSH용 Cloudflare 서비스 토큰을 Grafana 인증에 사용하지 않아요. 기존 인바운드·터널 설정은 변경하지 않아요.
 
