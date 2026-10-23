@@ -1,10 +1,12 @@
 package com.pheeeew.collection.presentation;
 
-import com.pheeeew.collection.presentation.dto.CollectionCardResponse;
 import com.pheeeew.collection.presentation.dto.CollectionCardDetailResponse;
+import com.pheeeew.collection.presentation.dto.CollectionCardResponse;
 import com.pheeeew.collection.presentation.dto.CollectionClaimRequest;
+import com.pheeeew.collection.presentation.dto.CollectionHistoryRequest;
 import com.pheeeew.collection.presentation.dto.CollectionTodayResponse;
 import com.pheeeew.common.exception.ErrorResponse;
+import com.pheeeew.common.presentation.dto.CursorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -14,11 +16,42 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.UUID;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.MultiValueMap;
 
 @Tag(name = "컬렉션", description = "인증된 기기의 컬렉션 진행도 조회 및 카드 수령 API")
 public interface CollectionControllerApi {
+
+    @Operation(summary = "지난 컬렉션 카드 목록 조회", description = """
+            인증된 기기의 지난 카드를 카드 날짜·내부 식별자 내림차순으로 조회합니다.
+            첫 요청의 한국 날짜보다 이전 카드만 포함하며 페이지 이동 중 날짜 상한과 감정 필터를 유지합니다.
+            오늘 카드는 /today에서 조회합니다. 새로고침은 커서를 생략합니다.
+
+            늦게 저장된 카드가 이미 지나간 위치에 있으면 새로고침해야 하며 아직 읽지 않은 위치면 다음 페이지에 포함될 수 있습니다.
+
+            카드 조합은 고정이지만 횟수는 각 요청 시점의 최신 집계입니다. 카드 집합이나 횟수의 스냅샷을 고정하지 않습니다.
+            반환 대상 카드의 집계 누락은 목록 전체에 500 COLLECTION-006을 반환하며 서버 오류 로그를 남깁니다.
+
+            마지막 페이지는 hasNext=false, nextCursor=null입니다. 조회는 발급이나 재추첨을 수행하지 않습니다.
+            """, security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공. 항목은 상세 조회와 같은 응답이며 빈 목록도 200입니다."),
+            @ApiResponse(responseCode = "400", description = "잘못된 emotion·limit 또는 COLLECTION-007: 잘못된 커서·필터 불일치, COLLECTION-008: 페이지 크기 범위 오류",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "유효한 기기 인증 없음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "COLLECTION-006: 발급 카드의 활동 집계 누락",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "503", description = "COLLECTION-004: 카드 자산·이미지 주소 설정 미비",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    ResponseEntity<CursorResponse<CollectionCardDetailResponse>> findHistory(
+            @Parameter(hidden = true) UUID devicePublicId,
+            @ParameterObject CollectionHistoryRequest request,
+            @Parameter(hidden = true) MultiValueMap<String, String> parameters
+    );
 
     @Operation(
             summary = "컬렉션 카드 상세 조회",
