@@ -291,7 +291,7 @@ http {
             select('app')
             reload_nginx('app')
             routed_to('app')
-            print(f'PASS: app-blue -> app reaches the legacy backend on {routes} paths')
+            print(f'PASS: app-blue -> app reaches a third backend on {routes} paths')
 
             (fixtures / 'status-app').write_text('503')
             run('docker', 'exec', '-i', client, 'python', '-', input=PROBE_HELPERS
@@ -304,7 +304,7 @@ http {
             select('app-blue')
             reload_nginx('app-blue')
             routed_to('app-blue')
-            print('PASS: app -> app-blue migration switch reaches the matching backend')
+            print('PASS: app -> app-blue switch back to a color reaches the matching backend')
 
             # 전환 파일이 깨지면 nginx -t 가 실패해야 한다. 배포는 이 신호로 멈춘다.
             write_active('set $upstream_app;\n')
