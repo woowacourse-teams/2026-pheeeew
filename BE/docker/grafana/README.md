@@ -100,7 +100,7 @@ Grafana가 패널별 쿼리로 Cloud에 저장된 데이터를 읽어요
 
 ## 대시보드 연결
 
-1. 운영 배포 후 Explore에서 `up{job="pheeeew-api",environment="prod",instance="pheeeew-prod"}`가 `1`인지 확인해요. 연결이 아직 없으면 [Alloy 연결 안내](../alloy/README.md)를 먼저 따라요.
+1. 운영 배포 후 Explore에서 `up{job="pheeeew-api",environment="prod"}`를 확인해요. 활성 색은 `1`, 중지된 비활성 색은 `0`일 수 있어요. 연결이 아직 없으면 [Alloy 연결 안내](../alloy/README.md)를 먼저 따라요.
 2. Grafana의 `Dashboards → New → Import`에서 `pheeeew-prod-v2.json`을 올려요. 개발 환경이면 `pheeeew-dev-v2.json`을 올리고 3번에서 개발 저장소를 골라요.
 3. `운영 지표 저장소`에는 기존 스택의 Prometheus 데이터 소스를, `운영 로그 저장소`에는 Loki 데이터 소스를 선택해요. Grafana Cloud가 제공하는 저장소를 선택하는 것이며 Prometheus 서버를 설치하는 단계가 아니에요.
 4. [Alloy 설정](../alloy/config.alloy)의 `prometheus.scrape "app"`에서 `scrape_interval = "60s"`인지 확인해요. 이 값이 앱 지표의 실제 수집 주기예요. 가져온 화면에서는 최근 1시간을 보고 새 요청이 발생한 뒤 2~5분 기다려요.
@@ -210,10 +210,30 @@ Cloud 개발·운영 대시보드에서는 해당 패널 두 개와 빈 앱 플�
 
 `increase`는 수집된 누적값에서 시간 범위 경계까지 추정하므로 정확한 정수 로그 건수와 다를 수 있어요. 최소 요청·오류 횟수는 요청 한두 번으로 알림이 반복되는 것을 줄이기 위한 기준이에요. 저트래픽에서 발생한 소수 오류는 이 알림에 잡히지 않을 수 있으므로 대시보드·로그에서도 확인해요.
 
+### blue green 적용 후 instance 를 고정하지 않아요
+
+운영도 `app-blue`, `app-green` 두 색을 번갈아 띄우면서 Alloy 가 `instance` 를 `pheeeew-prod-blue`, `pheeeew-prod-green` 으로 나눠 보내요. **`pheeeew-prod` 라는 시계열은 더 이상 없어요.**
+
+안 뜬 색은 스크레이프가 실패해 `up=0` 이 계속 남는데, 그건 정상이에요. 그래서 수집 중단 알림은 **두 색 모두 앱 지표를 수집할 수 없을 때** 울리게 해요. 한 색의 `up=1`만으로 현재 트래픽 경로의 정상 여부까지 알 수는 없어요. 공개 API 응답과 배포 시 전환 검증도 함께 확인해요.
+
+| | 쓰지 않아요 | 써요 |
+| --- | --- | --- |
+| 수집 중단 | `up{...,instance="pheeeew-prod"}` | `max(up{...})` — 한 색이라도 살아 있으면 정상 |
+| 오류·지연 | `sum(...{instance="pheeeew-prod"})` | 핀 없이 `sum(...)` — 교체 구간에 두 색을 합산 |
+
+아래 쿼리는 그렇게 고친 것이에요. **Grafana Cloud 에 실제로 적용된 규칙은 확인하지 않았어요.** 화면에서 직접 바꿔야 하고, 바꾸지 않으면 두 가지가 생겨요.
+
+- 필터가 `pheeeew-prod` 로 남아 있으면 새 앱 시계열을 찾지 못해요. 기존 수집 중단 쿼리는 `or vector(0)` 때문에 결과가 `1`이 되어 계속 울릴 수 있어요.
+- 오류·지연 쿼리는 같은 상황에 `or vector(0)`으로 `0`을 반환해 실제 오류·지연을 놓칠 수 있어요. 필터를 지우고 두 색을 합산해야 해요.
+
+개발에서 같은 일이 실제로 일어났어요. 적용 뒤 Explore 에서 `up{job="pheeeew-api",environment="prod"}` 를 실행해 `pheeeew-prod-blue` 와 `pheeeew-prod-green` 만 나오는지 확인해요.
+
+`pheeeew-prod.json`(v1)은 더 이상 고치지 않는 파일이라 `instance` 고정이 남아 있어요. v2 대시보드는 `sum by (instance)` 로만 써서 영향이 없어요.
+
 ### 수집 중단 쿼리
 
 ```promql
-1 - (max(up{job="pheeeew-api",environment="prod",instance="pheeeew-prod"}) or vector(0))
+1 - (max(up{job="pheeeew-api",environment="prod"}) or vector(0))
 ```
 
 `up=0`은 Alloy가 앱 지표를 읽지 못한 상태예요. EC2 또는 Alloy 자체가 멈추면 새 `up`을 보내지 못하므로 시계열의 부재도 감지해요. 마지막 값이 조회에서 사라지는 데 걸리는 lookback 지연과 Pending 2분 때문에 즉시 알림은 아니에요. 이는 외부 공개 URL의 가용성 검사가 아니며, Cloudflare·nginx만 고장 났을 때는 `up=1`일 수 있어요.
@@ -223,12 +243,12 @@ Cloud 개발·운영 대시보드에서는 해당 패널 두 개와 빈 앱 플�
 ```promql
 (
   (
-    sum(increase(http_server_requests_seconds_count{job="pheeeew-api",environment="prod",instance="pheeeew-prod",uri=~"/api/.*",status=~"5.."}[5m]))
+    sum(increase(http_server_requests_seconds_count{job="pheeeew-api",environment="prod",uri=~"/api/.*",status=~"5.."}[5m]))
     /
-    sum(increase(http_server_requests_seconds_count{job="pheeeew-api",environment="prod",instance="pheeeew-prod",uri=~"/api/.*"}[5m]))
+    sum(increase(http_server_requests_seconds_count{job="pheeeew-api",environment="prod",uri=~"/api/.*"}[5m]))
   ) > bool 0.05
   and
-  sum(increase(http_server_requests_seconds_count{job="pheeeew-api",environment="prod",instance="pheeeew-prod",uri=~"/api/.*",status=~"5.."}[5m])) >= 5
+  sum(increase(http_server_requests_seconds_count{job="pheeeew-api",environment="prod",uri=~"/api/.*",status=~"5.."}[5m])) >= 5
 ) or vector(0)
 ```
 
@@ -237,10 +257,10 @@ Cloud 개발·운영 대시보드에서는 해당 패널 두 개와 빈 앱 플�
 ```promql
 (
   histogram_quantile(0.95,
-    sum by (le) (rate(http_server_requests_seconds_bucket{job="pheeeew-api",environment="prod",instance="pheeeew-prod",uri="/api/v1/sighs",method="GET"}[5m]))
+    sum by (le) (rate(http_server_requests_seconds_bucket{job="pheeeew-api",environment="prod",uri="/api/v1/sighs",method="GET"}[5m]))
   ) > bool 1
   and
-  sum(increase(http_server_requests_seconds_count{job="pheeeew-api",environment="prod",instance="pheeeew-prod",uri="/api/v1/sighs",method="GET"}[5m])) >= 100
+  sum(increase(http_server_requests_seconds_count{job="pheeeew-api",environment="prod",uri="/api/v1/sighs",method="GET"}[5m])) >= 100
 ) or vector(0)
 ```
 
@@ -273,10 +293,10 @@ Cloud 개발·운영 대시보드에서는 해당 패널 두 개와 빈 앱 플�
 ```promql
 (
   histogram_quantile(0.95,
-    sum by (le) (rate(http_server_requests_seconds_bucket{job="pheeeew-api",environment="prod",instance="pheeeew-prod",uri="/api/v2/sighs",method="GET"}[5m]))
+    sum by (le) (rate(http_server_requests_seconds_bucket{job="pheeeew-api",environment="prod",uri="/api/v2/sighs",method="GET"}[5m]))
   ) > bool 1
   and
-  sum(increase(http_server_requests_seconds_count{job="pheeeew-api",environment="prod",instance="pheeeew-prod",uri="/api/v2/sighs",method="GET"}[5m])) >= 100
+  sum(increase(http_server_requests_seconds_count{job="pheeeew-api",environment="prod",uri="/api/v2/sighs",method="GET"}[5m])) >= 100
 ) or vector(0)
 ```
 
@@ -314,7 +334,7 @@ docker stats --no-stream
 로그를 공유할 때 토큰·사용자 입력값이 섞이지 않았는지 확인해요. Grafana Explore에서는 아래처럼 요청 하나를 찾아요. correlationId를 Loki 라벨로 추가하지 않아요.
 
 ```logql
-{job="pheeeew-api",environment="prod",instance="pheeeew-prod"} | json | correlationId="찾을-번호"
+{job="pheeeew-api",environment="prod"} | json | correlationId="찾을-번호"
 ```
 
 CPU는 같은 인스턴스의 시계열에 Cloud 부가 라벨이 추가되어도 범례가 중복되지 않도록 시점별 최댓값을 표시해요. 이는 여러 서버의 CPU를 합산하는 쿼리가 아니에요.

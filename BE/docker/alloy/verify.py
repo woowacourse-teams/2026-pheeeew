@@ -150,11 +150,23 @@ loki.echo "accepted" {}
 
 
 def verify_labels(name, config, environment):
-    for key, value in (("environment", environment), ("instance", f"pheeeew-{environment}")):
-        found = re.findall(rf'{key}\s*=\s*"([^"]+)"', config)
-        if found != [value, value]:
-            raise AssertionError(f"{name}: {key} 라벨이 앱 지표·로그 모두 {value} 여야 합니다. 실제 {found}")
-    print(f"{name}: 환경 라벨 검증 통과 ({environment})")
+    # 주소/파일 경로와 색 라벨을 함께 확인해 서로 다른 앱이 같은 시계열로 합쳐지는 것을 막는다.
+    for component, source, expected in (
+        ('prometheus.scrape "app"', '__address__',
+         [f'app-{color}:8080' for color in ('blue', 'green')]),
+        ('loki.source.file "app"', '__path__',
+         [f'/var/log/pheeeew-{color}/application.json' for color in ('blue', 'green')]),
+    ):
+        targets = config.split(component, 1)[1].split('forward_to', 1)[0]
+        for key, values in (
+            (source, expected),
+            ('environment', [environment, environment]),
+            ('instance', [f'pheeeew-{environment}-{color}' for color in ('blue', 'green')]),
+        ):
+            found = re.findall(rf'{key}\s*=\s*"([^"]+)"', targets)
+            if found != values:
+                raise AssertionError(f"{name}: {component} {key}: 기대 {values}, 실제 {found}")
+    print(f"{name}: 두 색의 지표·로그 경로와 환경 라벨 검증 통과 ({environment})")
 
 
 def verify_same_filters(configs):

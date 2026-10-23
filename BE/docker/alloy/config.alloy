@@ -3,12 +3,20 @@ logging {
 }
 
 prometheus.scrape "app" {
-	targets = [{
-		__address__ = "app:8080",
-		application = "pheeeew",
-		environment = "prod",
-		instance    = "pheeeew-prod",
-	}]
+	targets = [
+		{
+			__address__ = "app-blue:8080",
+			application = "pheeeew",
+			environment = "prod",
+			instance    = "pheeeew-prod-blue",
+		},
+		{
+			__address__ = "app-green:8080",
+			application = "pheeeew",
+			environment = "prod",
+			instance    = "pheeeew-prod-green",
+		},
+	]
 	job_name        = "pheeeew-api"
 	honor_labels    = true
 	metrics_path    = "/actuator/prometheus"
@@ -55,13 +63,22 @@ prometheus.remote_write "grafana" {
 
 // Read only the active file. Archives are retained locally, not re-ingested.
 loki.source.file "app" {
-	targets = [{
-		__path__    = "/var/log/pheeeew/application.json",
-		job         = "pheeeew-api",
-		application = "pheeeew",
-		environment = "prod",
-		instance    = "pheeeew-prod",
-	}]
+	targets = [
+		{
+			__path__    = "/var/log/pheeeew-blue/application.json",
+			job         = "pheeeew-api",
+			application = "pheeeew",
+			environment = "prod",
+			instance    = "pheeeew-prod-blue",
+		},
+		{
+			__path__    = "/var/log/pheeeew-green/application.json",
+			job         = "pheeeew-api",
+			application = "pheeeew",
+			environment = "prod",
+			instance    = "pheeeew-prod-green",
+		},
+	]
 	forward_to = [loki.process.http_requests.receiver]
 }
 

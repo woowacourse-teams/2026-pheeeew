@@ -11,7 +11,28 @@ from pathlib import Path
 import yaml
 
 REPO = Path(__file__).resolve().parents[2]
-WORKFLOW = REPO / '.github/workflows/be-dev-deploy.yml'
+TARGETS = {
+    'dev': {
+        'workflow': '.github/workflows/be-dev-deploy.yml',
+        'nginx_compose': 'BE/docker/compose.nginx.dev.yml',
+        'nginx_conf': 'BE/docker/nginx/api-dev.conf',
+        'app_compose': 'BE/docker/compose.dev.yml',
+        'host': 'api-dev.pheeeew.com',
+        'migrates_from_app': False,
+    },
+    'prod': {
+        'workflow': '.github/workflows/be-deploy.yml',
+        'nginx_compose': 'BE/docker/compose.nginx.yml',
+        'nginx_conf': 'BE/docker/nginx/api.conf',
+        'app_compose': 'BE/docker/compose.prod.yml',
+        'host': 'api.pheeeew.com',
+        'migrates_from_app': True,
+    },
+}
+TARGET = TARGETS[os.environ.get('DEPLOY_TARGET', 'dev')]
+WORKFLOW = REPO / TARGET['workflow']
+HOST = TARGET['host']
+MIGRATES_FROM_APP = TARGET['migrates_from_app']
 HTTP_PORT = 18080
 HTTPS_PORT = 18443
 PROBE_PATH = '/api/v3/devices/nicknames/availability?nickname=probe'
@@ -19,10 +40,17 @@ SLOW_PATH = '/api/v3/devices/slow'
 COLORS = ('app-blue', 'app-green')
 
 
-def remote_script():
+PREFIX = 'pheeeew-prod' if TARGET['migrates_from_app'] else 'pheeeew-dev'
+
+
+def step_script(name):
     workflow = yaml.safe_load(WORKFLOW.read_text())
-    step = next(s for s in workflow['jobs']['deploy']['steps'] if s.get('name') == '배포')
+    step = next(s for s in workflow['jobs']['deploy']['steps'] if s.get('name') == name)
     return step['run'].split("<<'REMOTE'\n", 1)[1].rsplit('\nREMOTE', 1)[0]
+
+
+def remote_script():
+    return step_script('배포')
 
 
 APP = '''
@@ -131,12 +159,12 @@ class Fixture:
         self._certs()
         self._shims()
         self._compose()
-        shutil.copy(REPO / 'BE/docker/nginx/api-dev.conf', self.confd / 'default.conf')
+        shutil.copy(REPO / TARGET['nginx_conf'], self.confd / 'default.conf')
         self.reset_edge()
 
     def _certs(self):
         sh('openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '1',
-           '-subj', '/CN=api-dev.pheeeew.com',
+           '-subj', f'/CN={HOST}',
            '-keyout', str(self.dir / 'origin.key'), '-out', str(self.dir / 'origin.pem'))
         for name in ('origin-pull-ca.pem', 'fullchain.pem', 'chain.pem'):
             shutil.copy(self.dir / 'origin.pem', self.dir / name)
@@ -169,12 +197,12 @@ class Fixture:
         (self.dir / 'compose.yml').write_text(yaml.safe_dump({
             'name': self.project,
             'services': services,
-            'networks': {'default': {'name': f'{self.project}-net', 'external': True}},
+            'networks': {'default': {'name': self.project, 'external': True}},
         }))
 
-        model = yaml.safe_load((REPO / 'BE/docker/compose.nginx.dev.yml').read_text())
+        model = yaml.safe_load((REPO / TARGET['nginx_compose']).read_text())
         model['name'] = self.project + '-nginx'
-        model['networks'] = {'default': {'name': f'{self.project}-net', 'external': True}}
+        model['networks'] = {'default': {'name': self.project, 'external': True}}
         nginx = model['services']['nginx']
         nginx['container_name'] = f'{self.project}-nginx'
         nginx['restart'] = 'no'
@@ -183,7 +211,7 @@ class Fixture:
             f'{self.confd}:/etc/nginx/conf.d:ro',
             f'{self.upstream}:/etc/nginx/upstream:ro',
             f'{self.dir}:/etc/ssl/cloudflare:ro',
-            f'{self.dir}:/etc/letsencrypt/live/api-dev.pheeeew.com:ro',
+            f'{self.dir}:/etc/letsencrypt/live/{HOST}:ro',
         ]
         (self.dir / 'compose.nginx.yml').write_text(yaml.safe_dump(model))
 
@@ -215,14 +243,14 @@ class Fixture:
     def slow_request(self, seconds=20):
         return subprocess.Popen(
             ['curl', '-sk', '-o', '/dev/null', '-w', '%{http_code}', '-m', '150',
-             '--resolve', f'api-dev.pheeeew.com:{HTTPS_PORT}:127.0.0.1',
-             f'https://api-dev.pheeeew.com:{HTTPS_PORT}{SLOW_PATH}?seconds={seconds}'],
+             '--resolve', f'{HOST}:{HTTPS_PORT}:127.0.0.1',
+             f'https://{HOST}:{HTTPS_PORT}{SLOW_PATH}?seconds={seconds}'],
             text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
 
     def served_upstream(self):
         result = sh('curl', '-sk', '-o', '/dev/null', '-D', '-', '-w', '%{http_code}', '-m', '5',
-                    '--resolve', f'api-dev.pheeeew.com:{HTTPS_PORT}:127.0.0.1',
-                    f'https://api-dev.pheeeew.com:{HTTPS_PORT}{PROBE_PATH}')
+                    '--resolve', f'{HOST}:{HTTPS_PORT}:127.0.0.1',
+                    f'https://{HOST}:{HTTPS_PORT}{PROBE_PATH}')
         upstream = ''
         for line in result.stdout.splitlines():
             if line.lower().startswith('x-upstream:'):
@@ -286,7 +314,7 @@ class Fixture:
         return sh('docker', 'compose', '-f', str(self.dir / 'compose.yml'), *args)
 
     def start_nginx(self):
-        sh('docker', 'network', 'create', f'{self.project}-net')
+        sh('docker', 'network', 'create', self.project)
         self.compose_nginx('up', '-d', '--wait', '--wait-timeout', '60')
 
     def start_app(self, color):
@@ -312,17 +340,56 @@ class Fixture:
     def backup_exists(self):
         return (self.upstream / 'active.conf.bak').exists()
 
-    def deploy_async(self):
-        script = remote_script().replace('cd /opt/pheeeew', f'cd {self.dir}')
+    def shell_env(self):
         env = dict(os.environ)
         env['PATH'] = f'{self.shim}:{env["PATH"]}'
         env['REAL_DOCKER'] = shutil.which('docker')
         env['SHIM_DIR'] = str(self.state)
         env['SHIM_POINTER'] = str(self.pointer)
         env['APP_IMAGE'] = 'python:3.13-alpine'
+        return env
+
+    def run_step(self, name):
+        script = step_script(name).replace('/opt/pheeeew', str(self.dir)).replace(PREFIX, self.project)
+        return subprocess.run(['bash', '-s'], input=script, text=True,
+                              capture_output=True, env=self.shell_env(), cwd=self.dir)
+
+    def start_legacy_stack(self):
+        network = f'{self.project}_default'
+        sh('docker', 'network', 'create', network)
+        sh('docker', 'run', '-d', '--name', f'{self.project}-app',
+           '--network', network, '--network-alias', 'app',
+           '--label', f'com.docker.compose.project={self.project}',
+           '-v', f'{self.appstate}:/appstate',
+           'python:3.13-alpine', 'python', '-c', APP, 'app')
+        deadline = time.monotonic() + 60
+        while time.monotonic() < deadline:
+            if sh('docker', 'run', '--rm', '--network', network, 'nginx:1.27-alpine',
+                  'wget', '-q', '-O', '-', '-T', '3',
+                  'http://app:8080/actuator/health').returncode == 0:
+                break
+            time.sleep(1)
+        else:
+            raise Failure('이전 앱이 네트워크에서 응답하지 않는다')
+        sh('docker', 'run', '-d', '--name', f'{self.project}-nginx',
+           '--network', network,
+           '--label', f'com.docker.compose.project={self.project}',
+           '-p', f'127.0.0.1:{HTTP_PORT}:80', '-p', f'127.0.0.1:{HTTPS_PORT}:443',
+           '-v', f'{self.confd}:/etc/nginx/conf.d:ro',
+           '-v', f'{self.upstream}:/etc/nginx/upstream:ro',
+           '-v', f'{self.dir}:/etc/ssl/cloudflare:ro',
+           '-v', f'{self.dir}:/etc/letsencrypt/live/{HOST}:ro',
+           'nginx:1.27-alpine')
+
+    def drop_legacy_stack(self):
+        sh('docker', 'rm', '-f', f'{self.project}-app', f'{self.project}-nginx')
+        sh('docker', 'network', 'rm', f'{self.project}_default')
+
+    def deploy_async(self):
+        script = remote_script().replace('/opt/pheeeew', str(self.dir)).replace(PREFIX, self.project)
         proc = subprocess.Popen(['bash', '-s'], stdin=subprocess.PIPE,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                text=True, env=env, cwd=self.dir)
+                                text=True, env=self.shell_env(), cwd=self.dir)
         proc.stdin.write(script)
         proc.stdin.close()
         proc.stdin = None
@@ -355,7 +422,11 @@ class Fixture:
         self.compose_nginx('down', '-v', '--remove-orphans')
         self.compose_apps('--profile', 'blue', '--profile', 'green', 'down', '-v',
                           '--remove-orphans')
-        sh('docker', 'network', 'rm', f'{self.project}-net')
+        if MIGRATES_FROM_APP:
+            self.drop_legacy_stack()
+            for color in ('blue', 'green'):
+                sh('docker', 'volume', 'rm', f'{self.project}_app-logs-{color}')
+        sh('docker', 'network', 'rm', self.project)
 
 
 class Failure(AssertionError):
@@ -367,16 +438,25 @@ def expect(condition, message):
         raise Failure(message)
 
 
-def scenario_normal(fx):
-    fx.point_at('set $upstream_app app-blue;\n')
-    fx.start_app('app-blue')
+def normal_switch(fx, active, target):
+    fx.point_at(f'set $upstream_app {active};\n')
+    fx.start_app(active)
     result = fx.deploy()
     expect(result.returncode == 0, f'종료 코드 {result.returncode}\n{result.stdout}{result.stderr}')
-    expect(fx.pointer_color() == 'app-green', f'전환 파일 {fx.pointer_color()}')
-    expect(fx.running('app-green'), 'app-green 이 떠 있지 않다')
-    expect(not fx.exists('app-blue'), 'app-blue 가 남아 있다')
+    expect(fx.pointer_color() == target, f'전환 파일 {fx.pointer_color()}')
+    expect(fx.running(target), f'{target} 이 떠 있지 않다')
+    expect(not fx.exists(active), f'{active} 가 남아 있다')
+    fx.wait_edge_serves(target)
     expect(not fx.backup_exists(), '백업 파일이 남아 있다')
     expect('이전 요청이 모두 끝났습니다' in result.stdout, '드레인 확인 로그가 없다')
+
+
+def scenario_normal(fx):
+    normal_switch(fx, 'app-blue', 'app-green')
+
+
+def scenario_reverse(fx):
+    normal_switch(fx, 'app-green', 'app-blue')
 
 
 def scenario_start_fail(fx):
@@ -465,13 +545,18 @@ def scenario_restore_fail(fx):
     expect(fx.running('app-blue'), 'app-blue 를 지웠다')
 
 
-def scenario_retired_pointer(fx):
+def scenario_legacy_pointer(fx):
     fx.point_at('set $upstream_app app;\n')
     result = fx.deploy()
-    expect(result.returncode == 1, f'종료 코드 {result.returncode}')
-    expect('전환 파일의 값이 올바르지 않습니다' in result.stdout, '이관 전 값을 거부하지 않는다')
-    expect(not fx.exists('app-blue') and not fx.exists('app-green'),
-           '이관 전 값인데 앱을 띄웠다')
+    if MIGRATES_FROM_APP:
+        expect(result.returncode == 0, f'종료 코드 {result.returncode}\n{result.stdout}')
+        expect(fx.pointer_color() == 'app-blue', f'전환 파일 {fx.pointer_color()}')
+        expect(fx.running('app-blue'), '이관 경로인데 app-blue 가 뜨지 않았다')
+    else:
+        expect(result.returncode == 1, f'종료 코드 {result.returncode}')
+        expect('전환 파일의 값이 올바르지 않습니다' in result.stdout, '이관 전 값을 거부하지 않는다')
+        expect(not fx.exists('app-blue') and not fx.exists('app-green'),
+               '이관 전 값인데 앱을 띄웠다')
 
 
 def scenario_invalid_pointer(fx):
@@ -585,11 +670,77 @@ def scenario_target_api_times_out(fx):
     expect(elapsed < 60, f'응답 없는 API 검사가 제한 시간을 넘겼다: {elapsed:.1f}초')
 
 
+def prepare_first_migration(fx):
+    fx.compose_nginx('down', '--remove-orphans')
+    fx.point_at('set $upstream_app app;\n')
+    fx.start_legacy_stack()
+    fx.wait_edge_serves('app')
+    # 실제 서버처럼 준비 단계가 기존 app 존재를 보고 전환 파일을 초기화한다.
+    fx.pointer.unlink()
+    prep = fx.run_step('배포 전 공유 자원 준비')
+    expect(prep.returncode == 0, f'준비 단계 실패\n{prep.stdout}{prep.stderr}')
+    expect('공유 네트워크에 연결했습니다' in prep.stdout,
+           '이전 앱을 공유 네트워크에 붙이지 않았다')
+    expect(fx.pointer_color() == 'app', '기존 앱을 전환 대상으로 초기화하지 않았다')
+    nginx = fx.run_step('nginx 배포')
+    expect(nginx.returncode == 0, f'nginx 교체 실패\n{nginx.stdout}{nginx.stderr}')
+    fx.wait_edge_serves('app')
+    # 실패 후 재실행해도 기존 앱 연결과 현재 전환 대상을 유지해야 한다.
+    prep = fx.run_step('배포 전 공유 자원 준비')
+    expect(prep.returncode == 0, f'준비 단계 재실행 실패\n{prep.stdout}{prep.stderr}')
+    expect(fx.pointer_color() == 'app', '준비 재실행이 활성 대상을 바꿨다')
+    fx.wait_edge_serves('app')
+
+
+def scenario_first_migration(fx):
+    try:
+        prepare_first_migration(fx)
+        result = fx.deploy()
+        expect(result.returncode == 0, f'종료 코드 {result.returncode}\n{result.stdout}{result.stderr}')
+        expect(fx.pointer_color() == 'app-blue', f'전환 파일 {fx.pointer_color()}')
+        expect(fx.running('app-blue'), 'app-blue 가 뜨지 않았다')
+        expect(not fx.exists('app'), '이전 단일 컨테이너가 남아 있다')
+        expect('을 정리했습니다' in result.stdout, '이관 정리 안내가 없다')
+        fx.wait_edge_serves('app-blue')
+    finally:
+        fx.drop_legacy_stack()
+
+
+def scenario_first_migration_start_fails(fx):
+    try:
+        prepare_first_migration(fx)
+        fx.break_app('app-blue')
+        result = fx.deploy()
+        expect(result.returncode == 1, f'종료 코드 {result.returncode}\n{result.stdout}{result.stderr}')
+        expect(fx.pointer_color() == 'app', '기동 실패인데 전환 파일이 바뀌었다')
+        expect(fx.running('app'), '기동 실패인데 이전 앱을 내렸다')
+        expect(not fx.exists('app-blue'), '실패한 새 앱이 남아 있다')
+        fx.wait_edge_serves('app')
+    finally:
+        fx.restore_app('app-blue')
+        fx.drop_legacy_stack()
+
+
+def scenario_first_migration_rolls_back(fx):
+    try:
+        prepare_first_migration(fx)
+        fx.edge('app-blue', code='503')
+        result = fx.deploy()
+        expect(result.returncode == 1, f'종료 코드 {result.returncode}\n{result.stdout}{result.stderr}')
+        expect(fx.pointer_color() == 'app', '이전 단일 앱으로 포인터를 복구하지 않았다')
+        expect('app 로 복구했고 정상 응답을 확인했습니다' in result.stdout, '앱 복구 확인이 없다')
+        expect(fx.running('app'), '복구한 이전 앱을 내렸다')
+        expect(not fx.exists('app-blue'), '복구 후 새 앱을 정리하지 않았다')
+        fx.wait_edge_serves('app')
+    finally:
+        fx.drop_legacy_stack()
+
+
 def scenario_compose_services_match(fx):
-    compose = yaml.safe_load((REPO / 'BE/docker/compose.dev.yml').read_text())
+    compose = yaml.safe_load((REPO / TARGET['app_compose']).read_text())
     services = set(compose['services'])
     expect(services == {'app-blue', 'app-green'},
-           f'배포 스크립트가 왕복하는 두 색과 compose.dev.yml 의 {sorted(services)} 가 다르다')
+           f'배포 스크립트가 왕복하는 두 색과 {TARGET["app_compose"]} 의 {sorted(services)} 가 다르다')
     for color in ('blue', 'green'):
         expect(compose['services'][f'app-{color}'].get('profiles') == [color],
                f'app-{color} 의 profiles 가 [{color}] 가 아니다')
@@ -597,6 +748,7 @@ def scenario_compose_services_match(fx):
 
 SCENARIOS = (
     ('정상 전환', scenario_normal),
+    ('역방향 정상 전환', scenario_reverse),
     ('새 버전 기동 실패', scenario_start_fail),
     ('새 버전이 최소 API 를 응답하지 않음', scenario_target_api_fails),
     ('새 버전의 최소 API 응답이 멈춤', scenario_target_api_times_out),
@@ -610,11 +762,13 @@ SCENARIOS = (
     ('전환 후 깨진 JSON', scenario_broken_json_body),
     ('정상 전환이 진행 중 요청을 기다린다', scenario_normal_waits_for_inflight),
     ('롤백이 진행 중 요청을 기다린다', scenario_rollback_waits_for_inflight),
-    ('이관 전 전환 파일 거부', scenario_retired_pointer),
+    ('이관 전 전환 파일 처리', scenario_legacy_pointer),
     ('전환 파일 이상값', scenario_invalid_pointer),
     ('전환 파일 빈 값', scenario_empty_pointer),
     ('compose 의 색 이름이 배포 스크립트와 일치', scenario_compose_services_match),
-)
+) + ((('최초 이관', scenario_first_migration),
+      ('최초 이관 중 새 앱 기동 실패', scenario_first_migration_start_fails),
+      ('최초 이관 중 앱 롤백', scenario_first_migration_rolls_back)) if MIGRATES_FROM_APP else ())
 
 
 def reset(fx):
@@ -624,11 +778,17 @@ def reset(fx):
     fx.fix_nginx_conf()
     fx.restore_app('app-green')
     fx.point_at('set $upstream_app app-blue;\n')
+    if not fx.running('nginx'):
+        fx.start_nginx()
     fx.compose_nginx('exec', '-T', 'nginx', 'nginx', '-s', 'reload')
 
 
 def main():
     only = sys.argv[1:]
+    unknown = set(only) - {name for name, _ in SCENARIOS}
+    if unknown:
+        print(f'알 수 없는 시나리오: {", ".join(sorted(unknown))}', file=sys.stderr)
+        return 2
     with tempfile.TemporaryDirectory() as root:
         fx = Fixture(root)
         failures = []
