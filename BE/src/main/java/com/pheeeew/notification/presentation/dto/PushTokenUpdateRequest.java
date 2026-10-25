@@ -8,7 +8,7 @@ import java.nio.charset.StandardCharsets;
 
 public record PushTokenUpdateRequest(
         @NotBlank(message = "푸시 등록 값은 필수입니다.")
-        @Size(max = 1024, message = "푸시 등록 값은 1024자를 초과할 수 없습니다.")
+        @Size(min = 1, max = 1024, message = "푸시 등록 값은 1~1024자여야 합니다.")
         @Schema(description = "Firebase SDK 가 준 푸시 등록 값입니다. FID 와 기존 등록 토큰을 모두 받고 형식을 해석하지 않습니다. "
                 + "앞뒤 공백을 지우지 않습니다. 공백만으로 된 값은 허용하지 않습니다. "
                 + "이 API 가 지원하는 상한은 UTF-8 1024바이트이며 널 문자를 포함할 수 없습니다.",
