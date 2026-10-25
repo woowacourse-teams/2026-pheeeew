@@ -32,6 +32,7 @@ import com.pheeeew.feature.emotion.component.EmotionPadArrangement
 import com.pheeeew.feature.emotion.component.formatCount
 import com.pheeeew.feature.emotion.model.EmotionCountUiModel
 import com.pheeeew.feature.emotion.model.EmotionKind
+import com.pheeeew.feature.screens.press.component.PressNearbyRankingCard
 import com.pheeeew.feature.screens.press.component.PressRankingEntry
 import com.pheeeew.feature.screens.press.component.PressSummaryCard
 import org.jetbrains.compose.resources.stringResource
@@ -46,6 +47,7 @@ internal fun PressScreen(
     onEmotionTap: (EmotionKind) -> Boolean,
     onOpenRanking: () -> Unit,
     modifier: Modifier = Modifier,
+    nearbyRanking: PressNearbyRankingUiState? = null,
 ) {
     val font = notoSansKrFontFamily()
     val emotionCounts =
@@ -100,13 +102,17 @@ internal fun PressScreen(
                         null
                     }
                 }
-            PressSummaryCard(
-                allCount = allCount,
-                myCount = uiState.myToday?.total?.plus(uiState.optimisticMyTotalCount),
-                isLoadingAll = uiState.isLoadingAll,
-                isLoadingMy = uiState.isLoadingMy,
-                modifier = Modifier.padding(horizontal = 24.dp),
-            )
+            if (nearbyRanking == null) {
+                PressSummaryCard(
+                    allCount = allCount,
+                    myCount = uiState.myToday?.total?.plus(uiState.optimisticMyTotalCount),
+                    isLoadingAll = uiState.isLoadingAll,
+                    isLoadingMy = uiState.isLoadingMy,
+                    modifier = Modifier.padding(horizontal = 24.dp),
+                )
+            } else {
+                PressNearbyRankingCard(nearbyRanking, Modifier.padding(horizontal = 24.dp))
+            }
             Spacer(Modifier.height(20.dp))
         }
         BoxWithConstraints(
