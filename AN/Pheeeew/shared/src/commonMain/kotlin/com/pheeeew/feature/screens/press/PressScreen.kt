@@ -32,8 +32,8 @@ import com.pheeeew.feature.emotion.component.EmotionPadArrangement
 import com.pheeeew.feature.emotion.component.formatCount
 import com.pheeeew.feature.emotion.model.EmotionCountUiModel
 import com.pheeeew.feature.emotion.model.EmotionKind
+import com.pheeeew.feature.screens.press.component.PressNearbyRankingCard
 import com.pheeeew.feature.screens.press.component.PressRankingEntry
-import com.pheeeew.feature.screens.press.component.PressSummaryCard
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.press_count_unavailable
@@ -46,6 +46,7 @@ internal fun PressScreen(
     onEmotionTap: (EmotionKind) -> Boolean,
     onOpenRanking: () -> Unit,
     modifier: Modifier = Modifier,
+    nearbyRanking: PressNearbyRankingUiState = PressNearbyRankingUiState(status = PressNearbyRankingStatus.Unavailable),
 ) {
     val font = notoSansKrFontFamily()
     val emotionCounts =
@@ -92,21 +93,7 @@ internal fun PressScreen(
                 onClick = onOpenRanking,
                 modifier = Modifier.align(Alignment.End).padding(horizontal = 24.dp),
             )
-            val allCount =
-                uiState.allToday?.total?.let { serverTotal ->
-                    if (serverTotal <= Long.MAX_VALUE - uiState.optimisticAllPressCount) {
-                        serverTotal + uiState.optimisticAllPressCount
-                    } else {
-                        null
-                    }
-                }
-            PressSummaryCard(
-                allCount = allCount,
-                myCount = uiState.myToday?.total?.plus(uiState.optimisticMyTotalCount),
-                isLoadingAll = uiState.isLoadingAll,
-                isLoadingMy = uiState.isLoadingMy,
-                modifier = Modifier.padding(horizontal = 24.dp),
-            )
+            PressNearbyRankingCard(nearbyRanking, Modifier.padding(horizontal = 24.dp))
             Spacer(Modifier.height(20.dp))
         }
         BoxWithConstraints(

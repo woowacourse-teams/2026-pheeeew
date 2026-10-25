@@ -21,5 +21,7 @@ internal fun PressRoute(
         onEmotionTap = viewModel::onEmotionTap,
         onOpenRanking = onOpenRanking,
         modifier = modifier,
+        // Replace this state source with ViewModel state when the ranking API is connected.
+        nearbyRanking = temporaryNearbyRanking,
     )
 }
