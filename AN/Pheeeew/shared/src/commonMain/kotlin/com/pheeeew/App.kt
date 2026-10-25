@@ -69,6 +69,7 @@ import com.pheeeew.core.di.UiGraph
 import com.pheeeew.core.navigation.DoubleBackToExitHandler
 import com.pheeeew.core.navigation.FlowBackHandler
 import com.pheeeew.core.navigation.MapRootDestination
+import com.pheeeew.core.navigation.NotificationDestination
 import com.pheeeew.core.navigation.PressRootDestination
 import com.pheeeew.core.navigation.RankingRootDestination
 import com.pheeeew.core.notification.NotificationClickInbox
@@ -79,6 +80,7 @@ import com.pheeeew.feature.component.AppBottomNavigationBarBottomSpacing
 import com.pheeeew.feature.component.AppDestination
 import com.pheeeew.feature.component.RankingBottomNavigationDestination
 import com.pheeeew.feature.monitoring.product.LocalProductMonitoringVisible
+import com.pheeeew.feature.notification.NotificationClickEffect
 import com.pheeeew.feature.screens.map.EmotionPinUiModel
 import com.pheeeew.feature.screens.map.HighlightedPinPosition
 import com.pheeeew.feature.screens.map.MapContentRenderState
@@ -355,12 +357,6 @@ private fun AppContent(
     val entryViewModel = requireNotNull(appEntryViewModel)
     val mainFeaturesReady = initialVersionCheckComplete && requiredUpdate == null && entryReady
 
-    // Keep clicks pending until version checks, onboarding, authentication and splash finish.
-    DisposableEffect(notificationClicks, mainFeaturesReady, shouldPrepareMapDuringSplash) {
-        notificationClicks?.setReady(mainFeaturesReady && !shouldPrepareMapDuringSplash)
-        onDispose { notificationClicks?.setReady(false) }
-    }
-
     if (mainFeaturesReady) {
         LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { apiDependencies.appSession.onForeground() }
     }
@@ -597,6 +593,29 @@ private fun AppContent(
         val isEmotionRecordFlowActive =
             selectedDestination == AppDestination.Map &&
                 (mapUiModel.isEmotionSelectorExpanded || recordUiModel.step != RecordFlowStepUiModel.Closed)
+
+        NotificationClickEffect(
+            inbox = notificationClicks,
+            ready =
+                mainFeaturesReady && !shouldPrepareMapDuringSplash &&
+                    currentBackStackEntry != null && !isEmotionRecordFlowActive,
+            onNavigate = { destination ->
+                when (destination) {
+                    NotificationDestination.Map -> {
+                        isSettingsVisible = false
+                        reportTarget = null
+                        nearbyViewModel.dismiss()
+                        detailViewModel.dismiss()
+                        mapViewModel.dismissFilter()
+                        previousMainDestination = AppDestination.Map
+                        navController.navigate(MapRootDestination) {
+                            popUpTo<MapRootDestination>()
+                            launchSingleTop = true
+                        }
+                    }
+                }
+            },
+        )
 
         // Register the exit fallback before navigation and screen-specific back handlers.
         DoubleBackToExitHandler()
