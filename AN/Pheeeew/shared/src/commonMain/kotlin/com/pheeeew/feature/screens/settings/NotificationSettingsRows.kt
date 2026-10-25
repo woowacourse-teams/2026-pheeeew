@@ -27,7 +27,6 @@ import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.notification.NotificationKind
 import com.pheeeew.core.notification.NotificationPermissionController
 import com.pheeeew.core.notification.NotificationPreferencesStore
-import com.pheeeew.core.notification.allowsNotifications
 import com.pheeeew.feature.screens.settings.components.SettingsDivider
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -37,7 +36,6 @@ import pheeeew.shared.generated.resources.notification_permission_loading
 import pheeeew.shared.generated.resources.notification_rank_toggle
 import pheeeew.shared.generated.resources.notification_settings_failed
 import pheeeew.shared.generated.resources.notification_settings_retry
-import pheeeew.shared.generated.resources.notification_system_blocked
 
 @Composable
 internal fun NotificationSettingsRows(
@@ -80,13 +78,6 @@ internal fun NotificationSettingsRows(
     }
     Column(Modifier.padding(bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (state.busy) Text(stringResource(Res.string.notification_permission_loading), fontSize = 12.sp)
-        if (!state.busy && state.authorization != null && !state.authorization.allowsNotifications()) {
-            Text(
-                stringResource(Res.string.notification_system_blocked),
-                fontSize = 12.sp,
-                color = AppColors.TextSecondary,
-            )
-        }
         if (state.failed) {
             Text(stringResource(Res.string.notification_settings_failed), fontSize = 12.sp)
             TextButton(onClick = { scope.launch { model.refresh() } }, enabled = !state.busy) {

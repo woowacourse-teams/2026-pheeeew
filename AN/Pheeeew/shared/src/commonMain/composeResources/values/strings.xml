@@ -270,7 +270,6 @@
     <string name="notification_permission_open_failed">iOS 설정을 열지 못했어요. 다시 시도해 주세요.</string>
     <string name="notification_collection_toggle">컬렉션 발급 알림</string>
     <string name="notification_rank_toggle">순위 알림</string>
-    <string name="notification_system_blocked">기기 알림 권한이 꺼져 있어요. 토글을 켜면 기기 알림 설정으로 이동해요.</string>
     <string name="notification_settings_failed">설정을 적용하지 못했어요. 다시 확인해 주세요.</string>
     <string name="notification_settings_retry">다시 확인</string>
 </resources>
