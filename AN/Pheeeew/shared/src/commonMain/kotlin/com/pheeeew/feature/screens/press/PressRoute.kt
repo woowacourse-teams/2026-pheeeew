@@ -15,14 +15,20 @@ internal fun PressRoute(
 ) {
     val viewModel: PressViewModel = metroViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val faceDemo = rememberPressFaceDemoState()
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onScreenResumed() }
     PressScreen(
         uiState = uiState,
-        onEmotionTap = viewModel::onEmotionTap,
+        onEmotionTap = { kind ->
+            val accepted = viewModel.onEmotionTap(kind)
+            faceDemo.onInput(kind, accepted)
+            accepted
+        },
         onOpenRanking = onOpenRanking,
         modifier = modifier,
         // Replace this state source with ViewModel state when the ranking API is connected.
         nearbyRanking = temporaryNearbyRanking,
         activity = temporaryPressActivity,
+        faceVisuals = faceDemo.visuals,
     )
 }
