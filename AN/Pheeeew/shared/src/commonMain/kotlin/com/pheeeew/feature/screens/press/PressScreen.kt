@@ -31,6 +31,7 @@ import com.pheeeew.feature.emotion.component.EmotionPad
 import com.pheeeew.feature.emotion.component.EmotionPadArrangement
 import com.pheeeew.feature.emotion.component.formatCount
 import com.pheeeew.feature.emotion.model.EmotionCountUiModel
+import com.pheeeew.feature.emotion.model.EmotionFaceVisual
 import com.pheeeew.feature.emotion.model.EmotionKind
 import com.pheeeew.feature.screens.press.component.PressNearbyRankingCard
 import com.pheeeew.feature.screens.press.component.PressRankingEntry
@@ -48,6 +49,7 @@ internal fun PressScreen(
     modifier: Modifier = Modifier,
     nearbyRanking: PressNearbyRankingUiState = PressNearbyRankingUiState(status = PressNearbyRankingStatus.Unavailable),
     activity: PressActivityUiState? = null,
+    faceVisuals: Map<EmotionKind, EmotionFaceVisual> = emptyMap(),
 ) {
     val font = notoSansKrFontFamily()
     val emotionCounts =
@@ -106,6 +108,7 @@ internal fun PressScreen(
                     .coerceIn(200.dp.coerceAtMost(maxWidth), maxWidth)
             EmotionPad(
                 counts = emotionCounts,
+                faceVisuals = faceVisuals,
                 optimisticPressCounts = uiState.optimisticPressCounts,
                 countTextOverrides = countTextOverrides,
                 enabled = true,
