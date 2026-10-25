@@ -7,6 +7,7 @@ import com.pheeeew.notification.presentation.dto.PushTokenUpdateRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -33,9 +34,20 @@ public interface NotificationSettingControllerApi {
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "저장 성공. 같은 값을 다시 보내도 204", content = @Content),
             @ApiResponse(responseCode = "400", description = "COMMON-001: token 누락, 공백뿐인 값, 1024자 또는 UTF-8 1024바이트 초과, 널 문자 포함 또는 잘못된 본문",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code":"COMMON-001","message":"요청 값이 올바르지 않습니다."}
+                                    """))),
             @ApiResponse(responseCode = "401", description = "AUTH-001: 인증 토큰 누락, 무효. DEVICE-004: 기기가 존재하지 않음",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = {
+                                    @ExampleObject(name = "인증 토큰 누락, 무효", value = """
+                                            {"code":"AUTH-001","message":"인증이 필요합니다."}
+                                            """),
+                                    @ExampleObject(name = "기기 없음", value = """
+                                            {"code":"DEVICE-004","message":"인증 정보를 사용할 수 없습니다."}
+                                            """)
+                            }))
     })
     ResponseEntity<Void> updatePushToken(@Parameter(hidden = true) UUID devicePublicId, PushTokenUpdateRequest request);
 
@@ -48,7 +60,15 @@ public interface NotificationSettingControllerApi {
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "해제 성공. 저장된 값이 없어도 204", content = @Content),
             @ApiResponse(responseCode = "401", description = "AUTH-001: 인증 토큰 누락, 무효. DEVICE-004: 기기가 존재하지 않음",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = {
+                                    @ExampleObject(name = "인증 토큰 누락, 무효", value = """
+                                            {"code":"AUTH-001","message":"인증이 필요합니다."}
+                                            """),
+                                    @ExampleObject(name = "기기 없음", value = """
+                                            {"code":"DEVICE-004","message":"인증 정보를 사용할 수 없습니다."}
+                                            """)
+                            }))
     })
     ResponseEntity<Void> deletePushToken(@Parameter(hidden = true) UUID devicePublicId);
 
@@ -65,7 +85,15 @@ public interface NotificationSettingControllerApi {
             @ApiResponse(responseCode = "200", description = "조회 성공. 바꾼 적이 없으면 두 값 모두 true",
                     content = @Content(schema = @Schema(implementation = NotificationSettingsResponse.class))),
             @ApiResponse(responseCode = "401", description = "AUTH-001: 인증 토큰 누락, 무효. DEVICE-004: 기기가 존재하지 않음",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = {
+                                    @ExampleObject(name = "인증 토큰 누락, 무효", value = """
+                                            {"code":"AUTH-001","message":"인증이 필요합니다."}
+                                            """),
+                                    @ExampleObject(name = "기기 없음", value = """
+                                            {"code":"DEVICE-004","message":"인증 정보를 사용할 수 없습니다."}
+                                            """)
+                            }))
     })
     ResponseEntity<NotificationSettingsResponse> findSettings(@Parameter(hidden = true) UUID devicePublicId);
 
@@ -81,9 +109,20 @@ public interface NotificationSettingControllerApi {
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "변경 성공", content = @Content),
             @ApiResponse(responseCode = "400", description = "COMMON-001: 필드 누락, null 또는 잘못된 본문",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code":"COMMON-001","message":"요청 값이 올바르지 않습니다."}
+                                    """))),
             @ApiResponse(responseCode = "401", description = "AUTH-001: 인증 토큰 누락, 무효. DEVICE-004: 기기가 존재하지 않음",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = {
+                                    @ExampleObject(name = "인증 토큰 누락, 무효", value = """
+                                            {"code":"AUTH-001","message":"인증이 필요합니다."}
+                                            """),
+                                    @ExampleObject(name = "기기 없음", value = """
+                                            {"code":"DEVICE-004","message":"인증 정보를 사용할 수 없습니다."}
+                                            """)
+                            }))
     })
     ResponseEntity<Void> updateSettings(@Parameter(hidden = true) UUID devicePublicId, NotificationSettingsUpdateRequest request);
 }
