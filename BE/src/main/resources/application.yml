@@ -54,6 +54,9 @@ pheeeew:
     # 프로젝트 단위 구글 호출 일일 예산. 구글 무료 티어 10,000건보다 낮게 두어 여유를 남긴다.
     # UTC 자정 기준 고정 창이라 구글의 창과 어긋나도 두 창에 걸쳐 최대 2배까지만 나가므로 5,000을 넘기지 않는다.
     daily-call-budget: ${PLAY_INTEGRITY_DAILY_CALL_BUDGET:3000}
+  fcm:
+    project-id: pheeeew-8bf12
+    service-account-base64: ${FCM_SERVICE_ACCOUNT_BASE64:}
 
   app-attest:
     # App ID 는 {Team ID}.{Bundle ID} 다. 예전에 만든 App ID 는 prefix 가 Team ID 와 다를 수 있고,
