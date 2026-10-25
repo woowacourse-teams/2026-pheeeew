@@ -23,5 +23,6 @@ internal fun PressRoute(
         modifier = modifier,
         // Replace this state source with ViewModel state when the ranking API is connected.
         nearbyRanking = temporaryNearbyRanking,
+        activity = temporaryPressActivity,
     )
 }

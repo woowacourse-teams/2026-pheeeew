@@ -277,4 +277,11 @@
     <string name="press_nearby_progress">순위판 진행률</string>
     <string name="press_nearby_progress_unknown">순위판 진행률 알 수 없음</string>
     <string name="press_nearby_unavailable">아직 순위 정보를 제공하지 않아요</string>
+    <string name="press_activity_count">%1$s명이 함께 누르는 중</string>
+    <string name="press_activity_loading">활동 확인 중…</string>
+    <string name="press_activity_unknown">활동 인원 알 수 없음</string>
+    <string name="press_activity_reconnecting">재연결 중 · 인원 알 수 없음</string>
+    <string name="press_race_entered">▲ 순위권 진입!</string>
+    <string name="press_race_overtaken">▲ %1$s명 추월!</string>
+    <string name="press_race_overtaken_by">▼ %1$s명이 앞질렀어</string>
 </resources>

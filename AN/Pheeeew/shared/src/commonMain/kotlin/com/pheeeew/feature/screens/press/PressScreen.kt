@@ -47,6 +47,7 @@ internal fun PressScreen(
     onOpenRanking: () -> Unit,
     modifier: Modifier = Modifier,
     nearbyRanking: PressNearbyRankingUiState = PressNearbyRankingUiState(status = PressNearbyRankingStatus.Unavailable),
+    activity: PressActivityUiState? = null,
 ) {
     val font = notoSansKrFontFamily()
     val emotionCounts =
@@ -93,7 +94,7 @@ internal fun PressScreen(
                 onClick = onOpenRanking,
                 modifier = Modifier.align(Alignment.End).padding(horizontal = 24.dp),
             )
-            PressNearbyRankingCard(nearbyRanking, Modifier.padding(horizontal = 24.dp))
+            PressNearbyRankingCard(nearbyRanking, Modifier.padding(horizontal = 24.dp), activity = activity)
             Spacer(Modifier.height(20.dp))
         }
         BoxWithConstraints(
