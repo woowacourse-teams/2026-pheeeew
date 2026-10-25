@@ -47,6 +47,7 @@ import pheeeew.shared.generated.resources.press_nearby_progress
 import pheeeew.shared.generated.resources.press_nearby_progress_unknown
 import pheeeew.shared.generated.resources.press_nearby_reconnecting
 import pheeeew.shared.generated.resources.press_nearby_row_description
+import pheeeew.shared.generated.resources.press_nearby_unavailable
 
 private val RankingInk = Color(0xFF202323)
 private val RankingMuted = Color(0xFF858B85)
@@ -77,6 +78,10 @@ internal fun PressNearbyRankingCard(
         }
         val message =
             when {
+                state.status == PressNearbyRankingStatus.Unavailable -> {
+                    stringResource(Res.string.press_nearby_unavailable)
+                }
+
                 state.status == PressNearbyRankingStatus.Loading -> {
                     stringResource(Res.string.press_nearby_loading)
                 }

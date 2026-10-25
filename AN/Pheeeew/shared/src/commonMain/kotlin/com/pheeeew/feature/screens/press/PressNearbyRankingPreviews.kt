@@ -41,6 +41,7 @@ private fun NearbyRankingStatesPreview() {
                     progress = 1f,
                 ),
             )
+            PressNearbyRankingCard(PressNearbyRankingUiState(status = PressNearbyRankingStatus.Unavailable))
             PressNearbyRankingCard(PressNearbyRankingUiState(status = PressNearbyRankingStatus.Loading))
             PressNearbyRankingCard(PressNearbyRankingUiState())
             PressNearbyRankingCard(PressNearbyRankingUiState(participationPending = true))

@@ -25,6 +25,6 @@ internal data class PressNearbyRankRow(
     }
 }
 
-internal enum class PressNearbyRankingStatus { Loading, Ready, Reconnecting }
+internal enum class PressNearbyRankingStatus { Loading, Ready, Reconnecting, Unavailable }
 
 internal fun normalizedNearbyProgress(value: Float?): Float? = value?.takeIf { it.isFinite() }?.coerceIn(0f, 1f)
