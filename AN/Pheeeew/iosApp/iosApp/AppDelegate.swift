@@ -12,7 +12,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate {
         FirebaseApp.configure()
         Messaging.messaging().delegate = self
 
-        UNUserNotificationCenter.current().requestAuthorization(
+        let notificationCenter = UNUserNotificationCenter.current()
+        notificationCenter.delegate = self
+        notificationCenter.requestAuthorization(
             options: [.alert, .badge, .sound]
         ) { granted, error in
             print("알림 권한 허용:", granted)
@@ -52,4 +54,19 @@ final class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate {
 #endif
     }
 
+}
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler:
+            @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+#if DEBUG
+        print("포그라운드 알림 수신")
+#endif
+        // 수신한 알림의 표시 방식만 결정하며, 별도 로컬 알림을 생성하지 않는다.
+        completionHandler([.banner, .list, .sound])
+    }
 }
