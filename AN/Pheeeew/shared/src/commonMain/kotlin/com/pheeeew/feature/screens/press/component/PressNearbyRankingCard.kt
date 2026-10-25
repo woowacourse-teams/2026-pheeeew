@@ -31,6 +31,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.feature.emotion.component.formatCount
+import com.pheeeew.feature.screens.press.PressActivityUiState
 import com.pheeeew.feature.screens.press.PressNearbyRankRow
 import com.pheeeew.feature.screens.press.PressNearbyRankingStatus
 import com.pheeeew.feature.screens.press.PressNearbyRankingUiState
@@ -55,6 +56,7 @@ private val RankingMuted = Color(0xFF858B85)
 internal fun PressNearbyRankingCard(
     state: PressNearbyRankingUiState,
     modifier: Modifier = Modifier,
+    activity: PressActivityUiState? = null,
 ) {
     val shape = RoundedCornerShape(16.dp)
     Column(
@@ -62,73 +64,79 @@ internal fun PressNearbyRankingCard(
             .fillMaxWidth()
             .clip(shape)
             .background(Color.White)
-            .border(1.dp, Color(0xFFE0E3DB), shape)
-            .padding(12.dp),
+            .border(1.dp, Color(0xFFE0E3DB), shape),
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
-        state.rows.forEach { NearbyRankRow(it) }
-        if (state.participationPending) {
-            Text(
-                stringResource(Res.string.press_nearby_participate),
-                color = RankingInk,
-                fontSize = 12.sp,
-                modifier = Modifier.fillMaxWidth().padding(10.dp),
-            )
-        }
-        val message =
-            when {
-                state.status == PressNearbyRankingStatus.Unavailable -> {
-                    stringResource(Res.string.press_nearby_unavailable)
-                }
-
-                state.status == PressNearbyRankingStatus.Loading -> {
-                    stringResource(Res.string.press_nearby_loading)
-                }
-
-                state.status == PressNearbyRankingStatus.Reconnecting -> {
-                    stringResource(
-                        Res.string.press_nearby_reconnecting,
-                    )
-                }
-
-                state.rows.isEmpty() && !state.participationPending -> {
-                    stringResource(Res.string.press_nearby_empty)
-                }
-
-                else -> {
-                    null
-                }
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            state.rows.forEach { NearbyRankRow(it) }
+            if (state.participationPending) {
+                Text(
+                    stringResource(Res.string.press_nearby_participate),
+                    color = RankingInk,
+                    fontSize = 12.sp,
+                    modifier = Modifier.fillMaxWidth().padding(10.dp),
+                )
             }
-        if (message != null) Text(message, color = RankingMuted, fontSize = 12.sp, modifier = Modifier.padding(10.dp))
-        Spacer(Modifier.height(8.dp))
-        val progress = normalizedNearbyProgress(state.progress)
-        val label =
-            stringResource(
-                if (progress ==
-                    null
-                ) {
-                    Res.string.press_nearby_progress_unknown
-                } else {
-                    Res.string.press_nearby_progress
-                },
-            )
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(5.dp)
-                .clip(CircleShape)
-                .background(Color(0xFFEFF0EB))
-                .clearAndSetSemantics {
-                    contentDescription = label
-                    if (progress != null) progressBarRangeInfo = ProgressBarRangeInfo(progress, 0f..1f)
-                },
-        ) {
-            if (progress != null &&
-                progress > 0f
+            val message =
+                when {
+                    state.status == PressNearbyRankingStatus.Unavailable -> {
+                        stringResource(Res.string.press_nearby_unavailable)
+                    }
+
+                    state.status == PressNearbyRankingStatus.Loading -> {
+                        stringResource(Res.string.press_nearby_loading)
+                    }
+
+                    state.status == PressNearbyRankingStatus.Reconnecting -> {
+                        stringResource(
+                            Res.string.press_nearby_reconnecting,
+                        )
+                    }
+
+                    state.rows.isEmpty() && !state.participationPending -> {
+                        stringResource(Res.string.press_nearby_empty)
+                    }
+
+                    else -> {
+                        null
+                    }
+                }
+            if (message !=
+                null
             ) {
-                Box(Modifier.fillMaxWidth(progress).height(5.dp).background(RankingInk, CircleShape))
+                Text(message, color = RankingMuted, fontSize = 12.sp, modifier = Modifier.padding(10.dp))
+            }
+            Spacer(Modifier.height(8.dp))
+            val progress = normalizedNearbyProgress(state.progress)
+            val label =
+                stringResource(
+                    if (progress ==
+                        null
+                    ) {
+                        Res.string.press_nearby_progress_unknown
+                    } else {
+                        Res.string.press_nearby_progress
+                    },
+                )
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(5.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFEFF0EB))
+                    .clearAndSetSemantics {
+                        contentDescription = label
+                        if (progress != null) progressBarRangeInfo = ProgressBarRangeInfo(progress, 0f..1f)
+                    },
+            ) {
+                if (progress != null &&
+                    progress > 0f
+                ) {
+                    Box(Modifier.fillMaxWidth(progress).height(5.dp).background(RankingInk, CircleShape))
+                }
             }
         }
+        if (activity != null) PressActivityFooter(activity)
     }
 }
 
