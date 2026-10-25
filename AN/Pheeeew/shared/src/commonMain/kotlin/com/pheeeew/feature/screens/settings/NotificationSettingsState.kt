@@ -38,7 +38,7 @@ internal class NotificationSettingsState(
             var preferences = store.read()
             val pending = pendingEnable
             if (pending != null && authorization.allowsNotifications()) {
-                preferences = store.update(pending, true)
+                preferences = enableOnly(pending)
             }
             pendingEnable = null
             mutableState.value = NotificationSettingsUiState(preferences, authorization, busy = false)
@@ -67,7 +67,7 @@ internal class NotificationSettingsState(
         if (authorization == NotificationAuthorization.NOT_DETERMINED) {
             permissions.requestAuthorization()
             val updated = permissions.authorization()
-            val saved = if (updated.allowsNotifications()) store.update(kind, true) else store.read()
+            val saved = if (updated.allowsNotifications()) enableOnly(kind) else store.read()
             mutableState.value = NotificationSettingsUiState(saved, updated, busy = false)
         } else {
             pendingEnable = kind
@@ -77,6 +77,13 @@ internal class NotificationSettingsState(
             }
             mutableState.value = state.value.copy(authorization = authorization, busy = false)
         }
+    }
+
+    private suspend fun enableOnly(kind: NotificationKind): NotificationPreferences {
+        // While system permission was blocked, every toggle appeared OFF. Respect that
+        // visible state when enabling one item rather than restoring hidden ON defaults.
+        NotificationKind.entries.filter { it != kind }.forEach { store.update(it, false) }
+        return store.update(kind, true)
     }
 
     private suspend fun runOperation(block: suspend () -> Unit) {

@@ -102,6 +102,60 @@ class NotificationSettingsStateTest {
         }
 
     @Test
+    fun `내부 기본값이 모두 ON이어도 설정에서 선택한 알림만 켜진다`() =
+        runTest {
+            NotificationKind.entries.forEach { selected ->
+                val permissions = Permissions().apply { status = NotificationAuthorization.DENIED }
+                val store = Store()
+                val model = NotificationSettingsState(permissions, store)
+                model.refresh()
+                assertFalse(model.state.value.checked(NotificationKind.COLLECTION))
+                assertFalse(model.state.value.checked(NotificationKind.RANK_DROP))
+                model.toggle(selected, true)
+                // Opening Settings alone must not change saved preferences.
+                assertEquals(NotificationPreferences(), store.saved)
+                permissions.status = NotificationAuthorization.AUTHORIZED
+                model.refresh()
+                NotificationKind.entries.forEach { kind ->
+                    assertEquals(kind == selected, model.state.value.checked(kind))
+                    assertEquals(kind == selected, store.saved.enabled(kind))
+                }
+                val restarted = NotificationSettingsState(permissions, store)
+                restarted.refresh()
+                NotificationKind.entries.forEach { kind ->
+                    assertEquals(kind == selected, restarted.state.value.checked(kind))
+                }
+            }
+        }
+
+    @Test
+    fun `첫 실행에서 시스템 허용 후에는 기본값 모두 ON을 유지한다`() =
+        runTest {
+            val permissions = Permissions().apply { status = NotificationAuthorization.NOT_DETERMINED }
+            val store = Store()
+            val model = NotificationSettingsState(permissions, store)
+            model.refresh()
+            permissions.status = NotificationAuthorization.AUTHORIZED
+            model.refresh()
+            assertTrue(model.state.value.checked(NotificationKind.COLLECTION))
+            assertTrue(model.state.value.checked(NotificationKind.RANK_DROP))
+        }
+
+    @Test
+    fun `설정에서 허용하지 않으면 숨겨진 기존 설정을 변경하지 않는다`() =
+        runTest {
+            val permissions = Permissions().apply { status = NotificationAuthorization.DENIED }
+            val store = Store()
+            val model = NotificationSettingsState(permissions, store)
+            model.refresh()
+            model.toggle(NotificationKind.COLLECTION, true)
+            model.refresh()
+            assertEquals(NotificationPreferences(), store.saved)
+            assertFalse(model.state.value.checked(NotificationKind.COLLECTION))
+            assertFalse(model.state.value.checked(NotificationKind.RANK_DROP))
+        }
+
+    @Test
     fun `저장 실패는 성공으로 표시하지 않고 재조회로 복구한다`() =
         runTest {
             val store = Store().apply { saved = NotificationPreferences(false, false) }
