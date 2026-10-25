@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -159,7 +158,7 @@ private fun NearbyRankRow(row: PressNearbyRankRow) {
                 3L -> Color(0xFFDCA46C)
                 else -> null
             }
-        Box(Modifier.width(26.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.widthIn(min = 26.dp, max = 96.dp), contentAlignment = Alignment.Center) {
             if (medal !=
                 null
             ) {
