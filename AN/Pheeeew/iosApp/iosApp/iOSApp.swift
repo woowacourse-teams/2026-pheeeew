@@ -22,11 +22,20 @@ struct iOSApp: App {
         WindowGroup {
             ContentView()
                 .onChange(of: scenePhase) { phase in
-                    if phase == .active { IosMonitoring.shared.foreground() }
-                    if phase == .background { IosMonitoring.shared.background() }
+                    if phase == .active {
+                        IosMonitoring.shared.foreground()
+                        RevisitNotificationLifecycle.shared.foreground()
+                    }
+                    if phase == .background {
+                        IosMonitoring.shared.background()
+                        RevisitNotificationLifecycle.shared.background()
+                    }
                 }
                 .onAppear {
-                    if scenePhase == .active { IosMonitoring.shared.foreground() }
+                    if scenePhase == .active {
+                        IosMonitoring.shared.foreground()
+                        RevisitNotificationLifecycle.shared.foreground()
+                    }
 #if DEBUG
                     if !monitoringSmokeTestScheduled,
                        ["1", "crash"].contains(ProcessInfo.processInfo.environment["MONITORING_SMOKE_TEST"] ?? ""),

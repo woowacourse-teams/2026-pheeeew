@@ -12,6 +12,11 @@ final class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate {
     ) -> Bool {
         FirebaseApp.configure()
         Messaging.messaging().delegate = self
+#if DEBUG
+        if ProcessInfo.processInfo.environment["REVISIT_NOTIFICATION_SMOKE_TEST"] == "1" {
+            IosRevisitNotifications.shared.useShortIntervalsForTesting()
+        }
+#endif
 
         let notificationCenter = UNUserNotificationCenter.current()
         notificationCenter.delegate = self
@@ -22,6 +27,12 @@ final class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate {
 
             if let error {
                 print("알림 권한 요청 실패:", error.localizedDescription)
+            }
+            DispatchQueue.main.async {
+#if DEBUG
+                if RevisitNotificationDiagnostics.inspectionOnly { return }
+#endif
+                IosRevisitNotifications.shared.refresh()
             }
         }
 
@@ -91,6 +102,17 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         withCompletionHandler completionHandler:
             @escaping (UNNotificationPresentationOptions) -> Void
     ) {
+        if IosRevisitNotifications.shared.isRevisit(identifier: notification.request.identifier) {
+            // An open app is not inactive, even during a session longer than 48 hours.
+            DispatchQueue.main.async {
+#if DEBUG
+                if RevisitNotificationDiagnostics.inspectionOnly { return }
+#endif
+                IosRevisitNotifications.shared.recordVisit(onComplete: { _ in })
+            }
+            completionHandler([])
+            return
+        }
 #if DEBUG
         print("포그라운드 알림 수신")
 #endif
