@@ -1,7 +1,6 @@
 package com.pheeeew
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -10,7 +9,6 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -80,7 +78,6 @@ import com.pheeeew.domain.model.version.AppVersionDecision
 import com.pheeeew.feature.component.AppBottomNavigationBar
 import com.pheeeew.feature.component.AppBottomNavigationBarBottomSpacing
 import com.pheeeew.feature.component.AppDestination
-import com.pheeeew.feature.component.RankingBottomNavigationDestination
 import com.pheeeew.feature.monitoring.product.LocalProductMonitoringVisible
 import com.pheeeew.feature.notification.NotificationClickEffect
 import com.pheeeew.feature.screens.map.EmotionPinUiModel
@@ -109,7 +106,6 @@ import com.pheeeew.feature.screens.map.symbolImageKey
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
 import com.pheeeew.feature.screens.press.PressRoute
 import com.pheeeew.feature.screens.ranking.press.PressRankingRoute
-import com.pheeeew.feature.screens.ranking.stamp.WeeklyRankingRoute
 import com.pheeeew.feature.screens.report.ReportRoute
 import com.pheeeew.feature.screens.settings.AppEntryGate
 import com.pheeeew.feature.screens.settings.AppEntryPhase
@@ -147,7 +143,7 @@ import pheeeew.shared.generated.resources.app_update_suggested_title
 
 internal fun shouldShowMapFeedback(
     mainFeaturesReady: Boolean,
-    selectedDestination: AppDestination,
+    selectedDestination: AppDestination?,
     nearbyVisible: Boolean,
     detailState: EmotionDetailLoadUiModel,
     settingsVisible: Boolean,
@@ -583,28 +579,14 @@ private fun AppContent(
         val selectedDestination =
             when {
                 currentBackStackEntry?.destination?.hasRoute<PressRootDestination>() == true -> AppDestination.Press
-                currentBackStackEntry?.destination?.hasRoute<RankingRootDestination>() == true -> AppDestination.Ranking
-                else -> AppDestination.Map
+                currentBackStackEntry?.destination?.hasRoute<MapRootDestination>() == true -> AppDestination.Map
+                else -> null
             }
 
         var isSettingsVisible by remember { mutableStateOf(false) }
         var reportTarget by remember { mutableStateOf<Triple<Long, DrawableResource, String>?>(null) }
         var moderationMessage by remember { mutableStateOf<MapTransientNoticeUiModel?>(null) }
         var nextModerationMessageId by remember { mutableStateOf(0L) }
-        var refreshStampRanking by remember { mutableStateOf<(() -> Unit)?>(null) }
-        var refreshPressRanking by remember { mutableStateOf<(() -> Unit)?>(null) }
-        var rankingDestination by remember { mutableStateOf(RankingBottomNavigationDestination.Stamp) }
-        val refreshRanking =
-            when (rankingDestination) {
-                RankingBottomNavigationDestination.Stamp -> refreshStampRanking
-                RankingBottomNavigationDestination.Press -> refreshPressRanking
-            }
-        var previousMainDestination by remember { mutableStateOf(AppDestination.Map) }
-        LaunchedEffect(selectedDestination) {
-            if (selectedDestination != AppDestination.Ranking) {
-                previousMainDestination = selectedDestination
-            }
-        }
         val isEmotionRecordFlowActive =
             selectedDestination == AppDestination.Map &&
                 (mapUiModel.isEmotionSelectorExpanded || recordUiModel.step != RecordFlowStepUiModel.Closed)
@@ -622,7 +604,6 @@ private fun AppContent(
                         nearbyViewModel.dismiss()
                         detailViewModel.dismiss()
                         mapViewModel.dismissFilter()
-                        previousMainDestination = AppDestination.Map
                         navController.navigate(MapRootDestination) {
                             popUpTo<MapRootDestination>()
                             launchSingleTop = true
@@ -755,55 +736,24 @@ private fun AppContent(
                 ) {
                     if (!mainFeaturesReady) return@composable
                     PressRoute(
+                        onOpenRanking = {
+                            if (navController.currentDestination?.hasRoute<PressRootDestination>() == true) {
+                                navController.navigate(RankingRootDestination) { launchSingleTop = true }
+                            }
+                        },
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
 
-                composable<RankingRootDestination>(
-                    enterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
-                    exitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
-                    popEnterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
-                    popExitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
-                ) {
+                composable<RankingRootDestination> {
                     if (!mainFeaturesReady) return@composable
-
-                    AnimatedContent(
-                        targetState = rankingDestination,
-                        modifier = Modifier.fillMaxSize(),
-                        transitionSpec = {
-                            val direction =
-                                if (targetState == RankingBottomNavigationDestination.Press) {
-                                    AnimatedContentTransitionScope.SlideDirection.Left
-                                } else {
-                                    AnimatedContentTransitionScope.SlideDirection.Right
-                                }
-                            (
-                                slideIntoContainer(direction, tween(300)) togetherWith
-                                    slideOutOfContainer(direction, tween(300))
-                            ).using(null)
-                        },
-                        label = "rankingTabTransition",
-                    ) { destination ->
-                        CompositionLocalProvider(
-                            LocalProductMonitoringVisible provides
-                                (destination == rankingDestination && !isSettingsVisible && reportTarget == null),
-                        ) {
-                            when (destination) {
-                                RankingBottomNavigationDestination.Stamp -> {
-                                    WeeklyRankingRoute(
-                                        modifier = Modifier.fillMaxSize(),
-                                        onRefreshActionChanged = { refreshStampRanking = it },
-                                    )
-                                }
-
-                                RankingBottomNavigationDestination.Press -> {
-                                    PressRankingRoute(
-                                        modifier = Modifier.fillMaxSize(),
-                                        onRefreshActionChanged = { refreshPressRanking = it },
-                                    )
-                                }
-                            }
-                        }
+                    CompositionLocalProvider(
+                        LocalProductMonitoringVisible provides (!isSettingsVisible && reportTarget == null),
+                    ) {
+                        PressRankingRoute(
+                            modifier = Modifier.fillMaxSize(),
+                            onBack = { navController.popBackStack() },
+                        )
                     }
                 }
             }
@@ -835,53 +785,30 @@ private fun AppContent(
                 )
             }
 
-            if (reportTarget == null && !isSettingsVisible && !nearbyState.visible && !isEmotionRecordFlowActive) {
+            if (selectedDestination != null && reportTarget == null && !isSettingsVisible &&
+                !nearbyState.visible && !isEmotionRecordFlowActive
+            ) {
                 AppBottomNavigationBar(
                     modifier =
                         Modifier
                             .align(Alignment.BottomCenter)
                             .padding(bottom = AppBottomNavigationBarBottomSpacing),
                     selectedDestination = selectedDestination,
-                    rankingDestination = rankingDestination,
-                    onRankingBackClick = {
-                        nearbyViewModel.dismiss()
-                        val route =
-                            when (previousMainDestination) {
-                                AppDestination.Map, AppDestination.Ranking -> MapRootDestination
-                                AppDestination.Press -> PressRootDestination
-                            }
-                        navController.navigate(route) {
-                            popUpTo<MapRootDestination> { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    onRankingDestinationSelected = { destination ->
-                        rankingDestination = destination
-                    },
                     onDestinationSelected = { destination ->
                         if (!mainFeaturesReady) return@AppBottomNavigationBar
                         nearbyViewModel.dismiss()
-                        if (destination == AppDestination.Ranking) {
-                            if (selectedDestination != AppDestination.Ranking) {
-                                previousMainDestination = selectedDestination
-                            }
-                            rankingDestination = RankingBottomNavigationDestination.Stamp
-                        } else {
-                            previousMainDestination = destination
-                        }
                         val route =
                             when (destination) {
                                 AppDestination.Map -> MapRootDestination
                                 AppDestination.Press -> PressRootDestination
-                                AppDestination.Ranking -> RankingRootDestination
+                                AppDestination.Collection -> return@AppBottomNavigationBar
                             }
 
                         if (navController.currentDestination?.hasRoute(route::class) == true) {
                             when (destination) {
                                 AppDestination.Map -> mapViewModel.refreshEmotionPins()
                                 AppDestination.Press -> Unit
-                                AppDestination.Ranking -> refreshRanking?.invoke()
+                                AppDestination.Collection -> Unit
                             }
                         } else {
                             navController.navigate(route) {
@@ -980,7 +907,6 @@ private fun androidx.navigation.NavDestination.rootTabIndex(): Int? =
     when {
         hasRoute<MapRootDestination>() -> 0
         hasRoute<PressRootDestination>() -> 1
-        hasRoute<RankingRootDestination>() -> 2
         else -> null
     }
 

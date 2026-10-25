@@ -9,13 +9,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 
 @Composable
-internal fun PressRoute(modifier: Modifier = Modifier) {
+internal fun PressRoute(
+    onOpenRanking: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val viewModel: PressViewModel = metroViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onScreenResumed() }
     PressScreen(
         uiState = uiState,
         onEmotionTap = viewModel::onEmotionTap,
+        onOpenRanking = onOpenRanking,
         modifier = modifier,
     )
 }
