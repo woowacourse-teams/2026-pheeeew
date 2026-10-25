@@ -3,6 +3,8 @@ package com.pheeeew.core.notification
 sealed interface NotificationClickTarget {
     data object OpenApp : NotificationClickTarget
 
+    data object Revisit : NotificationClickTarget
+
     data class Collection(
         val collectionId: String,
     ) : NotificationClickTarget

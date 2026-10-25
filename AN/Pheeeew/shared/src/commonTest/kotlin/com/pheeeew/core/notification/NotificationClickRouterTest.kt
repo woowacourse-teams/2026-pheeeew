@@ -11,6 +11,7 @@ class NotificationClickRouterTest {
         val targets =
             listOf(
                 NotificationClickTarget.OpenApp,
+                NotificationClickTarget.Revisit,
                 NotificationClickTarget.Collection("collection-1"),
                 NotificationClickTarget.Ranking("PRESS", "period-1", "group-1", 5, 6),
             )

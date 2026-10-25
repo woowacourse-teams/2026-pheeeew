@@ -11,6 +11,7 @@ internal object NotificationClickRouter {
     fun destinationFor(target: NotificationClickTarget): NotificationDestination =
         when (target) {
             NotificationClickTarget.OpenApp -> NotificationDestination.Map
+            NotificationClickTarget.Revisit -> NotificationDestination.Map
             is NotificationClickTarget.Collection -> NotificationDestination.Map
             is NotificationClickTarget.Ranking -> NotificationDestination.Map
         }

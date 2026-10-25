@@ -13,6 +13,10 @@ fun parseNotificationClick(
             NotificationClickTarget.OpenApp
         } else {
             when (field("type")) {
+                "REVISIT_REMINDER" -> {
+                    NotificationClickTarget.Revisit
+                }
+
                 "COLLECTION_ISSUED" -> {
                     field("collectionId")?.let(NotificationClickTarget::Collection)
                         ?: NotificationClickTarget.OpenApp
