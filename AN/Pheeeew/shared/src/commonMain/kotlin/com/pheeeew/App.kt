@@ -73,6 +73,8 @@ import com.pheeeew.core.navigation.NotificationDestination
 import com.pheeeew.core.navigation.PressRootDestination
 import com.pheeeew.core.navigation.RankingRootDestination
 import com.pheeeew.core.notification.NotificationClickInbox
+import com.pheeeew.core.notification.NotificationPermissionController
+import com.pheeeew.core.notification.NotificationPreferencesStore
 import com.pheeeew.domain.model.device.DeviceSessionResult
 import com.pheeeew.domain.model.version.AppVersionDecision
 import com.pheeeew.feature.component.AppBottomNavigationBar
@@ -194,13 +196,24 @@ fun App(
     uiGraph: UiGraph,
     settingsContent: @Composable () -> Unit = {},
     notificationClicks: NotificationClickInbox? = null,
+    notificationPermissionController: NotificationPermissionController? = null,
+    notificationPreferencesStore: NotificationPreferencesStore? = null,
 ) {
     val factory = remember(uiGraph) { uiGraph.viewModelFactory }
     CompositionLocalProvider(
         LocalMetroViewModelFactory provides factory,
         LocalAudioFactories provides appGraph.audioFactories,
     ) {
-        AppTheme { AppContent(appGraph, uiGraph, settingsContent, notificationClicks) }
+        AppTheme {
+            AppContent(
+                appGraph,
+                uiGraph,
+                settingsContent,
+                notificationClicks,
+                notificationPermissionController,
+                notificationPreferencesStore,
+            )
+        }
     }
 }
 
@@ -210,6 +223,8 @@ private fun AppContent(
     uiGraph: UiGraph,
     settingsContent: @Composable () -> Unit,
     notificationClicks: NotificationClickInbox?,
+    notificationPermissionController: NotificationPermissionController?,
+    notificationPreferencesStore: NotificationPreferencesStore?,
 ) {
     val apiDependencies = appGraph.apiDependencies
     val appVersion = appGraph.appVersion
@@ -813,6 +828,8 @@ private fun AppContent(
                     appVersion = appVersion,
                     onBackClick = { isSettingsVisible = false },
                     permissionSettingsLauncher = permissionSettingsLauncher,
+                    notificationPermissionController = notificationPermissionController,
+                    notificationPreferencesStore = notificationPreferencesStore,
                     modifier = Modifier.fillMaxSize(),
                     settingsContent = settingsContent,
                 )
