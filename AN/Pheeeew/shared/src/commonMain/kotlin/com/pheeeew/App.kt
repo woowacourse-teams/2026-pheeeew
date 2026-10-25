@@ -71,6 +71,7 @@ import com.pheeeew.core.navigation.FlowBackHandler
 import com.pheeeew.core.navigation.MapRootDestination
 import com.pheeeew.core.navigation.PressRootDestination
 import com.pheeeew.core.navigation.RankingRootDestination
+import com.pheeeew.core.notification.NotificationClickInbox
 import com.pheeeew.domain.model.device.DeviceSessionResult
 import com.pheeeew.domain.model.version.AppVersionDecision
 import com.pheeeew.feature.component.AppBottomNavigationBar
@@ -190,13 +191,14 @@ fun App(
     appGraph: AppGraph,
     uiGraph: UiGraph,
     settingsContent: @Composable () -> Unit = {},
+    notificationClicks: NotificationClickInbox? = null,
 ) {
     val factory = remember(uiGraph) { uiGraph.viewModelFactory }
     CompositionLocalProvider(
         LocalMetroViewModelFactory provides factory,
         LocalAudioFactories provides appGraph.audioFactories,
     ) {
-        AppTheme { AppContent(appGraph, uiGraph, settingsContent) }
+        AppTheme { AppContent(appGraph, uiGraph, settingsContent, notificationClicks) }
     }
 }
 
@@ -205,6 +207,7 @@ private fun AppContent(
     appGraph: AppGraph,
     uiGraph: UiGraph,
     settingsContent: @Composable () -> Unit,
+    notificationClicks: NotificationClickInbox?,
 ) {
     val apiDependencies = appGraph.apiDependencies
     val appVersion = appGraph.appVersion
@@ -351,6 +354,12 @@ private fun AppContent(
     val shouldPrepareMapDuringSplash = !startupState.splashDismissed
     val entryViewModel = requireNotNull(appEntryViewModel)
     val mainFeaturesReady = initialVersionCheckComplete && requiredUpdate == null && entryReady
+
+    // Keep clicks pending until version checks, onboarding, authentication and splash finish.
+    DisposableEffect(notificationClicks, mainFeaturesReady, shouldPrepareMapDuringSplash) {
+        notificationClicks?.setReady(mainFeaturesReady && !shouldPrepareMapDuringSplash)
+        onDispose { notificationClicks?.setReady(false) }
+    }
 
     if (mainFeaturesReady) {
         LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { apiDependencies.appSession.onForeground() }

@@ -8,6 +8,7 @@ import androidx.compose.ui.window.ComposeUIViewController
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import com.pheeeew.core.di.AppUiSession
 import com.pheeeew.core.di.IosGraphs
+import com.pheeeew.core.notification.IosNotificationClicks
 
 @Suppress("ktlint:standard:function-naming")
 fun MainViewController() = ComposeUIViewController { MainApp() }
@@ -24,6 +25,6 @@ fun MainApp(settingsContent: @Composable () -> Unit = {}) {
         }
     }
     CompositionLocalProvider(LocalViewModelStoreOwner provides session) {
-        App(appGraph, uiGraph, settingsContent)
+        App(appGraph, uiGraph, settingsContent, notificationClicks = IosNotificationClicks.inbox)
     }
 }

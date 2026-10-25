@@ -2,6 +2,7 @@ import UIKit
 import UserNotifications
 import FirebaseCore
 import FirebaseMessaging
+import Shared
 
 final class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate {
     func application(
@@ -57,6 +58,33 @@ final class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate {
 }
 
 extension AppDelegate: UNUserNotificationCenterDelegate {
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        // Ignore dismissals and custom actions; only a tap on the notification opens its target.
+        guard response.actionIdentifier == UNNotificationDefaultActionIdentifier else {
+            completionHandler()
+            return
+        }
+
+        let request = response.notification.request
+        let fields = request.content.userInfo.reduce(into: [String: String]()) { result, entry in
+            if let key = entry.key as? String, let value = entry.value as? String {
+                result[key] = value
+            }
+        }
+        let requestId = request.identifier
+        DispatchQueue.main.async {
+            IosNotificationClicks.shared.receive(data: fields, requestId: requestId)
+#if DEBUG
+            print("알림 클릭 데이터 공통 코드 전달 완료")
+#endif
+            completionHandler()
+        }
+    }
+
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
