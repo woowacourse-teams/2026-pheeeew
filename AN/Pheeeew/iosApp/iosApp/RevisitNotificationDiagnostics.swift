@@ -5,6 +5,19 @@ import Shared
 
 @MainActor
 enum RevisitNotificationDiagnostics {
+    private static let testModeKey = "debug.revisitNotification.minuteIntervals"
+
+    static func configureOnLaunch() {
+        // Environment variables only exist for the developer-launched process.
+        // Keep this Debug-only choice across normal icon/notification launches.
+        if let value = ProcessInfo.processInfo.environment["REVISIT_NOTIFICATION_SMOKE_TEST"] {
+            UserDefaults.standard.set(value == "1", forKey: testModeKey)
+        }
+        if !inspectionOnly && UserDefaults.standard.bool(forKey: testModeKey) {
+            IosRevisitNotifications.shared.useShortIntervalsForTesting()
+        }
+    }
+
     static var inspectionOnly: Bool {
         ProcessInfo.processInfo.environment["REVISIT_NOTIFICATION_INSPECT_ONLY"] == "1"
     }
@@ -25,6 +38,9 @@ enum RevisitNotificationDiagnostics {
                 abs(($0.1 - $0.0) - 60) < 2
             }
             let repeatingCount = requests.filter { $0.trigger?.repeats == true }.count
+            if let first = intervals.first, let last = intervals.last {
+                print("[Revisit test] firstIntervalSeconds=\(first) lastIntervalSeconds=\(last)")
+            }
             let format = ISO8601DateFormatter()
             print("[Revisit test] alerts=\(settings.alertSetting.rawValue) lockScreen=\(settings.lockScreenSetting.rawValue) notificationCenter=\(settings.notificationCenterSetting.rawValue) sound=\(settings.soundSetting.rawValue) scheduledDelivery=\(settings.scheduledDeliverySetting.rawValue)")
             print("[Revisit test] delivered=\(deliveredRevisit.count)")

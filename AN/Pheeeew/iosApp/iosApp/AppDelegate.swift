@@ -13,9 +13,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate {
         FirebaseApp.configure()
         Messaging.messaging().delegate = self
 #if DEBUG
-        if ProcessInfo.processInfo.environment["REVISIT_NOTIFICATION_SMOKE_TEST"] == "1" {
-            IosRevisitNotifications.shared.useShortIntervalsForTesting()
-        }
+        RevisitNotificationDiagnostics.configureOnLaunch()
 #endif
 
         let notificationCenter = UNUserNotificationCenter.current()
