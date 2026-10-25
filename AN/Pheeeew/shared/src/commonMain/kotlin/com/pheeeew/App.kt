@@ -67,14 +67,19 @@ import com.pheeeew.core.di.UiGraph
 import com.pheeeew.core.navigation.DoubleBackToExitHandler
 import com.pheeeew.core.navigation.FlowBackHandler
 import com.pheeeew.core.navigation.MapRootDestination
+import com.pheeeew.core.navigation.NotificationDestination
 import com.pheeeew.core.navigation.PressRootDestination
 import com.pheeeew.core.navigation.RankingRootDestination
+import com.pheeeew.core.notification.NotificationClickInbox
+import com.pheeeew.core.notification.NotificationPermissionController
+import com.pheeeew.core.notification.NotificationPreferencesStore
 import com.pheeeew.domain.model.device.DeviceSessionResult
 import com.pheeeew.domain.model.version.AppVersionDecision
 import com.pheeeew.feature.component.AppBottomNavigationBar
 import com.pheeeew.feature.component.AppBottomNavigationBarBottomSpacing
 import com.pheeeew.feature.component.AppDestination
 import com.pheeeew.feature.monitoring.product.LocalProductMonitoringVisible
+import com.pheeeew.feature.notification.NotificationClickEffect
 import com.pheeeew.feature.screens.map.EmotionPinUiModel
 import com.pheeeew.feature.screens.map.HighlightedPinPosition
 import com.pheeeew.feature.screens.map.MapContentRenderState
@@ -186,13 +191,25 @@ fun App(
     appGraph: AppGraph,
     uiGraph: UiGraph,
     settingsContent: @Composable () -> Unit = {},
+    notificationClicks: NotificationClickInbox? = null,
+    notificationPermissionController: NotificationPermissionController? = null,
+    notificationPreferencesStore: NotificationPreferencesStore? = null,
 ) {
     val factory = remember(uiGraph) { uiGraph.viewModelFactory }
     CompositionLocalProvider(
         LocalMetroViewModelFactory provides factory,
         LocalAudioFactories provides appGraph.audioFactories,
     ) {
-        AppTheme { AppContent(appGraph, uiGraph, settingsContent) }
+        AppTheme {
+            AppContent(
+                appGraph,
+                uiGraph,
+                settingsContent,
+                notificationClicks,
+                notificationPermissionController,
+                notificationPreferencesStore,
+            )
+        }
     }
 }
 
@@ -201,6 +218,9 @@ private fun AppContent(
     appGraph: AppGraph,
     uiGraph: UiGraph,
     settingsContent: @Composable () -> Unit,
+    notificationClicks: NotificationClickInbox?,
+    notificationPermissionController: NotificationPermissionController?,
+    notificationPreferencesStore: NotificationPreferencesStore?,
 ) {
     val apiDependencies = appGraph.apiDependencies
     val appVersion = appGraph.appVersion
@@ -571,6 +591,28 @@ private fun AppContent(
             selectedDestination == AppDestination.Map &&
                 (mapUiModel.isEmotionSelectorExpanded || recordUiModel.step != RecordFlowStepUiModel.Closed)
 
+        NotificationClickEffect(
+            inbox = notificationClicks,
+            ready =
+                mainFeaturesReady && !shouldPrepareMapDuringSplash &&
+                    currentBackStackEntry != null && !isEmotionRecordFlowActive,
+            onNavigate = { destination ->
+                when (destination) {
+                    NotificationDestination.Map -> {
+                        isSettingsVisible = false
+                        reportTarget = null
+                        nearbyViewModel.dismiss()
+                        detailViewModel.dismiss()
+                        mapViewModel.dismissFilter()
+                        navController.navigate(MapRootDestination) {
+                            popUpTo<MapRootDestination>()
+                            launchSingleTop = true
+                        }
+                    }
+                }
+            },
+        )
+
         // Register the exit fallback before navigation and screen-specific back handlers.
         DoubleBackToExitHandler()
 
@@ -736,6 +778,8 @@ private fun AppContent(
                     appVersion = appVersion,
                     onBackClick = { isSettingsVisible = false },
                     permissionSettingsLauncher = permissionSettingsLauncher,
+                    notificationPermissionController = notificationPermissionController,
+                    notificationPreferencesStore = notificationPreferencesStore,
                     modifier = Modifier.fillMaxSize(),
                     settingsContent = settingsContent,
                 )
