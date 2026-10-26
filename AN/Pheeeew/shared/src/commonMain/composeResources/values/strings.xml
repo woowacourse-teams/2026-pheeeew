@@ -359,6 +359,5 @@
     <string name="guide_collection_card_body">모은 감정 카드를 여기서 확인해요.</string>
     <string name="guide_collection_stats_title">프레스·스탬프 기록도 함께</string>
     <string name="guide_collection_stats_accent">프레스·스탬프 기록</string>
-    <string name="guide_next_press">프레스도 알아보기 →</string>
-    <string name="guide_next_collection">컬렉션도 알아보기 →</string>
+    <string name="onboarding_guide_swipe_hint">옆으로 넘겨보세요 →</string>
 </resources>

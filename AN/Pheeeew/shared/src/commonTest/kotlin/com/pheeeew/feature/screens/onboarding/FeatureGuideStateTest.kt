@@ -71,4 +71,34 @@ class FeatureGuideStateTest {
         assertEquals(0, state.page)
         assertEquals(0, writes)
     }
+
+    @Test
+    fun `skip from any overview finishes exactly once`() {
+        repeat(FEATURE_GUIDE_PAGE_COUNT) { page ->
+            var writes = 0
+            val state = FeatureGuideState(true) { writes++ }
+            state.showPage(page)
+            state.skip()
+            state.skip()
+            state.finish()
+            state.showPage(0)
+            assertFalse(state.pending)
+            assertEquals(1, writes)
+            assertEquals(page, state.page)
+        }
+    }
+
+    @Test
+    fun `settled swipe position is saved and restored`() {
+        val state = FeatureGuideState(true) {}
+        state.showPage(2)
+        val saver = FeatureGuideState.saver({})
+        val saved = with(saver) { SaverScope { true }.save(state) }!!
+        assertEquals(2, saver.restore(saved)!!.page)
+        state.showPage(-1)
+        assertEquals(0, state.page)
+        state.showPage(20)
+        assertEquals(2, state.page)
+        assertTrue(state.pending)
+    }
 }

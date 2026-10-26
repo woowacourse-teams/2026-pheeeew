@@ -104,17 +104,20 @@ class OnboardingGuideFlowTest {
             node("주변의 감정을 목록으로")
             screenshot("final-guide-map")
             assertEquals(0, writes.get())
-            node("프레스도 알아보기 →").click()
+            swipeGuide()
             node("전체 순위가 궁금할 땐")
+            SystemClock.sleep(650)
             assertEquals(1, guide.page)
             device.pressBack()
             node("주변의 감정을 목록으로")
+            SystemClock.sleep(650)
             assertEquals(0, guide.page)
-            node("프레스도 알아보기 →").click()
+            swipeGuide()
             node("전체 순위가 궁금할 땐")
             screenshot("final-guide-press")
-            node("컬렉션도 알아보기 →").click()
+            swipeGuide()
             node("내 감정이 카드로 모여요")
+            SystemClock.sleep(650)
             assertEquals(2, guide.page)
             assertFalse(device.hasObject(By.text("랭킹")))
             screenshot("final-guide-collection")
@@ -132,6 +135,16 @@ class OnboardingGuideFlowTest {
         } finally {
             instrumentation.runOnMainSync { activity.finish() }
         }
+    }
+
+    private fun swipeGuide() {
+        device.swipe(
+            device.displayWidth * 4 / 5,
+            device.displayHeight / 2,
+            device.displayWidth / 5,
+            device.displayHeight / 2,
+            30,
+        )
     }
 
     private fun node(text: String): UiObject2 =

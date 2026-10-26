@@ -25,16 +25,25 @@ internal class FeatureGuideState(
         pending = true
     }
 
+    fun showPage(index: Int) {
+        if (pending) page = index.coerceIn(0, FEATURE_GUIDE_PAGE_COUNT - 1)
+    }
+
     fun next() {
-        if (pending && !isLastPage) page++
+        if (pending && !isLastPage) showPage(page + 1)
     }
 
     fun back() {
-        if (pending && page > 0) page--
+        if (pending && page > 0) showPage(page - 1)
     }
 
     fun finish() {
         if (!pending || !isLastPage) return
+        skip()
+    }
+
+    fun skip() {
+        if (!pending) return
         onFinished()
         pending = false
     }

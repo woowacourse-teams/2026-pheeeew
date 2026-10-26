@@ -7,16 +7,20 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.navigation.FlowBackHandler
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -64,8 +69,6 @@ import pheeeew.shared.generated.resources.guide_map_list_title
 import pheeeew.shared.generated.resources.guide_map_record_accent
 import pheeeew.shared.generated.resources.guide_map_record_body
 import pheeeew.shared.generated.resources.guide_map_record_title
-import pheeeew.shared.generated.resources.guide_next_collection
-import pheeeew.shared.generated.resources.guide_next_press
 import pheeeew.shared.generated.resources.guide_press_emotion_accent
 import pheeeew.shared.generated.resources.guide_press_emotion_body
 import pheeeew.shared.generated.resources.guide_press_emotion_title
@@ -81,6 +84,8 @@ import pheeeew.shared.generated.resources.onboarding_guide_map
 import pheeeew.shared.generated.resources.onboarding_guide_map_description
 import pheeeew.shared.generated.resources.onboarding_guide_press
 import pheeeew.shared.generated.resources.onboarding_guide_press_description
+import pheeeew.shared.generated.resources.onboarding_guide_swipe_hint
+import pheeeew.shared.generated.resources.onboarding_skip
 import pheeeew.shared.generated.resources.onboarding_start
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -113,7 +118,6 @@ private data class FeatureGuidePage(
     val highlights: List<GuideHighlight>,
     val arrows: List<GuideArrow>,
     val annotations: List<GuideAnnotation>,
-    val next: StringResource,
     val buttonTop: Float,
     val collection: Boolean = false,
 )
@@ -159,7 +163,6 @@ private val featureGuidePages =
                         .80f,
                     ),
                 ),
-            next = Res.string.guide_next_press,
             buttonTop = .44f,
         ),
         FeatureGuidePage(
@@ -202,7 +205,6 @@ private val featureGuidePages =
                         centered = true,
                     ),
                 ),
-            next = Res.string.guide_next_collection,
             buttonTop = .84f,
         ),
         FeatureGuidePage(
@@ -245,7 +247,6 @@ private val featureGuidePages =
                         centered = true,
                     ),
                 ),
-            next = Res.string.onboarding_start,
             buttonTop = 0f,
             collection = true,
         ),
@@ -257,30 +258,60 @@ internal fun FeatureGuideScreen(
     state: FeatureGuideState,
     modifier: Modifier = Modifier,
 ) {
-    FlowBackHandler(enabled = state.page > 0, onBack = state::back)
+    val pagerState = rememberPagerState(initialPage = state.page) { FEATURE_GUIDE_PAGE_COUNT }
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(pagerState.settledPage, pagerState.isScrollInProgress) {
+        if (!pagerState.isScrollInProgress) state.showPage(pagerState.settledPage)
+    }
+    FlowBackHandler(enabled = pagerState.settledPage > 0) {
+        scope.launch { pagerState.animateScrollToPage(pagerState.settledPage - 1) }
+    }
     Box(modifier.fillMaxSize().background(AppColors.Surface).safeDrawingPadding()) {
-        BoxWithConstraints(Modifier.fillMaxSize().background(Color(0xFF102017))) {
-            val pageIndex = state.page
-            val page = featureGuidePages[pageIndex]
-            val sourceHeight = if (page.collection) 2130f else 2070f
-            val width = minOf(maxWidth, maxHeight * (1080f / sourceHeight))
-            val height = width * (sourceHeight / 1080f)
-            Box(
-                Modifier
-                    .align(Alignment.Center)
-                    .width(width)
-                    .height(height)
-                    .clipToBounds(),
-            ) {
-                OnboardingAppCapture(
-                    page.screen,
-                    stringResource(page.description),
-                    Modifier.fillMaxSize(),
-                    page.collection,
-                )
-                FeatureGuideAnnotations(page, pageIndex) {
-                    if (state.page == pageIndex) {
-                        if (state.isLastPage) state.finish() else state.next()
+        Box(Modifier.fillMaxSize().background(Color(0xFF102017))) {
+            HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { pageIndex ->
+                BoxWithConstraints(Modifier.fillMaxSize()) {
+                    val page = featureGuidePages[pageIndex]
+                    val sourceHeight = if (page.collection) 2130f else 2070f
+                    val width = minOf(maxWidth, maxHeight * (1080f / sourceHeight))
+                    val height = width * (sourceHeight / 1080f)
+                    Box(
+                        Modifier
+                            .align(Alignment.Center)
+                            .width(width)
+                            .height(height)
+                            .clipToBounds(),
+                    ) {
+                        OnboardingAppCapture(
+                            page.screen,
+                            stringResource(page.description),
+                            Modifier.fillMaxSize(),
+                            page.collection,
+                        )
+                        FeatureGuideAnnotations(page, pageIndex, enabled = !pagerState.isScrollInProgress) {
+                            if (pagerState.settledPage == pageIndex && !pagerState.isScrollInProgress) {
+                                if (pageIndex == FEATURE_GUIDE_PAGE_COUNT - 1) {
+                                    state.showPage(pageIndex)
+                                    state.finish()
+                                } else {
+                                    scope.launch { pagerState.animateScrollToPage(pageIndex + 1) }
+                                }
+                            }
+                        }
+                        Box(
+                            Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(end = 12.dp, bottom = 4.dp)
+                                .size(76.dp, 44.dp)
+                                .clickable(
+                                    interactionSource = null,
+                                    indication = null,
+                                    role = Role.Button,
+                                    onClick = state::skip,
+                                ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(stringResource(Res.string.onboarding_skip), fontSize = 11.sp, color = Color.White)
+                        }
                     }
                 }
             }
@@ -292,6 +323,7 @@ internal fun FeatureGuideScreen(
 private fun FeatureGuideAnnotations(
     page: FeatureGuidePage,
     index: Int,
+    enabled: Boolean,
     onNext: () -> Unit,
 ) {
     BoxWithConstraints(Modifier.fillMaxSize().semantics { liveRegion = LiveRegionMode.Polite }) {
@@ -381,29 +413,46 @@ private fun FeatureGuideAnnotations(
                 }
             }
         }
-        val buttonTop = if (page.collection) height * .895f - 56.dp else height * page.buttonTop
-        Box(
+        val actionTop = if (page.collection) height * .895f - 56.dp else height * page.buttonTop
+        val actionModifier =
             Modifier
                 .align(Alignment.TopCenter)
-                .offset(y = buttonTop)
+                .offset(y = actionTop)
                 .width(width * .66f)
                 .height(48.dp)
-                .clip(
-                    RoundedCornerShape(28.dp),
-                ).background(AppColors.Primary)
-                .clickable(interactionSource = null, indication = null, role = Role.Button, onClick = onNext),
-            contentAlignment = Alignment.Center,
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (!page.collection) {
-                    Text("${index + 1} / $FEATURE_GUIDE_PAGE_COUNT", fontSize = 11.sp, color = AppColors.GroupInk)
-                    Spacer(Modifier.width(6.dp))
-                }
+        if (page.collection) {
+            Box(
+                actionModifier
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(AppColors.Primary)
+                    .clickable(
+                        enabled = enabled,
+                        interactionSource = null,
+                        indication = null,
+                        role = Role.Button,
+                        onClick = onNext,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
                 Text(
-                    stringResource(page.next),
+                    stringResource(Res.string.onboarding_start),
                     color = AppColors.GroupInk,
                     fontSize = (14f * textScale).coerceAtLeast(12f).sp,
                     fontWeight = FontWeight.Bold,
+                )
+            }
+        } else {
+            Column(
+                actionModifier,
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text("${index + 1} / $FEATURE_GUIDE_PAGE_COUNT", fontSize = 10.sp, color = AppColors.Primary)
+                Text(
+                    stringResource(Res.string.onboarding_guide_swipe_hint),
+                    color = Color.White,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(top = 5.dp),
                 )
             }
         }
