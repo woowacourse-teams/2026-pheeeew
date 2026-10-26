@@ -14,8 +14,6 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionTemplate;
 
 @RequiredArgsConstructor
 @Service
@@ -27,18 +25,18 @@ public class NotificationSettingService {
     private final DeviceRepository deviceRepository;
     private final DevicePushTokenRepository devicePushTokenRepository;
     private final DeviceNotificationSettingRepository deviceNotificationSettingRepository;
-    private final PlatformTransactionManager transactionManager;
+    private final DevicePushTokenRegistrationService devicePushTokenRegistrationService;
     private final Clock clock;
 
     public void updatePushToken(UUID devicePublicId, String token) {
         Long deviceId = findDeviceId(devicePublicId);
         try {
-            replacePushToken(deviceId, token);
+            devicePushTokenRegistrationService.updatePushToken(deviceId, token);
         } catch (DuplicateKeyException exception) {
             if (!isTokenTakenConcurrently(exception)) {
                 throw exception;
             }
-            replacePushToken(deviceId, token);
+            devicePushTokenRegistrationService.updatePushToken(deviceId, token);
         }
     }
 
@@ -60,13 +58,6 @@ public class NotificationSettingService {
         return deviceRepository.findByPublicId(devicePublicId)
                 .map(Device::getId)
                 .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
-    }
-
-    private void replacePushToken(Long deviceId, String token) {
-        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-            devicePushTokenRepository.deleteByTokenAndDeviceIdNot(token, deviceId);
-            devicePushTokenRepository.save(deviceId, token, clock.instant());
-        });
     }
 
     private boolean isTokenTakenConcurrently(DuplicateKeyException exception) {

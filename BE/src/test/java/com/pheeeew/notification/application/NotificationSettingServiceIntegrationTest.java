@@ -22,7 +22,8 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 @PostgisDataJpaTest
-@Import({NotificationSettingService.class, DevicePushTokenRepository.class, DeviceNotificationSettingRepository.class})
+@Import({NotificationSettingService.class, DevicePushTokenRegistrationService.class,
+        DevicePushTokenRepository.class, DeviceNotificationSettingRepository.class})
 class NotificationSettingServiceIntegrationTest {
 
     @Autowired
