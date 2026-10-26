@@ -39,6 +39,8 @@ public interface EmotionPressControllerApi {
                     - 상한을 넘겨도 **거절하지 않고 넘친 만큼만 버립니다.** 감정 하나당 `30`,
                       요청 전체 합 `100` 까지 반영하며 전체 합이 넘치면 감정 이름 오름차순으로 채웁니다.
                       이 상한은 **요청 하나**에 적용되고, 하루 누적에는 상한이 없습니다.
+                    - HTTP·WebSocket을 합쳐 기기별 초당 20회 충전, 최대 잔여 100회의 제한을 적용합니다.
+                      위 요청별 절삭 뒤에도 잔여량이 부족하면 추가 절삭 없이 전체 429와 Retry-After를 반환합니다.
                     - 누른 뒤 **이 기기가 오늘 누른 집계**를 바로 돌려줍니다. 누르지 않은 감정도 `0` 으로
                       내려와 다섯 감정이 항상 모두 있습니다.
                     - **이 응답의 `counts` 는 `GET /api/v2/emotions/presses/me` 의 오늘 값과 같습니다.**
@@ -60,6 +62,8 @@ public interface EmotionPressControllerApi {
                             examples = @ExampleObject(value = """
                                     {"code": "COMMON-001", "message": "요청 값이 올바르지 않습니다."}
                                     """))),
+            @ApiResponse(responseCode = "429", description = "공통 프레스 제한 부족. Retry-After 초 뒤 재시도"),
+            @ApiResponse(responseCode = "503", description = "현재 서버가 입력을 저장할 수 없음"),
             @ApiResponse(responseCode = "401", description = "인증할 수 없음",
                     content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ErrorResponse.class),

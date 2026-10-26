@@ -97,6 +97,8 @@ import org.springframework.test.context.ActiveProfiles;
         DeviceBlockService.class,
         EmotionPressMetrics.class,
         EmotionPressService.class,
+        com.pheeeew.pressrace.application.PressRaceService.class,
+        com.pheeeew.pressrace.infra.PressRaceRepository.class,
         EmotionPressQueryService.class,
         EmotionPressRankingService.class,
         DeviceDailyPressRepository.class,

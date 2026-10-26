@@ -12,7 +12,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
 import java.util.Map;
-import lombok.RequiredArgsConstructor;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.util.LinkedMultiValueMap;
@@ -20,10 +19,9 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
-@RequiredArgsConstructor
 public class GoogleAccessTokenProvider {
 
-    private static final String SCOPE = "https://www.googleapis.com/auth/playintegrity";
+    private static final String PLAY_INTEGRITY_SCOPE = "https://www.googleapis.com/auth/playintegrity";
     private static final String GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer";
     private static final String GRANT_TYPE_PARAMETER = "grant_type";
     private static final String ASSERTION_PARAMETER = "assertion";
@@ -35,10 +33,21 @@ public class GoogleAccessTokenProvider {
     private static final Duration FALLBACK_TOKEN_TTL = Duration.ofMinutes(5);
 
     private final RestClient googleApiRestClient;
-    private final PlayIntegrityProperties playIntegrityProperties;
+    private final String serviceAccountBase64;
+    private final String scope;
 
     private volatile String cachedAccessToken;
     private volatile Instant cachedAccessTokenExpiresAt = Instant.EPOCH;
+
+    public GoogleAccessTokenProvider(RestClient googleApiRestClient, PlayIntegrityProperties playIntegrityProperties) {
+        this(googleApiRestClient, playIntegrityProperties.serviceAccountBase64(), PLAY_INTEGRITY_SCOPE);
+    }
+
+    public GoogleAccessTokenProvider(RestClient googleApiRestClient, String serviceAccountBase64, String scope) {
+        this.googleApiRestClient = googleApiRestClient;
+        this.serviceAccountBase64 = serviceAccountBase64;
+        this.scope = scope;
+    }
 
     public synchronized String accessToken() {
         Instant now = Instant.now();
@@ -46,8 +55,7 @@ public class GoogleAccessTokenProvider {
             return cachedAccessToken;
         }
 
-        GoogleServiceAccountKey serviceAccountKey =
-                GoogleServiceAccountKey.from(playIntegrityProperties.serviceAccountBase64());
+        GoogleServiceAccountKey serviceAccountKey = GoogleServiceAccountKey.from(serviceAccountBase64);
         Map<String, Object> tokenResponse = exchange(serviceAccountKey, now);
 
         cachedAccessToken = requireAccessToken(tokenResponse);
@@ -78,7 +86,7 @@ public class GoogleAccessTokenProvider {
         JWTClaimsSet claims = new JWTClaimsSet.Builder()
                 .issuer(serviceAccountKey.clientEmail())
                 .audience(serviceAccountKey.tokenUri())
-                .claim(SCOPE_CLAIM, SCOPE)
+                .claim(SCOPE_CLAIM, scope)
                 .issueTime(Date.from(now))
                 .expirationTime(Date.from(now.plus(ASSERTION_TTL)))
                 .build();

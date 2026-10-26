@@ -5,6 +5,7 @@ import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static com.pheeeew.emotion.fixture.DeviceDailyPressFixture.개인_프레스를_저장한다;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -108,7 +109,7 @@ class CollectionClaimServiceIntegrationTest {
         var result = service.claim(device.getPublicId(), TODAY, EmotionState.ANGRY);
         entities.flush();
         entities.clear();
-        var storedCard = cards.findByDeviceIdAndCardDateAndState(deviceId, TODAY, EmotionState.ANGRY).orElseThrow();
+        var storedCard = cards.findByDeviceIdAndCardDate(deviceId, TODAY).orElseThrow();
         var storedState = drawStates.findByDeviceIdAndState(deviceId, EmotionState.ANGRY).orElseThrow();
 
         // then
@@ -200,14 +201,13 @@ class CollectionClaimServiceIntegrationTest {
     }
 
     @Test
-    void 다른_기기_날짜_감정의_활동을_섞어_수령하지_않는다() {
+    void 다른_기기와_다른_날짜의_활동은_합산하지_않는다() {
         // given
         var owner = devices.saveAndFlush(기본_기기_빌더().build());
         var other = devices.saveAndFlush(기본_기기_빌더().build());
         일별_스탬프를_저장한다(jdbc, owner.getId(), TODAY, EmotionState.ANGRY, 1);
         개인_프레스를_저장한다(jdbc, other.getId(), TODAY, EmotionState.ANGRY, 100);
         개인_프레스를_저장한다(jdbc, owner.getId(), TODAY.minusDays(1), EmotionState.ANGRY, 100);
-        개인_프레스를_저장한다(jdbc, owner.getId(), TODAY, EmotionState.EXHAUSTED, 100);
 
         // when / then
         assertThatThrownBy(() -> service.claim(owner.getPublicId(), TODAY, EmotionState.ANGRY))
@@ -275,17 +275,18 @@ class CollectionClaimServiceIntegrationTest {
         var first = devices.saveAndFlush(기본_기기_빌더().build());
         var second = devices.saveAndFlush(기본_기기_빌더().build());
         for (var device : java.util.List.of(first, second)) {
-            for (var state : java.util.List.of(EmotionState.ANGRY, EmotionState.EXHAUSTED)) {
-                일별_스탬프를_저장한다(jdbc, device.getId(), TODAY, state, 1);
-                개인_프레스를_저장한다(jdbc, device.getId(), TODAY, state, 100);
+            for (var date : java.util.List.of(TODAY, TODAY.plusDays(1))) {
+                일별_스탬프를_저장한다(jdbc, device.getId(), date, EmotionState.ANGRY, 1);
+                개인_프레스를_저장한다(jdbc, device.getId(), date, EmotionState.ANGRY, 100);
             }
         }
 
         // when
         var firstAngry = service.claim(first.getPublicId(), TODAY, EmotionState.ANGRY);
-        var firstExhausted = service.claim(first.getPublicId(), TODAY, EmotionState.EXHAUSTED);
         var secondAngry = service.claim(second.getPublicId(), TODAY, EmotionState.ANGRY);
-        var secondExhausted = service.claim(second.getPublicId(), TODAY, EmotionState.EXHAUSTED);
+        when(clock.instant()).thenReturn(Instant.parse("2026-10-23T03:00:00Z"));
+        var firstExhausted = service.claim(first.getPublicId(), TODAY.plusDays(1), EmotionState.EXHAUSTED);
+        var secondExhausted = service.claim(second.getPublicId(), TODAY.plusDays(1), EmotionState.EXHAUSTED);
 
         // then
         assertThat(java.util.List.of(firstAngry, firstExhausted, secondAngry, secondExhausted))
@@ -293,6 +294,82 @@ class CollectionClaimServiceIntegrationTest {
         assertThat(java.util.List.of(firstAngry, firstExhausted, secondAngry, secondExhausted))
                 .allSatisfy(card -> assertThat(card.cycle()).isEqualTo(1));
         assertThat(cards.count()).isEqualTo(4);
+    }
+
+    @Test
+    void 다섯_감정의_활동을_합산해_조건을_채우면_활동이_없는_감정으로도_수령한다() {
+        // given
+        var device = devices.saveAndFlush(기본_기기_빌더().build());
+        일별_스탬프를_저장한다(jdbc, device.getId(), TODAY, EmotionState.DISCOURAGED, 1);
+        개인_프레스를_저장한다(jdbc, device.getId(), TODAY, EmotionState.ANGRY, 60);
+        개인_프레스를_저장한다(jdbc, device.getId(), TODAY, EmotionState.EXHAUSTED, 40);
+
+        // when
+        var card = service.claim(device.getPublicId(), TODAY, EmotionState.FRUSTRATED);
+
+        // then
+        assertThat(card.state()).isEqualTo(EmotionState.FRUSTRATED);
+        assertThat(cards.count()).isOne();
+    }
+
+    @Test
+    void 합산_프레스가_100회_미만이면_발급하지_않는다() {
+        // given
+        var device = devices.saveAndFlush(기본_기기_빌더().build());
+        일별_스탬프를_저장한다(jdbc, device.getId(), TODAY, EmotionState.ANGRY, 1);
+        개인_프레스를_저장한다(jdbc, device.getId(), TODAY, EmotionState.ANGRY, 50);
+        개인_프레스를_저장한다(jdbc, device.getId(), TODAY, EmotionState.EXHAUSTED, 49);
+
+        // when / then
+        assertThatThrownBy(() -> service.claim(device.getPublicId(), TODAY, EmotionState.ANGRY))
+                .isInstanceOfSatisfying(CollectionException.class,
+                        failure -> assertThat(failure.getErrorCode()).isEqualTo(CollectionErrorCode.COLLECTION_REQUIREMENTS_NOT_MET));
+        assertThat(cards.count()).isZero();
+    }
+
+    @Test
+    void 오늘_카드를_받은_뒤_다른_감정으로_요청하면_409로_거절하고_조합을_소비하지_않는다() {
+        // given
+        var device = devices.saveAndFlush(기본_기기_빌더().build());
+        일별_스탬프를_저장한다(jdbc, device.getId(), TODAY, EmotionState.ANGRY, 1);
+        개인_프레스를_저장한다(jdbc, device.getId(), TODAY, EmotionState.ANGRY, 100);
+        var claimed = service.claim(device.getPublicId(), TODAY, EmotionState.ANGRY);
+
+        // when
+        Throwable rejected = catchThrowable(() -> service.claim(device.getPublicId(), TODAY, EmotionState.EXHAUSTED));
+        var repeated = service.claim(device.getPublicId(), TODAY, EmotionState.ANGRY);
+
+        // then
+        assertThat(rejected).isInstanceOfSatisfying(CollectionException.class,
+                failure -> assertThat(failure.getErrorCode()).isEqualTo(CollectionErrorCode.COLLECTION_ALREADY_CLAIMED_TODAY));
+        assertThat(repeated).isEqualTo(claimed);
+        assertThat(cards.count()).isOne();
+        assertThat(drawStates.findByDeviceIdAndState(device.getId(), EmotionState.EXHAUSTED)).isEmpty();
+    }
+
+    @Test
+    void 다음_날에는_조건을_다시_채우면_다른_감정으로_한_장을_더_받는다() {
+        // given
+        var device = devices.saveAndFlush(기본_기기_빌더().build());
+        for (var date : java.util.List.of(TODAY, TODAY.plusDays(1))) {
+            일별_스탬프를_저장한다(jdbc, device.getId(), date, EmotionState.ANGRY, 1);
+            개인_프레스를_저장한다(jdbc, device.getId(), date, EmotionState.ANGRY, 100);
+        }
+        var yesterdayCard = service.claim(device.getPublicId(), TODAY, EmotionState.ANGRY);
+        when(clock.instant()).thenReturn(Instant.parse("2026-10-23T03:00:00Z"));
+
+        // when
+        var todayCard = service.claim(device.getPublicId(), TODAY.plusDays(1), EmotionState.EXHAUSTED);
+        var repeatedYesterday = service.claim(device.getPublicId(), TODAY, EmotionState.ANGRY);
+        Throwable otherYesterday = catchThrowable(() -> service.claim(device.getPublicId(), TODAY, EmotionState.EXHAUSTED));
+
+        // then
+        assertThat(todayCard.state()).isEqualTo(EmotionState.EXHAUSTED);
+        assertThat(todayCard.cardId()).isNotEqualTo(yesterdayCard.cardId());
+        assertThat(repeatedYesterday).isEqualTo(yesterdayCard);
+        assertThat(otherYesterday).isInstanceOfSatisfying(CollectionException.class,
+                failure -> assertThat(failure.getErrorCode()).isEqualTo(CollectionErrorCode.COLLECTION_CLAIM_DATE_INVALID));
+        assertThat(cards.count()).isEqualTo(2);
     }
 
     @Test

@@ -8,7 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.pheeeew.common.logging.RequestTiming.Measurement;
-import com.pheeeew.emotion.application.command.EmotionPressService;
+import com.pheeeew.emotion.application.query.EmotionPressQueryService;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -30,12 +30,12 @@ class RequestServiceTimingAspectTest {
     @ParameterizedTest
     @CsvSource({"SUCCESS,60", "BEGIN_FAILURE,10", "BODY_FAILURE,70", "COMMIT_FAILURE,100", "JOINED,20"})
     void 자동_프록시의_트랜잭션_경계와_실패를_서비스_시간에_반영한다(Scenario scenario, long expected) {
-        // given: 서비스 비즈니스 로직이 아닌 advice 순서와 트랜잭션 경계만 검증한다.
+        // given: 트랜잭션을 직접 소유한 조회 서비스로 advice 순서와 경계를 검증한다.
         var nanoTime = new AtomicLong();
         var original = new IllegalStateException("transaction failure");
         var manager = new TestTransactionManager(nanoTime, scenario, original);
-        var target = mock(EmotionPressService.class);
-        when(target.press(null, Map.of())).thenAnswer(invocation -> {
+        var target = mock(EmotionPressQueryService.class);
+        when(target.findMyDailyPresses(null, 0)).thenAnswer(invocation -> {
             nanoTime.addAndGet(20);
             if (scenario == Scenario.BODY_FAILURE) {
                 throw original;
@@ -47,26 +47,26 @@ class RequestServiceTimingAspectTest {
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
         try (var context = new AnnotationConfigApplicationContext()) {
             context.register(Config.class);
-            context.registerBean(EmotionPressService.class, () -> target);
+            context.registerBean(EmotionPressQueryService.class, () -> target);
             context.registerBean("transactionManager", TestTransactionManager.class, () -> manager);
             context.registerBean(RequestServiceTimingAspect.class, () -> new RequestServiceTimingAspect(nanoTime::get));
             context.refresh();
-            var service = context.getBean(EmotionPressService.class);
+            var service = context.getBean(EmotionPressQueryService.class);
 
             // when
             if (scenario == Scenario.JOINED) {
-                new TransactionTemplate(manager).execute(status -> service.press(null, Map.of()));
+                new TransactionTemplate(manager).execute(status -> service.findMyDailyPresses(null, 0));
             } else if (scenario == Scenario.SUCCESS) {
-                assertThat(service.press(null, Map.of())).isNull();
+                assertThat(service.findMyDailyPresses(null, 0)).isNull();
             } else {
-                assertThatThrownBy(() -> service.press(null, Map.of())).isSameAs(original);
+                assertThatThrownBy(() -> service.findMyDailyPresses(null, 0)).isSameAs(original);
             }
 
             // then: begin=10, body=20, commit=30, rollback=40. 일반 예외의 커밋 실패에는 롤백도 포함한다.
             assertThat(RequestTiming.snapshot(request)).containsExactlyEntriesOf(
-                    Map.of(PheeeewRequestTimingStage.PRESS_SERVICE, Measurement.of(1, expected, expected)));
+                    Map.of(PheeeewRequestTimingStage.PRESS_MY_SERVICE, Measurement.of(1, expected, expected)));
             if (scenario == Scenario.BEGIN_FAILURE) {
-                verify(target, never()).press(null, Map.of());
+                verify(target, never()).findMyDailyPresses(null, 0);
             }
             if (scenario == Scenario.JOINED) {
                 assertThat(nanoTime.get()).isEqualTo(60);

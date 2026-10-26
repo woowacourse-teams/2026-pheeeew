@@ -204,7 +204,7 @@ jobs:
 
       - name: .env 갱신
         env:
-          APP_IMAGE: ${{ secrets.DOCKERHUB_IMAGE }}:dev-${{ github.sha }}
+          APP_IMAGE: ${{ secrets.DOCKERHUB_IMAGE }}:${{ github.event.inputs.image_tag || format('dev-{0}', github.sha) }}
           DB_URL: ${{ secrets.DB_URL }}
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
@@ -212,6 +212,7 @@ jobs:
           JWT_PUBLIC_KEY_BASE64: ${{ secrets.JWT_PUBLIC_KEY_BASE64 }}
           PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64: ${{ secrets.PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64 }}
           PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER: ${{ secrets.PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER }}
+          FCM_SERVICE_ACCOUNT_BASE64: ${{ secrets.FCM_SERVICE_ACCOUNT_BASE64 }}
           S3_BUCKET: ${{ secrets.S3_BUCKET }}
           S3_KEY_PREFIX: ${{ secrets.S3_KEY_PREFIX }}
           S3_REGION: ${{ secrets.S3_REGION }}
@@ -228,6 +229,7 @@ jobs:
             echo "JWT_PUBLIC_KEY_BASE64=$JWT_PUBLIC_KEY_BASE64"
             echo "PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64=$PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64"
             echo "PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=$PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER"
+            echo "FCM_SERVICE_ACCOUNT_BASE64=$FCM_SERVICE_ACCOUNT_BASE64"
             printf '%s\n' "S3_BUCKET=$S3_BUCKET" "S3_KEY_PREFIX=$S3_KEY_PREFIX" "S3_REGION=$S3_REGION"
             printf '%s\n' "COLLECTION_CARD_VERSION=$COLLECTION_CARD_VERSION"
           } > env.tmp

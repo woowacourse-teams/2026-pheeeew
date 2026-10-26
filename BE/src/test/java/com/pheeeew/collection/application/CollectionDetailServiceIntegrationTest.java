@@ -127,7 +127,7 @@ class CollectionDetailServiceIntegrationTest {
 
     @ParameterizedTest
     @CsvSource({"false,false", "true,false", "false,true"})
-    void 발급된_카드의_집계가_하나라도_없으면_오류를_반환한다(boolean hasStamps, boolean hasPresses) {
+    void 카드_감정의_집계가_없으면_그_횟수를_0으로_보여_준다(boolean hasStamps, boolean hasPresses) {
         // given
         var owner = devices.saveAndFlush(기본_기기_빌더().build());
         var card = cards.saveAndFlush(기본_카드_빌더().deviceId(owner.getId()).build());
@@ -138,11 +138,13 @@ class CollectionDetailServiceIntegrationTest {
             개인_프레스를_저장한다(jdbc, owner.getId(), card.getCardDate(), EmotionState.ANGRY, 100);
         }
 
-        // when / then
-        assertThatThrownBy(() -> service.findDetail(owner.getPublicId(), card.getPublicId()))
-                .isInstanceOfSatisfying(CollectionException.class,
-                        exception -> assertThat(exception.getErrorCode().getCode()).isEqualTo("COLLECTION-006"));
-        assertThat(cards.findById(card.getId())).isPresent();
+        // when
+        var detail = service.findDetail(owner.getPublicId(), card.getPublicId());
+
+        // then
+        assertThat(detail.stampCount()).isEqualTo(hasStamps ? 1 : 0);
+        assertThat(detail.pressCount()).isEqualTo(hasPresses ? 100 : 0);
+        assertThat(detail.cardId()).isEqualTo(card.getPublicId());
     }
 
     @Test

@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 import os
+import signal
 import shutil
 import subprocess
 import sys
 import tempfile
 import time
 import uuid
+from contextlib import contextmanager
 from pathlib import Path
 
 import yaml
@@ -245,7 +247,7 @@ class Fixture:
             ['curl', '-sk', '-o', '/dev/null', '-w', '%{http_code}', '-m', '150',
              '--resolve', f'{HOST}:{HTTPS_PORT}:127.0.0.1',
              f'https://{HOST}:{HTTPS_PORT}{SLOW_PATH}?seconds={seconds}'],
-            text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
 
     def served_upstream(self):
         result = sh('curl', '-sk', '-o', '/dev/null', '-D', '-', '-w', '%{http_code}', '-m', '5',
@@ -279,7 +281,7 @@ class Fixture:
         deadline = time.monotonic() + timeout
         marker = self.appstate / f'inflight-{color}'
         while marker.exists():
-            if not self.exists(color):
+            if not self.exists(color) and marker.exists():
                 raise Failure(f'{color} 가 진행 중 요청이 끝나기 전에 삭제됐다')
             if time.monotonic() > deadline:
                 raise Failure(f'{color} 의 느린 요청이 끝나지 않았다')
@@ -389,11 +391,29 @@ class Fixture:
         script = remote_script().replace('/opt/pheeeew', str(self.dir)).replace(PREFIX, self.project)
         proc = subprocess.Popen(['bash', '-s'], stdin=subprocess.PIPE,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                text=True, env=self.shell_env(), cwd=self.dir)
+                                text=True, env=self.shell_env(), cwd=self.dir, start_new_session=True)
         proc.stdin.write(script)
         proc.stdin.close()
         proc.stdin = None
         return proc
+
+    @contextmanager
+    def capture_processes_on_failure(self):
+        processes = {}
+        try:
+            yield processes
+        except Exception:
+            for name, proc in processes.items():
+                try:
+                    out, err = proc.communicate(timeout=300 if name == 'deploy' else 160)
+                except subprocess.TimeoutExpired:
+                    print(f'    {name}: 결과 수집 시간 초과')
+                    os.killpg(proc.pid, signal.SIGKILL)
+                    out, err = proc.communicate()
+                print(f'    {name}: exit={proc.returncode}')
+                print(f'    {name} stdout:\n{out or "(empty)"}')
+                print(f'    {name} stderr:\n{err or "(empty)"}')
+            raise
 
     def wait_deploy(self, proc, timeout=300):
         out, err = proc.communicate(timeout=timeout)
@@ -603,46 +623,50 @@ def scenario_broken_json_body(fx):
 def scenario_normal_waits_for_inflight(fx):
     fx.point_at('set $upstream_app app-blue;\n')
     fx.start_app('app-blue')
-    inflight = fx.slow_request(seconds=35)
-    fx.wait_inflight('app-blue')
-    deploy = fx.deploy_async()
-    fx.wait_edge_serves('app-green')
-    expect((fx.appstate / 'inflight-app-blue').exists(),
-           'green 으로 전환된 시점에 blue 요청이 이미 끝나 겹침을 확인하지 못했다')
-    fx.assert_alive_until_inflight_done('app-blue')
-    result = fx.wait_deploy(deploy)
-    code = inflight.communicate(timeout=120)[0].strip()
-    expect(code == '200', f'진행 중이던 요청이 {code} 로 끝났다')
-    expect(result.returncode == 0, f'종료 코드 {result.returncode}\n{result.stdout}')
-    expect(fx.pointer_color() == 'app-green', f'전환 파일 {fx.pointer_color()}')
-    expect(fx.running('app-green'), 'app-green 이 떠 있지 않다')
-    expect(not fx.exists('app-blue'), '요청이 끝났는데 app-blue 가 남아 있다')
-    expect(result.stdout.index('이전 요청이 모두 끝났습니다')
-           < result.stdout.index('배포 성공'), '드레인 확인보다 배포 성공이 먼저다')
+    with fx.capture_processes_on_failure() as processes:
+        inflight = processes['http'] = fx.slow_request(seconds=35)
+        fx.wait_inflight('app-blue')
+        deploy = processes['deploy'] = fx.deploy_async()
+        fx.wait_edge_serves('app-green')
+        expect((fx.appstate / 'inflight-app-blue').exists(),
+               'green 으로 전환된 시점에 blue 요청이 이미 끝나 겹침을 확인하지 못했다')
+        fx.assert_alive_until_inflight_done('app-blue')
+        result = fx.wait_deploy(deploy)
+        code = inflight.communicate(timeout=120)[0].strip()
+        expect(inflight.returncode == 0 and code == '200',
+               f'진행 중이던 요청: curl exit={inflight.returncode}, HTTP={code}')
+        expect(result.returncode == 0, f'종료 코드 {result.returncode}\n{result.stdout}')
+        expect(fx.pointer_color() == 'app-green', f'전환 파일 {fx.pointer_color()}')
+        expect(fx.running('app-green'), 'app-green 이 떠 있지 않다')
+        expect(not fx.exists('app-blue'), '요청이 끝났는데 app-blue 가 남아 있다')
+        expect(result.stdout.index('이전 요청이 모두 끝났습니다')
+               < result.stdout.index('배포 성공'), '드레인 확인보다 배포 성공이 먼저다')
 
 
 def scenario_rollback_waits_for_inflight(fx):
     fx.point_at('set $upstream_app app-blue;\n')
     fx.start_app('app-blue')
     fx.edge('app-green', code='503')
-    deploy = fx.deploy_async()
-    fx.wait_edge_serves('app-green')
-    inflight = fx.slow_request(seconds=40)
-    fx.wait_inflight('app-green')
-    fx.wait_edge_serves('app-blue')
-    expect((fx.appstate / 'inflight-app-green').exists(),
-           'blue 로 복구된 시점에 green 요청이 이미 끝나 겹침을 확인하지 못했다')
-    fx.assert_alive_until_inflight_done('app-green')
-    result = fx.wait_deploy(deploy)
-    code = inflight.communicate(timeout=150)[0].strip()
-    expect(code == '200', f'green 으로 가던 요청이 {code} 로 끝났다')
-    expect(result.returncode == 1, f'종료 코드 {result.returncode}')
-    expect(fx.pointer_color() == 'app-blue', f'전환 파일 {fx.pointer_color()}')
-    expect(fx.running('app-blue'), 'app-blue 가 내려갔다')
-    expect(not fx.exists('app-green'), '요청이 끝났는데 app-green 이 남아 있다')
-    expect(result.stdout.index('복구했고 정상 응답을 확인했습니다')
-           < result.stdout.index('app-green 을 정리했습니다'),
-           '복구 확인보다 새 서버 삭제가 먼저다')
+    with fx.capture_processes_on_failure() as processes:
+        deploy = processes['deploy'] = fx.deploy_async()
+        fx.wait_edge_serves('app-green')
+        inflight = processes['http'] = fx.slow_request(seconds=40)
+        fx.wait_inflight('app-green')
+        fx.wait_edge_serves('app-blue')
+        expect((fx.appstate / 'inflight-app-green').exists(),
+               'blue 로 복구된 시점에 green 요청이 이미 끝나 겹침을 확인하지 못했다')
+        fx.assert_alive_until_inflight_done('app-green')
+        result = fx.wait_deploy(deploy)
+        code = inflight.communicate(timeout=150)[0].strip()
+        expect(inflight.returncode == 0 and code == '200',
+               f'green 으로 가던 요청: curl exit={inflight.returncode}, HTTP={code}')
+        expect(result.returncode == 1, f'종료 코드 {result.returncode}')
+        expect(fx.pointer_color() == 'app-blue', f'전환 파일 {fx.pointer_color()}')
+        expect(fx.running('app-blue'), 'app-blue 가 내려갔다')
+        expect(not fx.exists('app-green'), '요청이 끝났는데 app-green 이 남아 있다')
+        expect(result.stdout.index('복구했고 정상 응답을 확인했습니다')
+               < result.stdout.index('app-green 을 정리했습니다'),
+               '복구 확인보다 새 서버 삭제가 먼저다')
 
 
 def assert_target_api_rejected(fx, mode):
