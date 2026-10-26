@@ -20,34 +20,48 @@ class NotificationSettingsApi(
 ) : NotificationPreferencesStore {
     private val mutex = Mutex()
 
-    override suspend fun read(): NotificationPreferences = mutex.withLock { fetch() }
+    override suspend fun read(): NotificationPreferences = mutex.withLock { fetch(currentGeneration()) }
 
     override suspend fun update(
         kind: NotificationKind,
         enabled: Boolean,
     ): NotificationPreferences =
         mutex.withLock {
-            val current = fetch()
+            val generation = currentGeneration()
+            val current = fetch(generation)
             save(
                 when (kind) {
                     NotificationKind.COLLECTION -> current.copy(collectionEnabled = enabled)
                     NotificationKind.RANK_DROP -> current.copy(rankDropEnabled = enabled)
                 },
+                generation,
             )
         }
 
     override suspend fun replace(preferences: NotificationPreferences): NotificationPreferences =
         mutex.withLock {
-            save(preferences)
+            save(preferences, currentGeneration())
         }
 
-    private suspend fun fetch(): NotificationPreferences {
-        val generation = requireNotNull(sessionGeneration()) { "Device session is not ready" }
+    private fun currentGeneration(): Long = requireNotNull(sessionGeneration()) { "Device session is not ready" }
+
+    private fun requireGeneration(generation: Long) {
+        check(sessionGeneration() == generation) { "Device session changed" }
+    }
+
+    private suspend fun fetch(generation: Long): NotificationPreferences {
+        requireGeneration(generation)
         val result =
             requests.execute(
-                ApiRequest(HttpMethod.Get, PATH, RequestKind.READ, monitoringEndpoint = "notification_settings"),
+                ApiRequest(
+                    HttpMethod.Get,
+                    PATH,
+                    RequestKind.READ,
+                    monitoringEndpoint = "notification_settings",
+                    expectedSessionGeneration = generation,
+                ),
             ) { it.body<SettingsDto>() }
-        check(sessionGeneration() == generation) { "Device session changed" }
+        requireGeneration(generation)
         return when (result) {
             is ApiResult.Success -> {
                 NotificationPreferences(
@@ -62,8 +76,11 @@ class NotificationSettingsApi(
         }
     }
 
-    private suspend fun save(value: NotificationPreferences): NotificationPreferences {
-        val generation = requireNotNull(sessionGeneration()) { "Device session is not ready" }
+    private suspend fun save(
+        value: NotificationPreferences,
+        generation: Long,
+    ): NotificationPreferences {
+        requireGeneration(generation)
         val result =
             requests.executeNoContent(
                 ApiRequest(
@@ -73,11 +90,12 @@ class NotificationSettingsApi(
                     body = SettingsDto(value.collectionEnabled, value.rankDropEnabled),
                     replayAfterAuthentication = true,
                     monitoringEndpoint = "notification_settings",
+                    expectedSessionGeneration = generation,
                 ),
             )
-        check(sessionGeneration() == generation) { "Device session changed" }
+        requireGeneration(generation)
         check(result is ApiResult.Success) { "Notification settings could not be saved" }
-        return fetch()
+        return fetch(generation)
     }
 
     @Serializable
