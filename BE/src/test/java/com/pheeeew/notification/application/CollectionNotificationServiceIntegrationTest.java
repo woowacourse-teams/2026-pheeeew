@@ -119,7 +119,7 @@ class CollectionNotificationServiceIntegrationTest {
     }
 
     @Test
-    void 카드를_받은_뒤_다른_감정이_발급_가능해지면_그때부터_1시간을_센다() {
+    void 카드를_받은_뒤_다른_감정의_조건을_채워도_다시_보내지_않는다() {
         // given
         Device device = 토큰이_있는_기기(기본_등록_값);
         발급_가능하게_만든다(device, EmotionState.ANGRY);
@@ -133,14 +133,12 @@ class CollectionNotificationServiceIntegrationTest {
         service.notifyClaimable();
 
         // when
-        지금은(오전_10시.plusSeconds(5 * 60 * 60 + 59 * 60));
-        service.notifyClaimable();
-        verify(pushSender, never()).send(anyString(), any());
         지금은(오전_10시.plusSeconds(6 * 60 * 60));
         service.notifyClaimable();
+        service.remindClaimable();
 
         // then
-        보낸_메시지(기본_등록_값);
+        verify(pushSender, never()).send(anyString(), any());
     }
 
     @Test
@@ -211,13 +209,13 @@ class CollectionNotificationServiceIntegrationTest {
     }
 
     @Test
-    void 리마인더는_받지_않은_카드가_있는_기기에만_보낸다() {
+    void 리마인더는_합산_조건을_채우고_오늘_카드가_없는_기기에만_보낸다() {
         // given
         Device 받지_않은_기기 = 토큰이_있는_기기(기본_등록_값);
         발급_가능하게_만든다(받지_않은_기기, EmotionState.ANGRY);
         Device 이미_받은_기기 = 토큰이_있는_기기(새_등록_값);
         발급_가능하게_만든다(이미_받은_기기, EmotionState.ANGRY);
-        카드를_받는다(이미_받은_기기, EmotionState.ANGRY);
+        카드를_받는다(이미_받은_기기, EmotionState.EXHAUSTED);
         Device 조건이_모자란_기기 = 토큰이_있는_기기("insufficient-token");
         일별_스탬프를_저장한다(jdbc, 조건이_모자란_기기.getId(), TODAY, EmotionState.ANGRY, 1);
         개인_프레스를_저장한다(jdbc, 조건이_모자란_기기.getId(), TODAY, EmotionState.ANGRY, 99);
@@ -235,7 +233,8 @@ class CollectionNotificationServiceIntegrationTest {
         // then
         PushMessage message = 보낸_메시지(기본_등록_값);
         assertThat(message.data()).isEqualTo(Map.of("type", "COLLECTION_CLAIM_REMINDER", "date", "2026-10-26"));
-        verify(pushSender, times(1)).send(anyString(), any());
+        verify(pushSender).send(eq("other-state-token"), any());
+        verify(pushSender, times(2)).send(anyString(), any());
     }
 
     @Test

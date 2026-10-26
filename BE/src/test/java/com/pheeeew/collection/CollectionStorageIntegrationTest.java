@@ -30,13 +30,13 @@ class CollectionStorageIntegrationTest {
     private JdbcClient jdbc;
 
     @Test
-    void 같은_기기_날짜_감정은_다른_조합이어도_카드를_두_장_저장하지_못한다() {
+    void 같은_기기_날짜는_감정이_달라도_카드를_두_장_저장하지_못한다() {
         // given
         Device device = 기본_기기_빌더().build();
         entities.persist(device);
         entities.persist(기본_카드_빌더().deviceId(device.getId()).build());
         entities.flush();
-        var duplicate = 기본_카드_빌더().deviceId(device.getId()).combinationIndex(1).build();
+        var duplicate = 기본_카드_빌더().deviceId(device.getId()).state(EmotionState.EXHAUSTED).build();
 
         // when / then
         assertThatThrownBy(() -> {
@@ -72,7 +72,8 @@ class CollectionStorageIntegrationTest {
         // when
         entities.persist(기본_카드_빌더().deviceId(owner.getId()).build());
         entities.persist(기본_카드_빌더().deviceId(other.getId()).build());
-        entities.persist(기본_카드_빌더().deviceId(owner.getId()).state(EmotionState.EXHAUSTED).build());
+        entities.persist(기본_카드_빌더().deviceId(owner.getId()).state(EmotionState.EXHAUSTED)
+                .cardDate(LocalDate.of(2026, 10, 21)).build());
         entities.persist(기본_카드_빌더().deviceId(owner.getId()).cycle(2)
                 .cardDate(LocalDate.of(2026, 10, 23)).build());
         entities.flush();

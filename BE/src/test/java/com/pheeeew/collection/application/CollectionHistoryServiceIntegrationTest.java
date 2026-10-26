@@ -14,7 +14,6 @@ import com.pheeeew.collection.domain.repository.CollectionAssetRepository;
 import com.pheeeew.collection.domain.repository.CollectionCardRepository;
 import com.pheeeew.collection.domain.repository.CollectionProgressRepository;
 import com.pheeeew.collection.domain.repository.DeviceDailyStampRepository;
-import com.pheeeew.collection.exception.CollectionErrorCode;
 import com.pheeeew.collection.exception.CollectionException;
 import com.pheeeew.collection.infra.CollectionAssetConfiguration;
 import com.pheeeew.device.domain.repository.DeviceRepository;
@@ -155,36 +154,13 @@ class CollectionHistoryServiceIntegrationTest {
     }
 
     @Test
-    void 같은_날짜의_여러_카드도_중복_없이_다음_페이지로_조회한다() {
-        // given
-        var owner = devices.saveAndFlush(기본_기기_빌더().build());
-        var date = LocalDate.of(2026, 10, 21);
-        var first = 카드를_저장한다(owner.getId(), date, EmotionState.ANGRY, 0);
-        var second = 카드를_저장한다(owner.getId(), date, EmotionState.EXHAUSTED, 0);
-        var third = 카드를_저장한다(owner.getId(), date, EmotionState.FRUSTRATED, 0);
-
-        // when
-        var page = service.findHistory(owner.getPublicId(), null, 2, null);
-
-        // then
-        assertThat(page.items()).extracting(item -> item.cardId())
-                .containsExactly(third.getPublicId(), second.getPublicId());
-        assertThat(page.hasNext()).isTrue();
-        assertThat(page.nextCursor()).isNotBlank();
-        var lastPage = service.findHistory(owner.getPublicId(), null, 2, page.nextCursor());
-        assertThat(lastPage.items()).extracting(item -> item.cardId()).containsExactly(first.getPublicId());
-        assertThat(lastPage.hasNext()).isFalse();
-        assertThat(lastPage.nextCursor()).isNull();
-    }
-
-    @Test
     void 감정_필터는_다음_페이지에서_생략해도_유지한다() {
         // given
         var owner = devices.saveAndFlush(기본_기기_빌더().build());
         var date = LocalDate.of(2026, 10, 21);
-        var older = 카드를_저장한다(owner.getId(), date.minusDays(1), EmotionState.ANGRY, 0);
+        var older = 카드를_저장한다(owner.getId(), date.minusDays(2), EmotionState.ANGRY, 0);
         var newer = 카드를_저장한다(owner.getId(), date, EmotionState.ANGRY, 1);
-        카드를_저장한다(owner.getId(), date, EmotionState.EXHAUSTED, 0);
+        카드를_저장한다(owner.getId(), date.minusDays(1), EmotionState.EXHAUSTED, 0);
 
         // when
         var first = service.findHistory(owner.getPublicId(), EmotionState.ANGRY, 1, null);
@@ -211,16 +187,17 @@ class CollectionHistoryServiceIntegrationTest {
         var date = LocalDate.of(2026, 10, 22);
         var expected = Map.of(EmotionState.FRUSTRATED, 1L, EmotionState.IRRITATED, 2L,
                 EmotionState.EXHAUSTED, 3L, EmotionState.DISCOURAGED, 4L, EmotionState.ANGRY, 5L);
+        int[] daysAgo = {0};
         expected.forEach((state, count) -> {
             for (int i = 0; i < count; i++) {
-                카드를_저장한다(owner.getId(), date.minusDays(i), state, i);
+                카드를_저장한다(owner.getId(), date.minusDays(daysAgo[0]++), state, i);
             }
         });
 
         // when
         var result = service.findHistory(owner.getPublicId(), null, 20, null);
         String cursor = Base64.getUrlEncoder().withoutPadding().encodeToString(
-                "1|2026-10-23||2026-10-17|1".getBytes(StandardCharsets.UTF_8));
+                "1|2026-10-23||2026-10-07|1".getBytes(StandardCharsets.UTF_8));
         var empty = service.findHistory(owner.getPublicId(), null, 20, cursor);
 
         // then
@@ -296,7 +273,7 @@ class CollectionHistoryServiceIntegrationTest {
 
     @ParameterizedTest
     @CsvSource({"false,false", "true,false", "false,true"})
-    void 반환할_카드의_집계가_누락되면_상세와_같은_오류를_반환한다(boolean stamp, boolean press) {
+    void 카드_감정의_집계가_없으면_목록에서도_그_횟수를_0으로_보여_준다(boolean stamp, boolean press) {
         // given
         var owner = devices.saveAndFlush(기본_기기_빌더().build());
         var date = LocalDate.of(2026, 10, 21);
@@ -308,29 +285,14 @@ class CollectionHistoryServiceIntegrationTest {
             개인_프레스를_저장한다(jdbc, owner.getId(), date, EmotionState.ANGRY, 100);
         }
 
-        // when / then
-        assertThatThrownBy(() -> service.findHistory(owner.getPublicId(), null, 20, null))
-                .isInstanceOfSatisfying(CollectionException.class,
-                        error -> assertThat(error.getErrorCode()).isEqualTo(CollectionErrorCode.COLLECTION_ACTIVITY_COUNTS_MISSING));
-    }
-
-    @Test
-    void 다음_페이지_확인용_카드의_집계_누락은_현재_페이지를_실패시키지_않는다() {
-        // given
-        var owner = devices.saveAndFlush(기본_기기_빌더().build());
-        var valid = 카드를_저장한다(owner.getId(), LocalDate.of(2026, 10, 21), EmotionState.ANGRY, 0);
-        cards.saveAndFlush(기본_카드_빌더().deviceId(owner.getId()).cardDate(LocalDate.of(2026, 10, 20))
-                .combinationIndex(1).build());
-
         // when
-        var page = service.findHistory(owner.getPublicId(), null, 1, null);
+        var page = service.findHistory(owner.getPublicId(), null, 20, null);
 
         // then
-        assertThat(page.items()).extracting(item -> item.cardId()).containsExactly(valid.getPublicId());
-        assertThat(page.hasNext()).isTrue();
-        assertThatThrownBy(() -> service.findHistory(owner.getPublicId(), null, 1, page.nextCursor()))
-                .isInstanceOfSatisfying(CollectionException.class,
-                        error -> assertThat(error.getErrorCode()).isEqualTo(CollectionErrorCode.COLLECTION_ACTIVITY_COUNTS_MISSING));
+        assertThat(page.items()).singleElement().satisfies(item -> {
+            assertThat(item.stampCount()).isEqualTo(stamp ? 1 : 0);
+            assertThat(item.pressCount()).isEqualTo(press ? 100 : 0);
+        });
     }
 
     @Test
@@ -385,11 +347,11 @@ class CollectionHistoryServiceIntegrationTest {
         // given
         var owner = devices.saveAndFlush(기본_기기_빌더().build());
         var date = LocalDate.of(2026, 10, 21);
-        var old = 카드를_저장한다(owner.getId(), date.minusDays(2), EmotionState.ANGRY, 0);
-        var firstCard = 카드를_저장한다(owner.getId(), date, EmotionState.ANGRY, 1);
+        var old = 카드를_저장한다(owner.getId(), date.minusDays(3), EmotionState.ANGRY, 0);
+        var firstCard = 카드를_저장한다(owner.getId(), date.minusDays(1), EmotionState.ANGRY, 1);
         var first = service.findHistory(owner.getPublicId(), null, 1, null);
         var ahead = 카드를_저장한다(owner.getId(), date, EmotionState.EXHAUSTED, 0);
-        var behind = 카드를_저장한다(owner.getId(), date.minusDays(1), EmotionState.ANGRY, 2);
+        var behind = 카드를_저장한다(owner.getId(), date.minusDays(2), EmotionState.ANGRY, 2);
 
         // when
         var next = service.findHistory(owner.getPublicId(), null, 20, first.nextCursor());
@@ -439,7 +401,7 @@ class CollectionHistoryServiceIntegrationTest {
             var oldest = 카드를_저장한다(owner.getId(), LocalDate.of(2026, 10, 19), EmotionState.ANGRY, 1);
             try (var executor = Executors.newFixedThreadPool(2)) {
                 var pending = executor.submit(() -> new TransactionTemplate(transactionManager).execute(status -> {
-                    var date = LocalDate.of(2026, 10, behindCursor ? 20 : 21);
+                    var date = LocalDate.of(2026, 10, behindCursor ? 20 : 22);
                     var card = 카드를_저장한다(owner.getId(), date, EmotionState.EXHAUSTED, 0);
                     written.countDown();
                     커밋_허용을_기다린다(release);
