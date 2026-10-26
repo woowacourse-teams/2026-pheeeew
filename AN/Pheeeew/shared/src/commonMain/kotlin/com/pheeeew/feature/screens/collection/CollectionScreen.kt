@@ -83,6 +83,7 @@ import coil3.compose.LocalAsyncImagePreviewHandler
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.component.LoadErrorContent
 import com.pheeeew.core.designsystem.component.RefreshErrorBanner
+import com.pheeeew.core.designsystem.component.Snackbar
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.feature.emotion.model.EmotionType
@@ -155,6 +156,13 @@ fun CollectionScreen(
             onRetryCards = onRetryCards,
             onRetryToday = onRetryToday,
         )
+    val hasVisibleContent =
+        uiModel.cards.isNotEmpty() ||
+            (
+                uiModel.pendingProgress != null &&
+                    (viewMode == CollectionViewMode.COVER_FLOW || uiModel.selectedFilter == null)
+            )
+    var isCardsErrorDismissed by remember(uiModel.cardsError, uiModel.scrollToTopRequestId) { mutableStateOf(false) }
     val visibleCards = uiModel.cards
     LaunchedEffect(visibleCards, selectedCardId) {
         if (selectedCardId != null && visibleCards.none { it.id == selectedCardId }) {
@@ -218,19 +226,6 @@ fun CollectionScreen(
                             modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp),
                         )
                     }
-                    val hasVisibleContent =
-                        uiModel.cards.isNotEmpty() ||
-                            (
-                                uiModel.pendingProgress != null &&
-                                    (viewMode == CollectionViewMode.COVER_FLOW || uiModel.selectedFilter == null)
-                            )
-                    if (uiModel.cardsError != null && hasVisibleContent) {
-                        RefreshErrorBanner(
-                            message = stringResource(Res.string.collection_refresh_failed),
-                            onRetry = onRetryCards,
-                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp),
-                        )
-                    }
                     if (viewMode == CollectionViewMode.COVER_FLOW) {
                         CollectionCoverFlow(
                             items = coverFlowItems,
@@ -271,6 +266,17 @@ fun CollectionScreen(
                         color = AppColors.Primary,
                     )
                 }
+                Snackbar(
+                    message =
+                        if (uiModel.cardsError != null && hasVisibleContent && !isCardsErrorDismissed) {
+                            stringResource(Res.string.collection_refresh_failed)
+                        } else {
+                            null
+                        },
+                    onDismiss = { isCardsErrorDismissed = true },
+                    isError = true,
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(horizontal = 24.dp, vertical = 16.dp),
+                )
             }
         }
         bottomBar()
