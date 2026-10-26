@@ -11,11 +11,13 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
@@ -63,9 +65,11 @@ import com.pheeeew.core.designsystem.component.AppAlertDialog
 import com.pheeeew.core.designsystem.component.AppDialog
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.component.ConfirmDialog
+import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.core.di.AppGraph
 import com.pheeeew.core.di.UiGraph
+import com.pheeeew.core.navigation.CollectionRootDestination
 import com.pheeeew.core.navigation.DoubleBackToExitHandler
 import com.pheeeew.core.navigation.FlowBackHandler
 import com.pheeeew.core.navigation.MapRootDestination
@@ -75,9 +79,11 @@ import com.pheeeew.domain.model.device.DeviceSessionResult
 import com.pheeeew.domain.model.version.AppVersionDecision
 import com.pheeeew.feature.component.AppBottomNavigationBar
 import com.pheeeew.feature.component.AppBottomNavigationBarBottomSpacing
+import com.pheeeew.feature.component.AppBottomNavigationBarOverlaySpace
 import com.pheeeew.feature.component.AppDestination
 import com.pheeeew.feature.component.RankingBottomNavigationDestination
 import com.pheeeew.feature.monitoring.product.LocalProductMonitoringVisible
+import com.pheeeew.feature.screens.collection.CollectionRoute
 import com.pheeeew.feature.screens.map.EmotionPinUiModel
 import com.pheeeew.feature.screens.map.HighlightedPinPosition
 import com.pheeeew.feature.screens.map.MapContentRenderState
@@ -562,9 +568,21 @@ private fun AppContent(
 
         val selectedDestination =
             when {
-                currentBackStackEntry?.destination?.hasRoute<PressRootDestination>() == true -> AppDestination.Press
-                currentBackStackEntry?.destination?.hasRoute<RankingRootDestination>() == true -> AppDestination.Ranking
-                else -> AppDestination.Map
+                currentBackStackEntry?.destination?.hasRoute<PressRootDestination>() == true -> {
+                    AppDestination.Press
+                }
+
+                currentBackStackEntry?.destination?.hasRoute<RankingRootDestination>() == true -> {
+                    AppDestination.Ranking
+                }
+
+                currentBackStackEntry?.destination?.hasRoute<CollectionRootDestination>() == true -> {
+                    AppDestination.Collection
+                }
+
+                else -> {
+                    AppDestination.Map
+                }
             }
 
         var isSettingsVisible by remember { mutableStateOf(false) }
@@ -573,6 +591,7 @@ private fun AppContent(
         var nextModerationMessageId by remember { mutableStateOf(0L) }
         var refreshStampRanking by remember { mutableStateOf<(() -> Unit)?>(null) }
         var refreshPressRanking by remember { mutableStateOf<(() -> Unit)?>(null) }
+        var refreshCollection by remember { mutableStateOf<(() -> Unit)?>(null) }
         var rankingDestination by remember { mutableStateOf(RankingBottomNavigationDestination.Stamp) }
         val refreshRanking =
             when (rankingDestination) {
@@ -594,7 +613,13 @@ private fun AppContent(
 
         Box(
             modifier =
-                Modifier.fillMaxSize().then(
+                Modifier.fillMaxSize().background(
+                    if (selectedDestination == AppDestination.Collection) {
+                        AppColors.GroupBackground
+                    } else {
+                        Color.Transparent
+                    },
+                ).then(
                     if (shouldPrepareMapDuringSplash) Modifier.clearAndSetSemantics {} else Modifier,
                 ),
         ) {
@@ -716,6 +741,24 @@ private fun AppContent(
                     )
                 }
 
+                composable<CollectionRootDestination>(
+                    enterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
+                    exitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
+                    popEnterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
+                    popExitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
+                ) {
+                    if (!mainFeaturesReady) return@composable
+                    CollectionRoute(
+                        sessionGeneration = sessionGeneration,
+                        currentNickname = appEntryState.currentNickname,
+                        modifier = Modifier.fillMaxSize(),
+                        onRefreshActionChanged = { refreshCollection = it },
+                        bottomBar = {
+                            Spacer(Modifier.navigationBarsPadding().height(AppBottomNavigationBarOverlaySpace))
+                        },
+                    )
+                }
+
                 composable<RankingRootDestination>(
                     enterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
                     exitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
@@ -804,6 +847,7 @@ private fun AppContent(
                             when (previousMainDestination) {
                                 AppDestination.Map, AppDestination.Ranking -> MapRootDestination
                                 AppDestination.Press -> PressRootDestination
+                                AppDestination.Collection -> CollectionRootDestination
                             }
                         navController.navigate(route) {
                             popUpTo<MapRootDestination> { saveState = true }
@@ -829,6 +873,7 @@ private fun AppContent(
                             when (destination) {
                                 AppDestination.Map -> MapRootDestination
                                 AppDestination.Press -> PressRootDestination
+                                AppDestination.Collection -> CollectionRootDestination
                                 AppDestination.Ranking -> RankingRootDestination
                             }
 
@@ -836,6 +881,7 @@ private fun AppContent(
                             when (destination) {
                                 AppDestination.Map -> mapViewModel.refreshEmotionPins()
                                 AppDestination.Press -> Unit
+                                AppDestination.Collection -> refreshCollection?.invoke()
                                 AppDestination.Ranking -> refreshRanking?.invoke()
                             }
                         } else {
@@ -936,6 +982,7 @@ private fun androidx.navigation.NavDestination.rootTabIndex(): Int? =
         hasRoute<MapRootDestination>() -> 0
         hasRoute<PressRootDestination>() -> 1
         hasRoute<RankingRootDestination>() -> 2
+        hasRoute<CollectionRootDestination>() -> 3
         else -> null
     }
 

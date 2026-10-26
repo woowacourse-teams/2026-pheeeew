@@ -56,10 +56,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.bottom_navigation_collection
 import pheeeew.shared.generated.resources.bottom_navigation_map
 import pheeeew.shared.generated.resources.bottom_navigation_press
 import pheeeew.shared.generated.resources.bottom_navigation_ranking
@@ -67,6 +69,7 @@ import pheeeew.shared.generated.resources.bottom_navigation_ranking_press
 import pheeeew.shared.generated.resources.bottom_navigation_stamp
 import pheeeew.shared.generated.resources.hiyu_nav_face
 import pheeeew.shared.generated.resources.hiyu_nav_ticket
+import pheeeew.shared.generated.resources.nav_collection
 import pheeeew.shared.generated.resources.nav_press
 
 private val NavigationInk = Color(0xFF202323)
@@ -80,6 +83,7 @@ internal enum class AppDestination {
     Map,
     Press,
     Ranking,
+    Collection,
 }
 
 internal enum class RankingBottomNavigationDestination {
@@ -93,6 +97,7 @@ private enum class DestinationIcon(
     Map(0.96f),
     Press(1.02f),
     Ranking(1.2f),
+    Collection(1f),
 }
 
 @Composable
@@ -218,6 +223,7 @@ internal fun AppBottomNavigationBar(
                         AppDestination.Map -> DestinationIcon.Map
                         AppDestination.Press -> DestinationIcon.Press
                         AppDestination.Ranking -> DestinationIcon.Ranking
+                        AppDestination.Collection -> DestinationIcon.Collection
                     },
                     pressScale = 1f,
                 )
@@ -229,10 +235,12 @@ internal fun AppBottomNavigationBar(
                                 AppDestination.Map -> Res.string.bottom_navigation_map
                                 AppDestination.Press -> Res.string.bottom_navigation_press
                                 AppDestination.Ranking -> Res.string.bottom_navigation_ranking
+                                AppDestination.Collection -> Res.string.bottom_navigation_collection
                             },
                         ),
                     color = NavigationInk,
-                    fontSize = 14.sp,
+                    fontSize = if (mainItemWidth < 80.dp) 12.sp else 14.sp,
+                    maxLines = 1,
                     fontFamily = navigationFont,
                     fontWeight = FontWeight.Bold,
                 )
@@ -450,6 +458,14 @@ private fun DestinationIconView(
     icon: DestinationIcon,
     pressScale: Float,
 ) {
+    if (icon == DestinationIcon.Collection) {
+        Image(
+            painter = painterResource(Res.drawable.nav_collection),
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+        )
+        return
+    }
     if (icon == DestinationIcon.Press) {
         PressNavigationIcon(pressScale = icon.visualScale * pressScale)
         return
@@ -464,7 +480,7 @@ private fun DestinationIconView(
     ) {
         scale(size.width / 20f, size.height / 20f, pivot = Offset.Zero) {
             when (icon) {
-                DestinationIcon.Press -> {}
+                DestinationIcon.Press, DestinationIcon.Collection -> {}
 
                 DestinationIcon.Map -> {
                     val outline =
@@ -548,4 +564,15 @@ private fun AppBottomNavigationBarPressPreview() {
         selectedDestination = AppDestination.Press,
         onDestinationSelected = {},
     )
+}
+
+@Preview(name = "컬렉션 탭 · 선택 상태")
+@Composable
+private fun AppBottomNavigationBarCollectionPreview() {
+    AppTheme {
+        AppBottomNavigationBar(
+            selectedDestination = AppDestination.Collection,
+            onDestinationSelected = {},
+        )
+    }
 }
