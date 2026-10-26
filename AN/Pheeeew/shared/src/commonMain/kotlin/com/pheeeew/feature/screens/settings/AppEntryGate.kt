@@ -20,6 +20,11 @@ import com.pheeeew.core.designsystem.component.AppDialog
 import com.pheeeew.feature.screens.settings.components.SettingsColors
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.app_entry_authentication_failed
+import pheeeew.shared.generated.resources.app_entry_network_failed
+import pheeeew.shared.generated.resources.app_entry_rate_limited_failed
+import pheeeew.shared.generated.resources.app_entry_server_failed
+import pheeeew.shared.generated.resources.app_entry_storage_failed
 import pheeeew.shared.generated.resources.settings_nickname_availability_failed
 import pheeeew.shared.generated.resources.settings_nickname_change_unconfirmed
 import pheeeew.shared.generated.resources.settings_nickname_device_prepare_failed
@@ -36,6 +41,11 @@ import pheeeew.shared.generated.resources.settings_nickname_saved_unconfirmed
 import pheeeew.shared.generated.resources.settings_nickname_taken
 
 enum class NicknameUiMessage {
+    NETWORK_FAILED,
+    SERVER_FAILED,
+    RATE_LIMITED,
+    AUTHENTICATION_FAILED,
+    STORAGE_FAILED,
     DEVICE_PREPARATION_FAILED,
     NICKNAME_LOOKUP_FAILED,
     REGISTRATION_FAILED,
@@ -125,6 +135,11 @@ internal fun AppEntryGate(
 internal fun NicknameUiMessage.asText(): String =
     stringResource(
         when (this) {
+            NicknameUiMessage.NETWORK_FAILED -> Res.string.app_entry_network_failed
+            NicknameUiMessage.SERVER_FAILED -> Res.string.app_entry_server_failed
+            NicknameUiMessage.RATE_LIMITED -> Res.string.app_entry_rate_limited_failed
+            NicknameUiMessage.AUTHENTICATION_FAILED -> Res.string.app_entry_authentication_failed
+            NicknameUiMessage.STORAGE_FAILED -> Res.string.app_entry_storage_failed
             NicknameUiMessage.DEVICE_PREPARATION_FAILED -> Res.string.settings_nickname_device_prepare_failed
             NicknameUiMessage.NICKNAME_LOOKUP_FAILED -> Res.string.settings_nickname_lookup_failed
             NicknameUiMessage.REGISTRATION_FAILED -> Res.string.settings_nickname_registration_failed

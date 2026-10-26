@@ -392,7 +392,7 @@ class NicknameRegistrationRecoveryTest {
         val updated = mutableListOf<String>()
 
         override suspend fun findMyNickname(): DeviceNicknameLookup {
-            if (lookupFails) return DeviceNicknameLookup.Failed
+            if (lookupFails) return DeviceNicknameLookup.Failed()
             nicknameState.value = DeviceNicknameState(nickname = api.nickname, isConfirmed = true)
             return DeviceNicknameLookup.Found(api.nickname)
         }

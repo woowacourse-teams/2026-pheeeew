@@ -11,6 +11,7 @@ import com.pheeeew.data.remote.dto.DeviceAttestationDto
 import com.pheeeew.data.remote.dto.DeviceRefreshRequestDto
 import com.pheeeew.data.remote.dto.DeviceRegistrationRequestDto
 import com.pheeeew.data.remote.dto.DeviceV3RegistrationRequestDto
+import com.pheeeew.data.remote.mapper.deviceSessionFailureKind
 import com.pheeeew.domain.model.device.DeviceAccess
 import com.pheeeew.domain.model.device.DeviceCredentials
 import com.pheeeew.domain.model.device.DeviceDiagnosticOutcome
@@ -441,48 +442,7 @@ class DeviceSessionRepositoryImpl(
 
     private fun failure(reason: NetworkFailure): DeviceSessionResult.Failed {
         val http = reason as? NetworkFailure.HttpStatus
-        val kind =
-            when (reason) {
-                is NetworkFailure.Transport -> {
-                    DeviceSessionFailureKind.NETWORK
-                }
-
-                is NetworkFailure.Contract -> {
-                    DeviceSessionFailureKind.CONTRACT
-                }
-
-                is NetworkFailure.Unexpected -> {
-                    DeviceSessionFailureKind.UNEXPECTED
-                }
-
-                is NetworkFailure.SessionUnavailable, is NetworkFailure.SessionProviderFailed -> {
-                    DeviceSessionFailureKind.AUTHENTICATION
-                }
-
-                is NetworkFailure.HttpStatus -> {
-                    when {
-                        reason.statusCode == 401 -> {
-                            DeviceSessionFailureKind.AUTHENTICATION
-                        }
-
-                        reason.statusCode == 429 || reason.error?.code == "DEVICE-007" -> {
-                            DeviceSessionFailureKind.RATE_LIMITED
-                        }
-
-                        reason.error?.code in setOf("DEVICE-005", "DEVICE-006") -> {
-                            DeviceSessionFailureKind.ATTESTATION
-                        }
-
-                        else -> {
-                            DeviceSessionFailureKind.SERVER
-                        }
-                    }
-                }
-
-                else -> {
-                    DeviceSessionFailureKind.SERVER
-                }
-            }
+        val kind = reason.deviceSessionFailureKind()
         val retrySeconds =
             http
                 ?.retryAfter
