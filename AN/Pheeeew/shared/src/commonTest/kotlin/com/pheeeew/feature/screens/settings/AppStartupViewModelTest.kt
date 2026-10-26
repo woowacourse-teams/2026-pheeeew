@@ -370,6 +370,58 @@ class AppStartupViewModelTest {
             }
         }
 
+    @Test
+    fun `notification entry waits for version and authentication but not map or minimum duration`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            val owner = Owner()
+            val policy = CompletableDeferred<AppVersionPolicy>()
+            try {
+                val vm = owner.create(AppVersionRepository { policy.await() })
+                vm.startSplash(TestTimeSource())
+                vm.setNotificationEntryRequested(true)
+                vm.checkVersion()
+                runCurrent()
+                assertFalse(vm.state.value.splashDismissed)
+                policy.complete(AppVersionPolicy("1.0.0", "1.0.0", "https://example.test/store"))
+                vm.updateEntryPreparation(true, AppEntryPhase.LOADING, false)
+                runCurrent()
+                assertFalse(vm.state.value.splashDismissed)
+                vm.updateEntryPreparation(true, AppEntryPhase.READY, true)
+                assertTrue(vm.state.value.splashDismissed)
+                assertFalse(vm.state.value.minimumSplashElapsed)
+                assertEquals("ready", vm.state.value.splashExitReason)
+            } finally {
+                owner.viewModelStore.clear()
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `notification entry preserves the mandatory update gate`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            val owner = Owner()
+            try {
+                val vm =
+                    owner.create(
+                        AppVersionRepository {
+                            AppVersionPolicy("2.0.0", "2.0.0", "https://example.test/store")
+                        },
+                    )
+                vm.startSplash(TestTimeSource())
+                vm.updateEntryPreparation(true, AppEntryPhase.READY, true)
+                vm.setNotificationEntryRequested(true)
+                vm.checkVersion()
+                runCurrent()
+                assertEquals("required_update", vm.state.value.splashExitReason)
+                assertIs<AppVersionDecision.UpdateRequired>(vm.state.value.decision)
+            } finally {
+                owner.viewModelStore.clear()
+                Dispatchers.resetMain()
+            }
+        }
+
     private fun currentPolicy() =
         AppVersionRepository {
             AppVersionPolicy("1.0.0", "1.0.0", "https://example.test/store")

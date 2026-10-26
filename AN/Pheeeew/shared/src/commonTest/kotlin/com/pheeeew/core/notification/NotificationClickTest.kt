@@ -79,6 +79,7 @@ class NotificationClickTest {
         inbox.receive(click("first"))
         inbox.receive(click("latest"))
         assertNull(inbox.pendingClick.value)
+        assertEquals(click("latest"), inbox.queuedClick.value)
         inbox.setReady(true)
         assertEquals(click("latest"), inbox.pendingClick.value)
         inbox.setReady(false)
@@ -95,6 +96,7 @@ class NotificationClickTest {
         inbox.acknowledge("same")
         inbox.receive(click("same"))
         assertNull(inbox.pendingClick.value)
+        assertNull(inbox.queuedClick.value)
     }
 
     @Test
@@ -105,6 +107,7 @@ class NotificationClickTest {
         inbox.receive(click("latest"))
         inbox.acknowledge("first")
         assertEquals(click("latest"), inbox.pendingClick.value)
+        assertEquals(click("latest"), inbox.queuedClick.value)
     }
 
     private fun click(id: String) = NotificationClick(id, NotificationClickTarget.OpenApp)

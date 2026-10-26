@@ -46,6 +46,7 @@ class AppStartupViewModel(
     private var entryResolved = false
     private var entryReady = false
     private var mapResolved = false
+    private var notificationEntryRequested = false
     private val telemetry = ProductMonitoring(monitoring, "splash")
     private val completedSteps = mutableSetOf<String>()
 
@@ -85,6 +86,12 @@ class AppStartupViewModel(
         finishSplashIfReady()
     }
 
+    /** Notification entry needs the session and version gates, but no map or cosmetic delay. */
+    fun setNotificationEntryRequested(requested: Boolean) {
+        notificationEntryRequested = requested
+        finishSplashIfReady()
+    }
+
     fun updateMapPreparation(resolved: Boolean) {
         mapResolved = resolved
         if (resolved) recordStep("map")
@@ -97,13 +104,13 @@ class AppStartupViewModel(
             return
         }
         val state = mutable.value
-        if (!state.minimumSplashElapsed || !state.checked) return
+        if (!state.checked || (!state.minimumSplashElapsed && !notificationEntryRequested)) return
         val reason =
             when {
                 state.decision is AppVersionDecision.UpdateRequired -> "required_update"
                 !onboardingCompleted -> "onboarding"
                 entryResolved && !entryReady -> "entry_action"
-                entryReady && mapResolved -> "ready"
+                entryReady && (mapResolved || notificationEntryRequested) -> "ready"
                 else -> return
             }
         dismissSplash(reason)
