@@ -49,8 +49,6 @@ import com.pheeeew.feature.screens.collection.card.CollectionCardUiModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import kotlin.time.TimeMark
-import kotlin.time.TimeSource
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -68,6 +66,8 @@ import pheeeew.shared.generated.resources.ic_check_circle
 import pheeeew.shared.generated.resources.ic_close
 import pheeeew.shared.generated.resources.ic_collection_save
 import pheeeew.shared.generated.resources.ic_collection_share
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 
 private const val LOADING_INDICATOR_DELAY_MILLIS = 150L
 private const val LOADING_INDICATOR_MINIMUM_MILLIS = 300L
@@ -229,8 +229,12 @@ private fun CollectionCardDialogContent(
                                         text =
                                             stringResource(
                                                 when (imageActionPhase) {
-                                                    CollectionCardExportPhase.SAVING -> Res.string.collection_image_saving
-                                                    CollectionCardExportPhase.SHARING -> Res.string.collection_image_sharing
+                                                    CollectionCardExportPhase.SAVING,
+                                                    -> Res.string.collection_image_saving
+
+                                                    CollectionCardExportPhase.SHARING,
+                                                    -> Res.string.collection_image_sharing
+
                                                     else -> Res.string.collection_image_creating
                                                 },
                                             ),

@@ -613,15 +613,17 @@ private fun AppContent(
 
         Box(
             modifier =
-                Modifier.fillMaxSize().background(
-                    if (selectedDestination == AppDestination.Collection) {
-                        AppColors.GroupBackground
-                    } else {
-                        Color.Transparent
-                    },
-                ).then(
-                    if (shouldPrepareMapDuringSplash) Modifier.clearAndSetSemantics {} else Modifier,
-                ),
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        if (selectedDestination == AppDestination.Collection) {
+                            AppColors.GroupBackground
+                        } else {
+                            Color.Transparent
+                        },
+                    ).then(
+                        if (shouldPrepareMapDuringSplash) Modifier.clearAndSetSemantics {} else Modifier,
+                    ),
         ) {
             NavHost(
                 navController = navController,

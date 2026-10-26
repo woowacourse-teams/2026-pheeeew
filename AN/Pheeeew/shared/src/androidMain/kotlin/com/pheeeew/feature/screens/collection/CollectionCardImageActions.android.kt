@@ -36,15 +36,25 @@ internal actual fun rememberCollectionCardImageActions(): CollectionCardImageAct
             if (pending != null && pending.continuation.isActive) {
                 val outcome =
                     when {
-                        uri == null -> CollectionImageActionOutcome.CANCELLED
-                        bytes == null -> CollectionImageActionOutcome.FAILED
+                        uri == null -> {
+                            CollectionImageActionOutcome.CANCELLED
+                        }
+
+                        bytes == null -> {
+                            CollectionImageActionOutcome.FAILED
+                        }
+
                         else -> {
                             val succeeded =
                                 runCatching {
                                     context.contentResolver.openOutputStream(uri)?.use { it.write(bytes) }
                                         ?: error("저장 위치를 열 수 없습니다")
                                 }.isSuccess
-                            if (succeeded) CollectionImageActionOutcome.SUCCEEDED else CollectionImageActionOutcome.FAILED
+                            if (succeeded) {
+                                CollectionImageActionOutcome.SUCCEEDED
+                            } else {
+                                CollectionImageActionOutcome.FAILED
+                            }
                         }
                     }
                 pending.continuation.resume(outcome)

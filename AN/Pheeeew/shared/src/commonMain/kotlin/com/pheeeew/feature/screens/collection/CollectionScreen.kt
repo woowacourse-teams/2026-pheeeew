@@ -542,7 +542,6 @@ private fun CollectionScreenHeader(
             onModeChange = onViewModeChange,
             modifier = Modifier.align(Alignment.End),
         )
-
     }
 }
 
@@ -555,15 +554,15 @@ private fun CollectionViewModeToggle(
     val itemWidth = 80.dp
     val itemHeight = 34.dp
     val indicatorOffset by
-    animateDpAsState(
-        targetValue = itemWidth * selectedMode.ordinal,
-        animationSpec =
-            tween(
-                durationMillis = 240,
-                easing = CubicBezierEasing(0f, 0f, 0.33f, 1f),
-            ),
-        label = "collectionViewModeIndicatorOffset",
-    )
+        animateDpAsState(
+            targetValue = itemWidth * selectedMode.ordinal,
+            animationSpec =
+                tween(
+                    durationMillis = 240,
+                    easing = CubicBezierEasing(0f, 0f, 0.33f, 1f),
+                ),
+            label = "collectionViewModeIndicatorOffset",
+        )
     Box(
         modifier
             .selectableGroup()
@@ -607,10 +606,14 @@ private fun CollectionViewModeToggle(
                         tint = Color.Unspecified,
                     )
                     Text(
-                        text = stringResource(
-                            if (mode == CollectionViewMode.COVER_FLOW) Res.string.collection_cover_flow
-                            else Res.string.collection_album,
-                        ),
+                        text =
+                            stringResource(
+                                if (mode == CollectionViewMode.COVER_FLOW) {
+                                    Res.string.collection_cover_flow
+                                } else {
+                                    Res.string.collection_album
+                                },
+                            ),
                         color = if (selected) AppColors.TextPrimary else AppColors.TextSecondary,
                         fontSize = 10.sp,
                     )

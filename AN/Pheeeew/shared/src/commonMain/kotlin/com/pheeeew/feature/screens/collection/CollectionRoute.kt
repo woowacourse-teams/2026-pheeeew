@@ -55,8 +55,7 @@ internal fun CollectionRoute(
                         ?.takeIf {
                             it.action == CollectionImageAction.SAVE &&
                                 it.outcome == CollectionImageActionOutcome.SUCCEEDED
-                        }
-                        ?.cardId,
+                        }?.cardId,
                 saveCompletionId = exportState.resultId,
                 imageActionPhase = exportState.phase,
             ),

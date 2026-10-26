@@ -23,7 +23,9 @@ internal class CollectionCardExportState(
     var resultId by mutableIntStateOf(0)
         private set
 
-    private class Operation(val cardId: String)
+    private class Operation(
+        val cardId: String,
+    )
 
     private var operation: Operation? = null
     private var job: Job? = null
