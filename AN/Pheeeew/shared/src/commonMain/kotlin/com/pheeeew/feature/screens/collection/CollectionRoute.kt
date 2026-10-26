@@ -71,7 +71,7 @@ internal fun CollectionRoute(
             }
             today?.let { value ->
                 if (notificationDate != null && notificationDate != value.date) {
-                    Text("지난 날짜의 알림이에요. 오늘의 진행도를 보여드릴게요.")
+                    Text("알림의 날짜가 오늘과 달라요. 오늘의 진행도를 보여드릴게요.")
                 }
                 Text(value.date)
                 Text("스탬프 ${value.stamps.count} / ${value.stamps.target}")
