@@ -16,6 +16,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -71,6 +74,7 @@ import com.pheeeew.core.navigation.MapRootDestination
 import com.pheeeew.core.navigation.NotificationDestination
 import com.pheeeew.core.navigation.PressRootDestination
 import com.pheeeew.core.navigation.RankingRootDestination
+import com.pheeeew.core.notification.CollectionNotificationEvents
 import com.pheeeew.core.notification.NotificationClickInbox
 import com.pheeeew.core.notification.NotificationPermissionController
 import com.pheeeew.core.notification.NotificationPreferencesStore
@@ -126,6 +130,8 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
@@ -610,6 +616,26 @@ private fun AppContent(
         var collectionRefreshRevision by remember { mutableStateOf(0L) }
         val collectionApi = remember(apiDependencies) { CollectionTodayApi(apiDependencies.client.requests) }
 
+        val collectionNotice = remember { SnackbarHostState() }
+        var lastCollectionEvent by remember { mutableStateOf(0L) }
+        LaunchedEffect(mainFeaturesReady) {
+            if (mainFeaturesReady) {
+                CollectionNotificationEvents.event.filterNotNull().collectLatest { event ->
+                    if (event.revision <= lastCollectionEvent) return@collectLatest
+                    lastCollectionEvent = event.revision
+                    CollectionNotificationEvents.acknowledge(event.revision)
+                    if (navController.currentDestination?.hasRoute<CollectionRootDestination>() == true &&
+                        !isSettingsVisible && reportTarget == null
+                    ) {
+                        collectionRefreshRevision++
+                    } else {
+                        val result = collectionNotice.showSnackbar("오늘의 컬렉션을 확인해 보세요.", actionLabel = "보기")
+                        if (result == SnackbarResult.ActionPerformed) notificationClicks?.receive(event.click)
+                    }
+                }
+            }
+        }
+
         NotificationClickEffect(
             inbox = notificationClicks,
             ready =
@@ -873,6 +899,10 @@ private fun AppContent(
                     },
                 )
             }
+            SnackbarHost(
+                hostState = collectionNotice,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 96.dp),
+            )
         }
         if (!shouldPrepareMapDuringSplash && mainFeaturesReady && mapVisible && !firstMapFrameReady.value &&
             mapUiModel.mapError == null

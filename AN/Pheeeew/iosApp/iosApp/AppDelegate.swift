@@ -115,7 +115,18 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
 #if DEBUG
         print("포그라운드 알림 수신")
 #endif
-        // 수신한 알림의 표시 방식만 결정하며, 별도 로컬 알림을 생성하지 않는다.
-        completionHandler([.banner, .list, .sound])
+        let request = notification.request
+        let fields = request.content.userInfo.reduce(into: [String: String]()) { result, entry in
+            if let key = entry.key as? String, let value = entry.value as? String {
+                result[key] = value
+            }
+        }
+        DispatchQueue.main.async {
+            // Only supported collection messages use the in-app display contract.
+            let handled = IosNotificationClicks.shared.receiveForeground(
+                data: fields, requestId: request.identifier
+            )
+            completionHandler(handled ? [] : [.banner, .list, .sound])
+        }
     }
 }
