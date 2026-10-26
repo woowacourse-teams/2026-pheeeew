@@ -127,7 +127,7 @@ internal fun AppBottomNavigationBar(
                             .weight(1f)
                             .height(AppBottomNavigationBarHeight)
                             .clickable(
-                                enabled = enabled && destination != AppDestination.Collection,
+                                enabled = enabled,
                                 interactionSource = null,
                                 indication = null,
                                 role = Role.Tab,

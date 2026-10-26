@@ -63,6 +63,7 @@ import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.core.di.AppGraph
 import com.pheeeew.core.di.UiGraph
+import com.pheeeew.core.navigation.CollectionRootDestination
 import com.pheeeew.core.navigation.DoubleBackToExitHandler
 import com.pheeeew.core.navigation.FlowBackHandler
 import com.pheeeew.core.navigation.MapRootDestination
@@ -72,6 +73,7 @@ import com.pheeeew.core.navigation.RankingRootDestination
 import com.pheeeew.core.notification.NotificationClickInbox
 import com.pheeeew.core.notification.NotificationPermissionController
 import com.pheeeew.core.notification.NotificationPreferencesStore
+import com.pheeeew.data.remote.api.CollectionTodayApi
 import com.pheeeew.domain.model.device.DeviceSessionResult
 import com.pheeeew.domain.model.version.AppVersionDecision
 import com.pheeeew.feature.component.AppBottomNavigationBar
@@ -79,6 +81,7 @@ import com.pheeeew.feature.component.AppBottomNavigationBarBottomSpacing
 import com.pheeeew.feature.component.AppDestination
 import com.pheeeew.feature.monitoring.product.LocalProductMonitoringVisible
 import com.pheeeew.feature.notification.NotificationClickEffect
+import com.pheeeew.feature.screens.collection.CollectionRoute
 import com.pheeeew.feature.screens.map.EmotionPinUiModel
 import com.pheeeew.feature.screens.map.HighlightedPinPosition
 import com.pheeeew.feature.screens.map.MapContentRenderState
@@ -567,9 +570,21 @@ private fun AppContent(
 
         val selectedDestination =
             when {
-                currentBackStackEntry?.destination?.hasRoute<PressRootDestination>() == true -> AppDestination.Press
-                currentBackStackEntry?.destination?.hasRoute<MapRootDestination>() == true -> AppDestination.Map
-                else -> null
+                currentBackStackEntry?.destination?.hasRoute<CollectionRootDestination>() == true -> {
+                    AppDestination.Collection
+                }
+
+                currentBackStackEntry?.destination?.hasRoute<PressRootDestination>() == true -> {
+                    AppDestination.Press
+                }
+
+                currentBackStackEntry?.destination?.hasRoute<MapRootDestination>() == true -> {
+                    AppDestination.Map
+                }
+
+                else -> {
+                    null
+                }
             }
 
         var isSettingsVisible by remember { mutableStateOf(false) }
@@ -580,6 +595,10 @@ private fun AppContent(
             selectedDestination == AppDestination.Map &&
                 (mapUiModel.isEmotionSelectorExpanded || recordUiModel.step != RecordFlowStepUiModel.Closed)
 
+        var collectionNotificationDate by remember { mutableStateOf<String?>(null) }
+        var collectionRefreshRevision by remember { mutableStateOf(0L) }
+        val collectionApi = remember(apiDependencies) { CollectionTodayApi(apiDependencies.client.requests) }
+
         NotificationClickEffect(
             inbox = notificationClicks,
             ready =
@@ -587,6 +606,19 @@ private fun AppContent(
                     currentBackStackEntry != null && !isEmotionRecordFlowActive,
             onNavigate = { destination ->
                 when (destination) {
+                    is NotificationDestination.Collection -> {
+                        isSettingsVisible = false
+                        reportTarget = null
+                        nearbyViewModel.dismiss()
+                        detailViewModel.dismiss()
+                        collectionNotificationDate = destination.date
+                        collectionRefreshRevision++
+                        navController.navigate(CollectionRootDestination) {
+                            popUpTo<MapRootDestination>()
+                            launchSingleTop = true
+                        }
+                    }
+
                     NotificationDestination.Map -> {
                         isSettingsVisible = false
                         reportTarget = null
@@ -734,6 +766,17 @@ private fun AppContent(
                     )
                 }
 
+                composable<CollectionRootDestination> {
+                    if (mainFeaturesReady) {
+                        CollectionRoute(
+                            collectionApi,
+                            collectionNotificationDate,
+                            collectionRefreshRevision,
+                            onBack = { navController.popBackStack() },
+                        )
+                    }
+                }
+
                 composable<RankingRootDestination> {
                     if (!mainFeaturesReady) return@composable
                     CompositionLocalProvider(
@@ -786,18 +829,28 @@ private fun AppContent(
                     onDestinationSelected = { destination ->
                         if (!mainFeaturesReady) return@AppBottomNavigationBar
                         nearbyViewModel.dismiss()
+                        if (destination == AppDestination.Collection) collectionNotificationDate = null
                         val route =
                             when (destination) {
                                 AppDestination.Map -> MapRootDestination
                                 AppDestination.Press -> PressRootDestination
-                                AppDestination.Collection -> return@AppBottomNavigationBar
+                                AppDestination.Collection -> CollectionRootDestination
                             }
 
                         if (navController.currentDestination?.hasRoute(route::class) == true) {
                             when (destination) {
-                                AppDestination.Map -> mapViewModel.refreshEmotionPins()
-                                AppDestination.Press -> Unit
-                                AppDestination.Collection -> Unit
+                                AppDestination.Map -> {
+                                    mapViewModel.refreshEmotionPins()
+                                }
+
+                                AppDestination.Press -> {
+                                    Unit
+                                }
+
+                                AppDestination.Collection -> {
+                                    collectionNotificationDate = null
+                                    collectionRefreshRevision++
+                                }
                             }
                         } else {
                             navController.navigate(route) {

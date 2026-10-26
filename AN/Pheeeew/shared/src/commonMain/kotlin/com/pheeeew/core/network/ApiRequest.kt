@@ -23,6 +23,8 @@ data class ApiRequest(
     val replayAfterAuthentication: Boolean = body == null && kind == RequestKind.READ,
     /** Fixed endpoint name for monitoring; never derive this from the runtime path. */
     val monitoringEndpoint: String? = null,
+    /** Bind a multi-request operation to one device identity, including authentication recovery. */
+    val expectedSessionGeneration: Long? = null,
 ) {
     init {
         require(path.isNotBlank()) { "API path는 비어 있을 수 없습니다." }
