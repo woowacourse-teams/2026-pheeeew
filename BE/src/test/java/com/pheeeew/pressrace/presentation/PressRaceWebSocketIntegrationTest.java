@@ -8,6 +8,12 @@ import com.pheeeew.device.application.token.AccessTokenIssuer;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.pressrace.application.PressRaceService;
+import com.pheeeew.pressrace.application.PressRankingReader;
+import com.pheeeew.pressrace.domain.PressRanking;
+import java.time.LocalDate;
+import java.time.Instant;
+import static org.mockito.Mockito.doReturn;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import com.pheeeew.support.SharedJwtTestConfiguration;
 import com.pheeeew.support.SharedPostgisTestConfiguration;
 import java.net.URI;
@@ -57,6 +63,15 @@ class PressRaceWebSocketIntegrationTest {
     @Autowired
     private PressRaceService service;
 
+    @Autowired
+    private com.pheeeew.auth.infra.jwt.JwtTokenEncoder jwtEncoder;
+
+    @Autowired
+    private org.springframework.scheduling.TaskScheduler taskScheduler;
+
+    @MockitoSpyBean
+    private PressRankingReader rankingReader;
+
     private final JsonMapper json = JsonMapper.builder().build();
     private final List<WebSocket> sockets = new ArrayList<>();
     private final List<Long> createdDevices = new ArrayList<>();
@@ -82,6 +97,237 @@ class PressRaceWebSocketIntegrationTest {
             devices.deleteById(deviceId);
         }
         jdbc.sql("UPDATE press_race_control SET active_server_generation = NULL, enabled = FALSE, activation_date = NULL WHERE id = TRUE").update();
+    }
+
+    @Test
+    void 입력하지_않는_관찰자도_다른_WS와_HTTP_입력의_순위와_활동을_받는다() throws Exception {
+        // given
+        SocketListener observer = connect(token);
+        JsonNode observerReady = initialize(observer);
+        JsonNode initial = observer.snapshot(state -> state.path("baseline").booleanValue());
+        assertThat(initial.path("me").path("participating").booleanValue()).isFalse();
+        Device sender = devices.save(기본_기기_빌더().build());
+        createdDevices.add(sender.getId());
+        SocketListener writer = connect(tokens.issue(sender.getPublicId()).accessToken());
+        JsonNode writerReady = initialize(writer);
+
+        // when
+        writer.socket.sendText(submit(UUID.randomUUID(), writerReady, "{\"ANGRY\":3}"), true).join();
+        assertThat(writer.receive().path("status").stringValue()).isEqualTo("APPLIED");
+        JsonNode updated = observer.snapshot(state -> state.path("nearby").size() == 1);
+        assertThat(pressHttp("{\"EXHAUSTED\":2}").statusCode()).isEqualTo(200);
+        JsonNode httpUpdated = observer.snapshot(state -> state.path("me").path("participating").booleanValue());
+
+        // then
+        assertThat(updated.path("nearby").get(0).path("score").longValue()).isEqualTo(3);
+        assertThat(updated.path("activeCount").intValue()).isEqualTo(1);
+        assertThat(httpUpdated.path("activeCount").intValue()).isEqualTo(2);
+        assertThat(httpUpdated.path("me").path("score").longValue()).isEqualTo(2);
+        assertThat(httpUpdated.path("me").path("rank").longValue()).isEqualTo(2);
+        assertThat(httpUpdated.path("snapshotVersion").isString()).isTrue();
+        assertThat(Long.parseLong(httpUpdated.path("snapshotVersion").stringValue()))
+                .isGreaterThan(Long.parseLong(initial.path("snapshotVersion").stringValue()));
+        assertThat(httpUpdated.path("connectionGeneration")).isEqualTo(observerReady.path("connectionGeneration"));
+        assertThat(httpUpdated.toString()).doesNotContain(device.getPublicId().toString(), sender.getPublicId().toString(),
+                "deviceId", "changeNo", "reachOrder");
+    }
+
+    @Test
+    void 화면을_바꾸면_같은_연결에서_더_큰_버전의_완전한_기준을_받고_동일_내용은_반복하지_않는다() throws Exception {
+        // given
+        SocketListener observer = connect(token);
+        JsonNode ready = initialize(observer);
+        JsonNode press = observer.snapshot(state -> state.path("view").stringValue().equals("PRESS"));
+
+        // when
+        observer.socket.sendText("{\"v\":1,\"type\":\"view.change\",\"view\":\"ALL\"}", true).join();
+        JsonNode all = observer.snapshot(state -> state.path("view").stringValue().equals("ALL"));
+        observer.socket.sendText("{\"v\":1,\"type\":\"view.change\",\"view\":\"PRESS\"}", true).join();
+        JsonNode back = observer.snapshot(state -> state.path("view").stringValue().equals("PRESS"));
+
+        // then
+        assertThat(all.path("baseline").booleanValue()).isTrue();
+        assertThat(back.path("baseline").booleanValue()).isTrue();
+        assertThat(Long.parseLong(all.path("snapshotVersion").stringValue()))
+                .isGreaterThan(Long.parseLong(press.path("snapshotVersion").stringValue()));
+        assertThat(Long.parseLong(back.path("snapshotVersion").stringValue()))
+                .isGreaterThan(Long.parseLong(all.path("snapshotVersion").stringValue()));
+        assertThat(back.path("connectionGeneration")).isEqualTo(ready.path("connectionGeneration"));
+        assertThat(observer.snapshots.poll(800, TimeUnit.MILLISECONDS)).as("번호만 바뀐 동일 화면은 생략").isNull();
+    }
+
+    @Test
+    void 중복은_활동을_연장하지_않고_닉네임과_마지막_활동_만료는_입력_없이_반영된다() throws Exception {
+        // given
+        SocketListener observer = connect(token);
+        JsonNode ready = initialize(observer);
+        String message = submit(UUID.randomUUID(), ready, "{\"ANGRY\":1}");
+        observer.socket.sendText(message, true).join();
+        assertThat(observer.receive().path("status").stringValue()).isEqualTo("APPLIED");
+        observer.snapshot(state -> state.path("activeCount").intValue() == 1);
+        Instant appliedAt = jdbc.sql("SELECT last_applied_at FROM press_daily_scores WHERE device_id = :id")
+                .param("id", device.getId()).query(java.time.OffsetDateTime.class).single().toInstant();
+
+        // when
+        observer.socket.sendText(message, true).join();
+        assertThat(observer.receive().path("status").stringValue()).isEqualTo("APPLIED");
+        jdbc.sql("UPDATE devices SET nickname = '새닉네임' WHERE id = :id").param("id", device.getId()).update();
+        JsonNode renamed = observer.snapshot(state -> state.path("me").path("nickname").stringValue().equals("새닉네임"));
+        JsonNode expired = observer.snapshot(state -> state.path("activeCount").intValue() == 0);
+
+        // then
+        assertThat(renamed.path("me").path("score").longValue()).isEqualTo(1);
+        assertThat(expired.path("baseline").booleanValue()).isFalse();
+        assertThat(expired.path("me").path("participating").booleanValue()).isTrue();
+        assertThat(jdbc.sql("SELECT last_applied_at FROM press_daily_scores WHERE device_id = :id")
+                .param("id", device.getId()).query(java.time.OffsetDateTime.class).single().toInstant()).isEqualTo(appliedAt);
+        assertThat(Instant.parse(expired.path("generatedAt").stringValue())).isAfterOrEqualTo(appliedAt.plusSeconds(5));
+    }
+
+    @Test
+    void 공동_100위_목록을_확장하지_않고_100명_밖의_me와_주변을_전달한다() throws Exception {
+        // given
+        for (int index = 0; index < 104; index++) {
+            Device participant = devices.save(기본_기기_빌더().build());
+            createdDevices.add(participant.getId());
+            seedScore(participant, 10, new UUID(0, index + 1));
+        }
+        seedScore(device, 5, UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff"));
+        SocketListener observer = connect(token);
+
+        // when
+        observer.socket.sendText("{\"v\":1,\"type\":\"session.init\",\"view\":\"ALL\",\"pending\":[]}", true).join();
+        assertThat(observer.receive().path("type").stringValue()).isEqualTo("session.ready");
+        JsonNode state = observer.snapshot(snapshot -> snapshot.path("top100").size() == 100);
+
+        // then
+        assertThat(state.path("me").path("rank").longValue()).isEqualTo(105);
+        assertThat(state.path("nearby").size()).isEqualTo(3);
+        assertThat(state.path("nearby").get(2)).isEqualTo(state.path("me"));
+        assertThat(state.path("top100").get(99).path("rank").longValue()).isEqualTo(1);
+        assertThat(state.path("top100").toString()).doesNotContain(state.path("me").path("publicId").stringValue());
+    }
+
+    @Test
+    void 날짜_전환을_모의하면_실제_WS가_입력_없이_새날_미참여_기준을_받는다() throws Exception {
+        // given: DB의 실제 KST 날짜 조회와 분리해 WS의 자정 전환 경계를 결정적으로 검증한다.
+        seedScore(device, 3, UUID.randomUUID());
+        SocketListener observer = connect(token);
+        initialize(observer);
+        JsonNode today = observer.snapshot(state -> state.path("me").path("participating").booleanValue());
+        LocalDate tomorrow = LocalDate.parse(today.path("date").stringValue()).plusDays(1);
+        PressRanking midnight = PressRanking.of(tomorrow, tomorrow.atStartOfDay(java.time.ZoneId.of("Asia/Seoul")).toInstant(), List.of());
+
+        // when
+        doReturn(midnight).when(rankingReader).read();
+        JsonNode nextDay = observer.snapshot(state -> state.path("date").stringValue().equals(tomorrow.toString()));
+
+        // then
+        assertThat(nextDay.path("baseline").booleanValue()).isTrue();
+        assertThat(nextDay.path("me").path("participating").booleanValue()).isFalse();
+        assertThat(nextDay.path("me").path("rank").isNull()).isTrue();
+        assertThat(nextDay.path("me").path("score").longValue()).isZero();
+        assertThat(nextDay.path("activeCount").intValue()).isZero();
+        assertThat(Long.parseLong(nextDay.path("snapshotVersion").stringValue()))
+                .isGreaterThan(Long.parseLong(today.path("snapshotVersion").stringValue()));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"RACE_DISABLED", "SERVER_REPLACED"})
+    void 입력_없는_READY_관찰자도_기능_중단이나_서버_교체시_종료된다(String code) throws Exception {
+        // given
+        SocketListener observer = connect(token);
+        initialize(observer);
+        observer.snapshot(state -> state.path("baseline").booleanValue());
+
+        // when
+        if (code.equals("RACE_DISABLED")) {
+            jdbc.sql("UPDATE press_race_control SET enabled = FALSE").update();
+        } else {
+            jdbc.sql("UPDATE press_race_control SET active_server_generation = :generation")
+                    .param("generation", UUID.randomUUID()).update();
+        }
+
+        // then
+        assertThat(observer.closed.poll(10, TimeUnit.SECONDS)).isEqualTo(1008);
+        assertThat(observer.closeReasons.poll(10, TimeUnit.SECONDS)).isEqualTo(code);
+    }
+
+    @Test
+    void 같은_연결에서_다시_초기화해도_ready_뒤_새로운_기준만_보낸다() throws Exception {
+        // given
+        SocketListener observer = connect(token);
+        initialize(observer);
+        JsonNode first = observer.snapshot(state -> state.path("baseline").booleanValue());
+
+        // when
+        initialize(observer);
+        JsonNode second = observer.snapshot(state -> state.path("baseline").booleanValue());
+
+        // then
+        assertThat(Long.parseLong(second.path("snapshotVersion").stringValue()))
+                .isGreaterThan(Long.parseLong(first.path("snapshotVersion").stringValue()));
+        assertThat(second.path("connectionGeneration")).isEqualTo(first.path("connectionGeneration"));
+    }
+
+    @Test
+    void 기본_스케줄러가_정리_작업으로_막혀도_순위_전체_조회는_계속된다() throws Exception {
+        // given
+        SocketListener observer = connect(token);
+        JsonNode ready = initialize(observer);
+        observer.snapshot(state -> state.path("baseline").booleanValue());
+        var entered = new java.util.concurrent.CountDownLatch(1);
+        var release = new java.util.concurrent.CountDownLatch(1);
+        var cleanup = taskScheduler.schedule(() -> {
+            entered.countDown();
+            try {
+                release.await(10, TimeUnit.SECONDS);
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+            }
+        }, Instant.now());
+
+        // when
+        try {
+            assertThat(entered.await(5, TimeUnit.SECONDS)).isTrue();
+            observer.socket.sendText(submit(UUID.randomUUID(), ready, "{\"ANGRY\":1}"), true).join();
+            assertThat(observer.receive().path("status").stringValue()).isEqualTo("APPLIED");
+            JsonNode state = observer.snapshot(snapshot -> snapshot.path("me").path("score").longValue() == 1);
+
+            // then
+            assertThat(state.path("activeCount").intValue()).isEqualTo(1);
+            assertThat(release.getCount()).isEqualTo(1);
+            assertThat(cleanup.isDone()).as("정리 작업이 여전히 차단된 동안 받은 순위").isFalse();
+        } finally {
+            release.countDown();
+            cleanup.cancel(true);
+        }
+    }
+
+    @Test
+    void 수신_전용_관찰자의_토큰이_만료되면_자동_송신_종료_사유는_AUTH_EXPIRED다() throws Exception {
+        // given
+        String shortToken = jwtEncoder.encodeAccessToken(device.getPublicId().toString(), java.time.Duration.ofSeconds(5));
+        SocketListener observer = connect(shortToken);
+        initialize(observer);
+        observer.snapshot(state -> state.path("baseline").booleanValue());
+
+        // when: 만료 후 화면 내용이 달라져 자동 송신 경로에서 인증을 다시 확인한다.
+        try (var change = java.util.concurrent.Executors.newSingleThreadScheduledExecutor()) {
+            var changed = change.schedule(() -> seedScore(device, 1, UUID.randomUUID()), 6, TimeUnit.SECONDS);
+
+            // then
+            assertThat(observer.closed.poll(12, TimeUnit.SECONDS)).isEqualTo(1008);
+            assertThat(observer.closeReasons.poll(5, TimeUnit.SECONDS)).isEqualTo("AUTH_EXPIRED");
+            changed.get(2, TimeUnit.SECONDS);
+        }
+    }
+
+    private void seedScore(Device participant, long score, UUID publicId) {
+        jdbc.sql("""
+                INSERT INTO press_daily_scores(device_id, press_date, total, last_applied_at, public_id)
+                VALUES (:id, (clock_timestamp() AT TIME ZONE 'Asia/Seoul')::date, :score, clock_timestamp(), :publicId)
+                """).param("id", participant.getId()).param("score", score).param("publicId", publicId).update();
     }
 
     @Test
@@ -343,7 +589,12 @@ class PressRaceWebSocketIntegrationTest {
     void 새_연결이_거절되면_실제_사유를_반환하고_기존_연결을_유지한다(String code) throws Exception {
         // given
         SocketListener previous = connect(token);
-        JsonNode ready = initialize(previous);
+        // 아직 관찰을 시작하지 않은 연결로, 새 연결 거절 자체가 기존 연결을 교체하지 않는지 분리한다.
+        // READY 관찰자의 전역 중단·서버 교체 종료는 별도 테스트에서 확인한다.
+        previous.socket.sendText("{\"v\":1,\"type\":\"view.change\",\"view\":\"PRESS\"}", true).join();
+        assertThat(previous.receive().path("code").stringValue()).isEqualTo("SESSION_NOT_READY");
+        UUID originalGeneration = jdbc.sql("SELECT connection_generation FROM press_device_controls WHERE device_id = :device")
+                .param("device", device.getId()).query(UUID.class).single();
         if (code.equals("RACE_DISABLED")) {
             jdbc.sql("UPDATE press_race_control SET enabled = FALSE WHERE id = TRUE").update();
         } else {
@@ -362,11 +613,12 @@ class PressRaceWebSocketIntegrationTest {
         assertThat(rejected.closeReasons.poll(10, TimeUnit.SECONDS)).isEqualTo(code);
         assertThat(jdbc.sql("SELECT connection_generation FROM press_device_controls WHERE device_id = :device")
                 .param("device", device.getId()).query(UUID.class).single())
-                .isEqualTo(UUID.fromString(ready.path("connectionGeneration").stringValue()));
+                .isEqualTo(originalGeneration);
         assertThat(previous.closed).isEmpty();
 
         // when: 연결 허용 조건을 복구하면 기존 연결로 계속 입력할 수 있다.
         activateRace();
+        JsonNode ready = initialize(previous);
         previous.socket.sendText(submit(UUID.randomUUID(), ready, "{\"ANGRY\":1}"), true).join();
 
         // then
@@ -423,6 +675,7 @@ class PressRaceWebSocketIntegrationTest {
     private class SocketListener implements WebSocket.Listener {
 
         private final BlockingQueue<String> messages = new LinkedBlockingQueue<>();
+        private final BlockingQueue<String> snapshots = new LinkedBlockingQueue<>();
         private final BlockingQueue<Integer> closed = new LinkedBlockingQueue<>();
         private final BlockingQueue<String> closeReasons = new LinkedBlockingQueue<>();
         private final StringBuilder fragments = new StringBuilder();
@@ -437,7 +690,12 @@ class PressRaceWebSocketIntegrationTest {
         public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
             fragments.append(data);
             if (last) {
-                messages.add(fragments.toString());
+                String message = fragments.toString();
+                if (json.readTree(message).path("type").stringValue().equals("state.snapshot")) {
+                    snapshots.add(message);
+                } else {
+                    messages.add(message);
+                }
                 fragments.setLength(0);
             }
             webSocket.request(1);
@@ -449,6 +707,19 @@ class PressRaceWebSocketIntegrationTest {
             closeReasons.add(reason);
             closed.add(statusCode);
             return null;
+        }
+
+        private JsonNode snapshot(java.util.function.Predicate<JsonNode> matches) throws Exception {
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+            while (System.nanoTime() < deadline) {
+                String message = snapshots.poll(Math.max(1, deadline - System.nanoTime()), TimeUnit.NANOSECONDS);
+                assertThat(message).as("수신 전용 관찰자의 자동 스냅샷").isNotNull();
+                JsonNode state = json.readTree(message);
+                if (matches.test(state)) {
+                    return state;
+                }
+            }
+            throw new AssertionError("기대한 순위 상태를 받지 못함");
         }
 
         private JsonNode receive() throws Exception {
