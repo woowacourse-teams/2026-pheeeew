@@ -285,9 +285,8 @@
     <string name="press_race_overtaken">▲ %1$s명 추월!</string>
     <string name="press_race_overtaken_by">▼ %1$s명이 앞질렀어</string>
 
-    <string name="press_daily_ranking_title">전체 순위</string>
+    <string name="press_daily_ranking_title">일일 랭킹</string>
     <string name="press_daily_ranking_back">뒤로 가기</string>
-    <string name="press_daily_ranking_period">일일 랭킹</string>
     <string name="press_daily_ranking_people">함께 달리는 사람들</string>
     <string name="press_daily_ranking_refresh_error">랭킹을 새로고침하지 못했어요.</string>
     <string name="press_daily_ranking_empty">아직 참여자가 없어요.</string>
@@ -316,4 +315,9 @@
     <string name="press_race_count_eok">%1$s억 회</string>
     <string name="press_race_count_jo">%1$s조 회</string>
     <string name="press_race_count_gyeong">%1$s경 회</string>
+    <string name="press_ranking_hint_0">한 번 누를 때마다 앞으로 한 칸!</string>
+    <string name="press_ranking_hint_1">꾹 눌러 털어내고, 가볍게 달려요!</string>
+    <string name="press_ranking_hint_2">오늘의 마음, 프레스로 남겨봐요!</string>
+    <string name="press_ranking_hint_3">내 페이스대로, 한 번 더 꾹!</string>
+    <string name="press_ranking_hint_4">차곡차곡 누르고, 함께 달려요!</string>
 </resources>

@@ -39,13 +39,13 @@ import com.pheeeew.feature.monitoring.product.ProductScreen
 import com.pheeeew.feature.screens.ranking.press.components.MyRaceRankCard
 import com.pheeeew.feature.screens.ranking.press.components.PressRaceHeader
 import com.pheeeew.feature.screens.ranking.press.components.PressRaceRow
+import com.pheeeew.feature.screens.ranking.press.components.RankingEncouragementBanner
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.press_daily_ranking_back
 import pheeeew.shared.generated.resources.press_daily_ranking_empty
 import pheeeew.shared.generated.resources.press_daily_ranking_people
-import pheeeew.shared.generated.resources.press_daily_ranking_period
 import pheeeew.shared.generated.resources.press_daily_ranking_refresh_error
 import pheeeew.shared.generated.resources.press_daily_ranking_title
 
@@ -110,6 +110,8 @@ internal fun PressRankingScreen(
             }
         }
         Spacer(Modifier.height(16.dp))
+        RankingEncouragementBanner(Modifier.padding(horizontal = 24.dp))
+        Spacer(Modifier.height(16.dp))
         PullToRefreshBox(
             isRefreshing = uiState.isRefreshing,
             onRefresh = onRefresh,
@@ -121,12 +123,7 @@ internal fun PressRankingScreen(
             ) {
                 item {
                     MyRaceRankCard(uiState.me, uiState.status, onBack, onRetry)
-                    Text(
-                        stringResource(Res.string.press_daily_ranking_period),
-                        fontSize = 11.sp,
-                        color = Color(0xFF767D78),
-                        modifier = Modifier.padding(top = 12.dp, bottom = 20.dp),
-                    )
+                    Spacer(Modifier.height(20.dp))
                     Text(
                         stringResource(Res.string.press_daily_ranking_people),
                         fontSize = 16.sp,
