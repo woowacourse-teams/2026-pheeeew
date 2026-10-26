@@ -13,7 +13,7 @@ class NotificationClickRouterTest {
                 NotificationClickTarget.OpenApp,
                 NotificationClickTarget.Revisit,
                 NotificationClickTarget.Collection("collection-1"),
-                NotificationClickTarget.Ranking("PRESS", "period-1", "group-1", 5, 6),
+                NotificationClickTarget.DailyPressRanking("2026-10-26", 5, 6),
             )
         targets.forEach { target ->
             assertEquals(NotificationDestination.Map, NotificationClickRouter.destinationFor(target))
