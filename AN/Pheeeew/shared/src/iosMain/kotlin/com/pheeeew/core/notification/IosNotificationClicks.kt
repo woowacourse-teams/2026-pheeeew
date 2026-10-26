@@ -4,11 +4,6 @@ package com.pheeeew.core.notification
 object IosNotificationClicks {
     val inbox = NotificationClickInbox()
 
-    fun receiveForeground(
-        data: Map<String, String>,
-        requestId: String,
-    ): Boolean = CollectionNotificationEvents.receive(data, requestId)
-
     fun receive(
         data: Map<String, String>,
         requestId: String,

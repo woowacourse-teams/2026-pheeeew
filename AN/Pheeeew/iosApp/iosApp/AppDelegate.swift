@@ -101,32 +101,11 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         withCompletionHandler completionHandler:
             @escaping (UNNotificationPresentationOptions) -> Void
     ) {
-        if IosRevisitNotifications.shared.isRevisit(identifier: notification.request.identifier) {
-            // An open app is not inactive, even during a session longer than 48 hours.
-            DispatchQueue.main.async {
-#if DEBUG
-                if RevisitNotificationDiagnostics.inspectionOnly { return }
-#endif
-                IosRevisitNotifications.shared.recordVisit(onComplete: { _ in })
-            }
-            completionHandler([])
-            return
-        }
 #if DEBUG
         print("포그라운드 알림 수신")
 #endif
-        let request = notification.request
-        let fields = request.content.userInfo.reduce(into: [String: String]()) { result, entry in
-            if let key = entry.key as? String, let value = entry.value as? String {
-                result[key] = value
-            }
-        }
-        DispatchQueue.main.async {
-            // Only supported collection messages use the in-app display contract.
-            let handled = IosNotificationClicks.shared.receiveForeground(
-                data: fields, requestId: request.identifier
-            )
-            completionHandler(handled ? [] : [.banner, .list, .sound])
-        }
+        // Present incoming notifications through iOS even while the app is active.
+        // Navigation is handled only when the user taps the system notification.
+        completionHandler([.banner, .list, .sound])
     }
 }
