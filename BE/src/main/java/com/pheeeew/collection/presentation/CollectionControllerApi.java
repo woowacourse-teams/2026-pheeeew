@@ -92,12 +92,13 @@ public interface CollectionControllerApi {
                     인증된 기기의 한국 시간 기준 오늘 진행도를 반환합니다. 날짜와 기기는 서버가 결정합니다.
 
                     - 다섯 감정을 FRUSTRATED, IRRITATED, EXHAUSTED, DISCOURAGED, ANGRY 순서로 반환합니다.
-                    - 미발급 감정에 활동이 없으면 횟수는 0입니다. 스탬프 목표는 1회, 프레스 목표는 100회입니다.
+                    - 미발급 감정에 활동이 없으면 횟수는 0입니다. 수령 목표는 오늘 다섯 감정 합계로 스탬프 1회, 프레스 100회입니다.
                     - 프레스는 서버가 인정하여 저장한 횟수이며, 목표를 초과해도 실제 횟수를 유지합니다.
                     - 부족분은 목표에서 현재 횟수를 뺀 값이며 최소 0입니다.
                     - card는 수령 API와 같은 카드·이미지 URL 정보이며 미발급 상태이면 null입니다.
                     - 진행도와 카드는 같은 시점의 저장 상태를 읽습니다. 수령 후에도 횟수는 갱신되고 카드와 그림은 유지됩니다.
-                    - card가 있으면 수령 완료, 없고 두 부족분이 0이면 수령 가능, 나머지는 조건 미달입니다.
+                    - 최상위 stamps, presses 는 다섯 감정을 합한 오늘 진행도이며 수령 조건입니다. items 의 감정별 target, remaining 은 참고용이며 수령 조건이 아닙니다.
+                    - claimed 는 오늘 카드를 받았는지, claimable 은 아직 받지 않았고 합산 조건을 채웠는지입니다. 하루 한 장이므로 claimed 가 true 이면 claimable 은 false 입니다.
                     - 조회로 활동이나 카드를 생성하지 않습니다.
 
                     조회 중 날짜가 바뀌면 새 날짜로 다시 조회합니다. 날짜가 계속 바뀌어 503이 반환되면 재시도합니다.
@@ -122,12 +123,13 @@ public interface CollectionControllerApi {
     @Operation(
             summary = "컬렉션 카드 수령",
             description = """
-                    인증된 기기가 지정한 날짜·감정의 카드를 직접 수령합니다.
+                    인증된 기기가 한국 시간 기준 오늘 카드 한 장을 직접 수령합니다. 카드 감정은 요청의 state 이며 다섯 감정 중 아무것이나 고를 수 있습니다.
 
-                    - 스탬프 1회 이상과 프레스 100회 이상을 모두 충족해야 합니다. 서버가 실제 저장된 활동으로 재확인합니다.
-                    - 미발급 카드는 한국 시간 기준 당일에만 수령할 수 있습니다. 자정이 지나면 전날 미수령 카드는 발급하지 않습니다.
-                    - 조건 확인 후 발급 직전에 당일 여부를 최종 판정합니다. 자정 전에 최종 확인된 수령은 응답이 다음 날 도착할 수 있습니다.
-                    - 같은 날짜·감정으로 다시 요청하면 기존 카드를 그대로 반환합니다. 이미 수령한 카드는 날짜가 지나도 재요청할 수 있습니다.
+                    - 오늘 이 기기의 스탬프 합계 1회 이상, 프레스 합계 100회 이상(다섯 감정 합)이어야 합니다. 요청한 state 의 활동 여부는 보지 않습니다. 서버가 실제 저장된 활동으로 재확인합니다.
+                    - 기기마다 하루에 신규 카드 한 장만 발급합니다. 오늘 이미 카드를 받았으면 다른 state 요청은 409 COLLECTION-009 로 거절하며 추첨 조합을 소비하지 않습니다.
+                    - 같은 date, state 로 다시 요청하면 기존 카드를 그대로 반환합니다. 이미 수령한 카드는 날짜가 지나도 재요청할 수 있습니다.
+                    - 미발급 카드는 당일에만 수령할 수 있습니다. 자정이 지나면 전날 미수령 카드는 발급하지 않습니다.
+                    - 같은 기기의 수령 요청은 감정과 관계없이 하나씩 처리합니다. 조건 확인 후 발급 직전에 당일 여부를 최종 판정합니다. 자정 전에 최종 확인된 수령은 응답이 다음 날 도착할 수 있습니다.
                     - 카드 수령 실패로 이미 저장한 감정·프레스가 취소되지는 않습니다.
                     - 응답을 받지 못하면 같은 date·state로 다시 요청합니다. 기기는 인증 정보로 결정합니다.
                     """,
@@ -141,7 +143,7 @@ public interface CollectionControllerApi {
             @ApiResponse(responseCode = "401", description = "인증 정보 없음·유효하지 않음 또는 인증된 기기가 존재하지 않음",
                     content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "409", description = "COLLECTION-003: 스탬프·프레스 수령 조건 미달",
+            @ApiResponse(responseCode = "409", description = "COLLECTION-003: 오늘 스탬프 합계, 프레스 합계 조건 미달 또는 COLLECTION-009: 오늘 이미 다른 감정의 카드를 수령함",
                     content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "503", description = "COLLECTION-004: 카드 자산 준비 중. 당일 재시도 필요",
