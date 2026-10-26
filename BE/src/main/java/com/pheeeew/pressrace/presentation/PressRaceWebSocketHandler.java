@@ -1,5 +1,6 @@
 package com.pheeeew.pressrace.presentation;
 
+import com.pheeeew.common.logging.ScheduledTaskErrorHandler;
 import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.pressrace.application.PressRaceService;
 import com.pheeeew.pressrace.application.PressRankingPublisher;
@@ -9,10 +10,12 @@ import com.pheeeew.pressrace.domain.PressInputResult;
 import com.pheeeew.pressrace.domain.PressSessionResult;
 import com.pheeeew.pressrace.domain.PressView;
 import com.pheeeew.pressrace.exception.PressRaceException;
+import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -26,10 +29,17 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
+import org.springframework.scheduling.support.DelegatingErrorHandlingRunnable;
 import org.springframework.web.socket.BinaryMessage;
 import org.springframework.web.socket.CloseStatus;
+import org.springframework.web.socket.PingMessage;
+import org.springframework.web.socket.PongMessage;
+import org.springframework.web.socket.WebSocketMessage;
+import org.springframework.web.socket.adapter.standard.StandardWebSocketSession;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.AbstractWebSocketHandler;
@@ -48,6 +58,10 @@ public class PressRaceWebSocketHandler extends AbstractWebSocketHandler {
     private final Map<String, PressSnapshotSender> snapshotSenders = new ConcurrentHashMap<>();
     private final ExecutorService snapshotExecutor = Executors.newCachedThreadPool(
             Thread.ofPlatform().name("press-snapshot-", 0).daemon().factory());
+    private final ScheduledExecutorService maintenance = Executors.newSingleThreadScheduledExecutor(
+            Thread.ofPlatform().name("press-connection-watchdog").daemon().factory());
+    private final Set<String> closing = ConcurrentHashMap.newKeySet();
+    private final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
     private final JsonMapper json = JsonMapper.builder()
             .enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
             .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
@@ -65,6 +79,29 @@ public class PressRaceWebSocketHandler extends AbstractWebSocketHandler {
         }
     }
 
+    @PostConstruct
+    void startMaintenance() {
+        maintenance.scheduleWithFixedDelay(new DelegatingErrorHandlingRunnable(
+                () -> maintain(Instant.now(), System.nanoTime()), new ScheduledTaskErrorHandler()),
+                100, 100, TimeUnit.MILLISECONDS);
+    }
+
+    void maintain(Instant now, long monotonicNow) {
+        sessions.forEach((id, session) -> {
+            PressConnection connection = connections.get(id);
+            PressSnapshotSender sender = snapshotSenders.get(id);
+            if (connection == null || sender == null) {
+                return;
+            }
+            if (connection.expiresAt() == null || !now.isBefore(connection.expiresAt())) {
+                terminate(session, CloseStatus.POLICY_VIOLATION.withReason("AUTH_EXPIRED"));
+            } else {
+                sender.maintain(monotonicNow, currentSessions.get(connection.devicePublicId()) == session,
+                        () -> write(session, connection, new PingMessage(ByteBuffer.allocate(0))));
+            }
+        });
+    }
+
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         if (!(session.getPrincipal() instanceof JwtAuthenticationToken authentication)) {
@@ -75,66 +112,101 @@ public class PressRaceWebSocketHandler extends AbstractWebSocketHandler {
         PressConnection connection = PressConnection.of(deviceId, service.serverGeneration(), UUID.randomUUID(),
                 authentication.getToken().getExpiresAt());
         session.setTextMessageSizeLimit(MAX_MESSAGE_BYTES);
+        if (session instanceof StandardWebSocketSession standard) {
+            jakarta.websocket.Session nativeSession = standard.getNativeSession();
+            // Basic 송신 제한과 메시지 전체 watchdog은 서로 보완한다. close도 감시 스레드에서 실행하지 않는다.
+            nativeSession.getUserProperties().put("org.apache.tomcat.websocket.BLOCKING_SEND_TIMEOUT", 2000L);
+            nativeSession.getUserProperties().put("org.apache.tomcat.websocket.SESSION_CLOSE_TIMEOUT", 2000L);
+            nativeSession.getUserProperties().put("org.apache.tomcat.websocket.ABNORMAL_SESSION_CLOSE_SEND_TIMEOUT", 50L);
+        }
+        PressSnapshotSender sender = new PressSnapshotSender(session, snapshotExecutor,
+                snapshot -> sendSnapshot(session, connection, snapshot),
+                failure -> terminate(session, CloseStatus.POLICY_VIOLATION.withReason(failureCode(failure))));
+        // 거절 연결도 결과/제어 송신과 같은 제한을 사용한다. 현재 기기 연결은 DB 승인 뒤에만 교체한다.
+        connections.put(session.getId(), connection);
+        snapshotSenders.put(session.getId(), sender);
+        sessions.put(session.getId(), session);
         synchronized (connectionLocks[Math.floorMod(deviceId.hashCode(), connectionLocks.length)]) {
             try {
                 requireUnexpired(connection);
                 service.connect(connection);
-                connections.put(session.getId(), connection);
                 WebSocketSession previous = currentSessions.put(deviceId, session);
-                if (previous != null && previous != session && previous.isOpen()) {
-                    previous.close(CloseStatus.POLICY_VIOLATION.withReason("CONNECTION_REPLACED"));
+                if (previous != null && previous != session) {
+                    terminate(previous, CloseStatus.POLICY_VIOLATION.withReason("CONNECTION_REPLACED"));
+                }
+                // DB 교체가 커밋되는 동안 새 소켓이 종료됐어도 구 소켓 자격을 되살리지 않는다.
+                if (!sessions.containsKey(session.getId())) {
+                    currentSessions.remove(deviceId, session);
                 }
             } catch (PressRaceException exception) {
                 rejectConnection(session, connection, exception);
             } catch (InvalidMessage exception) {
-                session.close(CloseStatus.POLICY_VIOLATION.withReason(exception.code));
+                terminate(session, CloseStatus.POLICY_VIOLATION.withReason(exception.code));
             }
         }
     }
 
-    private void rejectConnection(WebSocketSession session, PressConnection connection, PressRaceException exception)
-            throws IOException {
-        synchronized (session) {
-            if (connection.expiresAt() == null || !Instant.now().isBefore(connection.expiresAt())) {
-                session.close(CloseStatus.POLICY_VIOLATION.withReason("AUTH_EXPIRED"));
-                return;
-            }
-            Map<String, Object> response = envelope(connection, "protocol.error");
-            response.put("code", exception.code());
-            try {
-                if (session.isOpen()) {
-                    session.sendMessage(new TextMessage(json.writeValueAsString(response)));
+    private String failureCode(RuntimeException failure) {
+        if (failure instanceof InvalidMessage invalid) {
+            return invalid.code;
+        }
+        if (Set.of("RESULT_QUEUE_OVERFLOW", "SEND_TIMEOUT", "HEARTBEAT_TIMEOUT").contains(
+                failure.getMessage() == null ? "" : failure.getMessage())) {
+            return failure.getMessage();
+        }
+        return "SNAPSHOT_SEND_FAILED";
+    }
+
+    private void rejectConnection(WebSocketSession session, PressConnection connection, PressRaceException exception) {
+        if (connection.expiresAt() == null || !Instant.now().isBefore(connection.expiresAt())) {
+            terminate(session, CloseStatus.POLICY_VIOLATION.withReason("AUTH_EXPIRED"));
+            return;
+        }
+        Map<String, Object> response = envelope(connection, "protocol.error");
+        response.put("code", exception.code());
+        TextMessage message = new TextMessage(json.writeValueAsString(response));
+        closing.add(session.getId());
+        PressSnapshotSender sender = snapshotSenders.get(session.getId());
+        if (sender != null) {
+            sender.offerResult(() -> {
+                try {
+                    requireUnexpired(connection);
+                    if (session.isOpen()) {
+                        session.sendMessage(message);
+                    }
+                } catch (IOException failure) {
+                    throw new UncheckedIOException(failure);
+                } finally {
+                    terminate(session, CloseStatus.POLICY_VIOLATION.withReason(exception.code()));
                 }
-            } finally {
-                session.close(CloseStatus.POLICY_VIOLATION.withReason(exception.code()));
-            }
+            }, message.getPayload().getBytes(StandardCharsets.UTF_8).length);
+        }
+        if (!sessions.containsKey(session.getId())) {
+            closing.remove(session.getId());
         }
     }
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         PressConnection connection = connections.get(session.getId());
-        if (connection == null) {
-            session.close(CloseStatus.POLICY_VIOLATION);
+        if (connection == null || closing.contains(session.getId())) {
             return;
         }
         try {
             requireUnexpired(connection);
             if (message.getPayload().getBytes(StandardCharsets.UTF_8).length > MAX_MESSAGE_BYTES) {
-                session.close(CloseStatus.TOO_BIG_TO_PROCESS);
+                terminate(session, CloseStatus.TOO_BIG_TO_PROCESS);
                 return;
             }
             if (!allowMessage(connection.devicePublicId())) {
-                sendError(session, connection, "MESSAGE_RATE_LIMITED");
-                session.close(CloseStatus.POLICY_VIOLATION);
+                sendErrorAndClose(session, connection, "MESSAGE_RATE_LIMITED", CloseStatus.POLICY_VIOLATION);
                 return;
             }
             JsonNode root;
             try {
                 root = json.readTree(message.getPayload());
             } catch (RuntimeException exception) {
-                sendError(session, connection, "INVALID_JSON");
-                session.close(CloseStatus.BAD_DATA);
+                sendErrorAndClose(session, connection, "INVALID_JSON", CloseStatus.BAD_DATA);
                 return;
             }
             if (root == null || !root.isObject()) {
@@ -151,14 +223,16 @@ public class PressRaceWebSocketHandler extends AbstractWebSocketHandler {
                 default -> throw new InvalidMessage("UNSUPPORTED_TYPE");
             }
         } catch (InvalidMessage exception) {
-            sendError(session, connection, exception.code);
-            if (exception.code.equals("AUTH_EXPIRED")) {
-                session.close(CloseStatus.POLICY_VIOLATION);
+            if ("AUTH_EXPIRED".equals(exception.code)) {
+                terminate(session, CloseStatus.POLICY_VIOLATION.withReason(exception.code));
+            } else {
+                sendError(session, connection, exception.code);
             }
         } catch (PressRaceException exception) {
-            sendError(session, connection, exception.code(), exception.requestId());
             if (Set.of("AUTH_EXPIRED", "SERVER_REPLACED", "CONNECTION_REPLACED").contains(exception.code())) {
-                session.close(CloseStatus.POLICY_VIOLATION);
+                terminate(session, CloseStatus.POLICY_VIOLATION.withReason(exception.code()));
+            } else {
+                sendError(session, connection, exception.code(), exception.requestId());
             }
         } catch (RuntimeException exception) {
             sendError(session, connection, "TEMPORARILY_UNAVAILABLE");
@@ -166,22 +240,60 @@ public class PressRaceWebSocketHandler extends AbstractWebSocketHandler {
     }
 
     @Override
-    protected void handleBinaryMessage(WebSocketSession session, BinaryMessage message) throws Exception {
-        session.close(CloseStatus.NOT_ACCEPTABLE);
+    protected void handlePongMessage(WebSocketSession session, PongMessage message) {
+        PressConnection connection = connections.get(session.getId());
+        PressSnapshotSender sender = snapshotSenders.get(session.getId());
+        if (connection != null && sender != null) {
+            if (connection.expiresAt() == null || !Instant.now().isBefore(connection.expiresAt())) {
+                terminate(session, CloseStatus.POLICY_VIOLATION.withReason("AUTH_EXPIRED"));
+            } else {
+                sender.received(System.nanoTime());
+            }
+        }
+    }
+
+    @Override
+    protected void handleBinaryMessage(WebSocketSession session, BinaryMessage message) {
+        terminate(session, CloseStatus.NOT_ACCEPTABLE);
+    }
+
+    @Override
+    public void handleTransportError(WebSocketSession session, Throwable exception) {
+        terminate(session, CloseStatus.SERVER_ERROR.withReason("TRANSPORT_ERROR"));
     }
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-        synchronized (session) {
-            rankingPublisher.unsubscribe(session.getId());
-            PressSnapshotSender sender = snapshotSenders.remove(session.getId());
-            if (sender != null) {
-                sender.close();
-            }
-            PressConnection connection = connections.remove(session.getId());
-            if (connection != null) {
-                currentSessions.remove(connection.devicePublicId(), session);
-            }
+        release(session);
+    }
+
+    private boolean release(WebSocketSession session) {
+        if (!sessions.remove(session.getId(), session)) {
+            return false;
+        }
+        closing.remove(session.getId());
+        PressSnapshotSender sender = snapshotSenders.remove(session.getId());
+        if (sender != null) {
+            sender.close();
+        }
+        rankingPublisher.unsubscribe(session.getId());
+        PressConnection connection = connections.remove(session.getId());
+        if (connection != null) {
+            currentSessions.remove(connection.devicePublicId(), session);
+        }
+        return true;
+    }
+
+    private void terminate(WebSocketSession session, CloseStatus status) {
+        // 송신 잠금과 무관하게 자원 참조를 해제한다. close 프레임도 블로킹될 수 있다.
+        if (release(session)) {
+            snapshotExecutor.execute(() -> {
+                try {
+                    session.close(status);
+                } catch (IOException ignored) {
+                    // 전송 실패 연결은 이미 등록 해제했다.
+                }
+            });
         }
     }
 
@@ -202,31 +314,27 @@ public class PressRaceWebSocketHandler extends AbstractWebSocketHandler {
             }
             inputs.add(PendingPress.of(requestId, uuid(input, "connectionGeneration"), counts(input)));
         }
+        received(session);
         PressSessionResult result = service.initialize(connection, inputs);
         Map<String, Object> response = envelope(connection, "session.ready");
         response.put("counts", result.counts());
         response.put("results", result.results().stream().map(this::resultPayload).toList());
         response.put("date", result.date().toString());
-        synchronized (session) {
+        rankingPublisher.unsubscribe(session.getId());
+        PressSnapshotSender sender = snapshotSenders.get(session.getId());
+        if (sender == null) {
+            return;
+        }
+        TextMessage ready = new TextMessage(json.writeValueAsString(response));
+        sender.offerReady(() -> write(session, connection, ready), ready.getPayload().getBytes(StandardCharsets.UTF_8).length);
+        // 종료와 등록이 경합해도 종료된 소켓의 구독을 남기지 않는다.
+        if (!sessions.containsKey(session.getId())) {
+            return;
+        }
+        rankingPublisher.subscribe(session.getId(), connection.devicePublicId(), PressView.valueOf(view),
+                sender::offer, code -> snapshotExecutor.execute(() -> stopSnapshots(session, code)));
+        if (!sessions.containsKey(session.getId())) {
             rankingPublisher.unsubscribe(session.getId());
-            PressSnapshotSender oldSender = snapshotSenders.remove(session.getId());
-            if (oldSender != null) {
-                oldSender.close();
-            }
-            send(session, connection, response);
-            if (!session.isOpen() || !connections.containsKey(session.getId())) {
-                return;
-            }
-            PressSnapshotSender sender = new PressSnapshotSender(session, snapshotExecutor,
-                    snapshot -> sendSnapshot(session, connection, snapshot),
-                    failure -> stopSnapshots(session,
-                            failure instanceof InvalidMessage invalid ? invalid.code : "SNAPSHOT_SEND_FAILED"));
-            snapshotSenders.put(session.getId(), sender);
-            rankingPublisher.subscribe(session.getId(), connection.devicePublicId(), PressView.valueOf(view),
-                    sender::offer, code -> {
-                        sender.close();
-                        snapshotExecutor.execute(() -> stopSnapshots(session, code));
-                    });
         }
     }
 
@@ -238,12 +346,10 @@ public class PressRaceWebSocketHandler extends AbstractWebSocketHandler {
         } catch (IllegalArgumentException exception) {
             throw new InvalidMessage("INVALID_INPUT");
         }
+        received(session);
         PressSnapshotSender sender = snapshotSenders.get(session.getId());
-        // 세션 송신 → publisher 순서다. publisher에서는 세션 I/O 잠금을 잡지 않는다.
-        synchronized (session) {
-            if (sender == null || !rankingPublisher.changeView(session.getId(), view, sender::reset)) {
-                throw new InvalidMessage("SESSION_NOT_READY");
-            }
+        if (sender == null || !rankingPublisher.changeView(session.getId(), view, sender::reset)) {
+            throw new InvalidMessage("SESSION_NOT_READY");
         }
     }
 
@@ -259,27 +365,18 @@ public class PressRaceWebSocketHandler extends AbstractWebSocketHandler {
         response.put("top100", snapshot.screen().top100());
         response.put("baseline", snapshot.baseline());
         response.put("overtakes", snapshot.overtakes());
-        try {
-            if (!send(session, connection, response)) {
-                throw new InvalidMessage("SNAPSHOT_SEND_FAILED");
-            }
-        } catch (IOException exception) {
-            throw new UncheckedIOException(exception);
-        }
+        write(session, connection, new TextMessage(json.writeValueAsString(response)));
     }
 
     private void stopSnapshots(WebSocketSession session, String code) {
-        try {
-            session.close(CloseStatus.POLICY_VIOLATION.withReason(code));
-        } catch (IOException ignored) {
-            // 이미 실패한 연결은 종료 콜백에서 정리한다.
-        }
+        terminate(session, CloseStatus.POLICY_VIOLATION.withReason(code));
     }
 
     @PreDestroy
     void stopSnapshotExecutor() {
-        snapshotSenders.values().forEach(PressSnapshotSender::close);
-        snapshotExecutor.shutdownNow();
+        maintenance.shutdownNow();
+        sessions.values().forEach(session -> terminate(session, CloseStatus.GOING_AWAY));
+        snapshotExecutor.shutdown();
     }
 
     private void submit(WebSocketSession session, PressConnection connection, JsonNode root) throws IOException {
@@ -287,7 +384,10 @@ public class PressRaceWebSocketHandler extends AbstractWebSocketHandler {
         if (!uuid(root, "connectionGeneration").equals(connection.connectionGeneration())) {
             throw new InvalidMessage("CONNECTION_REPLACED");
         }
-        sendResult(session, connection, service.submit(connection, uuid(root, "requestId"), counts(root)));
+        UUID requestId = uuid(root, "requestId");
+        Map<EmotionState, Integer> inputCounts = counts(root);
+        received(session);
+        sendResult(session, connection, service.submit(connection, requestId, inputCounts));
     }
 
     private void status(WebSocketSession session, PressConnection connection, JsonNode root) throws IOException {
@@ -302,6 +402,7 @@ public class PressRaceWebSocketHandler extends AbstractWebSocketHandler {
         if (new HashSet<>(requestIds).size() != requestIds.size()) {
             throw new InvalidMessage("INVALID_INPUT");
         }
+        received(session);
         for (PressInputResult result : service.status(connection, requestIds)) {
             sendResult(session, connection, result);
         }
@@ -333,7 +434,7 @@ public class PressRaceWebSocketHandler extends AbstractWebSocketHandler {
 
     private void sendError(WebSocketSession session, PressConnection connection, String code, UUID requestId) throws IOException {
         if (connection.expiresAt() == null || !Instant.now().isBefore(connection.expiresAt())) {
-            session.close(CloseStatus.POLICY_VIOLATION.withReason("AUTH_EXPIRED"));
+            terminate(session, CloseStatus.POLICY_VIOLATION.withReason("AUTH_EXPIRED"));
             return;
         }
         Map<String, Object> response = envelope(connection, "protocol.error");
@@ -353,19 +454,53 @@ public class PressRaceWebSocketHandler extends AbstractWebSocketHandler {
         return response;
     }
 
-    private boolean send(WebSocketSession session, PressConnection connection, Map<String, Object> response) throws IOException {
-        synchronized (session) {
-            requireUnexpired(connection);
-            WebSocketSession current = currentSessions.get(connection.devicePublicId());
-            if (current != session) {
-                session.close(CloseStatus.POLICY_VIOLATION.withReason("CONNECTION_REPLACED"));
-                return false;
-            }
-            if (session.isOpen()) {
-                session.sendMessage(new TextMessage(json.writeValueAsString(response)));
-                return true;
-            }
-            return false;
+    private void sendErrorAndClose(WebSocketSession session, PressConnection connection, String code, CloseStatus status) {
+        closing.add(session.getId());
+        rankingPublisher.unsubscribe(session.getId());
+        Map<String, Object> response = envelope(connection, "protocol.error");
+        response.put("code", code);
+        TextMessage message = new TextMessage(json.writeValueAsString(response));
+        PressSnapshotSender sender = snapshotSenders.get(session.getId());
+        if (sender != null) {
+            sender.offerResult(() -> {
+                write(session, connection, message);
+                terminate(session, status.withReason(code));
+            }, message.getPayload().getBytes(StandardCharsets.UTF_8).length);
+        }
+        if (!sessions.containsKey(session.getId())) {
+            closing.remove(session.getId());
+        }
+    }
+
+    private void send(WebSocketSession session, PressConnection connection, Map<String, Object> response) {
+        requireUnexpired(connection);
+        TextMessage message = new TextMessage(json.writeValueAsString(response));
+        PressSnapshotSender sender = snapshotSenders.get(session.getId());
+        if (sender != null) {
+            sender.offerResult(() -> write(session, connection, message), message.getPayload().getBytes(StandardCharsets.UTF_8).length);
+        }
+    }
+
+    private void write(WebSocketSession session, PressConnection connection, WebSocketMessage<?> message) {
+        requireUnexpired(connection);
+        if (currentSessions.get(connection.devicePublicId()) != session) {
+            throw new InvalidMessage("CONNECTION_REPLACED");
+        }
+        if (!session.isOpen() || !connections.containsKey(session.getId())) {
+            throw new InvalidMessage("SNAPSHOT_SEND_FAILED");
+        }
+        try {
+            session.sendMessage(message);
+        } catch (IOException exception) {
+            throw new UncheckedIOException(exception);
+        }
+    }
+
+    private void received(WebSocketSession session) {
+        PressSnapshotSender sender = snapshotSenders.get(session.getId());
+        if (sender != null) {
+            // 정상 명령 검증 뒤 DB/기기 잠금을 기다리기 전에 기록한다.
+            sender.received(System.nanoTime());
         }
     }
 
