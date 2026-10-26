@@ -57,4 +57,17 @@ public class DevicePushTokenRepository {
                 .query((row, index) -> PushTarget.of(row.getLong("device_id"), row.getString("token")))
                 .list();
     }
+
+    public List<PushTarget> findRankChangedTargets(Collection<Long> deviceIds) {
+        return jdbc.sql("""
+                SELECT tokens.device_id, tokens.token
+                FROM device_push_tokens tokens
+                LEFT JOIN device_notification_settings settings ON settings.device_id = tokens.device_id
+                WHERE tokens.device_id IN (:deviceIds)
+                  AND COALESCE(settings.rank_changed_enabled, TRUE)
+                ORDER BY tokens.device_id
+                """).param("deviceIds", deviceIds)
+                .query((row, index) -> PushTarget.of(row.getLong("device_id"), row.getString("token")))
+                .list();
+    }
 }
