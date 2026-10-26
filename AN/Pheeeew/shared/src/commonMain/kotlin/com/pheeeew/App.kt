@@ -30,6 +30,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,11 +57,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.pheeeew.core.audio.LocalAudioFactories
-import com.pheeeew.core.audio.rememberVoiceRecorder
 import com.pheeeew.core.designsystem.component.AppAlertDialog
 import com.pheeeew.core.designsystem.component.AppDialog
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
-import com.pheeeew.core.designsystem.component.ConfirmDialog
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.core.di.AppGraph
 import com.pheeeew.core.di.UiGraph
@@ -103,6 +102,8 @@ import com.pheeeew.feature.screens.map.rememberRegionClusterSymbolImages
 import com.pheeeew.feature.screens.map.renderer.LocalMapRenderer
 import com.pheeeew.feature.screens.map.renderer.MapCameraSnapshotUiModel
 import com.pheeeew.feature.screens.map.symbolImageKey
+import com.pheeeew.feature.screens.onboarding.FeatureGuideScreen
+import com.pheeeew.feature.screens.onboarding.FeatureGuideState
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
 import com.pheeeew.feature.screens.press.PressRoute
 import com.pheeeew.feature.screens.ranking.press.PressRankingRoute
@@ -118,8 +119,6 @@ import com.pheeeew.feature.screens.splash.rememberSplashProgress
 import dev.zacsweers.metrox.viewmodel.LocalMetroViewModelFactory
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import dev.zacsweers.metrox.viewmodel.metroViewModel
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
@@ -128,10 +127,6 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
-import pheeeew.shared.generated.resources.app_cancel
-import pheeeew.shared.generated.resources.app_microphone_permission_message
-import pheeeew.shared.generated.resources.app_microphone_permission_title
-import pheeeew.shared.generated.resources.app_open_settings
 import pheeeew.shared.generated.resources.app_update
 import pheeeew.shared.generated.resources.app_update_later
 import pheeeew.shared.generated.resources.app_update_required_message
@@ -159,6 +154,7 @@ internal enum class AppStartupPresentation {
     VERSION_CHECK,
     REQUIRED_UPDATE,
     ONBOARDING,
+    FEATURE_GUIDE,
     MAIN,
 }
 
@@ -167,9 +163,10 @@ internal fun resolveAppStartupPresentation(
     splashDismissed: Boolean,
     requiredUpdate: Boolean,
     onboardingCompleted: Boolean,
+    usageGuidePending: Boolean = false,
 ): AppStartupPresentation =
     when {
-        !initialVersionCheckComplete && !onboardingCompleted -> {
+        !initialVersionCheckComplete && (!onboardingCompleted || usageGuidePending) -> {
             if (splashDismissed) AppStartupPresentation.VERSION_CHECK else AppStartupPresentation.SPLASH
         }
 
@@ -179,6 +176,10 @@ internal fun resolveAppStartupPresentation(
 
         !onboardingCompleted -> {
             if (splashDismissed) AppStartupPresentation.ONBOARDING else AppStartupPresentation.SPLASH
+        }
+
+        usageGuidePending -> {
+            if (splashDismissed) AppStartupPresentation.FEATURE_GUIDE else AppStartupPresentation.SPLASH
         }
 
         else -> {
@@ -196,6 +197,20 @@ fun App(
     notificationPreferencesStore: NotificationPreferencesStore? = null,
 ) {
     val factory = remember(uiGraph) { uiGraph.viewModelFactory }
+    val featureGuide =
+        rememberSaveable(
+            appGraph.onboardingStore,
+            saver =
+                FeatureGuideState.saver(
+                    onFinished = appGraph.onboardingStore::completeUsageGuide,
+                    canResume = { !appGraph.onboardingStore.isUsageGuideCompleted() },
+                ),
+        ) {
+            FeatureGuideState(
+                pending = !appGraph.onboardingStore.isUsageGuideCompleted(),
+                onFinished = appGraph.onboardingStore::completeUsageGuide,
+            )
+        }
     CompositionLocalProvider(
         LocalMetroViewModelFactory provides factory,
         LocalAudioFactories provides appGraph.audioFactories,
@@ -204,6 +219,7 @@ fun App(
             AppContent(
                 appGraph,
                 uiGraph,
+                featureGuide,
                 settingsContent,
                 notificationClicks,
                 notificationPermissionController,
@@ -217,6 +233,7 @@ fun App(
 private fun AppContent(
     appGraph: AppGraph,
     uiGraph: UiGraph,
+    featureGuide: FeatureGuideState,
     settingsContent: @Composable () -> Unit,
     notificationClicks: NotificationClickInbox?,
     notificationPermissionController: NotificationPermissionController?,
@@ -224,7 +241,6 @@ private fun AppContent(
 ) {
     val apiDependencies = appGraph.apiDependencies
     val appVersion = appGraph.appVersion
-    val permissionSettingsLauncher = appGraph.appSettingsLauncher
     val appSettingsLauncher = appGraph.appSettingsLauncher
     val onboardingStore = appGraph.onboardingStore
     val uriHandler = LocalUriHandler.current
@@ -276,8 +292,12 @@ private fun AppContent(
     val entryReady =
         appEntryState.phase == AppEntryPhase.READY && sessionGeneration != null &&
             appEntryState.sessionGeneration == sessionGeneration
-    LaunchedEffect(startupViewModel, onboardingCompleted, appEntryState.phase, entryReady) {
-        startupViewModel.updateEntryPreparation(onboardingCompleted, appEntryState.phase, entryReady)
+    LaunchedEffect(startupViewModel, onboardingCompleted, featureGuide.pending, appEntryState.phase, entryReady) {
+        startupViewModel.updateEntryPreparation(
+            onboardingCompleted && !featureGuide.pending,
+            appEntryState.phase,
+            entryReady,
+        )
     }
     val startupPresentation =
         resolveAppStartupPresentation(
@@ -285,6 +305,7 @@ private fun AppContent(
             splashDismissed = startupState.splashDismissed,
             requiredUpdate = requiredUpdate != null,
             onboardingCompleted = onboardingCompleted,
+            usageGuidePending = featureGuide.pending,
         )
 
     if (startupPresentation == AppStartupPresentation.SPLASH) {
@@ -316,51 +337,19 @@ private fun AppContent(
     }
 
     if (startupPresentation == AppStartupPresentation.ONBOARDING) {
-        val onboardingRecorder = rememberVoiceRecorder()
-        val onboardingScope = rememberCoroutineScope()
-        var microphoneDialogResult by remember { mutableStateOf<CompletableDeferred<Unit>?>(null) }
         OnboardingScreen(
             monitoring = apiDependencies.client.monitoring,
             onFinished = {
-                try {
-                    onboardingRecorder.requestMicrophonePermission()
-                    onboardingRecorder.state.first { !it.requestingPermission }
-                } catch (cancellation: CancellationException) {
-                    throw cancellation
-                } catch (_: Exception) {
-                    // Recording can request permission again when the user needs it.
-                }
-                if (!onboardingRecorder.state.value.microphonePermissionGranted) {
-                    val result = CompletableDeferred<Unit>()
-                    microphoneDialogResult = result
-                    try {
-                        result.await()
-                    } finally {
-                        microphoneDialogResult = null
-                    }
-                }
                 onboardingStore.complete()
                 onboardingCompleted = true
+                featureGuide.start()
             },
         )
-        microphoneDialogResult?.let { result ->
-            ConfirmDialog(
-                title = stringResource(Res.string.app_microphone_permission_title),
-                content = stringResource(Res.string.app_microphone_permission_message),
-                confirmText = stringResource(Res.string.app_open_settings),
-                cancelText = stringResource(Res.string.app_cancel),
-                onConfirm = {
-                    onboardingScope.launch {
-                        try {
-                            permissionSettingsLauncher.openAppSettings()
-                        } finally {
-                            result.complete(Unit)
-                        }
-                    }
-                },
-                onCancel = { result.complete(Unit) },
-            )
-        }
+        return
+    }
+
+    if (startupPresentation == AppStartupPresentation.FEATURE_GUIDE) {
+        FeatureGuideScreen(state = featureGuide)
         return
     }
 
@@ -777,7 +766,7 @@ private fun AppContent(
                     monitoring = apiDependencies.client.monitoring,
                     appVersion = appVersion,
                     onBackClick = { isSettingsVisible = false },
-                    permissionSettingsLauncher = permissionSettingsLauncher,
+                    permissionSettingsLauncher = appSettingsLauncher,
                     notificationPermissionController = notificationPermissionController,
                     notificationPreferencesStore = notificationPreferencesStore,
                     modifier = Modifier.fillMaxSize(),
