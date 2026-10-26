@@ -1,7 +1,10 @@
 package com.pheeeew.notification.domain.repository;
 
+import com.pheeeew.notification.domain.PushTarget;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Collection;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -34,5 +37,24 @@ public class DevicePushTokenRepository {
         jdbc.sql("DELETE FROM device_push_tokens WHERE device_id = :deviceId")
                 .param("deviceId", deviceId)
                 .update();
+    }
+
+    public void deleteByDeviceIdAndToken(Long deviceId, String token) {
+        jdbc.sql("DELETE FROM device_push_tokens WHERE device_id = :deviceId AND token = :token")
+                .param("deviceId", deviceId).param("token", token)
+                .update();
+    }
+
+    public List<PushTarget> findCollectionClaimableTargets(Collection<Long> deviceIds) {
+        return jdbc.sql("""
+                SELECT tokens.device_id, tokens.token
+                FROM device_push_tokens tokens
+                LEFT JOIN device_notification_settings settings ON settings.device_id = tokens.device_id
+                WHERE tokens.device_id IN (:deviceIds)
+                  AND COALESCE(settings.collection_claimable_enabled, TRUE)
+                ORDER BY tokens.device_id
+                """).param("deviceIds", deviceIds)
+                .query((row, index) -> PushTarget.of(row.getLong("device_id"), row.getString("token")))
+                .list();
     }
 }

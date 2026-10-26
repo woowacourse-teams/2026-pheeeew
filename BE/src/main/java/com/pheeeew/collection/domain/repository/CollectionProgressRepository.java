@@ -127,6 +127,26 @@ public class CollectionProgressRepository {
                 .list();
     }
 
+    public List<Long> findClaimableDeviceIds(LocalDate date) {
+        return jdbc.sql("""
+                SELECT DISTINCT stamps.device_id
+                FROM device_daily_stamps stamps
+                JOIN device_daily_presses presses
+                  ON presses.device_id = stamps.device_id AND presses.press_date = stamps.stamp_date
+                 AND presses.state = stamps.state
+                WHERE stamps.stamp_date = :date AND stamps.stamp_count >= 1 AND presses.press_count >= 100
+                  AND NOT EXISTS (
+                      SELECT 1 FROM collection_cards cards
+                      WHERE cards.device_id = stamps.device_id AND cards.card_date = stamps.stamp_date
+                        AND cards.state = stamps.state
+                  )
+                ORDER BY stamps.device_id
+                """)
+                .param("date", date)
+                .query(Long.class)
+                .list();
+    }
+
     public List<CollectionTodayProgress> findTodayByDateAndDeviceId(LocalDate date, Long deviceId) {
         return jdbc.sql("WITH activity AS (" + ACTIVITY_COUNTS_SQL + """
                 ), cards AS (
