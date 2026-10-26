@@ -81,8 +81,11 @@ case "$*" in
     "$SHIM_DIR/../probe-transport" "$3"
     exit $? ;;
   'image inspect '*)
+    [ -f "$SHIM_DIR/fail-image-inspect" ] && exit 1
     [ -f "$SHIM_DIR/old-image" ] && echo missing || echo 1
     exit 0 ;;
+  *' pull '*)
+    [ -f "$SHIM_DIR/fail-image-pull" ] && exit 1 ;;
   *COUNTED*)
     if [ -f "$SHIM_DIR/replace-active-before-cleanup" ]; then
       rm -f "$SHIM_DIR/replace-active-before-cleanup"
@@ -91,6 +94,11 @@ case "$*" in
     fi
     [ -f "$SHIM_DIR/fail-drain" ] && exit 1 ;;
   *"nginx -s reload"*)
+    if [ -f "$SHIM_DIR/delay-restore-reload" ] && grep -q 'app-blue;' "$SHIM_POINTER"; then
+      rm -f "$SHIM_DIR/delay-restore-reload"
+      "$REAL_DOCKER" exec "$GENERATION_NGINX" sh -c 'kill -STOP "$(cat /var/run/nginx.pid)"'
+      ( sleep 2; "$REAL_DOCKER" exec "$GENERATION_NGINX" sh -c 'kill -CONT "$(cat /var/run/nginx.pid)"' ) >/dev/null 2>&1 </dev/null &
+    fi
     if [ -f "$SHIM_DIR/replace-target-on-reload" ]; then
       rm -f "$SHIM_DIR/replace-target-on-reload"
       "$REAL_DOCKER" rm -f "$GENERATION_TARGET" >/dev/null
@@ -218,9 +226,12 @@ class Fixture:
         sh('docker', 'run', '-d', '--name', self.db, '-e', 'POSTGRES_HOST_AUTH_METHOD=trust',
            'postgis/postgis:17-3.5')
         for _ in range(60):
-            if sh('docker', 'exec', self.db, 'pg_isready', '-U', 'postgres').returncode == 0:
+            if sh('docker', 'exec', self.db, 'pg_isready', '-h', '127.0.0.1', '-U', 'postgres').returncode == 0:
                 break
             time.sleep(1)
+        else:
+            sh('docker', 'rm', '-f', self.db)
+            raise Failure('fixture PostgreSQL 이 TCP 연결을 받을 준비가 되지 않았다')
         migration = (REPO / 'BE/src/main/resources/db/migration/V20261026_2__create_press_race_storage.sql').read_text()
         self.sql(migration.split('CREATE TABLE press_device_controls')[0])
         self.sql('CREATE TABLE devices (public_id UUID PRIMARY KEY);')
@@ -432,6 +443,7 @@ class Fixture:
         env['GENERATION_DB'] = self.db
         env['GENERATION_TARGET'] = self.project + '-app-green'
         env['GENERATION_ACTIVE'] = self.project + '-app-blue'
+        env['GENERATION_NGINX'] = self.project + '-nginx'
         env['ALLOW_LEGACY_GENERATION'] = 'true' if (self.state / 'allow-legacy-generation').exists() else 'false'
         proc = subprocess.Popen(['bash', '-s'], stdin=subprocess.PIPE,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -612,6 +624,29 @@ def scenario_old_image(fx):
     expect(result.returncode == 1 and not fx.exists('app-green'), '세대 계약 없는 이미지를 기동했다')
     expect(fx.sql('SELECT active_server_generation FROM press_race_control;') ==
            '11111111-1111-1111-1111-111111111111', '이미지 거절 전 DB를 변경했다')
+
+
+def assert_image_failure_allows_retry(fx, marker):
+    fx.start_app('app-blue')
+    failure = fx.state / marker
+    failure.touch()
+    result = fx.deploy()
+    expect(result.returncode == 1, '이미지 준비 실패를 성공 처리했다')
+    expect(fx.running('app-blue') and not fx.exists('app-green'), '이미지 준비 실패 전에 컨테이너를 교체했다')
+    expect(fx.sql('SELECT active_server_generation FROM press_race_control;') ==
+           '11111111-1111-1111-1111-111111111111', '이미지 준비 실패 전에 DB 소유권을 변경했다')
+    expect(not (fx.dir / '.press-deploy.json').exists(), '이미지 준비 실패가 다음 배포를 막는다')
+    failure.unlink()
+    retry = fx.deploy()
+    expect(retry.returncode == 0, f'이미지 준비 복구 뒤 재배포 실패: {retry.stdout}{retry.stderr}')
+
+
+def scenario_image_pull_fails(fx):
+    assert_image_failure_allows_retry(fx, 'fail-image-pull')
+
+
+def scenario_image_inspect_fails(fx):
+    assert_image_failure_allows_retry(fx, 'fail-image-inspect')
 
 
 def bootstrap_fixture(fx):
@@ -900,6 +935,8 @@ def scenario_rollback_waits_for_inflight(fx):
     fx.point_at('set $upstream_app app-blue;\n')
     fx.start_app('app-blue')
     fx.edge('app-green', code='503')
+    # Reload acknowledges the signal before the master handles it; hold that window open.
+    (fx.state / 'delay-restore-reload').touch()
     with fx.capture_processes_on_failure() as processes:
         deploy = processes['deploy'] = fx.deploy_async()
         fx.wait_edge_serves('app-green')
@@ -917,6 +954,8 @@ def scenario_rollback_waits_for_inflight(fx):
         expect(fx.pointer_color() == 'app-blue', f'전환 파일 {fx.pointer_color()}')
         expect(fx.running('app-blue'), 'app-blue 가 내려갔다')
         expect(not fx.exists('app-green'), '요청이 끝났는데 app-green 이 남아 있다')
+        expect('app-green 으로 향하던 요청이 모두 끝났습니다.' in result.stdout,
+               f'기록한 worker PID 종료를 확인하지 못했다: {result.stdout}')
         expect(result.stdout.index('복구했고 정상 응답을 확인했습니다')
                < result.stdout.index('app-green 을 정리했습니다'),
                '복구 확인보다 새 서버 삭제가 먼저다')
@@ -957,6 +996,26 @@ def scenario_compose_services_match(fx):
                f'app-{color} 의 profiles 가 [{color}] 가 아니다')
 
 
+def scenario_worker_pid_matching(fx):
+    script = remote_script()
+    functions = script[script.index('read_nginx_processes()'):script.index('wait_drained()')]
+    result = sh('bash', '-s', cwd=fx.dir, input='''set -eu
+NGINX="docker compose -f compose.nginx.yml"
+''' + functions + '''
+capture_workers
+[ -n "$DRAIN_WORKERS" ]
+[ "$(count_previous_workers)" -gt 0 ]
+read_nginx_processes() { printf '%s\\n' '112 nginx: worker process' '34 changed-process-title'; }
+DRAIN_WORKERS='12 34 '
+[ "$(count_previous_workers)" -eq 1 ]
+DRAIN_WORKERS='12 '
+[ "$(count_previous_workers)" -eq 0 ]
+DRAIN_WORKERS=
+if count_previous_workers; then exit 1; fi
+''')
+    expect(result.returncode == 0, f'worker PID 판정 실패: {result.stdout}{result.stderr}')
+
+
 SCENARIOS = (
     ('정상 전환', scenario_normal),
     ('DB 커밋 응답 유실 복구', scenario_lost_db_response),
@@ -964,6 +1023,8 @@ SCENARIOS = (
     ('세대 전환 직후 새 서버 종료 복구', scenario_target_dies_after_handoff),
     ('경쟁 ON 배포 거부', scenario_competition_on),
     ('세대 미지원 이미지 거부', scenario_old_image),
+    ('이미지 pull 실패 후 재배포', scenario_image_pull_fails),
+    ('이미지 inspect 실패 후 재배포', scenario_image_inspect_fails),
     ('NULL 세대 최초 지정', scenario_bootstrap),
     ('최초 지정 실패 시 NULL 복귀', scenario_bootstrap_restore),
     ('임시 복구 세대의 최초 이행', scenario_legacy_migration),
@@ -997,6 +1058,7 @@ SCENARIOS = (
     ('전환 파일 이상값', scenario_invalid_pointer),
     ('전환 파일 빈 값', scenario_empty_pointer),
     ('compose 의 색 이름이 배포 스크립트와 일치', scenario_compose_services_match),
+    ('worker PID 캡처와 정확한 종료 판정', scenario_worker_pid_matching),
 )
 
 

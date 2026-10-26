@@ -302,7 +302,7 @@ jobs:
           PROBE_URL="https://$PROBE_HOST$PROBE_PATH"
           NGINX="docker compose -f compose.nginx.yml"
           APPS="docker compose -f compose.yml"
-          WORKER_MARK="[w]orker process is shutting down"
+          DRAIN_WORKERS=
 
           if command -v python3 >/dev/null 2>&1; then
             JSON_TOOL=python3
@@ -366,21 +366,41 @@ jobs:
             return 1
           }
 
-          count_shutting_workers() {
+          read_nginx_processes() {
             out=$($NGINX exec -T nginx \
-                    sh -c "ps -o args= || exit 9; echo COUNTED" </dev/null 2>/dev/null) || return 1
+                    sh -c "ps -o pid=,args= || exit 9; echo COUNTED" </dev/null 2>/dev/null) || return 1
             case "$out" in
               *COUNTED) ;;
               *) return 1 ;;
             esac
-            printf '%s\n' "$out" | grep -c "$WORKER_MARK" || true
+            printf '%s\n' "$out" | awk '$1 ~ /^[0-9]+$/ { seen=1 } END { exit !seen }' || return 1
+            printf '%s\n' "$out"
+          }
+
+          capture_workers() {
+            # Reload only acknowledges a signal. Capture workers before their titles can change.
+            DRAIN_WORKERS=
+            if processes=$(read_nginx_processes); then
+              DRAIN_WORKERS=$(printf '%s\n' "$processes" | \
+                awk '$1 ~ /^[0-9]+$/ && $2 == "nginx:" && $3 == "worker" && $4 == "process" { printf "%s ", $1 }')
+            fi
+          }
+
+          count_previous_workers() {
+            # Empty/failed snapshots are unknown, never proof that requests have drained.
+            [ -n "$DRAIN_WORKERS" ] || return 1
+            processes=$(read_nginx_processes) || return 1
+            printf '%s\n' "$processes" | awk -v previous="$DRAIN_WORKERS" '
+              BEGIN { n=split(previous, pids); for (i=1; i<=n; i++) old[pids[i]]=1 }
+              $1 in old { count++ }
+              END { print count+0 }'
           }
 
           wait_drained() {
             deadline=$(($(date +%s) + 60))
             checked=no
             while :; do
-              if left=$(count_shutting_workers); then
+              if left=$(count_previous_workers); then
                 case "$left" in
                   ''|*[!0-9]*) ;;
                   *)
@@ -408,6 +428,7 @@ jobs:
             [ -f "$BACKUP" ] || return 1
             cat "$BACKUP" > "$POINTER"
             $NGINX exec -T nginx nginx -t </dev/null || return 1
+            capture_workers
             $NGINX exec -T nginx nginx -s reload </dev/null || return 1
             wait_served "$ACTIVE" || return 1
           }
@@ -460,8 +481,12 @@ jobs:
           fi
           APPS="docker compose --env-file .env --env-file press-generations.env -f compose.yml"
 
-          $APPS pull "$TARGET"
-          contract=$(docker image inspect "$APP_IMAGE" --format '{{index .Config.Labels "com.pheeeew.press-generation-contract"}}')
+          if ! $APPS pull "$TARGET"; then
+            echo "새 이미지를 가져오지 못했습니다. 전환하지 않습니다."
+            rm -f .press-deploy.json
+            exit 1
+          fi
+          contract=$(docker image inspect "$APP_IMAGE" --format '{{index .Config.Labels "com.pheeeew.press-generation-contract"}}') || contract=
           if [ "$contract" != 1 ]; then
             echo "서버 세대 계약을 지원하지 않는 이미지입니다. 별도의 구버전 복귀 절차가 필요합니다."
             rm -f .press-deploy.json
@@ -515,6 +540,7 @@ jobs:
             exit 1
           fi
 
+          capture_workers
           if ! $NGINX exec -T nginx nginx -s reload </dev/null; then
             echo "reload 가 실패했습니다. 전환 파일을 되돌립니다."
             rollback || true

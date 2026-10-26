@@ -18,7 +18,7 @@
 3. 새 색에 최소 API 직접 확인          nginx 에서 http://<색>:8080 으로 호출, available 이 boolean 인지
 4. DB 활성 서버 세대 조건부 교체 → 전환 파일 교체 + nginx -t + reload
 5. 전환 검증                          HTTP 200 + JSON 본문 + X-Upstream 이 새 색
-6. 이전 요청 drain                    종료 중인 nginx 워커가 0이 될 때까지
+6. 이전 요청 drain                    reload 직전에 기록한 nginx 워커 PID가 모두 사라질 때까지
 7. 이전 색 graceful 종료 후 제거
 ```
 
@@ -100,7 +100,11 @@ docker logs pheeeew-dev-alloy 2>&1 | grep -i skipping
 | `PressHttpDeploymentLifecycleIntegrationTest` | 실제 Spring HTTP API·PostGIS에서 임의 세대 최초 지정→새 명시적 세대 이행→HTTP 서버 종료·재부팅→정상 교체→조건부 복귀 후 입력·원본·투영 저장을 확인해요. Python의 실제 토큰 서명·WS 세대 조회도 실행해요 |
 | `nginx/test-alb-health.py` | nginx 라우팅, 접근 제어, 장애 응답 |
 
-둘 다 `BE Nginx CI` 에서 돌아요. 배포 셸을 바꾸면 테스트가 같은 셸을 읽으므로 따로 고칠 것이 없어요.
+`test-deploy-switch.py`와 `nginx/test-alb-health.py`는 `BE Nginx CI`, `PressHttpDeploymentLifecycleIntegrationTest`는 `BE CI`의 Gradle 테스트에서 돌아요. 배포 셸 검사는 워크플로의 같은 셸을 읽어요.
+
+nginx의 reload 명령은 신호 접수 뒤 먼저 반환할 수 있어요. 종료 중이라는 프로세스 표시가 아직 없다고 요청이 끝난 것은 아니므로, 정상 전환과 복귀 각각 reload 직전에 모든 worker PID를 기록하고 그 PID가 프로세스 목록에서 사라질 때까지 기다려요. PID 재사용은 보수적으로 추가 대기를 일으키며 조기 정리로 판단하지 않아요. 조회 실패·빈 기록은 0개가 아니라 확인 불가로 취급해요. 60초 대기 뒤에도 확인할 수 없으면 기존처럼 앱의 종료 유예 안에서 남은 요청을 마무리하므로 유예를 넘긴 요청 보존까지 보장하지 않아요.
+
+이미지 pull·inspect 실패는 후보 기동과 DB·nginx 전환 전이므로 전환 기록을 지우고 종료해요. 이미지 준비가 회복되면 수동으로 전환 기록을 지우지 않고 다시 배포할 수 있어요.
 
 ### 어떤 검사가 왜, 언제 도나
 
