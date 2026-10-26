@@ -64,6 +64,9 @@ class PressRaceWebSocketIntegrationTest {
     private PressRaceService service;
 
     @Autowired
+    private com.pheeeew.auth.infra.jwt.JwtTokenEncoder jwtEncoder;
+
+    @Autowired
     private org.springframework.scheduling.TaskScheduler taskScheduler;
 
     @MockitoSpyBean
@@ -298,6 +301,25 @@ class PressRaceWebSocketIntegrationTest {
         } finally {
             release.countDown();
             cleanup.cancel(true);
+        }
+    }
+
+    @Test
+    void 수신_전용_관찰자의_토큰이_만료되면_자동_송신_종료_사유는_AUTH_EXPIRED다() throws Exception {
+        // given
+        String shortToken = jwtEncoder.encodeAccessToken(device.getPublicId().toString(), java.time.Duration.ofSeconds(5));
+        SocketListener observer = connect(shortToken);
+        initialize(observer);
+        observer.snapshot(state -> state.path("baseline").booleanValue());
+
+        // when: 만료 후 화면 내용이 달라져 자동 송신 경로에서 인증을 다시 확인한다.
+        try (var change = java.util.concurrent.Executors.newSingleThreadScheduledExecutor()) {
+            var changed = change.schedule(() -> seedScore(device, 1, UUID.randomUUID()), 6, TimeUnit.SECONDS);
+
+            // then
+            assertThat(observer.closed.poll(12, TimeUnit.SECONDS)).isEqualTo(1008);
+            assertThat(observer.closeReasons.poll(5, TimeUnit.SECONDS)).isEqualTo("AUTH_EXPIRED");
+            changed.get(2, TimeUnit.SECONDS);
         }
     }
 

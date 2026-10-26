@@ -236,6 +236,112 @@ class PressRankingServiceIntegrationTest {
     }
 
     @Test
+    void 느린_조회_중에도_구독과_화면_전환과_해제가_완료되고_새_기준은_다음_조회부터_받는다() throws Exception {
+        // given
+        Device device = participant("00000000-0000-0000-0000-000000000005", 2);
+        PressRankingReader delayed = spy(reader);
+        CountDownLatch oldRead = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        AtomicBoolean first = new AtomicBoolean(true);
+        doAnswer(invocation -> {
+            PressRanking result = (PressRanking) invocation.callRealMethod();
+            if (first.getAndSet(false)) {
+                oldRead.countDown();
+                assertThat(release.await(10, TimeUnit.SECONDS)).isTrue();
+            }
+            return result;
+        }).when(delayed).read();
+        List<PressRankingPublisher.Snapshot> changedView = new CopyOnWriteArrayList<>();
+        List<PressRankingPublisher.Snapshot> newlySubscribed = new CopyOnWriteArrayList<>();
+        List<PressRankingPublisher.Snapshot> removed = new CopyOnWriteArrayList<>();
+        PressRankingPublisher publisher = new PressRankingPublisher(delayed);
+        publisher.subscribe("changed", device.getPublicId(), PressView.PRESS, changedView::add, code -> {});
+        publisher.subscribe("removed", device.getPublicId(), PressView.PRESS, removed::add, code -> {});
+
+        // when
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var old = executor.submit(publisher::refresh);
+            try {
+                assertThat(oldRead.await(10, TimeUnit.SECONDS)).isTrue();
+                jdbc.sql("UPDATE press_daily_scores SET total = 8 WHERE device_id = :id").param("id", device.getId()).update();
+                var control = executor.submit(() -> {
+                    assertThat(publisher.changeView("changed", PressView.ALL, () -> {})).isTrue();
+                    publisher.subscribe("new", device.getPublicId(), PressView.PRESS, newlySubscribed::add, code -> {});
+                    publisher.unsubscribe("removed");
+                });
+                control.get(2, TimeUnit.SECONDS);
+                assertThat(release.getCount()).isEqualTo(1);
+                release.countDown();
+                old.get(10, TimeUnit.SECONDS);
+            } finally {
+                release.countDown();
+            }
+        }
+
+        // then: 진입·화면 전환 전의 DB 관찰을 새 기준으로 보내지 않는다.
+        assertThat(changedView).isEmpty();
+        assertThat(newlySubscribed).isEmpty();
+        assertThat(removed).isEmpty();
+        publisher.refresh();
+        assertThat(changedView).singleElement().satisfies(snapshot -> {
+            assertThat(snapshot.screen().view()).isEqualTo(PressView.ALL);
+            assertThat(snapshot.screen().me().score()).isEqualTo(8);
+            assertThat(snapshot.baseline()).isTrue();
+        });
+        assertThat(newlySubscribed).singleElement().satisfies(snapshot -> {
+            assertThat(snapshot.screen().me().score()).isEqualTo(8);
+            assertThat(snapshot.baseline()).isTrue();
+        });
+        assertThat(removed).isEmpty();
+    }
+
+    @Test
+    void 과거_조회_오류는_조회_도중_재초기화한_새_구독을_종료하지_않는다() throws Exception {
+        // given
+        PressRankingReader delayed = spy(reader);
+        CountDownLatch oldRead = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        AtomicBoolean first = new AtomicBoolean(true);
+        doAnswer(invocation -> {
+            if (first.getAndSet(false)) {
+                oldRead.countDown();
+                assertThat(release.await(10, TimeUnit.SECONDS)).isTrue();
+                throw new PressRaceException("RACE_DISABLED");
+            }
+            return invocation.callRealMethod();
+        }).when(delayed).read();
+        List<String> oldStopped = new CopyOnWriteArrayList<>();
+        List<String> newStopped = new CopyOnWriteArrayList<>();
+        List<PressRankingPublisher.Snapshot> snapshots = new CopyOnWriteArrayList<>();
+        PressRankingPublisher publisher = new PressRankingPublisher(delayed);
+        UUID deviceId = UUID.randomUUID();
+        publisher.subscribe("session", deviceId, PressView.PRESS, snapshots::add, oldStopped::add);
+
+        // when
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var old = executor.submit(publisher::refresh);
+            try {
+                assertThat(oldRead.await(10, TimeUnit.SECONDS)).isTrue();
+                executor.submit(() -> publisher.subscribe("session", deviceId, PressView.ALL,
+                        snapshots::add, newStopped::add)).get(2, TimeUnit.SECONDS);
+                release.countDown();
+                old.get(10, TimeUnit.SECONDS);
+            } finally {
+                release.countDown();
+            }
+        }
+        publisher.refresh();
+
+        // then
+        assertThat(oldStopped).isEmpty();
+        assertThat(newStopped).isEmpty();
+        assertThat(snapshots).singleElement().satisfies(snapshot -> {
+            assertThat(snapshot.baseline()).isTrue();
+            assertThat(snapshot.screen().view()).isEqualTo(PressView.ALL);
+        });
+    }
+
+    @Test
     void 입력_없는_관찰도_서버_교체와_기능_중단을_감지한다() {
         // given
         PressRankingPublisher publisher = new PressRankingPublisher(reader);

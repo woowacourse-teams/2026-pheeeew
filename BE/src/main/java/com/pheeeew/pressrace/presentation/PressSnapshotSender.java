@@ -11,7 +11,7 @@ final class PressSnapshotSender {
     private final Object sendMonitor;
     private final Executor executor;
     private final Consumer<Snapshot> send;
-    private final Runnable failed;
+    private final Consumer<RuntimeException> failed;
     private Snapshot pending;
     private PressRanking.Screen lastSent;
     private long revision;
@@ -19,7 +19,7 @@ final class PressSnapshotSender {
     private boolean running;
     private boolean closed;
 
-    PressSnapshotSender(Object sendMonitor, Executor executor, Consumer<Snapshot> send, Runnable failed) {
+    PressSnapshotSender(Object sendMonitor, Executor executor, Consumer<Snapshot> send, Consumer<RuntimeException> failed) {
         this.sendMonitor = sendMonitor;
         this.executor = executor;
         this.send = send;
@@ -86,7 +86,7 @@ final class PressSnapshotSender {
             }
         } catch (RuntimeException exception) {
             close();
-            failed.run();
+            failed.accept(exception);
         }
     }
 }

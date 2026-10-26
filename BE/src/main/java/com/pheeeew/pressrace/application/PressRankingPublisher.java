@@ -18,13 +18,14 @@ import java.util.concurrent.TimeUnit;
 import org.springframework.scheduling.support.DelegatingErrorHandlingRunnable;
 import org.springframework.stereotype.Component;
 
-/** 조회 시작부터 대기 게시까지 단일 흐름. 송신·DB 쓰기는 이 잠금에서 실행하지 않는다. */
+/** 조회·게시는 직렬화하고, 구독 상태 잠금은 DB 조회 동안 유지하지 않는다. 송신은 잠금 밖이다. */
 @RequiredArgsConstructor
 @Component
 public class PressRankingPublisher {
 
     private final PressRankingReader reader;
     private final Map<String, Subscription> subscriptions = new HashMap<>();
+    private final Object refreshLock = new Object();
     private long version;
     private final ScheduledExecutorService updates = Executors.newSingleThreadScheduledExecutor(
             Thread.ofPlatform().name("press-ranking-updates").daemon().factory());
@@ -53,8 +54,8 @@ public class PressRankingPublisher {
             return false;
         }
         invalidatePending.run();
-        subscription.view = view;
-        subscription.baseline = true;
+        subscriptions.put(sessionId, new Subscription(subscription.deviceId, view,
+                subscription.snapshots, subscription.stopped));
         return true;
     }
 
@@ -62,26 +63,43 @@ public class PressRankingPublisher {
         subscriptions.remove(sessionId);
     }
 
-    public synchronized void refresh() {
-        if (subscriptions.isEmpty()) {
-            return;
-        }
-        PressRanking ranking;
-        try {
-            ranking = reader.read();
-        } catch (PressRaceException exception) {
-            subscriptions.values().forEach(subscription -> subscription.stopped.accept(exception.code()));
-            subscriptions.clear();
-            return;
-        }
-        long nextVersion = Math.incrementExact(version);
-        version = nextVersion;
-        for (Subscription subscription : subscriptions.values()) {
-            PressRanking.Screen screen = ranking.forDevice(subscription.deviceId, subscription.view);
-            boolean baseline = subscription.baseline || subscription.date == null || !subscription.date.equals(screen.date());
-            subscription.snapshots.accept(Snapshot.of(screen, Long.toString(nextVersion), ranking.generatedAt(), baseline));
-            subscription.baseline = false;
-            subscription.date = screen.date();
+    public void refresh() {
+        synchronized (refreshLock) {
+            Map<String, Subscription> observed;
+            synchronized (this) {
+                if (subscriptions.isEmpty()) {
+                    return;
+                }
+                observed = Map.copyOf(subscriptions);
+            }
+            PressRanking ranking;
+            try {
+                ranking = reader.read();
+            } catch (PressRaceException exception) {
+                synchronized (this) {
+                    observed.forEach((sessionId, subscription) -> {
+                        if (subscriptions.remove(sessionId, subscription)) {
+                            subscription.stopped.accept(exception.code());
+                        }
+                    });
+                }
+                return;
+            }
+            synchronized (this) {
+                long nextVersion = Math.incrementExact(version);
+                version = nextVersion;
+                observed.forEach((sessionId, subscription) -> {
+                    // 진입·재초기화·화면 전환 이전에 시작한 관찰은 새 기준으로 재사용하지 않는다.
+                    if (subscriptions.get(sessionId) != subscription) {
+                        return;
+                    }
+                    PressRanking.Screen screen = ranking.forDevice(subscription.deviceId, subscription.view);
+                    boolean baseline = subscription.baseline || subscription.date == null || !subscription.date.equals(screen.date());
+                    subscription.snapshots.accept(Snapshot.of(screen, Long.toString(nextVersion), ranking.generatedAt(), baseline));
+                    subscription.baseline = false;
+                    subscription.date = screen.date();
+                });
+            }
         }
     }
 
@@ -95,7 +113,7 @@ public class PressRankingPublisher {
         private final UUID deviceId;
         private final Consumer<Snapshot> snapshots;
         private final Consumer<String> stopped;
-        private PressView view;
+        private final PressView view;
         private boolean baseline = true;
         private java.time.LocalDate date;
 

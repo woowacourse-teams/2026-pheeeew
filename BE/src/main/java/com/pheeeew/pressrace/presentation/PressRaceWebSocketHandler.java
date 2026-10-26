@@ -46,7 +46,8 @@ public class PressRaceWebSocketHandler extends AbstractWebSocketHandler {
     private final PressRaceService service;
     private final PressRankingPublisher rankingPublisher;
     private final Map<String, PressSnapshotSender> snapshotSenders = new ConcurrentHashMap<>();
-    private final ExecutorService snapshotExecutor = Executors.newVirtualThreadPerTaskExecutor();
+    private final ExecutorService snapshotExecutor = Executors.newCachedThreadPool(
+            Thread.ofPlatform().name("press-snapshot-", 0).daemon().factory());
     private final JsonMapper json = JsonMapper.builder()
             .enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
             .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
@@ -218,7 +219,8 @@ public class PressRaceWebSocketHandler extends AbstractWebSocketHandler {
             }
             PressSnapshotSender sender = new PressSnapshotSender(session, snapshotExecutor,
                     snapshot -> sendSnapshot(session, connection, snapshot),
-                    () -> stopSnapshots(session, "SNAPSHOT_SEND_FAILED"));
+                    failure -> stopSnapshots(session,
+                            failure instanceof InvalidMessage invalid ? invalid.code : "SNAPSHOT_SEND_FAILED"));
             snapshotSenders.put(session.getId(), sender);
             rankingPublisher.subscribe(session.getId(), connection.devicePublicId(), PressView.valueOf(view),
                     sender::offer, code -> {

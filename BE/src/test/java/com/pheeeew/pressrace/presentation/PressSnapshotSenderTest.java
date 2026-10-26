@@ -25,7 +25,7 @@ class PressSnapshotSenderTest {
         // given
         var executor = new QueuedExecutor();
         List<Snapshot> sent = new ArrayList<>();
-        var sender = new PressSnapshotSender(new Object(), executor, sent::add, () -> {});
+        var sender = new PressSnapshotSender(new Object(), executor, sent::add, failure -> {});
         sender.offer(snapshot(10, PressView.PRESS, "1", true));
         executor.runNext();
 
@@ -44,7 +44,7 @@ class PressSnapshotSenderTest {
         // given
         var executor = new QueuedExecutor();
         List<Snapshot> sent = new ArrayList<>();
-        var sender = new PressSnapshotSender(new Object(), executor, sent::add, () -> {});
+        var sender = new PressSnapshotSender(new Object(), executor, sent::add, failure -> {});
         Snapshot first = snapshot(10, PressView.PRESS, "1", true);
         sender.offer(first);
         executor.runNext();
@@ -62,7 +62,7 @@ class PressSnapshotSenderTest {
         // given
         var executor = new QueuedExecutor();
         List<Snapshot> sent = new ArrayList<>();
-        var sender = new PressSnapshotSender(new Object(), executor, sent::add, () -> {});
+        var sender = new PressSnapshotSender(new Object(), executor, sent::add, failure -> {});
         sender.offer(snapshot(10, PressView.PRESS, "1", true));
         executor.runNext();
 
@@ -87,7 +87,7 @@ class PressSnapshotSenderTest {
         Object sendMonitor = new Object();
         var executor = new QueuedExecutor();
         List<Snapshot> sent = new ArrayList<>();
-        var sender = new PressSnapshotSender(sendMonitor, executor, sent::add, () -> {});
+        var sender = new PressSnapshotSender(sendMonitor, executor, sent::add, failure -> {});
         sender.offer(snapshot(10, PressView.PRESS, "1", true));
         Thread worker = Thread.ofPlatform().daemon().unstarted(executor.takeNext());
 
@@ -113,7 +113,7 @@ class PressSnapshotSenderTest {
         Object sendMonitor = new Object();
         var executor = new QueuedExecutor();
         List<Snapshot> sent = new ArrayList<>();
-        var sender = new PressSnapshotSender(sendMonitor, executor, sent::add, () -> {});
+        var sender = new PressSnapshotSender(sendMonitor, executor, sent::add, failure -> {});
         sender.offer(snapshot(10, PressView.PRESS, "1", true));
         Thread worker = Thread.ofPlatform().daemon().unstarted(executor.takeNext());
 
@@ -146,7 +146,7 @@ class PressSnapshotSenderTest {
                 래치를_기다린다(release);
             }
             sent.add(snapshot);
-        }, failures::incrementAndGet);
+        }, failure -> failures.incrementAndGet());
         sender.offer(snapshot(10, PressView.PRESS, "1", true));
         Thread worker = Thread.ofPlatform().daemon().unstarted(executor.takeNext());
 

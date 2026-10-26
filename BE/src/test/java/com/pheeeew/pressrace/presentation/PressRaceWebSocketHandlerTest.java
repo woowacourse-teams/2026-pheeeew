@@ -48,9 +48,11 @@ class PressRaceWebSocketHandlerTest {
         CountDownLatch blocked = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
         List<String> writerMessages = new CopyOnWriteArrayList<>();
+        var virtualSender = new java.util.concurrent.atomic.AtomicReference<Boolean>();
         doAnswer(invocation -> {
             TextMessage message = invocation.getArgument(0);
             if (message.getPayload().contains("state.snapshot")) {
+                virtualSender.set(Thread.currentThread().isVirtual());
                 blocked.countDown();
                 assertThat(release.await(10, TimeUnit.SECONDS)).isTrue();
             }
@@ -86,6 +88,7 @@ class PressRaceWebSocketHandlerTest {
         }
 
         // then
+        assertThat(virtualSender.get()).as("Java 21에서 블로킹 송신은 플랫폼 스레드 사용").isFalse();
         assertThat(writerMessages).anySatisfy(message -> assertThat(message).contains("input.result", "APPLIED"));
     }
 
