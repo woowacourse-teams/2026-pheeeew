@@ -32,6 +32,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -53,6 +55,7 @@ import pheeeew.shared.generated.resources.collection_goal_remaining
 import pheeeew.shared.generated.resources.collection_issue_card
 import pheeeew.shared.generated.resources.collection_loading
 import pheeeew.shared.generated.resources.collection_press_label
+import pheeeew.shared.generated.resources.collection_progress_card_accessibility_description
 import pheeeew.shared.generated.resources.collection_progress_unavailable
 import pheeeew.shared.generated.resources.collection_retry
 import pheeeew.shared.generated.resources.collection_stamp_label
@@ -67,9 +70,17 @@ internal fun CollectionProgressCard(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val cardDescription =
+        stringResource(
+            Res.string.collection_progress_card_accessibility_description,
+            stringResource(progress.emotion.label),
+        )
     CollectionCardFrame(
         cornerIconTint = progress.emotion.representativeColor,
-        modifier = modifier,
+        modifier =
+            modifier.semantics {
+                contentDescription = cardDescription
+            },
     ) { scale ->
         Column(
             Modifier

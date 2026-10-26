@@ -226,7 +226,7 @@ class CollectionScreenTest {
             card("답답")
             screenshot("album")
             card("지침").click()
-            node("카드 저장 · 공유")
+            node("카드 저장")
             screenshot("dialog")
             node("카드 저장").click()
             assertTrue(saved.await(5, TimeUnit.SECONDS))
@@ -235,7 +235,7 @@ class CollectionScreenTest {
             assertTrue(shared.await(5, TimeUnit.SECONDS))
             assertTrue(checkNotNull(sharedBytes.get()).isNotEmpty())
             device.pressBack()
-            assertTrue(device.wait(Until.gone(By.text("카드 저장 · 공유")), 5_000))
+            assertTrue(device.wait(Until.gone(By.text("카드 저장")), 5_000))
             repeat(4) {
                 if (!device.hasObject(By.descContains("분노 카드 ·"))) {
                     checkNotNull(device.findObject(By.scrollable(true))).scroll(Direction.DOWN, 1f)
@@ -245,13 +245,13 @@ class CollectionScreenTest {
             card("분노")
             screenshot("album-scrolled")
             card("분노").click()
-            node("카드 저장 · 공유")
+            node("카드 저장")
             instrumentation.runOnMainSync { model.value = model.value.copy(cards = emptyList()) }
             node("발급전")
-            assertFalse(device.hasObject(By.text("카드 저장 · 공유")))
+            assertFalse(device.hasObject(By.text("카드 저장")))
             instrumentation.runOnMainSync { model.value = sampleCollection() }
             node("모은 카드 5장")
-            assertFalse(device.hasObject(By.text("카드 저장 · 공유")))
+            assertFalse(device.hasObject(By.text("카드 저장")))
         } catch (error: Throwable) {
             screenshot("failure")
             throw error

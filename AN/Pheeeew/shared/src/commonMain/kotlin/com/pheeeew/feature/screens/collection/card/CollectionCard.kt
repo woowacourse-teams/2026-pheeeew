@@ -29,6 +29,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -50,6 +52,7 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.app_name_kr
+import pheeeew.shared.generated.resources.collection_card_accessibility_description
 import pheeeew.shared.generated.resources.collection_image_load_failed
 import pheeeew.shared.generated.resources.ic_bubble_icon
 import pheeeew.shared.generated.resources.ic_highlighter_underline
@@ -63,7 +66,16 @@ fun CollectionCard(
     modifier: Modifier = Modifier,
     onImageLoadState: (CollectionCardImageLoadState) -> Unit = {},
 ) {
-    CollectionCardFrame(cornerIconTint = uiModel.emotion.representativeColor, modifier = modifier) { scale ->
+    val cardDescription =
+        stringResource(
+            Res.string.collection_card_accessibility_description,
+            stringResource(uiModel.emotion.label),
+            uiModel.title,
+        )
+    CollectionCardFrame(
+        cornerIconTint = uiModel.emotion.representativeColor,
+        modifier = modifier.semantics(mergeDescendants = true) { contentDescription = cardDescription },
+    ) { scale ->
         Column(
             Modifier
                 .fillMaxSize()
