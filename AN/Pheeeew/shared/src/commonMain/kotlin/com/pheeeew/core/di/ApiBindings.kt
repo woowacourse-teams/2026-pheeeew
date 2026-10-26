@@ -12,6 +12,9 @@ import com.pheeeew.core.network.ConnectivityObserver
 import com.pheeeew.core.session.DeviceSessionManager
 import com.pheeeew.data.local.device.DeviceCredentialStorage
 import com.pheeeew.data.local.mapfilter.InMemoryMapFilterSettingsRepository
+import com.pheeeew.data.press.race.PressRaceSession
+import com.pheeeew.data.press.race.transport.PressRaceTransport
+import com.pheeeew.data.press.race.transport.createPlatformPressRaceTransport
 import com.pheeeew.data.remote.api.DeviceNicknameApi
 import com.pheeeew.data.remote.api.DeviceSessionApi
 import com.pheeeew.data.remote.api.KtorDeviceSessionApi
@@ -212,10 +215,23 @@ internal interface ApiBindings {
 
     @Provides
     @SingleIn(AppScope::class)
+    fun providePressRaceTransport(config: ApiConfig): PressRaceTransport = createPlatformPressRaceTransport(config)
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun providePressRaceSession(
+        transport: PressRaceTransport,
+        session: DeviceSessionManager,
+        @SessionWork scope: CoroutineScope,
+    ): PressRaceSession = PressRaceSession(transport, session, scope)
+
+    @Provides
+    @SingleIn(AppScope::class)
     fun provideAppSession(
         repository: PressRepository,
+        race: PressRaceSession,
         @PressWork scope: CoroutineScope,
-    ): AppSession = AppSession(repository, scope)
+    ): AppSession = AppSession(repository, scope, race)
 
     @Provides
     @SingleIn(AppScope::class)
