@@ -1,6 +1,7 @@
 <resources>
 
     <!-- 앱 공통 및 권한 -->
+    <string name="app_name_kr">히유</string>
     <string name="app_update_suggested_title">새로운 버전이 나왔어요</string>
     <string name="app_update_suggested_message">최신 버전으로 업데이트하면 더 나은 앱을 이용할 수 있어요.</string>
     <string name="app_update">업데이트</string>
@@ -248,4 +249,46 @@
     <string name="emotion_emoji_angry_1">🤬</string>
     <string name="emotion_emoji_angry_2">💢</string>
     <string name="emotion_emoji_angry_3">😡</string>
+
+    <string name="emotion_label_frustrated">답답</string>
+    <string name="emotion_label_irritated">짜증</string>
+    <string name="emotion_label_exhausted">지침</string>
+    <string name="emotion_label_discouraged">좌절</string>
+    <string name="emotion_label_angry">분노</string>
+    <string name="collection_title">나의 감정 컬렉션</string>
+    <string name="collection_subtitle">%1$s님의 감정 카드</string>
+    <string name="collection_card_count">모은 카드 %1$s장</string>
+    <string name="collection_cover_flow">커버플로</string>
+    <string name="collection_album">앨범</string>
+    <string name="collection_empty">아직 모은 감정 카드가 없어요</string>
+    <string name="collection_empty_hint">감정을 기록하고 카드로 모아보세요</string>
+    <string name="collection_save">카드 저장</string>
+    <string name="collection_share">공유</string>
+    <string name="collection_close">닫기</string>
+    <string name="collection_image_load_failed">이미지를 불러오는데 실패했습니다.\n다시 시도해주세요</string>
+    <string name="collection_image_creating">이미지 생성 중</string>
+    <string name="collection_image_saving">카드 저장 중</string>
+    <string name="collection_image_sharing">공유 메뉴 여는 중</string>
+    <string name="collection_progress_card_description">%1$s 카드 진행도</string>
+    <string name="collection_unissued_card_description">발급 전 카드 진행도</string>
+    <string name="collection_unissued_label_compact">발급전</string>
+    <string name="collection_unissued_label">발급 전</string>
+    <string name="collection_stamp_label">스탬프</string>
+    <string name="collection_press_label">프레스</string>
+    <string name="collection_activity_count">%1$s %2$d / %3$d</string>
+    <string name="collection_claim_condition_met">조건이 달성되었어요\n카드를 발급받아보세요!</string>
+    <string name="collection_claim_condition_not_met">아직 조건이 달성되지 않았어요!</string>
+    <string name="collection_goal_reached">목표 달성</string>
+    <string name="collection_goal_remaining">%1$d회 남음</string>
+    <string name="collection_issue_card">발급하기</string>
+    <string name="collection_progress_unavailable">진행도를 표시할 수 없어요</string>
+    <string name="collection_filter_all">전체</string>
+    <string name="collection_retry">다시 시도</string>
+    <string name="collection_loading">불러오는 중…</string>
+    <string name="collection_saved">저장이 완료되었습니다</string>
+    <string name="collection_save_failed">카드를 저장하지 못했어요. 다시 시도해 주세요</string>
+    <string name="collection_shared">공유 메뉴를 열었어요</string>
+    <string name="collection_share_failed">카드를 공유하지 못했어요. 다시 시도해 주세요</string>
+    <string name="collection_capture_failed">카드 이미지를 준비하지 못했어요. 다시 시도해 주세요</string>
+    <string name="bottom_navigation_collection">컬렉션</string>
 </resources>
