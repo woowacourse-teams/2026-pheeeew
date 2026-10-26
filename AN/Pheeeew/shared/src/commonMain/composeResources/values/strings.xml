@@ -283,6 +283,7 @@
     <string name="collection_issue_card">발급하기</string>
     <string name="collection_progress_unavailable">진행도를 표시할 수 없어요</string>
     <string name="collection_filter_all">전체</string>
+    <string name="collection_refresh_failed">컬렉션을 불러오지 못했어요.</string>
     <string name="collection_retry">다시 시도</string>
     <string name="collection_loading">불러오는 중…</string>
     <string name="collection_saved">저장이 완료되었습니다</string>

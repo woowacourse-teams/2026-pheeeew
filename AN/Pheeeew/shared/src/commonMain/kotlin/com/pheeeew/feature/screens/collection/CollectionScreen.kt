@@ -3,6 +3,7 @@ package com.pheeeew.feature.screens.collection
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -42,7 +43,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
@@ -81,6 +81,8 @@ import coil3.annotation.ExperimentalCoilApi
 import coil3.compose.AsyncImagePreviewHandler
 import coil3.compose.LocalAsyncImagePreviewHandler
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
+import com.pheeeew.core.designsystem.component.LoadErrorContent
+import com.pheeeew.core.designsystem.component.RefreshErrorBanner
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.feature.emotion.model.EmotionType
@@ -97,13 +99,14 @@ import pheeeew.shared.generated.resources.collection_empty
 import pheeeew.shared.generated.resources.collection_empty_hint
 import pheeeew.shared.generated.resources.collection_filter_all
 import pheeeew.shared.generated.resources.collection_loading
-import pheeeew.shared.generated.resources.collection_retry
+import pheeeew.shared.generated.resources.collection_refresh_failed
 import pheeeew.shared.generated.resources.collection_subtitle
 import pheeeew.shared.generated.resources.collection_title
 import pheeeew.shared.generated.resources.collection_unissued_label
 import pheeeew.shared.generated.resources.collection_unissued_label_compact
 import pheeeew.shared.generated.resources.ic_collection_album
 import pheeeew.shared.generated.resources.ic_collection_cover_flow
+import pheeeew.shared.generated.resources.ic_emotion_frustrated
 import kotlin.math.absoluteValue
 
 @Composable
@@ -209,20 +212,24 @@ fun CollectionScreen(
                         },
                     )
                     uiModel.claimError?.let { error ->
-                        Row(
-                            Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = if (uiModel.claimOutcomeUnknown) "$error 같은 요청으로 다시 확인할 수 있어요." else error,
-                                color = AppColors.TextSecondary,
-                                fontSize = 11.sp,
-                                modifier = Modifier.weight(1f),
+                        RefreshErrorBanner(
+                            message = if (uiModel.claimOutcomeUnknown) "$error 같은 요청으로 다시 확인할 수 있어요." else error,
+                            onRetry = onRetryClaim,
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp),
+                        )
+                    }
+                    val hasVisibleContent =
+                        uiModel.cards.isNotEmpty() ||
+                            (
+                                uiModel.pendingProgress != null &&
+                                    (viewMode == CollectionViewMode.COVER_FLOW || uiModel.selectedFilter == null)
                             )
-                            TextButton(onClick = onRetryClaim) {
-                                Text(stringResource(Res.string.collection_retry))
-                            }
-                        }
+                    if (uiModel.cardsError != null && hasVisibleContent) {
+                        RefreshErrorBanner(
+                            message = stringResource(Res.string.collection_refresh_failed),
+                            onRetry = onRetryCards,
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp),
+                        )
                     }
                     if (viewMode == CollectionViewMode.COVER_FLOW) {
                         CollectionCoverFlow(
@@ -330,7 +337,6 @@ private sealed interface CollectionUnavailableState {
     data object Waiting : CollectionUnavailableState
 
     data class Error(
-        val message: String,
         val onRetry: () -> Unit,
     ) : CollectionUnavailableState
 
@@ -348,8 +354,8 @@ private fun collectionUnavailableState(
     when {
         hasContent -> null
         isLoading -> CollectionUnavailableState.Waiting
-        cardsError != null -> CollectionUnavailableState.Error(cardsError, onRetryCards)
-        todayError != null -> CollectionUnavailableState.Error(todayError, onRetryToday)
+        cardsError != null -> CollectionUnavailableState.Error(onRetryCards)
+        todayError != null -> CollectionUnavailableState.Error(onRetryToday)
         else -> CollectionUnavailableState.Empty
     }
 
@@ -391,21 +397,13 @@ private fun ColumnScope.CollectionAlbumSection(
     } else {
         CollectionContentPlaceholder(unavailableState, Modifier.weight(1f))
     }
-    when {
-        uiModel.isLoadingNext -> {
-            Text(
-                stringResource(Res.string.collection_loading),
-                color = AppColors.TextSecondary,
-                fontSize = 11.sp,
-                modifier = Modifier.align(Alignment.CenterHorizontally).padding(8.dp),
-            )
-        }
-
-        uiModel.cardsError != null && (uiModel.cards.isNotEmpty() || pendingProgress != null) -> {
-            TextButton(onClick = onRetryCards, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                Text(stringResource(Res.string.collection_retry))
-            }
-        }
+    if (uiModel.isLoadingNext) {
+        Text(
+            stringResource(Res.string.collection_loading),
+            color = AppColors.TextSecondary,
+            fontSize = 11.sp,
+            modifier = Modifier.align(Alignment.CenterHorizontally).padding(8.dp),
+        )
     }
 }
 
@@ -415,12 +413,13 @@ private fun CollectionContentPlaceholder(
     modifier: Modifier = Modifier,
 ) {
     when (state) {
-        CollectionUnavailableState.Waiting -> Box(modifier.fillMaxSize())
+        CollectionUnavailableState.Waiting -> {
+            Box(modifier.fillMaxSize())
+        }
 
         is CollectionUnavailableState.Error -> {
             CollectionCenteredState(modifier) {
-                Text(state.message, color = AppColors.TextSecondary, textAlign = TextAlign.Center)
-                TextButton(onClick = state.onRetry) { Text(stringResource(Res.string.collection_retry)) }
+                LoadErrorContent(onRetry = state.onRetry)
             }
         }
 
@@ -863,20 +862,25 @@ private fun CollectionAlbum(
 
 @Composable
 private fun CollectionEmptyState(modifier: Modifier = Modifier) {
-    Column(
-        modifier.fillMaxSize().padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
+    CollectionCenteredState(modifier) {
+        Image(
+            painter = painterResource(Res.drawable.ic_emotion_frustrated),
+            contentDescription = null,
+            modifier = Modifier.size(96.dp),
+        )
+        Spacer(Modifier.height(24.dp))
         Text(
             text = stringResource(Res.string.collection_empty),
             fontWeight = FontWeight.Bold,
-            color = AppColors.GroupInk,
+            fontSize = 16.sp,
+            color = AppColors.RankingContent,
             textAlign = TextAlign.Center,
         )
+        Spacer(Modifier.height(19.dp))
         Text(
             text = stringResource(Res.string.collection_empty_hint),
-            color = AppColors.TextSecondary,
+            color = AppColors.RankingSecondaryContent,
+            fontSize = 12.sp,
             textAlign = TextAlign.Center,
         )
     }
@@ -974,6 +978,35 @@ private fun CollectionEmptyPreview() {
     CollectionPreviewTheme {
         CollectionScreen(
             uiModel = CollectionScreenUiModel(nickname = "오늘도히유", cards = emptyList()),
+            onSaveCard = { _, _ -> },
+            onShareCard = { _, _ -> },
+        )
+    }
+}
+
+@Preview(name = "컬렉션 · 조회 실패", widthDp = 390, heightDp = 640, showBackground = true)
+@Composable
+private fun CollectionErrorPreview() {
+    CollectionPreviewTheme {
+        CollectionScreen(
+            uiModel = CollectionScreenUiModel(nickname = "오늘도히유", cards = emptyList(), cardsError = "조회 실패"),
+            onSaveCard = { _, _ -> },
+            onShareCard = { _, _ -> },
+        )
+    }
+}
+
+@Preview(name = "컬렉션 · 목록 갱신 실패", widthDp = 390, heightDp = 640, showBackground = true)
+@Composable
+private fun CollectionRefreshErrorPreview() {
+    CollectionPreviewTheme {
+        CollectionScreen(
+            uiModel =
+                CollectionScreenUiModel(
+                    nickname = "오늘도히유",
+                    cards = collectionPreviewCards(),
+                    cardsError = "조회 실패",
+                ),
             onSaveCard = { _, _ -> },
             onShareCard = { _, _ -> },
         )
