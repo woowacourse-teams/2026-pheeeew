@@ -406,7 +406,7 @@ class CollectionQueryServiceIntegrationTest {
 
     @ParameterizedTest
     @CsvSource({"false,false", "true,false", "false,true"})
-    void 오늘_조회도_발급된_카드의_집계_누락을_오류로_알린다(boolean hasStamps, boolean hasPresses) {
+    void 오늘_조회는_카드_감정의_집계가_없으면_그_횟수를_0으로_보여_준다(boolean hasStamps, boolean hasPresses) {
         // given
         var device = devices.saveAndFlush(기본_기기_빌더().build());
         var card = cards.saveAndFlush(기본_카드_빌더().deviceId(device.getId()).build());
@@ -417,10 +417,49 @@ class CollectionQueryServiceIntegrationTest {
             개인_프레스를_저장한다(jdbc, device.getId(), card.getCardDate(), EmotionState.ANGRY, 100);
         }
 
-        // when / then
-        assertThatThrownBy(() -> service.findToday(device.getPublicId()))
-                .isInstanceOfSatisfying(CollectionException.class,
-                        exception -> assertThat(exception.getErrorCode())
-                                .isEqualTo(CollectionErrorCode.COLLECTION_ACTIVITY_COUNTS_MISSING));
+        // when
+        var result = service.findToday(device.getPublicId());
+
+        // then
+        assertThat(result.items()).filteredOn(item -> item.state() == EmotionState.ANGRY).singleElement()
+                .satisfies(item -> {
+                    assertThat(item.card().cardId()).isEqualTo(card.getPublicId());
+                    assertThat(item.stamps().count()).isEqualTo(hasStamps ? 1 : 0);
+                    assertThat(item.presses().count()).isEqualTo(hasPresses ? 100 : 0);
+                });
+        assertThat(result.claimed()).isTrue();
+    }
+
+    @Test
+    void 활동이_없는_감정으로_받은_카드도_오늘_조회_상세_보관함에서_0으로_조회한다() {
+        // given
+        var device = devices.saveAndFlush(기본_기기_빌더().build());
+        LocalDate today = LocalDate.of(2026, 10, 22);
+        일별_스탬프를_저장한다(jdbc, device.getId(), today, EmotionState.DISCOURAGED, 1);
+        개인_프레스를_저장한다(jdbc, device.getId(), today, EmotionState.ANGRY, 60);
+        개인_프레스를_저장한다(jdbc, device.getId(), today, EmotionState.EXHAUSTED, 40);
+        var claimed = claims.claim(device.getPublicId(), today, EmotionState.FRUSTRATED);
+
+        // when
+        var todayResult = service.findToday(device.getPublicId());
+        var detail = service.findDetail(device.getPublicId(), claimed.cardId());
+        var history = service.findHistory(device.getPublicId(), null, 20, null);
+
+        // then
+        assertThat(todayResult.items()).filteredOn(item -> item.state() == EmotionState.FRUSTRATED).singleElement()
+                .satisfies(item -> {
+                    assertThat(item.card()).isEqualTo(claimed);
+                    assertThat(item.stamps().count()).isZero();
+                    assertThat(item.presses().count()).isZero();
+                });
+        assertThat(todayResult.claimed()).isTrue();
+        assertThat(detail.state()).isEqualTo(EmotionState.FRUSTRATED);
+        assertThat(detail.stampCount()).isZero();
+        assertThat(detail.pressCount()).isZero();
+        assertThat(history.items()).singleElement().satisfies(item -> {
+            assertThat(item.cardId()).isEqualTo(claimed.cardId());
+            assertThat(item.stampCount()).isZero();
+            assertThat(item.pressCount()).isZero();
+        });
     }
 }
