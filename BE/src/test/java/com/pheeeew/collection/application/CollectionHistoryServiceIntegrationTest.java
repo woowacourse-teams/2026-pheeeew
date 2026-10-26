@@ -155,36 +155,13 @@ class CollectionHistoryServiceIntegrationTest {
     }
 
     @Test
-    void 같은_날짜의_여러_카드도_중복_없이_다음_페이지로_조회한다() {
-        // given
-        var owner = devices.saveAndFlush(기본_기기_빌더().build());
-        var date = LocalDate.of(2026, 10, 21);
-        var first = 카드를_저장한다(owner.getId(), date, EmotionState.ANGRY, 0);
-        var second = 카드를_저장한다(owner.getId(), date, EmotionState.EXHAUSTED, 0);
-        var third = 카드를_저장한다(owner.getId(), date, EmotionState.FRUSTRATED, 0);
-
-        // when
-        var page = service.findHistory(owner.getPublicId(), null, 2, null);
-
-        // then
-        assertThat(page.items()).extracting(item -> item.cardId())
-                .containsExactly(third.getPublicId(), second.getPublicId());
-        assertThat(page.hasNext()).isTrue();
-        assertThat(page.nextCursor()).isNotBlank();
-        var lastPage = service.findHistory(owner.getPublicId(), null, 2, page.nextCursor());
-        assertThat(lastPage.items()).extracting(item -> item.cardId()).containsExactly(first.getPublicId());
-        assertThat(lastPage.hasNext()).isFalse();
-        assertThat(lastPage.nextCursor()).isNull();
-    }
-
-    @Test
     void 감정_필터는_다음_페이지에서_생략해도_유지한다() {
         // given
         var owner = devices.saveAndFlush(기본_기기_빌더().build());
         var date = LocalDate.of(2026, 10, 21);
         var older = 카드를_저장한다(owner.getId(), date.minusDays(1), EmotionState.ANGRY, 0);
         var newer = 카드를_저장한다(owner.getId(), date, EmotionState.ANGRY, 1);
-        카드를_저장한다(owner.getId(), date, EmotionState.EXHAUSTED, 0);
+        카드를_저장한다(owner.getId(), date.minusDays(2), EmotionState.EXHAUSTED, 0);
 
         // when
         var first = service.findHistory(owner.getPublicId(), EmotionState.ANGRY, 1, null);
@@ -211,16 +188,17 @@ class CollectionHistoryServiceIntegrationTest {
         var date = LocalDate.of(2026, 10, 22);
         var expected = Map.of(EmotionState.FRUSTRATED, 1L, EmotionState.IRRITATED, 2L,
                 EmotionState.EXHAUSTED, 3L, EmotionState.DISCOURAGED, 4L, EmotionState.ANGRY, 5L);
+        int[] daysAgo = {0};
         expected.forEach((state, count) -> {
             for (int i = 0; i < count; i++) {
-                카드를_저장한다(owner.getId(), date.minusDays(i), state, i);
+                카드를_저장한다(owner.getId(), date.minusDays(daysAgo[0]++), state, i);
             }
         });
 
         // when
         var result = service.findHistory(owner.getPublicId(), null, 20, null);
         String cursor = Base64.getUrlEncoder().withoutPadding().encodeToString(
-                "1|2026-10-23||2026-10-17|1".getBytes(StandardCharsets.UTF_8));
+                "1|2026-10-23||2026-10-07|1".getBytes(StandardCharsets.UTF_8));
         var empty = service.findHistory(owner.getPublicId(), null, 20, cursor);
 
         // then
@@ -385,11 +363,11 @@ class CollectionHistoryServiceIntegrationTest {
         // given
         var owner = devices.saveAndFlush(기본_기기_빌더().build());
         var date = LocalDate.of(2026, 10, 21);
-        var old = 카드를_저장한다(owner.getId(), date.minusDays(2), EmotionState.ANGRY, 0);
-        var firstCard = 카드를_저장한다(owner.getId(), date, EmotionState.ANGRY, 1);
+        var old = 카드를_저장한다(owner.getId(), date.minusDays(3), EmotionState.ANGRY, 0);
+        var firstCard = 카드를_저장한다(owner.getId(), date.minusDays(1), EmotionState.ANGRY, 1);
         var first = service.findHistory(owner.getPublicId(), null, 1, null);
         var ahead = 카드를_저장한다(owner.getId(), date, EmotionState.EXHAUSTED, 0);
-        var behind = 카드를_저장한다(owner.getId(), date.minusDays(1), EmotionState.ANGRY, 2);
+        var behind = 카드를_저장한다(owner.getId(), date.minusDays(2), EmotionState.ANGRY, 2);
 
         // when
         var next = service.findHistory(owner.getPublicId(), null, 20, first.nextCursor());
@@ -439,7 +417,7 @@ class CollectionHistoryServiceIntegrationTest {
             var oldest = 카드를_저장한다(owner.getId(), LocalDate.of(2026, 10, 19), EmotionState.ANGRY, 1);
             try (var executor = Executors.newFixedThreadPool(2)) {
                 var pending = executor.submit(() -> new TransactionTemplate(transactionManager).execute(status -> {
-                    var date = LocalDate.of(2026, 10, behindCursor ? 20 : 21);
+                    var date = LocalDate.of(2026, 10, behindCursor ? 20 : 22);
                     var card = 카드를_저장한다(owner.getId(), date, EmotionState.EXHAUSTED, 0);
                     written.countDown();
                     커밋_허용을_기다린다(release);

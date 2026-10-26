@@ -8,6 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
+import com.pheeeew.collection.application.dto.CollectionTodayResult;
 import com.pheeeew.collection.domain.repository.CollectionAssetRepository;
 import com.pheeeew.collection.domain.repository.CollectionCardRepository;
 import com.pheeeew.collection.domain.repository.CollectionProgressRepository;
@@ -94,6 +95,10 @@ class CollectionQueryServiceIntegrationTest {
 
         // then
         assertThat(result.date()).isEqualTo(LocalDate.of(2026, 10, 22));
+        assertThat(result.stamps()).isEqualTo(CollectionTodayResult.Progress.of(0, 1));
+        assertThat(result.presses()).isEqualTo(CollectionTodayResult.Progress.of(0, 100));
+        assertThat(result.claimed()).isFalse();
+        assertThat(result.claimable()).isFalse();
         assertThat(result.items()).extracting(item -> item.state()).containsExactly(EmotionState.values());
         assertThat(result.items()).allSatisfy(item -> {
             assertThat(item.card()).isNull();
@@ -268,6 +273,31 @@ class CollectionQueryServiceIntegrationTest {
                 });
         assertThat(result.items()).filteredOn(item -> item.state() != EmotionState.ANGRY)
                 .allSatisfy(item -> assertThat(item.card()).isNull());
+        assertThat(result.stamps().count()).isEqualTo(3);
+        assertThat(result.presses().count()).isEqualTo(150);
+        assertThat(result.claimed()).isTrue();
+        assertThat(result.claimable()).isFalse();
+    }
+
+    @Test
+    void 다섯_감정을_합한_오늘_진행도로_수령_가능을_알린다() {
+        // given
+        var device = devices.saveAndFlush(기본_기기_빌더().build());
+        LocalDate today = LocalDate.of(2026, 10, 22);
+        일별_스탬프를_저장한다(jdbc, device.getId(), today, EmotionState.ANGRY, 1);
+        개인_프레스를_저장한다(jdbc, device.getId(), today, EmotionState.ANGRY, 60);
+        개인_프레스를_저장한다(jdbc, device.getId(), today, EmotionState.EXHAUSTED, 40);
+
+        // when
+        var result = service.findToday(device.getPublicId());
+
+        // then
+        assertThat(result.stamps()).isEqualTo(CollectionTodayResult.Progress.of(1, 1));
+        assertThat(result.presses()).isEqualTo(CollectionTodayResult.Progress.of(100, 100));
+        assertThat(result.claimed()).isFalse();
+        assertThat(result.claimable()).isTrue();
+        assertThat(result.items()).filteredOn(item -> item.state() == EmotionState.ANGRY).singleElement()
+                .satisfies(item -> assertThat(item.presses().remaining()).isEqualTo(40));
     }
 
     @Test
@@ -337,7 +367,7 @@ class CollectionQueryServiceIntegrationTest {
             drawStates.saveIfAbsent(device.getId(), EmotionState.ANGRY);
             try (var executor = Executors.newFixedThreadPool(2)) {
                 var holder = executor.submit(() -> new TransactionTemplate(transactionManager).execute(status -> {
-                    jdbc.sql("SELECT id FROM collection_draw_states WHERE device_id = :id FOR UPDATE")
+                    jdbc.sql("SELECT id FROM devices WHERE id = :id FOR NO KEY UPDATE")
                             .param("id", device.getId()).query(Long.class).single();
                     locked.countDown();
                     try {

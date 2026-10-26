@@ -342,6 +342,10 @@ class CollectionControllerTest {
                 .expectBody().json("""
                         {
                           "date":"2026-10-22",
+                          "stamps":{"count":0,"target":1,"remaining":1},
+                          "presses":{"count":70,"target":100,"remaining":30},
+                          "claimed":false,
+                          "claimable":false,
                           "items":[
                             {"state":"FRUSTRATED","stamps":{"count":0,"target":1,"remaining":1},
                              "presses":{"count":0,"target":100,"remaining":100},"card":null},
@@ -473,7 +477,7 @@ class CollectionControllerTest {
 
     @ParameterizedTest
     @CsvSource({"COLLECTION_CLAIM_DATE_INVALID,400,COLLECTION-002", "COLLECTION_REQUIREMENTS_NOT_MET,409,COLLECTION-003",
-            "COLLECTION_ASSETS_NOT_READY,503,COLLECTION-004"})
+            "COLLECTION_ASSETS_NOT_READY,503,COLLECTION-004", "COLLECTION_ALREADY_CLAIMED_TODAY,409,COLLECTION-009"})
     void 수령_거절_이유별_상태와_오류_코드를_반환한다(CollectionErrorCode errorCode, int status, String code) {
         // given
         when(claims.claim(DEVICE_PUBLIC_ID, LocalDate.of(2026, 10, 22), EmotionState.ANGRY))
@@ -503,7 +507,9 @@ class CollectionControllerTest {
 
         // then
         response.expectStatus().isOk().expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
-                .expectBody().jsonPath("$.items[4].card.cardId").isEqualTo(card.cardId().toString())
+                .expectBody().jsonPath("$.claimed").isEqualTo(true)
+                .jsonPath("$.claimable").isEqualTo(false)
+                .jsonPath("$.items[4].card.cardId").isEqualTo(card.cardId().toString())
                 .jsonPath("$.items[4].card.date").isEqualTo(card.date().toString())
                 .jsonPath("$.items[4].card.state").isEqualTo("ANGRY")
                 .jsonPath("$.items[4].card.images.characterUrl").isEqualTo(card.images().characterUrl())

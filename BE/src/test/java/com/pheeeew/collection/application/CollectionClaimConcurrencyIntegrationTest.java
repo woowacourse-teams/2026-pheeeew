@@ -26,7 +26,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutionException;
@@ -157,6 +159,44 @@ class CollectionClaimConcurrencyIntegrationTest {
         assertThat(cardCount(device.getId())).isEqualTo(1);
         assertThat(jdbc.sql("SELECT COUNT(*) FROM collection_draw_states WHERE device_id = :id")
                 .param("id", device.getId()).query(Long.class).single()).isEqualTo(1);
+    }
+
+    @Test
+    void 서로_다른_감정으로_동시에_수령해도_카드는_한_장이고_나머지는_409로_거절한다() throws Exception {
+        // given
+        var device = createEligibleDevice();
+        var start = new CyclicBarrier(EmotionState.values().length);
+        Map<EmotionState, Future<CollectionCardResult>> requests = new EnumMap<>(EmotionState.class);
+
+        // when
+        try (var executor = Executors.newFixedThreadPool(EmotionState.values().length)) {
+            for (var state : EmotionState.values()) {
+                requests.put(state, executor.submit(() -> {
+                    start.await(15, TimeUnit.SECONDS);
+                    return service.claim(device.getPublicId(), TODAY, state);
+                }));
+            }
+            List<CollectionCardResult> claimed = new ArrayList<>();
+            List<Throwable> rejected = new ArrayList<>();
+            for (var request : requests.values()) {
+                try {
+                    claimed.add(request.get(20, TimeUnit.SECONDS));
+                } catch (ExecutionException exception) {
+                    rejected.add(exception.getCause());
+                }
+            }
+
+            // then
+            assertThat(claimed).hasSize(1);
+            assertThat(rejected).hasSize(EmotionState.values().length - 1)
+                    .allSatisfy(failure -> assertThat(failure).isInstanceOfSatisfying(CollectionException.class,
+                            exception -> assertThat(exception.getErrorCode())
+                                    .isEqualTo(CollectionErrorCode.COLLECTION_ALREADY_CLAIMED_TODAY)));
+            assertThat(cardCount(device.getId())).isEqualTo(1);
+            assertThat(jdbc.sql("SELECT state FROM collection_draw_states WHERE device_id = :id")
+                    .param("id", device.getId()).query(String.class).list())
+                    .containsExactly(claimed.getFirst().state().name());
+        }
     }
 
     @Test
