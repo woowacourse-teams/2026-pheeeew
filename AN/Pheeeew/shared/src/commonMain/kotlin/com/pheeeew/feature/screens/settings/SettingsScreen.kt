@@ -38,6 +38,8 @@ import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.core.navigation.PredictiveBackContent
+import com.pheeeew.core.notification.NotificationPermissionController
+import com.pheeeew.core.notification.NotificationPreferencesStore
 import com.pheeeew.core.permission.AppSettingsLauncher
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import com.pheeeew.feature.monitoring.product.ProductScreen
@@ -85,6 +87,7 @@ fun SettingsScreen(
     profileNickname: String? = null,
     onNicknameClick: () -> Unit = {},
     nicknameDialog: (@Composable () -> Unit)? = null,
+    notificationPermissionContent: @Composable () -> Unit = {},
 ) {
     Column(
         modifier =
@@ -118,6 +121,7 @@ fun SettingsScreen(
                 highlighted = true,
                 onClick = onPermissionClick,
             )
+            notificationPermissionContent()
         }
 
         Spacer(Modifier.height(32.dp))
@@ -157,6 +161,8 @@ fun SettingsScreen(
     appVersion: String,
     onBackClick: () -> Unit,
     permissionSettingsLauncher: AppSettingsLauncher,
+    notificationPermissionController: NotificationPermissionController? = null,
+    notificationPreferencesStore: NotificationPreferencesStore? = null,
     monitoring: Monitoring = NoOpMonitoring,
     modifier: Modifier = Modifier,
     settingsContent: @Composable () -> Unit = {},
@@ -192,6 +198,16 @@ fun SettingsScreen(
                 content = {
                     SettingsScreen(
                         appVersion = appVersion,
+                        notificationPermissionContent = {
+                            notificationPermissionController?.let { controller ->
+                                SettingsDivider()
+                                if (notificationPreferencesStore != null) {
+                                    NotificationSettingsRows(controller, notificationPreferencesStore)
+                                } else {
+                                    NotificationPermissionRow(controller)
+                                }
+                            }
+                        },
                         settingsContent = settingsContent,
                         profileNickname =
                             nicknameState.nickname

@@ -173,7 +173,19 @@ private class IosOnboardingStore : OnboardingStore {
     override fun isCompleted(): Boolean = NSUserDefaults.standardUserDefaults.boolForKey("onboarding_completed")
 
     override fun complete() {
+        NSUserDefaults.standardUserDefaults.setBool(false, forKey = "usage_guide_completed")
         NSUserDefaults.standardUserDefaults.setBool(true, forKey = "onboarding_completed")
+    }
+
+    override fun isUsageGuideCompleted(): Boolean =
+        if (NSUserDefaults.standardUserDefaults.objectForKey("usage_guide_completed") == null) {
+            isCompleted()
+        } else {
+            NSUserDefaults.standardUserDefaults.boolForKey("usage_guide_completed")
+        }
+
+    override fun completeUsageGuide() {
+        NSUserDefaults.standardUserDefaults.setBool(true, forKey = "usage_guide_completed")
     }
 }
 

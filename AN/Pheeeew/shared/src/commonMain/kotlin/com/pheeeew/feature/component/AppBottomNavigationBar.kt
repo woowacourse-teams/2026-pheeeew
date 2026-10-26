@@ -1,10 +1,7 @@
 package com.pheeeew.feature.component
 
 import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -28,11 +25,7 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,7 +36,6 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
-import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -56,7 +48,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
-import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -64,16 +55,11 @@ import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.bottom_navigation_collection
 import pheeeew.shared.generated.resources.bottom_navigation_map
 import pheeeew.shared.generated.resources.bottom_navigation_press
-import pheeeew.shared.generated.resources.bottom_navigation_ranking
-import pheeeew.shared.generated.resources.bottom_navigation_ranking_press
-import pheeeew.shared.generated.resources.bottom_navigation_stamp
-import pheeeew.shared.generated.resources.hiyu_nav_face
-import pheeeew.shared.generated.resources.hiyu_nav_ticket
 import pheeeew.shared.generated.resources.nav_collection
 import pheeeew.shared.generated.resources.nav_press
 
 private val NavigationInk = Color(0xFF202323)
-internal val AppBottomNavigationBarHeight = 55.dp
+internal val AppBottomNavigationBarHeight = 57.dp
 internal val AppBottomNavigationBarBottomSpacing = 12.dp
 internal val AppBottomNavigationBarContentGap = 12.dp
 internal val AppBottomNavigationBarOverlaySpace =
@@ -82,13 +68,7 @@ internal val AppBottomNavigationBarOverlaySpace =
 internal enum class AppDestination {
     Map,
     Press,
-    Ranking,
     Collection,
-}
-
-internal enum class RankingBottomNavigationDestination {
-    Stamp,
-    Press,
 }
 
 private enum class DestinationIcon(
@@ -96,7 +76,6 @@ private enum class DestinationIcon(
 ) {
     Map(0.96f),
     Press(1.02f),
-    Ranking(1.2f),
     Collection(1f),
 }
 
@@ -105,24 +84,11 @@ internal fun AppBottomNavigationBar(
     selectedDestination: AppDestination,
     onDestinationSelected: (AppDestination) -> Unit,
     modifier: Modifier = Modifier,
-    rankingDestination: RankingBottomNavigationDestination = RankingBottomNavigationDestination.Stamp,
-    onRankingBackClick: () -> Unit = {},
-    onRankingDestinationSelected: (RankingBottomNavigationDestination) -> Unit = {},
+    enabled: Boolean = true,
 ) {
     val navigationFont = notoSansKrFontFamily()
     val hapticFeedback = LocalHapticFeedback.current
-    val isRankingMode = selectedDestination == AppDestination.Ranking
-    val mainDestinations = AppDestination.entries
-    var previousMainDestination by
-        remember {
-            mutableStateOf(if (isRankingMode) AppDestination.Map else selectedDestination)
-        }
-    LaunchedEffect(selectedDestination) {
-        if (selectedDestination != AppDestination.Ranking) {
-            previousMainDestination = selectedDestination
-        }
-    }
-
+    val destinations = AppDestination.entries
     BoxWithConstraints(
         modifier =
             modifier
@@ -138,316 +104,68 @@ internal fun AppBottomNavigationBar(
                 .border(AppBorders.Standard, NavigationInk, CircleShape),
         contentAlignment = Alignment.CenterStart,
     ) {
-        val backSlotWidth = 48.dp
-        val mainItemWidth = maxWidth / mainDestinations.size
-        val rankingItemWidth = (maxWidth - backSlotWidth) / RankingBottomNavigationDestination.entries.size
-        val indicatorInset = AppBorders.Standard + 1.5.dp
-        val motionProgress by
-            animateFloatAsState(
-                targetValue = if (isRankingMode) 1f else 0f,
-                animationSpec = spring(dampingRatio = 0.78f, stiffness = 480f),
-                label = "bottomNavigationMotionProgress",
-            )
-        val tabProgress by
-            animateFloatAsState(
-                targetValue = if (rankingDestination == RankingBottomNavigationDestination.Press) 1f else 0f,
-                animationSpec = tween(durationMillis = 320, easing = FastOutSlowInEasing),
-                label = "rankingTabProgress",
-            )
-        val rankingItemOffset =
-            mainItemWidth * AppDestination.Ranking.ordinal * (1f - motionProgress) +
-                backSlotWidth * motionProgress
-        val animatedRankingItemWidth =
-            mainItemWidth * (1f - motionProgress) + rankingItemWidth * motionProgress
-        val selectedPillWidth =
-            mainItemWidth * (1f - motionProgress) + rankingItemWidth * 0.7f * motionProgress - indicatorInset * 2
-        val stampCenter = backSlotWidth + rankingItemWidth / 2
-        val pressCenter = backSlotWidth + rankingItemWidth * 1.5f
-        val secondaryItemsAlpha = 1f - (motionProgress / 0.34f).coerceIn(0f, 1f)
-        val backButtonAlpha = ((motionProgress - 0.03f) / 0.5f).coerceIn(0f, 1f)
-        val pressItemAlpha = ((motionProgress - 0.32f) / 0.63f).coerceIn(0f, 1f)
-        val mainPillCenter by
-            animateDpAsState(
-                targetValue = mainItemWidth * (previousMainDestination.ordinal + 0.5f),
-                animationSpec =
-                    tween(
-                        durationMillis = 240,
-                        easing = CubicBezierEasing(0f, 0f, 0.33f, 1f),
-                    ),
-                label = "mainNavigationIndicatorOffset",
-            )
-        val contentMorph = ((motionProgress - 0.17f) / 0.37f).coerceIn(0f, 1f)
-        val rankingPillCenter =
-            mainPillCenter * (1f - motionProgress) +
-                (stampCenter + (pressCenter - stampCenter) * tabProgress) * motionProgress
-
-        Box(
-            modifier =
-                Modifier
-                    .offset(x = rankingPillCenter - selectedPillWidth / 2)
-                    .width(selectedPillWidth)
-                    .height(AppBottomNavigationBarHeight - indicatorInset * 2)
-                    .clip(CircleShape)
-                    .background(AppColors.Primary)
-                    .border(AppBorders.Standard, NavigationInk, CircleShape),
+        val itemWidth = maxWidth / destinations.size
+        val indicatorInset = 5.dp
+        val indicatorOffset by animateDpAsState(
+            targetValue = itemWidth * selectedDestination.ordinal + indicatorInset,
+            animationSpec = tween(240, easing = CubicBezierEasing(0f, 0f, 0.33f, 1f)),
+            label = "mainNavigationIndicatorOffset",
         )
-
-        mainDestinations.filter { it != AppDestination.Ranking }.forEach { destination ->
-            val index = destination.ordinal
-            val isSelected = !isRankingMode && destination == selectedDestination
-            Row(
-                modifier =
-                    Modifier
-                        .offset(x = mainItemWidth * index)
-                        .width(mainItemWidth)
-                        .height(AppBottomNavigationBarHeight)
-                        .graphicsLayer {
-                            alpha = secondaryItemsAlpha
-                            translationX = (-12f * motionProgress).dp.toPx()
-                        }.clickable(
-                            enabled = !isRankingMode,
-                            interactionSource = null,
-                            indication = null,
-                            role = Role.Tab,
-                            onClick = {
-                                hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                onDestinationSelected(destination)
-                            },
-                        ).semantics { selected = isSelected }
-                        .padding(horizontal = 2.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-            ) {
-                DestinationIconView(
-                    when (destination) {
-                        AppDestination.Map -> DestinationIcon.Map
-                        AppDestination.Press -> DestinationIcon.Press
-                        AppDestination.Ranking -> DestinationIcon.Ranking
-                        AppDestination.Collection -> DestinationIcon.Collection
-                    },
-                    pressScale = 1f,
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    text =
-                        stringResource(
-                            when (destination) {
-                                AppDestination.Map -> Res.string.bottom_navigation_map
-                                AppDestination.Press -> Res.string.bottom_navigation_press
-                                AppDestination.Ranking -> Res.string.bottom_navigation_ranking
-                                AppDestination.Collection -> Res.string.bottom_navigation_collection
-                            },
-                        ),
-                    color = NavigationInk,
-                    fontSize = if (mainItemWidth < 80.dp) 12.sp else 14.sp,
-                    maxLines = 1,
-                    fontFamily = navigationFont,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-        }
-
-        val isRankingTabSelected =
-            if (isRankingMode) {
-                rankingDestination == RankingBottomNavigationDestination.Stamp
-            } else {
-                selectedDestination == AppDestination.Ranking
-            }
-        Row(
-            modifier =
-                Modifier
-                    .offset(x = rankingItemOffset)
-                    .width(animatedRankingItemWidth)
-                    .height(AppBottomNavigationBarHeight)
-                    .clickable(
-                        interactionSource = null,
-                        indication = null,
-                        role = Role.Tab,
-                        onClick = {
-                            hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            if (isRankingMode) {
-                                onRankingDestinationSelected(RankingBottomNavigationDestination.Stamp)
-                            } else {
-                                onDestinationSelected(AppDestination.Ranking)
-                            }
-                        },
-                    ).semantics { selected = isRankingTabSelected }
-                    .padding(horizontal = 2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            Box(contentAlignment = Alignment.Center) {
+        Box(
+            Modifier
+                .offset(x = indicatorOffset)
+                .width(itemWidth - indicatorInset * 2)
+                .height(AppBottomNavigationBarHeight - indicatorInset * 2)
+                .clip(CircleShape)
+                .background(AppColors.Primary),
+        )
+        Row(Modifier.fillMaxWidth()) {
+            destinations.forEach { destination ->
+                val isSelected = destination == selectedDestination
                 Row(
                     modifier =
-                        Modifier.graphicsLayer {
-                            alpha = 1f - contentMorph
-                            translationY = (-4f * contentMorph).dp.toPx()
-                            scaleX = 1f - 0.12f * contentMorph
-                            scaleY = scaleX
-                        },
+                        Modifier
+                            .weight(1f)
+                            .height(AppBottomNavigationBarHeight)
+                            .clickable(
+                                enabled = enabled,
+                                interactionSource = null,
+                                indication = null,
+                                role = Role.Tab,
+                                onClick = {
+                                    hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    onDestinationSelected(destination)
+                                },
+                            ).semantics { selected = isSelected },
                     verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
                 ) {
-                    DestinationIconView(DestinationIcon.Ranking, pressScale = 1f)
+                    DestinationIconView(
+                        icon =
+                            when (destination) {
+                                AppDestination.Map -> DestinationIcon.Map
+                                AppDestination.Press -> DestinationIcon.Press
+                                AppDestination.Collection -> DestinationIcon.Collection
+                            },
+                        pressScale = 1f,
+                    )
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        text = stringResource(Res.string.bottom_navigation_ranking),
+                        text =
+                            stringResource(
+                                when (destination) {
+                                    AppDestination.Map -> Res.string.bottom_navigation_map
+                                    AppDestination.Press -> Res.string.bottom_navigation_press
+                                    AppDestination.Collection -> Res.string.bottom_navigation_collection
+                                },
+                            ),
                         color = NavigationInk,
                         fontSize = 14.sp,
                         fontFamily = navigationFont,
                         fontWeight = FontWeight.Bold,
+                        maxLines = 1,
                     )
                 }
-                Row(
-                    modifier =
-                        Modifier.graphicsLayer {
-                            alpha = contentMorph
-                            translationY = (4f * (1f - contentMorph)).dp.toPx()
-                            scaleX = 0.88f + 0.12f * contentMorph
-                            scaleY = scaleX
-                        },
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Image(
-                        painter = painterResource(Res.drawable.hiyu_nav_ticket),
-                        contentDescription = null,
-                        modifier = Modifier.size(width = 22.dp, height = 17.dp),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(Res.string.bottom_navigation_stamp),
-                        color = NavigationInk,
-                        fontSize = 14.sp,
-                        fontFamily = navigationFont,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-            }
-        }
-
-        Box(
-            modifier =
-                Modifier
-                    .offset(x = if (isRankingMode) 7.5.dp + 12.5.dp * (1f - motionProgress) else -48.dp)
-                    .size(40.dp)
-                    .graphicsLayer {
-                        alpha = backButtonAlpha
-                        scaleX = 0.7f + 0.3f * backButtonAlpha
-                        scaleY = scaleX
-                    }.clip(CircleShape)
-                    .background(Color(0xFFF2F2F2))
-                    .clickable(
-                        enabled = isRankingMode,
-                        interactionSource = null,
-                        indication = null,
-                        role = Role.Button,
-                        onClick = {
-                            hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            onRankingBackClick()
-                        },
-                    ),
-            contentAlignment = Alignment.Center,
-        ) {
-            RankingNavigationIcon(isBack = true, modifier = Modifier.size(20.dp).offset(x = (-2.5).dp))
-        }
-
-        val isPressTabSelected = isRankingMode && rankingDestination == RankingBottomNavigationDestination.Press
-        Row(
-            modifier =
-                Modifier
-                    .offset(
-                        x =
-                            if (isRankingMode) {
-                                backSlotWidth + rankingItemWidth + 18.dp * (1f - motionProgress)
-                            } else {
-                                maxWidth
-                            },
-                    ).width(rankingItemWidth)
-                    .height(AppBottomNavigationBarHeight)
-                    .graphicsLayer { alpha = pressItemAlpha }
-                    .clickable(
-                        enabled = isRankingMode,
-                        interactionSource = null,
-                        indication = null,
-                        role = Role.Tab,
-                        onClick = {
-                            hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            onRankingDestinationSelected(RankingBottomNavigationDestination.Press)
-                        },
-                    ).semantics { selected = isPressTabSelected }
-                    .padding(horizontal = 2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            Image(
-                painter = painterResource(Res.drawable.hiyu_nav_face),
-                contentDescription = null,
-                modifier = Modifier.size(24.dp),
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = stringResource(Res.string.bottom_navigation_ranking_press),
-                color = NavigationInk,
-                fontSize = 14.sp,
-                fontFamily = navigationFont,
-                fontWeight = FontWeight.Bold,
-            )
-        }
-    }
-}
-
-@Composable
-private fun RankingNavigationIcon(
-    isBack: Boolean,
-    modifier: Modifier = Modifier,
-    destination: RankingBottomNavigationDestination? = null,
-) {
-    Canvas(modifier) {
-        scale(size.width / 20f, size.height / 20f, pivot = Offset.Zero) {
-            val strokeWidth = 1.6f
-            val stroke = Stroke(width = strokeWidth, cap = StrokeCap.Round, join = StrokeJoin.Round)
-            if (isBack) {
-                drawLine(NavigationInk, Offset(12f, 3f), Offset(6f, 9f), strokeWidth, cap = StrokeCap.Round)
-                drawLine(NavigationInk, Offset(6f, 9f), Offset(12f, 15f), strokeWidth, cap = StrokeCap.Round)
-                drawLine(NavigationInk, Offset(6f, 9f), Offset(19f, 9f), strokeWidth, cap = StrokeCap.Round)
-            } else if (destination == RankingBottomNavigationDestination.Stamp) {
-                val ticket =
-                    Path().apply {
-                        moveTo(3f, 5f)
-                        lineTo(17f, 5f)
-                        lineTo(17f, 15f)
-                        lineTo(3f, 15f)
-                        close()
-                    }
-                drawPath(ticket, Color.White)
-                drawPath(ticket, NavigationInk, style = stroke)
-                drawLine(NavigationInk, Offset(6f, 8f), Offset(6f, 12f), 1f, cap = StrokeCap.Round)
-            } else {
-                val center = Offset(10f, 10f)
-                drawCircle(Color.White, 8f, center)
-                drawCircle(NavigationInk, 8f, center, style = stroke)
-                val leftEye =
-                    Path().apply {
-                        moveTo(4f, 7f)
-                        lineTo(8f, 9f)
-                        lineTo(4f, 11f)
-                    }
-                val rightEye =
-                    Path().apply {
-                        moveTo(16f, 7f)
-                        lineTo(12f, 9f)
-                        lineTo(16f, 11f)
-                    }
-                val annoyedMouth =
-                    Path().apply {
-                        moveTo(6f, 14f)
-                        lineTo(8f, 12f)
-                        lineTo(10f, 14f)
-                        lineTo(12f, 12f)
-                        lineTo(14f, 14f)
-                    }
-                drawPath(leftEye, NavigationInk, style = stroke)
-                drawPath(rightEye, NavigationInk, style = stroke)
-                drawPath(annoyedMouth, NavigationInk, style = stroke)
             }
         }
     }
@@ -480,7 +198,7 @@ private fun DestinationIconView(
     ) {
         scale(size.width / 20f, size.height / 20f, pivot = Offset.Zero) {
             when (icon) {
-                DestinationIcon.Press, DestinationIcon.Collection -> {}
+                DestinationIcon.Press -> {}
 
                 DestinationIcon.Map -> {
                     val outline =
@@ -502,24 +220,26 @@ private fun DestinationIconView(
                     drawLine(NavigationInk, Offset(12.4f, 5.2f), Offset(12.4f, 17.2f), 1.6f, cap = StrokeCap.Round)
                 }
 
-                DestinationIcon.Ranking -> {
-                    val bars =
-                        Path().apply {
-                            moveTo(4.7f, 15.7f)
-                            lineTo(4.7f, 8.6f)
-                            lineTo(8.23f, 8.6f)
-                            lineTo(8.23f, 4.3f)
-                            lineTo(11.77f, 4.3f)
-                            lineTo(11.77f, 11.1f)
-                            lineTo(15.3f, 11.1f)
-                            lineTo(15.3f, 15.7f)
-                            close()
-                        }
-                    val stroke = Stroke(width = 1.4f, cap = StrokeCap.Round, join = StrokeJoin.Round)
-                    drawPath(bars, Color.White)
-                    drawPath(bars, NavigationInk, style = stroke)
-                    drawLine(NavigationInk, Offset(8.23f, 8.6f), Offset(8.23f, 15.7f), 1.4f, cap = StrokeCap.Round)
-                    drawLine(NavigationInk, Offset(11.77f, 11.1f), Offset(11.77f, 15.7f), 1.4f, cap = StrokeCap.Round)
+                DestinationIcon.Collection -> {
+                    val stroke = Stroke(width = 1.5f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+                    drawRect(
+                        Color.White,
+                        Offset(5f, 2f),
+                        androidx.compose.ui.geometry
+                            .Size(11f, 15f),
+                    )
+                    drawRect(
+                        NavigationInk,
+                        Offset(5f, 2f),
+                        androidx.compose.ui.geometry
+                            .Size(11f, 15f),
+                        style = stroke,
+                    )
+                    drawLine(NavigationInk, Offset(3f, 5f), Offset(3f, 19f), 1.5f, cap = StrokeCap.Round)
+                    drawLine(NavigationInk, Offset(3f, 19f), Offset(13f, 19f), 1.5f, cap = StrokeCap.Round)
+                    drawLine(NavigationInk, Offset(8f, 6f), Offset(13f, 6f), 1.5f, cap = StrokeCap.Round)
+                    drawLine(NavigationInk, Offset(8f, 9f), Offset(13f, 9f), 1.5f, cap = StrokeCap.Round)
+                    drawLine(NavigationInk, Offset(8f, 12f), Offset(11f, 12f), 1.5f, cap = StrokeCap.Round)
                 }
             }
         }
@@ -539,40 +259,20 @@ private fun PressNavigationIcon(pressScale: Float) {
     )
 }
 
-@Preview
+@Preview(name = "지도 선택")
 @Composable
-private fun AppBottomNavigationBarPreview1() {
-    AppBottomNavigationBar(
-        selectedDestination = AppDestination.Ranking,
-        onDestinationSelected = {},
-    )
+private fun AppBottomNavigationBarMapPreview() {
+    AppBottomNavigationBar(AppDestination.Map, {})
 }
 
-@Preview
-@Composable
-private fun AppBottomNavigationBarPreview2() {
-    AppBottomNavigationBar(
-        selectedDestination = AppDestination.Map,
-        onDestinationSelected = {},
-    )
-}
-
-@Preview(name = "프레스 아이콘 · 선택 상태")
+@Preview(name = "프레스 선택")
 @Composable
 private fun AppBottomNavigationBarPressPreview() {
-    AppBottomNavigationBar(
-        selectedDestination = AppDestination.Press,
-        onDestinationSelected = {},
-    )
+    AppBottomNavigationBar(AppDestination.Press, {})
 }
 
-@Preview(name = "컬렉션 탭 · 선택 상태")
+@Preview(name = "큰 글씨", fontScale = 1.5f)
 @Composable
-private fun AppBottomNavigationBarCollectionPreview() {
-    AppTheme {
-        AppBottomNavigationBar(
-            selectedDestination = AppDestination.Collection,
-            onDestinationSelected = {},
-        )
-    }
+private fun AppBottomNavigationBarLargeFontPreview() {
+    AppBottomNavigationBar(AppDestination.Press, {})
 }

@@ -100,6 +100,7 @@ import pheeeew.shared.generated.resources.collection_empty
 import pheeeew.shared.generated.resources.collection_empty_hint
 import pheeeew.shared.generated.resources.collection_filter_all
 import pheeeew.shared.generated.resources.collection_loading
+import pheeeew.shared.generated.resources.collection_notification_outdated
 import pheeeew.shared.generated.resources.collection_refresh_failed
 import pheeeew.shared.generated.resources.collection_subtitle
 import pheeeew.shared.generated.resources.collection_title
@@ -219,6 +220,14 @@ fun CollectionScreen(
                             }
                         },
                     )
+                    if (uiModel.isNotificationDateOutdated) {
+                        Text(
+                            text = stringResource(Res.string.collection_notification_outdated),
+                            color = AppColors.TextSecondary,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                        )
+                    }
                     uiModel.claimError?.let { error ->
                         RefreshErrorBanner(
                             message = if (uiModel.claimOutcomeUnknown) "$error 같은 요청으로 다시 확인할 수 있어요." else error,

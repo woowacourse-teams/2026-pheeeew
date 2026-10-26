@@ -31,8 +31,10 @@ import com.pheeeew.feature.emotion.component.EmotionPad
 import com.pheeeew.feature.emotion.component.EmotionPadArrangement
 import com.pheeeew.feature.emotion.component.formatCount
 import com.pheeeew.feature.emotion.model.EmotionCountUiModel
+import com.pheeeew.feature.emotion.model.EmotionFaceVisual
 import com.pheeeew.feature.emotion.model.EmotionKind
-import com.pheeeew.feature.screens.press.component.PressSummaryCard
+import com.pheeeew.feature.screens.press.component.PressNearbyRankingCard
+import com.pheeeew.feature.screens.press.component.PressRankingEntry
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.press_count_unavailable
@@ -43,7 +45,11 @@ import pheeeew.shared.generated.resources.press_screen_title
 internal fun PressScreen(
     uiState: PressUiState,
     onEmotionTap: (EmotionKind) -> Boolean,
+    onOpenRanking: () -> Unit,
     modifier: Modifier = Modifier,
+    nearbyRanking: PressNearbyRankingUiState = PressNearbyRankingUiState(status = PressNearbyRankingStatus.Unavailable),
+    activity: PressActivityUiState? = null,
+    faceVisuals: Map<EmotionKind, EmotionFaceVisual> = emptyMap(),
 ) {
     val font = notoSansKrFontFamily()
     val emotionCounts =
@@ -86,22 +92,11 @@ internal fun PressScreen(
                     fontWeight = FontWeight.Medium,
                 )
             }
-            Spacer(Modifier.height(12.dp))
-            val allCount =
-                uiState.allToday?.total?.let { serverTotal ->
-                    if (serverTotal <= Long.MAX_VALUE - uiState.optimisticAllPressCount) {
-                        serverTotal + uiState.optimisticAllPressCount
-                    } else {
-                        null
-                    }
-                }
-            PressSummaryCard(
-                allCount = allCount,
-                myCount = uiState.myToday?.total?.plus(uiState.optimisticMyTotalCount),
-                isLoadingAll = uiState.isLoadingAll,
-                isLoadingMy = uiState.isLoadingMy,
-                modifier = Modifier.padding(horizontal = 24.dp),
+            PressRankingEntry(
+                onClick = onOpenRanking,
+                modifier = Modifier.align(Alignment.End).padding(horizontal = 24.dp),
             )
+            PressNearbyRankingCard(nearbyRanking, Modifier.padding(horizontal = 24.dp), activity = activity)
             Spacer(Modifier.height(20.dp))
         }
         BoxWithConstraints(
@@ -113,6 +108,7 @@ internal fun PressScreen(
                     .coerceIn(200.dp.coerceAtMost(maxWidth), maxWidth)
             EmotionPad(
                 counts = emotionCounts,
+                faceVisuals = faceVisuals,
                 optimisticPressCounts = uiState.optimisticPressCounts,
                 countTextOverrides = countTextOverrides,
                 enabled = true,
@@ -151,6 +147,7 @@ private fun PressScreenPreview() {
                     isLoadingAll = false,
                 ),
             onEmotionTap = { true },
+            onOpenRanking = {},
         )
     }
 }

@@ -34,6 +34,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.feature.emotion.model.EmotionCountUiModel
+import com.pheeeew.feature.emotion.model.EmotionFaceVisual
 import com.pheeeew.feature.emotion.model.EmotionKind
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.isActive
@@ -58,6 +59,7 @@ internal fun EmotionPad(
     preserveFeedbackWhileDisabled: Boolean = false,
     modifier: Modifier = Modifier,
     reducedMotionOverride: Boolean? = null,
+    faceVisuals: Map<EmotionKind, EmotionFaceVisual> = emptyMap(),
 ) {
     val reducedMotion = reducedMotionOverride ?: rememberTapReducedMotion()
     val mark = remember { TimeSource.Monotonic.markNow() }
@@ -230,6 +232,7 @@ internal fun EmotionPad(
 
                 EmotionPadButton(
                     kind = kind,
+                    faceVisual = faceVisuals[kind],
                     emotionLabel = emotionLabel,
                     count = count,
                     countPlaceholder = countTextOverrides[kind] ?: countPlaceholder,

@@ -251,6 +251,9 @@ class ApiRequestExecutor internal constructor(
         request: ApiRequest,
         token: AccessToken?,
     ): RequestExecutionResult {
+        if (request.expectedSessionGeneration != null && token?.generation != request.expectedSessionGeneration) {
+            return request.sessionUnavailableFailure()
+        }
         val attempt =
             request.monitoringEndpoint?.let { endpoint ->
                 runCatching { attemptObserver?.started(endpoint, request.method.value) }.getOrNull()

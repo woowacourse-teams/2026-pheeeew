@@ -15,6 +15,7 @@ internal val collectionCoverFlowEmotionOrder =
 data class CollectionScreenUiModel(
     val nickname: String,
     val cards: List<CollectionCardUiModel>,
+    val isNotificationDateOutdated: Boolean = false,
     val totalCount: Long = cards.size.toLong(),
     val emotionCounts: Map<EmotionType, Long> = emptyMap(),
     val selectedFilter: EmotionType? = null,

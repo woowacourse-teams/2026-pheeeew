@@ -2,6 +2,7 @@ package com.pheeeew.feature.screens.collection
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -21,6 +22,8 @@ import dev.zacsweers.metrox.viewmodel.metroViewModel
 internal fun CollectionRoute(
     sessionGeneration: Long?,
     currentNickname: String?,
+    notificationDate: String? = null,
+    refreshRevision: Long = 0L,
     modifier: Modifier = Modifier,
     bottomBar: @Composable () -> Unit = {},
     onRefreshActionChanged: ((() -> Unit)?) -> Unit = {},
@@ -42,8 +45,9 @@ internal fun CollectionRoute(
         currentRefreshActionChanged(viewModel::refresh)
         onDispose { currentRefreshActionChanged(null) }
     }
-    androidx.compose.runtime.LaunchedEffect(viewModel, sessionGeneration, currentNickname) {
+    LaunchedEffect(viewModel, sessionGeneration, currentNickname, refreshRevision) {
         viewModel.onSessionChanged(sessionGeneration, currentNickname)
+        if (refreshRevision > 0L) viewModel.refresh()
     }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onScreenResumed() }
 
@@ -58,6 +62,7 @@ internal fun CollectionRoute(
                         }?.cardId,
                 saveCompletionId = exportState.resultId,
                 imageActionPhase = exportState.phase,
+                notificationDate = notificationDate,
             ),
         onSaveCard = { cardId, capture -> exportState.export(cardId, CollectionImageAction.SAVE, capture) },
         onShareCard = { cardId, capture -> exportState.export(cardId, CollectionImageAction.SHARE, capture) },
@@ -82,8 +87,10 @@ private fun CollectionUiState.toScreenUiModel(
     saveCompletionCardId: String?,
     saveCompletionId: Int,
     imageActionPhase: CollectionCardExportPhase,
+    notificationDate: String?,
 ): CollectionScreenUiModel =
     CollectionScreenUiModel(
+        isNotificationDateOutdated = notificationDate != null && today != null && notificationDate != today.date,
         nickname = nickname?.takeIf(String::isNotBlank) ?: "나",
         cards = cards,
         totalCount = totalCount,

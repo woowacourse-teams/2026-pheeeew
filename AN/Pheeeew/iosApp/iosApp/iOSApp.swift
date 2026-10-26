@@ -3,6 +3,7 @@ import Shared
 
 @main
 struct iOSApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @Environment(\.scenePhase) private var scenePhase
 #if DEBUG
     @State private var monitoringSmokeTestScheduled = false
@@ -21,11 +22,23 @@ struct iOSApp: App {
         WindowGroup {
             ContentView()
                 .onChange(of: scenePhase) { phase in
-                    if phase == .active { IosMonitoring.shared.foreground() }
-                    if phase == .background { IosMonitoring.shared.background() }
+                    if phase == .active {
+                        IosMonitoring.shared.foreground()
+                        RevisitNotificationLifecycle.shared.foreground()
+                        PushTokenLifecycle.foreground()
+                    }
+                    if phase == .background {
+                        IosMonitoring.shared.background()
+                        RevisitNotificationLifecycle.shared.background()
+                        PushTokenLifecycle.background()
+                    }
                 }
                 .onAppear {
-                    if scenePhase == .active { IosMonitoring.shared.foreground() }
+                    if scenePhase == .active {
+                        IosMonitoring.shared.foreground()
+                        RevisitNotificationLifecycle.shared.foreground()
+                        PushTokenLifecycle.foreground()
+                    }
 #if DEBUG
                     if !monitoringSmokeTestScheduled,
                        ["1", "crash"].contains(ProcessInfo.processInfo.environment["MONITORING_SMOKE_TEST"] ?? ""),
