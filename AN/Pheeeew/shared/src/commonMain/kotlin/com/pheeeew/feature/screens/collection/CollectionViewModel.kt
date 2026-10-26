@@ -60,6 +60,7 @@ internal class CollectionViewModel(
     private var refreshJob: Job? = null
     private var detailJob: Job? = null
     private var refreshRequestId = 0L
+    private var todayRequestId = 0L
     private var historyRequestId = 0L
     private var historyCursor: String? = null
     private val historyByFilter = mutableMapOf<EmotionType?, HistorySnapshot>()
@@ -82,6 +83,7 @@ internal class CollectionViewModel(
         }
         sessionGeneration = generation
         refreshRequestId += 1
+        todayRequestId += 1
         historyRequestId += 1
         refreshJob?.cancel()
         todayJob?.cancel()
@@ -94,7 +96,7 @@ internal class CollectionViewModel(
         if (generation != null) refresh()
     }
 
-    fun onScreenResumed() = refresh()
+    fun onScreenResumed() = refresh(resetToTop = false, showIndicator = true)
 
     fun refreshToday() {
         if (refreshJob?.isActive == true || mutableUiState.value.isRefreshRequestActive) return
@@ -103,6 +105,7 @@ internal class CollectionViewModel(
 
     private fun loadToday(showLoading: Boolean): Job? {
         val generation = sessionGeneration ?: return null
+        val requestId = ++todayRequestId
         todayJob?.cancel()
         if (showLoading) {
             mutableUiState.update { it.copy(isLoadingToday = true, todayError = null) }
@@ -111,7 +114,7 @@ internal class CollectionViewModel(
             viewModelScope.launch {
                 when (val result = safeRepositoryCall { repository.findToday() }) {
                     is CollectionResult.Success -> {
-                        if (sessionGeneration == generation) {
+                        if (sessionGeneration == generation && todayRequestId == requestId) {
                             mutableUiState.update {
                                 it.copy(today = result.value, isLoadingToday = false, todayError = null)
                             }
@@ -119,7 +122,7 @@ internal class CollectionViewModel(
                     }
 
                     is CollectionResult.Failure -> {
-                        if (sessionGeneration == generation) {
+                        if (sessionGeneration == generation && todayRequestId == requestId) {
                             mutableUiState.update {
                                 it.copy(todayError = messageFor(result.reason), isLoadingToday = false)
                             }
@@ -140,13 +143,23 @@ internal class CollectionViewModel(
     private fun refresh(
         resetToTop: Boolean,
         showIndicator: Boolean,
+        cancelInFlight: Boolean = false,
     ) {
         val generation = sessionGeneration ?: return
         if (refreshJob?.isActive == true) {
-            if (resetToTop) {
-                mutableUiState.update { it.copy(scrollToTopRequestId = it.scrollToTopRequestId + 1) }
+            if (!cancelInFlight) {
+                if (resetToTop) {
+                    mutableUiState.update { it.copy(scrollToTopRequestId = it.scrollToTopRequestId + 1) }
+                }
+                return
             }
-            return
+            refreshRequestId += 1
+            todayRequestId += 1
+            historyRequestId += 1
+            refreshJob?.cancel()
+            todayJob?.cancel()
+            historyJob?.cancel()
+            refreshJob = null
         }
         val requestId = ++refreshRequestId
         todayJob?.cancel()
@@ -233,12 +246,15 @@ internal class CollectionViewModel(
         val state = mutableUiState.value
         val cursor = historyCursor ?: return
         if (!state.hasNext || state.isLoadingNext || state.isLoadingCards || state.isRefreshRequestActive) return
+        val requestId = ++historyRequestId
         historyJob?.cancel()
         mutableUiState.update { it.copy(isLoadingNext = true, cardsError = null) }
         historyJob =
             viewModelScope.launch {
                 val result = loadHistoryPage(state.selectedFilter, cursor)
-                if (sessionGeneration == generation && mutableUiState.value.selectedFilter == state.selectedFilter) {
+                if (sessionGeneration == generation && historyRequestId == requestId &&
+                    mutableUiState.value.selectedFilter == state.selectedFilter
+                ) {
                     applyHistoryResult(result, append = true)
                 }
             }
@@ -341,7 +357,7 @@ internal class CollectionViewModel(
                             claimOutcomeUnknown = false,
                         )
                     }
-                    refresh(resetToTop = false, showIndicator = false)
+                    refresh(resetToTop = false, showIndicator = false, cancelInFlight = true)
                 }
 
                 is CollectionResult.Failure -> {
@@ -376,7 +392,9 @@ internal class CollectionViewModel(
             viewModelScope.launch {
                 val request: suspend () -> Unit = {
                     val result = loadHistoryPage(filter, cursor = null)
-                    if (sessionGeneration == generation && mutableUiState.value.selectedFilter == filter) {
+                    if (sessionGeneration == generation && historyRequestId == requestId &&
+                        mutableUiState.value.selectedFilter == filter
+                    ) {
                         applyHistoryResult(result, append = false)
                     }
                 }
