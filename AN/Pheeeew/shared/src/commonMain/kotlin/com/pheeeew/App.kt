@@ -261,7 +261,6 @@ private fun AppContent(
     LaunchedEffect(queuedClick, firstMainPresented) {
         if (!firstMainPresented && queuedDestination != null) {
             startupNotificationDestination = queuedDestination
-            startupViewModel.setNotificationEntryRequested(queuedDestination != NotificationDestination.Map)
         }
     }
     val initialVersionCheckComplete = startupState.checked
