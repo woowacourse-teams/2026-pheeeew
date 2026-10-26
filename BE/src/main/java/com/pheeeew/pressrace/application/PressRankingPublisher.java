@@ -95,7 +95,8 @@ public class PressRankingPublisher {
                     }
                     PressRanking.Screen screen = ranking.forDevice(subscription.deviceId, subscription.view);
                     boolean baseline = subscription.baseline || subscription.date == null || !subscription.date.equals(screen.date());
-                    subscription.snapshots.accept(Snapshot.of(screen, Long.toString(nextVersion), ranking.generatedAt(), baseline));
+                    subscription.snapshots.accept(Snapshot.of(ranking, subscription.deviceId, subscription.view,
+                            Long.toString(nextVersion), baseline));
                     subscription.baseline = false;
                     subscription.date = screen.date();
                 });
@@ -103,9 +104,32 @@ public class PressRankingPublisher {
         }
     }
 
-    public record Snapshot(PressRanking.Screen screen, String snapshotVersion, Instant generatedAt, boolean baseline) {
-        public static Snapshot of(PressRanking.Screen screen, String snapshotVersion, Instant generatedAt, boolean baseline) {
-            return new Snapshot(screen, snapshotVersion, generatedAt, baseline);
+    /** 전체 순위는 공유 참조이며 JSON으로 직렬화하지 않는다. 화면과 추월 숫자만 송신한다. */
+    public record Snapshot(PressRanking ranking, UUID deviceId, PressView view, String snapshotVersion,
+                           boolean baseline, PressRanking.Overtakes overtakes) {
+        public static Snapshot of(PressRanking ranking, UUID deviceId, PressView view, String snapshotVersion, boolean baseline) {
+            return of(ranking, deviceId, view, snapshotVersion, baseline, PressRanking.Overtakes.of(0, 0));
+        }
+
+        public PressRanking.Screen screen() {
+            return ranking.forDevice(deviceId, view);
+        }
+
+        public Instant generatedAt() {
+            return ranking.generatedAt();
+        }
+
+        public Snapshot forDelivery(Snapshot previous, boolean reset) {
+            boolean newBaseline = reset || previous == null || !deviceId.equals(previous.deviceId)
+                    || view != previous.view || !screen().date().equals(previous.screen().date());
+            PressRanking.Overtakes changes = newBaseline ? PressRanking.Overtakes.of(0, 0)
+                    : ranking.overtakesSince(previous.ranking, deviceId);
+            return of(ranking, deviceId, view, snapshotVersion, newBaseline, changes);
+        }
+
+        private static Snapshot of(PressRanking ranking, UUID deviceId, PressView view, String snapshotVersion,
+                boolean baseline, PressRanking.Overtakes overtakes) {
+            return new Snapshot(ranking, deviceId, view, snapshotVersion, baseline, overtakes);
         }
     }
 

@@ -65,6 +65,48 @@ public final class PressRanking {
         return generatedAt;
     }
 
+    /** 화면 목록과 무관하게 마지막 송신 성공 상태부터 전체 상대의 실제 점수 교차를 비교한다. */
+    public Overtakes overtakesSince(PressRanking previous, UUID deviceId) {
+        if (!date.equals(previous.date) || !indices.containsKey(deviceId)) {
+            return Overtakes.of(0, 0);
+        }
+        boolean previouslyParticipating = previous.indices.containsKey(deviceId);
+        long previousScore = previous.scoreOf(deviceId);
+        long score = scoreOf(deviceId);
+        int passed = 0;
+        int passedBy = 0;
+        for (UUID opponent : indices.keySet()) {
+            if (opponent.equals(deviceId)
+                    || (!previouslyParticipating && !previous.indices.containsKey(opponent))) {
+                continue;
+            }
+            long previousOpponentScore = previous.scoreOf(opponent);
+            long opponentScore = scoreOf(opponent);
+            if (previousScore <= previousOpponentScore && score > opponentScore) {
+                passed++;
+            }
+            if (previousScore >= previousOpponentScore && score < opponentScore) {
+                passedBy++;
+            }
+        }
+        return Overtakes.of(passed, passedBy);
+    }
+
+    private long scoreOf(UUID deviceId) {
+        Integer index = indices.get(deviceId);
+        return index == null ? 0 : members.get(index).score();
+    }
+
+    public record Overtakes(int passed, int passedBy) {
+        public static Overtakes of(int passed, int passedBy) {
+            return new Overtakes(passed, passedBy);
+        }
+
+        public boolean hasChanges() {
+            return passed > 0 || passedBy > 0;
+        }
+    }
+
     public record Participant(UUID deviceId, UUID publicId, String nickname, long score, Instant lastAppliedAt) {
         public static Participant of(UUID deviceId, UUID publicId, String nickname, long score, Instant lastAppliedAt) {
             return new Participant(deviceId, publicId, nickname, score, lastAppliedAt);
