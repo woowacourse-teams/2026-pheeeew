@@ -64,6 +64,9 @@ class PressRaceWebSocketIntegrationTest {
     private PressRaceService service;
 
     @Autowired
+    private org.springframework.transaction.PlatformTransactionManager transactionManager;
+
+    @Autowired
     private com.pheeeew.auth.infra.jwt.JwtTokenEncoder jwtEncoder;
 
     @Autowired
@@ -97,6 +100,165 @@ class PressRaceWebSocketIntegrationTest {
             devices.deleteById(deviceId);
         }
         jdbc.sql("UPDATE press_race_control SET active_server_generation = NULL, enabled = FALSE, activation_date = NULL WHERE id = TRUE").update();
+    }
+
+    @Test
+    void 공동_일위에서_실제로_초과하면_각_수신자에게_양방향_추월_인원을_전달한다() throws Exception {
+        // given
+        Device opponent = devices.save(기본_기기_빌더().build());
+        createdDevices.add(opponent.getId());
+        seedScore(device, 10, new UUID(0, 1));
+        seedScore(opponent, 10, new UUID(0, 2));
+        SocketListener me = connect(token);
+        JsonNode ready = initialize(me);
+        SocketListener other = connect(tokens.issue(opponent.getPublicId()).accessToken());
+        initialize(other);
+        JsonNode baseline = me.snapshot(state -> state.path("baseline").booleanValue());
+        other.snapshot(state -> state.path("baseline").booleanValue());
+
+        // when
+        me.socket.sendText(submit(UUID.randomUUID(), ready, "{\"ANGRY\":1}"), true).join();
+        assertThat(me.receive().path("status").stringValue()).isEqualTo("APPLIED");
+        JsonNode passed = me.snapshot(state -> state.path("me").path("score").longValue() == 11);
+        JsonNode passedBy = other.snapshot(state -> state.path("me").path("rank").longValue() == 2);
+
+        // then
+        assertThat(baseline.path("overtakes").path("passed").intValue(-1)).isZero();
+        assertThat(baseline.path("overtakes").path("passedBy").intValue(-1)).isZero();
+        assertThat(passed.path("overtakes").path("passed").intValue(-1)).isEqualTo(1);
+        assertThat(passed.path("overtakes").path("passedBy").intValue(-1)).isZero();
+        assertThat(passedBy.path("overtakes").path("passed").intValue(-1)).isZero();
+        assertThat(passedBy.path("overtakes").path("passedBy").intValue(-1)).isEqualTo(1);
+        assertThat(passed.toString()).doesNotContain(device.getPublicId().toString(), opponent.getPublicId().toString());
+    }
+
+    @Test
+    void 첫_프레스는_기존_상대를_넘으면_알리고_미참여_관찰자에게는_알리지_않는다() throws Exception {
+        // given
+        Device opponent = participant(5, 1);
+        Device spectator = devices.save(기본_기기_빌더().build());
+        createdDevices.add(spectator.getId());
+        SocketListener me = connect(token);
+        JsonNode ready = initialize(me);
+        SocketListener other = connect(tokens.issue(opponent.getPublicId()).accessToken());
+        initialize(other);
+        SocketListener watching = connect(tokens.issue(spectator.getPublicId()).accessToken());
+        initialize(watching);
+        me.snapshot(state -> state.path("baseline").booleanValue());
+        other.snapshot(state -> state.path("baseline").booleanValue());
+        watching.snapshot(state -> state.path("baseline").booleanValue());
+
+        // when
+        me.socket.sendText(submit(UUID.randomUUID(), ready, "{\"ANGRY\":6}"), true).join();
+        assertThat(me.receive().path("status").stringValue()).isEqualTo("APPLIED");
+        JsonNode passed = me.snapshot(state -> state.path("me").path("participating").booleanValue());
+        JsonNode passedBy = other.snapshot(state -> state.path("me").path("rank").longValue() == 2);
+        JsonNode passive = watching.snapshot(state -> state.path("nearby").size() == 2);
+
+        // then
+        assertOvertakes(passed, 1, 0);
+        assertOvertakes(passedBy, 0, 1);
+        assertOvertakes(passive, 0, 0);
+        assertThat(passed.path("baseline").booleanValue()).isFalse();
+    }
+
+    @Test
+    void 같은_관찰_사이에_처음_참가한_두_기기의_과거_순서를_만들지_않는다() throws Exception {
+        // given
+        Device opponent = devices.save(기본_기기_빌더().build());
+        createdDevices.add(opponent.getId());
+        SocketListener me = connect(token);
+        initialize(me);
+        SocketListener other = connect(tokens.issue(opponent.getPublicId()).accessToken());
+        initialize(other);
+        me.snapshot(state -> state.path("baseline").booleanValue());
+        other.snapshot(state -> state.path("baseline").booleanValue());
+
+        // when: 한 DB 관찰에 함께 등장한 신규 참가자 점수를 준비한다.
+        new org.springframework.transaction.support.TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            seedScore(device, 10, new UUID(0, 1));
+            seedScore(opponent, 15, new UUID(0, 2));
+        });
+        JsonNode first = me.snapshot(state -> state.path("me").path("participating").booleanValue());
+        JsonNode second = other.snapshot(state -> state.path("me").path("participating").booleanValue());
+
+        // then
+        assertOvertakes(first, 0, 0);
+        assertOvertakes(second, 0, 0);
+        assertThat(first.path("baseline").booleanValue()).isFalse();
+        assertThat(second.path("baseline").booleanValue()).isFalse();
+    }
+
+    @Test
+    void 등수_그대로인_양방향_추월도_한_메시지에_따로_전달한다() throws Exception {
+        // given
+        Device ahead = participant(20, 1);
+        Device behind = participant(5, 2);
+        seedScore(device, 10, new UUID(0, 3));
+        SocketListener me = connect(token);
+        initialize(me);
+        JsonNode previous = me.snapshot(state -> state.path("baseline").booleanValue());
+
+        // when: 여러 기기의 커밋이 한 공통 갱신에 관찰되는 상황을 준비한다.
+        new org.springframework.transaction.support.TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            setScore(device, 25);
+            setScore(behind, 30);
+        });
+        JsonNode latest = me.snapshot(state -> state.path("me").path("score").longValue() == 25);
+
+        // then
+        assertThat(previous.path("me").path("rank").longValue()).isEqualTo(2);
+        assertThat(latest.path("me").path("rank")).isEqualTo(previous.path("me").path("rank"));
+        assertOvertakes(latest, 1, 1);
+        assertThat(latest.toString()).doesNotContain(ahead.getPublicId().toString(), behind.getPublicId().toString());
+    }
+
+    @Test
+    void 동점_도달로_등수와_표시_위치가_바뀌어도_추월은_아니다() throws Exception {
+        // given
+        participant(10, 2);
+        seedScore(device, 5, new UUID(0, 1));
+        SocketListener me = connect(token);
+        JsonNode ready = initialize(me);
+        me.snapshot(state -> state.path("baseline").booleanValue());
+
+        // when
+        me.socket.sendText(submit(UUID.randomUUID(), ready, "{\"ANGRY\":5}"), true).join();
+        assertThat(me.receive().path("status").stringValue()).isEqualTo("APPLIED");
+        JsonNode tied = me.snapshot(state -> state.path("me").path("score").longValue() == 10);
+
+        // then
+        assertThat(tied.path("me").path("rank").longValue()).isEqualTo(1);
+        assertThat(tied.path("nearby").get(0)).isEqualTo(tied.path("me"));
+        assertOvertakes(tied, 0, 0);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"session.init", "view.change", "reconnect"})
+    void 알림_후_재초기화나_화면_전환이나_재연결은_과거_알림을_재생하지_않는다(String reset) throws Exception {
+        // given
+        participant(5, 1);
+        SocketListener me = connect(token);
+        JsonNode ready = initialize(me);
+        me.snapshot(state -> state.path("baseline").booleanValue());
+        me.socket.sendText(submit(UUID.randomUUID(), ready, "{\"ANGRY\":6}"), true).join();
+        assertThat(me.receive().path("status").stringValue()).isEqualTo("APPLIED");
+        assertOvertakes(me.snapshot(state -> state.path("me").path("score").longValue() == 6), 1, 0);
+
+        // when
+        if (reset.equals("reconnect")) {
+            me = connect(token);
+            initialize(me);
+        } else if (reset.equals("view.change")) {
+            me.socket.sendText("{\"v\":1,\"type\":\"view.change\",\"view\":\"ALL\"}", true).join();
+        } else {
+            initialize(me);
+        }
+        JsonNode baseline = me.snapshot(state -> state.path("baseline").booleanValue());
+
+        // then
+        assertOvertakes(baseline, 0, 0);
+        assertThat(baseline.path("me").path("score").longValue()).isEqualTo(6);
     }
 
     @Test
@@ -184,28 +346,39 @@ class PressRaceWebSocketIntegrationTest {
         assertThat(Instant.parse(expired.path("generatedAt").stringValue())).isAfterOrEqualTo(appliedAt.plusSeconds(5));
     }
 
-    @Test
-    void 공동_100위_목록을_확장하지_않고_100명_밖의_me와_주변을_전달한다() throws Exception {
+    @ParameterizedTest
+    @CsvSource({"5, 105, 6", "10, 1, 1"})
+    void 목록_밖_상대까지_세고_공동_일위나_백위_밖에서_단독_일위가_된다(long score, long rank, int presses) throws Exception {
         // given
         for (int index = 0; index < 104; index++) {
             Device participant = devices.save(기본_기기_빌더().build());
             createdDevices.add(participant.getId());
             seedScore(participant, 10, new UUID(0, index + 1));
         }
-        seedScore(device, 5, UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff"));
+        seedScore(device, score, UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff"));
         SocketListener observer = connect(token);
 
         // when
         observer.socket.sendText("{\"v\":1,\"type\":\"session.init\",\"view\":\"ALL\",\"pending\":[]}", true).join();
-        assertThat(observer.receive().path("type").stringValue()).isEqualTo("session.ready");
+        JsonNode ready = observer.receive();
+        assertThat(ready.path("type").stringValue()).isEqualTo("session.ready");
         JsonNode state = observer.snapshot(snapshot -> snapshot.path("top100").size() == 100);
 
         // then
-        assertThat(state.path("me").path("rank").longValue()).isEqualTo(105);
+        assertThat(state.path("me").path("rank").longValue()).isEqualTo(rank);
         assertThat(state.path("nearby").size()).isEqualTo(3);
         assertThat(state.path("nearby").get(2)).isEqualTo(state.path("me"));
         assertThat(state.path("top100").get(99).path("rank").longValue()).isEqualTo(1);
         assertThat(state.path("top100").toString()).doesNotContain(state.path("me").path("publicId").stringValue());
+
+        // when
+        observer.socket.sendText(submit(UUID.randomUUID(), ready, "{\"ANGRY\":" + presses + "}"), true).join();
+        assertThat(observer.receive().path("status").stringValue()).isEqualTo("APPLIED");
+        JsonNode passed = observer.snapshot(snapshot -> snapshot.path("me").path("score").longValue() == 11);
+
+        // then
+        assertThat(passed.path("me").path("rank").longValue()).isEqualTo(1);
+        assertOvertakes(passed, 104, 0);
     }
 
     @Test
@@ -228,6 +401,7 @@ class PressRaceWebSocketIntegrationTest {
         assertThat(nextDay.path("me").path("rank").isNull()).isTrue();
         assertThat(nextDay.path("me").path("score").longValue()).isZero();
         assertThat(nextDay.path("activeCount").intValue()).isZero();
+        assertOvertakes(nextDay, 0, 0);
         assertThat(Long.parseLong(nextDay.path("snapshotVersion").stringValue()))
                 .isGreaterThan(Long.parseLong(today.path("snapshotVersion").stringValue()));
     }
@@ -325,9 +499,33 @@ class PressRaceWebSocketIntegrationTest {
 
     private void seedScore(Device participant, long score, UUID publicId) {
         jdbc.sql("""
+                INSERT INTO device_daily_presses(press_date, state, device_id, press_count, created_at, updated_at)
+                VALUES ((clock_timestamp() AT TIME ZONE 'Asia/Seoul')::date, 'ANGRY', :id, :score,
+                        clock_timestamp(), clock_timestamp())
+                """).param("id", participant.getId()).param("score", score).update();
+        jdbc.sql("""
                 INSERT INTO press_daily_scores(device_id, press_date, total, last_applied_at, public_id)
                 VALUES (:id, (clock_timestamp() AT TIME ZONE 'Asia/Seoul')::date, :score, clock_timestamp(), :publicId)
                 """).param("id", participant.getId()).param("score", score).param("publicId", publicId).update();
+    }
+
+    private Device participant(long score, long publicId) {
+        Device participant = devices.save(기본_기기_빌더().build());
+        createdDevices.add(participant.getId());
+        seedScore(participant, score, new UUID(0, publicId));
+        return participant;
+    }
+
+    private void setScore(Device participant, long score) {
+        jdbc.sql("UPDATE device_daily_presses SET press_count = :score WHERE device_id = :id")
+                .param("score", score).param("id", participant.getId()).update();
+        jdbc.sql("UPDATE press_daily_scores SET total = :score WHERE device_id = :id")
+                .param("score", score).param("id", participant.getId()).update();
+    }
+
+    private void assertOvertakes(JsonNode snapshot, int passed, int passedBy) {
+        assertThat(snapshot.path("overtakes").path("passed").intValue(-1)).isEqualTo(passed);
+        assertThat(snapshot.path("overtakes").path("passedBy").intValue(-1)).isEqualTo(passedBy);
     }
 
     @Test

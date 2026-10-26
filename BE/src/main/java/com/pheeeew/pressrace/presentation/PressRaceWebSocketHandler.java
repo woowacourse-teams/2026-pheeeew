@@ -258,8 +258,11 @@ public class PressRaceWebSocketHandler extends AbstractWebSocketHandler {
         response.put("nearby", snapshot.screen().nearby());
         response.put("top100", snapshot.screen().top100());
         response.put("baseline", snapshot.baseline());
+        response.put("overtakes", snapshot.overtakes());
         try {
-            send(session, connection, response);
+            if (!send(session, connection, response)) {
+                throw new InvalidMessage("SNAPSHOT_SEND_FAILED");
+            }
         } catch (IOException exception) {
             throw new UncheckedIOException(exception);
         }
@@ -350,17 +353,19 @@ public class PressRaceWebSocketHandler extends AbstractWebSocketHandler {
         return response;
     }
 
-    private void send(WebSocketSession session, PressConnection connection, Map<String, Object> response) throws IOException {
+    private boolean send(WebSocketSession session, PressConnection connection, Map<String, Object> response) throws IOException {
         synchronized (session) {
             requireUnexpired(connection);
             WebSocketSession current = currentSessions.get(connection.devicePublicId());
             if (current != session) {
                 session.close(CloseStatus.POLICY_VIOLATION.withReason("CONNECTION_REPLACED"));
-                return;
+                return false;
             }
             if (session.isOpen()) {
                 session.sendMessage(new TextMessage(json.writeValueAsString(response)));
+                return true;
             }
+            return false;
         }
     }
 

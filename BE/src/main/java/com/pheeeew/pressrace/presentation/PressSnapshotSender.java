@@ -1,7 +1,6 @@
 package com.pheeeew.pressrace.presentation;
 
 import com.pheeeew.pressrace.application.PressRankingPublisher.Snapshot;
-import com.pheeeew.pressrace.domain.PressRanking;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 
@@ -13,7 +12,7 @@ final class PressSnapshotSender {
     private final Consumer<Snapshot> send;
     private final Consumer<RuntimeException> failed;
     private Snapshot pending;
-    private PressRanking.Screen lastSent;
+    private Snapshot lastSent;
     private long revision;
     private boolean baselinePending = true;
     private boolean running;
@@ -56,29 +55,27 @@ final class PressSnapshotSender {
     private void drain() {
         try {
             while (true) {
-                Snapshot next;
-                long selectedRevision;
-                synchronized (this) {
-                    next = pending == null ? null : Snapshot.of(pending.screen(), pending.snapshotVersion(),
-                            pending.generatedAt(), baselinePending);
-                    pending = null;
-                    selectedRevision = revision;
-                    if (closed || next == null) {
-                        running = false;
-                        return;
-                    }
-                }
                 synchronized (sendMonitor) {
+                    Snapshot next;
+                    long selectedRevision;
                     synchronized (this) {
-                        if (closed || selectedRevision != revision
-                                || (!next.baseline() && next.screen().equals(lastSent))) {
+                        // 입력 결과 송신 잠금을 기다리는 동안에도 대기는 최신 하나로 교체한다.
+                        if (closed || pending == null) {
+                            running = false;
+                            return;
+                        }
+                        next = pending.forDelivery(lastSent, baselinePending);
+                        pending = null;
+                        selectedRevision = revision;
+                        if (!next.baseline() && next.screen().equals(lastSent.screen())
+                                && !next.overtakes().hasChanges()) {
                             continue;
                         }
                     }
                     send.accept(next);
                     synchronized (this) {
                         if (selectedRevision == revision) {
-                            lastSent = next.screen();
+                            lastSent = next;
                             baselinePending = false;
                         }
                     }
