@@ -37,5 +37,4 @@ class CollectionNotificationTest {
         assertTrue(isCollectionNotificationDate("2028-02-29"))
         assertFalse(isCollectionNotificationDate("1900-02-29"))
     }
-
 }
