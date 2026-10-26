@@ -63,7 +63,7 @@ public class NotificationSettingController implements NotificationSettingControl
             @Valid @RequestBody NotificationSettingsUpdateRequest request
     ) {
         notificationSettingService.updateSettings(
-                devicePublicId, request.collectionIssuedEnabled(), request.rankDroppedEnabled());
+                devicePublicId, request.collectionClaimableEnabled(), request.rankChangedEnabled());
         return ResponseEntity.noContent().build();
     }
 }

@@ -147,7 +147,7 @@ class NotificationSettingControllerTest {
                 .expectStatus().isOk()
                 .expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
                 .expectBody().json("""
-                        {"collectionIssuedEnabled":true,"rankDroppedEnabled":false}
+                        {"collectionClaimableEnabled":true,"rankChangedEnabled":false}
                         """, JsonCompareMode.STRICT);
     }
 
@@ -157,7 +157,7 @@ class NotificationSettingControllerTest {
         client.put().uri(SETTINGS_URI)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
                 .contentType(MediaType.APPLICATION_JSON)
-                .body("{\"collectionIssuedEnabled\":false,\"rankDroppedEnabled\":true}")
+                .body("{\"collectionClaimableEnabled\":false,\"rankChangedEnabled\":true}")
                 .exchange()
                 .expectStatus().isNoContent()
                 .expectBody().isEmpty();
@@ -166,8 +166,8 @@ class NotificationSettingControllerTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "{\"collectionIssuedEnabled\":false}",
-            "{\"collectionIssuedEnabled\":null,\"rankDroppedEnabled\":true}",
+            "{\"collectionClaimableEnabled\":false}",
+            "{\"collectionClaimableEnabled\":null,\"rankChangedEnabled\":true}",
             "{}"
     })
     void 수신_설정은_두_값이_모두_있어야_바꾼다(String body) {

@@ -51,8 +51,8 @@ public class NotificationSettingService {
                 .orElseGet(NotificationSettings::defaults);
     }
 
-    public void updateSettings(UUID devicePublicId, boolean collectionIssuedEnabled, boolean rankDroppedEnabled) {
-        NotificationSettings settings = NotificationSettings.of(collectionIssuedEnabled, rankDroppedEnabled);
+    public void updateSettings(UUID devicePublicId, boolean collectionClaimableEnabled, boolean rankChangedEnabled) {
+        NotificationSettings settings = NotificationSettings.of(collectionClaimableEnabled, rankChangedEnabled);
         deviceNotificationSettingRepository.save(findDeviceId(devicePublicId), settings, clock.instant());
     }
 

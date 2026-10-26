@@ -74,7 +74,7 @@ public interface NotificationSettingControllerApi {
 
     @Operation(summary = "알림 수신 설정 조회", security = @SecurityRequirement(name = "bearerAuth"),
             description = """
-                    - 이 기기의 컬렉션 발급 알림(collectionIssuedEnabled)과 순위 하락 알림(rankDroppedEnabled) 수신 여부를 조회합니다.
+                    - 이 기기의 컬렉션 발급 가능 알림(collectionClaimableEnabled)과 순위 변동 알림(rankChangedEnabled) 수신 여부를 조회합니다.
                     - 한 번도 바꾸지 않은 기기는 두 값 모두 true 입니다.
                     - 기기별 값이며 다른 기기에 영향을 주지 않습니다.
                     - OS 알림 권한과 별개입니다. true 여도 OS 권한이 꺼져 있으면 기기에 표시되지 않습니다.
