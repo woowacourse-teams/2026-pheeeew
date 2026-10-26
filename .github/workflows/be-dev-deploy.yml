@@ -13,6 +13,11 @@ on:
         description: '되돌릴 이미지 태그 (예: dev-0e3c40ec...). 비우면 현재 커밋을 빌드합니다'
         required: false
         type: string
+      migrate_legacy_generation:
+        description: '경쟁 OFF인 기존 랜덤 세대 서버를 검증하고 명시적 세대로 최초 이행'
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: deploy-dev
@@ -190,6 +195,7 @@ jobs:
           ssh -F ~/.ssh/config target 'mkdir -p /opt/pheeeew/nginx /opt/pheeeew/alloy'
           ssh -F ~/.ssh/config target 'set -eu; cd /opt/pheeeew; if [ -f compose.yml ]; then cp compose.yml compose.yml.prev; fi'
           scp -F ~/.ssh/config BE/docker/compose.dev.yml target:/opt/pheeeew/compose.yml
+          scp -F ~/.ssh/config BE/docker/press-generation.py target:/opt/pheeeew/press-generation.py
           scp -F ~/.ssh/config BE/docker/compose.nginx.dev.yml target:/opt/pheeeew/compose.nginx.yml
           scp -F ~/.ssh/config BE/docker/compose.postgres.dev.yml target:/opt/pheeeew/compose.postgres.yml
           scp -F ~/.ssh/config BE/docker/nginx/api-dev.conf target:/opt/pheeeew/nginx/api-dev.conf
@@ -282,9 +288,10 @@ jobs:
       - name: 배포
         env:
           IMAGE: ${{ secrets.DOCKERHUB_IMAGE }}:${{ github.event.inputs.image_tag || format('dev-{0}', github.sha) }}
+          ALLOW_LEGACY_GENERATION: ${{ github.event_name == 'workflow_dispatch' && inputs.migrate_legacy_generation && 'true' || 'false' }}
         run: |
           set -eu
-          ssh -F ~/.ssh/config target "APP_IMAGE='$IMAGE' bash -s" <<'REMOTE'
+          ssh -F ~/.ssh/config target "APP_IMAGE='$IMAGE' ALLOW_LEGACY_GENERATION='$ALLOW_LEGACY_GENERATION' bash -s" <<'REMOTE'
           set -eu
           cd /opt/pheeeew
 
@@ -400,13 +407,17 @@ jobs:
           restore_pointer() {
             [ -f "$BACKUP" ] || return 1
             cat "$BACKUP" > "$POINTER"
-            rm -f "$BACKUP"
             $NGINX exec -T nginx nginx -t </dev/null || return 1
             $NGINX exec -T nginx nginx -s reload </dev/null || return 1
-            wait_served "$ACTIVE"
+            wait_served "$ACTIVE" || return 1
           }
 
           rollback() {
+            # A failed psql response may follow a committed UPDATE. Verify restoration before cleanup.
+            if ! python3 press-generation.py restore "pheeeew-dev-$TARGET"; then
+              report_mismatch
+              return 1
+            fi
             if ! restore_pointer; then
               report_mismatch
               return 1
@@ -417,8 +428,11 @@ jobs:
             else
               echo "$TARGET 으로 향하던 요청이 끝났는지 확인하지 못했습니다."
             fi
-            $APPS stop "$TARGET"
-            $APPS rm -f "$TARGET"
+            if ! python3 press-generation.py cleanup-target "pheeeew-dev-$TARGET"; then
+              report_mismatch
+              return 1
+            fi
+            rm -f .press-deploy.json "$BACKUP"
             echo "$TARGET 을 정리했습니다."
           }
 
@@ -430,33 +444,73 @@ jobs:
           [ "$ACTIVE" = app-blue ] && TARGET=app-green || TARGET=app-blue
           echo "현재 $ACTIVE, 새로 띄울 것 $TARGET"
 
+          command -v python3 >/dev/null
+          command -v psql >/dev/null
+          command -v openssl >/dev/null
+          if [ -e "$BACKUP" ] || [ -e .press-deploy.json ]; then
+            echo "미완료 전환 기록이 있습니다. DB와 프록시를 수동 확인하기 전에는 재배포하지 않습니다."
+            exit 1
+          fi
+          # OFF-only: booting a candidate never changes DB ownership or competition activation.
+          wait_served "$ACTIVE" || { echo "현재 트래픽과 전환 파일이 다릅니다. 배포하지 않습니다."; exit 1; }
+          if [ "${ALLOW_LEGACY_GENERATION:-false}" = true ]; then
+            python3 press-generation.py prepare "pheeeew-dev-$ACTIVE" "$TARGET" --allow-legacy
+          else
+            python3 press-generation.py prepare "pheeeew-dev-$ACTIVE" "$TARGET"
+          fi
+          APPS="docker compose --env-file .env --env-file press-generations.env -f compose.yml"
+
           $APPS pull "$TARGET"
+          contract=$(docker image inspect "$APP_IMAGE" --format '{{index .Config.Labels "com.pheeeew.press-generation-contract"}}')
+          if [ "$contract" != 1 ]; then
+            echo "서버 세대 계약을 지원하지 않는 이미지입니다. 별도의 구버전 복귀 절차가 필요합니다."
+            rm -f .press-deploy.json
+            exit 1
+          fi
 
           if ! $APPS up -d --wait --wait-timeout 180 "$TARGET"; then
             echo "===== 새 버전 기동 실패 — 로그 ====="
             $APPS logs --tail=100 "$TARGET" 2>&1 | grep -a -v -F -e 'http_request_failed' -e 'scheduled_task_failed' || true
-            $APPS rm -sf "$TARGET"
+            if python3 press-generation.py record-target "pheeeew-dev-$TARGET" \
+                && python3 press-generation.py cleanup-target "pheeeew-dev-$TARGET"; then
+              rm -f .press-deploy.json
+            else
+              report_mismatch
+            fi
             echo "전환하지 않고 끝냅니다. 트래픽은 $ACTIVE 에 그대로 있습니다."
             exit 1
           fi
 
+          python3 press-generation.py record-target "pheeeew-dev-$TARGET" || { report_mismatch; exit 1; }
+
           if ! wait_target_api; then
             echo "새 버전이 최소 API 를 응답하지 않습니다."
             $APPS logs --tail=50 "$TARGET" 2>&1 | grep -a -v -F -e 'http_request_failed' -e 'scheduled_task_failed' || true
-            $APPS rm -sf "$TARGET"
+            if python3 press-generation.py cleanup-target "pheeeew-dev-$TARGET"; then
+              rm -f .press-deploy.json
+            else
+              report_mismatch
+            fi
             echo "전환하지 않고 끝냅니다. 트래픽은 $ACTIVE 에 그대로 있습니다."
             exit 1
           fi
           echo "$TARGET 이 최소 API 를 응답합니다."
 
+          if [ "$(read_pointer)" != "$ACTIVE" ] || ! wait_served "$ACTIVE"; then
+            report_mismatch
+            exit 1
+          fi
           cp "$POINTER" "$BACKUP"
+          if ! python3 press-generation.py handoff "pheeeew-dev-$TARGET"; then
+            echo "서버 세대 전환을 확인하지 못했습니다. 실제 DB 상태를 재확인하고 복구합니다."
+            rollback || true
+            exit 1
+          fi
           printf 'set $upstream_app %s;\n' "$TARGET" > "$POINTER"
 
           if ! $NGINX exec -T nginx nginx -t </dev/null; then
             echo "전환 설정이 올바르지 않습니다."
-            cat "$BACKUP" > "$POINTER"
-            rm -f "$BACKUP"
-            $APPS rm -sf "$TARGET"
+            rollback || true
             echo "전환하지 않고 끝냅니다. 트래픽은 $ACTIVE 에 그대로 있습니다."
             exit 1
           fi
@@ -474,16 +528,19 @@ jobs:
           fi
           echo "$TARGET 으로 전환했고 정상 응답을 확인했습니다."
 
+          if ! python3 press-generation.py verify "pheeeew-dev-$TARGET"; then
+            report_mismatch
+            exit 1
+          fi
+
           if wait_drained; then
             echo "이전 요청이 모두 끝났습니다."
           else
             echo "이전 요청이 끝났는지 확인하지 못했습니다. $ACTIVE 를 graceful 하게 내립니다."
             echo "   종료 유예 30초 안에서 앱이 남은 요청을 스스로 마무리합니다."
           fi
-          rm -f "$BACKUP"
-
-          $APPS stop "$ACTIVE"
-          $APPS rm -f "$ACTIVE"
+          python3 press-generation.py cleanup-active "pheeeew-dev-$ACTIVE" || { report_mismatch; exit 1; }
+          rm -f .press-deploy.json "$BACKUP"
 
           echo "배포 성공: $APP_IMAGE ($TARGET)"
           docker image prune -f
