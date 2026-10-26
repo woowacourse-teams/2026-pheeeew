@@ -92,6 +92,16 @@ jobs:
             exit 1
           fi
 
+      - name: FCM Secrets 확인
+        env:
+          FCM_SERVICE_ACCOUNT_BASE64: ${{ secrets.FCM_SERVICE_ACCOUNT_BASE64 }}
+        run: |
+          set -eu
+          if [[ -z "${FCM_SERVICE_ACCOUNT_BASE64:-}" ]]; then
+            echo "::error::production Secrets에 FCM_SERVICE_ACCOUNT_BASE64 값이 등록되어 있지 않거나 비어 있습니다."
+            exit 1
+          fi
+
       - name: Alloy Secrets 확인 및 환경 파일 생성
         env:
           GRAFANA_METRICS_URL: ${{ secrets.GRAFANA_METRICS_URL }}
@@ -213,6 +223,7 @@ jobs:
           JWT_PUBLIC_KEY_BASE64: ${{ secrets.JWT_PUBLIC_KEY_BASE64 }}
           PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64: ${{ secrets.PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64 }}
           PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER: ${{ secrets.PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER }}
+          FCM_SERVICE_ACCOUNT_BASE64: ${{ secrets.FCM_SERVICE_ACCOUNT_BASE64 }}
           S3_BUCKET: ${{ secrets.S3_BUCKET }}
           S3_KEY_PREFIX: ${{ secrets.S3_KEY_PREFIX }}
           S3_REGION: ${{ secrets.S3_REGION }}
@@ -229,6 +240,7 @@ jobs:
             echo "JWT_PUBLIC_KEY_BASE64=$JWT_PUBLIC_KEY_BASE64"
             echo "PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64=$PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64"
             echo "PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=$PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER"
+            echo "FCM_SERVICE_ACCOUNT_BASE64=$FCM_SERVICE_ACCOUNT_BASE64"
             printf '%s\n' "S3_BUCKET=$S3_BUCKET" "S3_KEY_PREFIX=$S3_KEY_PREFIX" "S3_REGION=$S3_REGION"
             printf '%s\n' "COLLECTION_CARD_VERSION=$COLLECTION_CARD_VERSION"
           } > env.tmp
