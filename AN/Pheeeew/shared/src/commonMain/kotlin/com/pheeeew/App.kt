@@ -72,6 +72,7 @@ import com.pheeeew.core.navigation.RankingRootDestination
 import com.pheeeew.core.notification.NotificationClickInbox
 import com.pheeeew.core.notification.NotificationPermissionController
 import com.pheeeew.core.notification.NotificationPreferencesStore
+import com.pheeeew.data.press.race.PressRaceView
 import com.pheeeew.domain.model.device.DeviceSessionResult
 import com.pheeeew.domain.model.version.AppVersionDecision
 import com.pheeeew.feature.component.AppBottomNavigationBar
@@ -105,6 +106,7 @@ import com.pheeeew.feature.screens.map.symbolImageKey
 import com.pheeeew.feature.screens.onboarding.FeatureGuideScreen
 import com.pheeeew.feature.screens.onboarding.FeatureGuideState
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
+import com.pheeeew.feature.screens.press.PressRaceLifecycleEffect
 import com.pheeeew.feature.screens.press.PressRoute
 import com.pheeeew.feature.screens.ranking.press.PressRankingRoute
 import com.pheeeew.feature.screens.report.ReportRoute
@@ -579,6 +581,18 @@ private fun AppContent(
         val isEmotionRecordFlowActive =
             selectedDestination == AppDestination.Map &&
                 (mapUiModel.isEmotionSelectorExpanded || recordUiModel.step != RecordFlowStepUiModel.Closed)
+
+        val pressRaceView =
+            when {
+                currentBackStackEntry?.destination?.hasRoute<PressRootDestination>() == true -> PressRaceView.PRESS
+                currentBackStackEntry?.destination?.hasRoute<RankingRootDestination>() == true -> PressRaceView.ALL
+                else -> null
+            }
+        PressRaceLifecycleEffect(
+            session = apiDependencies.appSession.pressRace,
+            view = pressRaceView,
+            enabled = mainFeaturesReady && !shouldPrepareMapDuringSplash && !isSettingsVisible && reportTarget == null,
+        )
 
         NotificationClickEffect(
             inbox = notificationClicks,
