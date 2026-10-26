@@ -11,7 +11,7 @@ import org.springframework.data.repository.query.Param;
 
 public interface CollectionCardRepository extends JpaRepository<CollectionCard, Long> {
 
-    Optional<CollectionCard> findByDeviceIdAndCardDateAndState(Long deviceId, LocalDate cardDate, EmotionState state);
+    Optional<CollectionCard> findByDeviceIdAndCardDate(Long deviceId, LocalDate cardDate);
 
     @Query("""
             SELECT card.combinationIndex FROM CollectionCard card

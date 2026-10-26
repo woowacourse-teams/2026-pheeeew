@@ -1,14 +1,17 @@
 package com.pheeeew.collection.application;
 
+import static com.pheeeew.collection.exception.CollectionErrorCode.COLLECTION_ALREADY_CLAIMED_TODAY;
 import static com.pheeeew.collection.exception.CollectionErrorCode.COLLECTION_CLAIM_DATE_INVALID;
 import static com.pheeeew.collection.exception.CollectionErrorCode.COLLECTION_REQUIREMENTS_NOT_MET;
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
 
 import com.pheeeew.collection.application.dto.CollectionCardResult;
 import com.pheeeew.collection.domain.CollectionCard;
+import com.pheeeew.collection.domain.CollectionClaimRequirement;
 import com.pheeeew.collection.domain.repository.CollectionCardRepository;
 import com.pheeeew.collection.domain.repository.CollectionDrawStateRepository;
 import com.pheeeew.collection.domain.repository.CollectionProgressRepository;
+import com.pheeeew.collection.domain.repository.projection.CollectionActivityCounts;
 import com.pheeeew.collection.exception.CollectionException;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
@@ -41,21 +44,24 @@ public class CollectionClaimService {
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public CollectionCardResult claim(UUID devicePublicId, LocalDate date, EmotionState state) {
-        Long deviceId = deviceRepository.findByPublicId(devicePublicId).map(Device::getId)
+        Long deviceId = deviceRepository.findByPublicIdForUpdate(devicePublicId).map(Device::getId)
                 .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
 
-        collectionDrawStateRepository.saveIfAbsent(deviceId, state);
-        var drawState = collectionDrawStateRepository.findByDeviceIdAndState(deviceId, state)
-                .orElseThrow(() -> new IllegalStateException("추첨 상태를 초기화하지 못했습니다."));
-
-        var existing = collectionCardRepository.findByDeviceIdAndCardDateAndState(deviceId, date, state);
-        if (existing.isPresent()) {
+        var existing = collectionCardRepository.findByDeviceIdAndCardDate(deviceId, date);
+        if (existing.isPresent() && existing.get().getState() == state) {
             return toResult(existing.get());
         }
 
         validateDate(date, clock.instant());
-        validateRequirements(date, deviceId, state);
+        if (existing.isPresent()) {
+            throw new CollectionException(COLLECTION_ALREADY_CLAIMED_TODAY);
+        }
+        validateRequirements(date, deviceId);
         String cardVersion = assetService.activeVersion();
+
+        collectionDrawStateRepository.saveIfAbsent(deviceId, state);
+        var drawState = collectionDrawStateRepository.findByDeviceIdAndState(deviceId, state)
+                .orElseThrow(() -> new IllegalStateException("추첨 상태를 초기화하지 못했습니다."));
         var used = new HashSet<>(collectionCardRepository.findUsedCombinations(deviceId, state, drawState.getCycle()));
 
         Instant claimedAt = clock.instant();
@@ -85,10 +91,11 @@ public class CollectionClaimService {
         }
     }
 
-    private void validateRequirements(LocalDate date, Long deviceId, EmotionState state) {
-        boolean eligible = collectionProgressRepository.findByDateAndDeviceId(date, deviceId).stream()
-                .anyMatch(counts -> counts.state() == state && counts.stampCount() >= 1 && counts.pressCount() >= 100);
-        if (!eligible) {
+    private void validateRequirements(LocalDate date, Long deviceId) {
+        var counts = collectionProgressRepository.findByDateAndDeviceId(date, deviceId);
+        long stampCount = counts.stream().mapToLong(CollectionActivityCounts::stampCount).sum();
+        long pressCount = counts.stream().mapToLong(CollectionActivityCounts::pressCount).sum();
+        if (!CollectionClaimRequirement.isMet(stampCount, pressCount)) {
             throw new CollectionException(COLLECTION_REQUIREMENTS_NOT_MET);
         }
     }
