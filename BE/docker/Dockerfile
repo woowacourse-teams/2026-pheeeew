@@ -11,6 +11,8 @@ RUN chmod +x gradlew && ./gradlew bootJar --no-daemon
 
 FROM eclipse-temurin:21-jre-jammy
 
+LABEL com.pheeeew.press-generation-contract="1"
+
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*

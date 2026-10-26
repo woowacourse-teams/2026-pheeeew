@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import base64
 import signal
 import shutil
 import subprocess
@@ -74,9 +75,52 @@ for arg in "$@"; do
   [ "$arg" = prune ] && exit 0
 done
 case "$*" in
+  *' curl -q '*)
+    # Only the probe transport is stubbed. Identity comes from real Docker inspect;
+    # actual RSA signing/upgrade/frame handling is also checked against Spring in Java tests.
+    "$SHIM_DIR/../probe-transport" "$3"
+    exit $? ;;
+  'image inspect '*)
+    [ -f "$SHIM_DIR/fail-image-inspect" ] && exit 1
+    [ -f "$SHIM_DIR/old-image" ] && echo missing || echo 1
+    exit 0 ;;
+  *' pull '*)
+    [ -f "$SHIM_DIR/fail-image-pull" ] && exit 1 ;;
   *COUNTED*)
+    if [ -f "$SHIM_DIR/replace-active-before-cleanup" ]; then
+      rm -f "$SHIM_DIR/replace-active-before-cleanup"
+      "$REAL_DOCKER" rm -f "$GENERATION_ACTIVE" >/dev/null
+      "$REAL_DOCKER" compose -f compose.yml up -d app-blue >/dev/null
+    fi
     [ -f "$SHIM_DIR/fail-drain" ] && exit 1 ;;
   *"nginx -s reload"*)
+    if [ -f "$SHIM_DIR/delay-restore-reload" ] && grep -q 'app-blue;' "$SHIM_POINTER"; then
+      rm -f "$SHIM_DIR/delay-restore-reload"
+      "$REAL_DOCKER" exec "$GENERATION_NGINX" sh -c 'kill -STOP "$(cat /var/run/nginx.pid)"'
+      ( sleep 2; "$REAL_DOCKER" exec "$GENERATION_NGINX" sh -c 'kill -CONT "$(cat /var/run/nginx.pid)"' ) >/dev/null 2>&1 </dev/null &
+    fi
+    if [ -f "$SHIM_DIR/replace-target-on-reload" ]; then
+      rm -f "$SHIM_DIR/replace-target-on-reload"
+      "$REAL_DOCKER" rm -f "$GENERATION_TARGET" >/dev/null
+      "$REAL_DOCKER" compose --env-file .env --env-file press-generations.env -f compose.yml up -d app-green >/dev/null
+      exit 1
+    fi
+    if [ -f "$SHIM_DIR/restart-active-on-reload" ]; then
+      rm -f "$SHIM_DIR/restart-active-on-reload"
+      "$REAL_DOCKER" restart "$GENERATION_ACTIVE" >/dev/null
+      exit 1
+    fi
+    if [ -f "$SHIM_DIR/replace-active-on-reload" ]; then
+      rm -f "$SHIM_DIR/replace-active-on-reload"
+      "$REAL_DOCKER" rm -f "$GENERATION_ACTIVE" >/dev/null
+      "$REAL_DOCKER" compose -f compose.yml up -d app-blue >/dev/null
+      exit 1
+    fi
+    if [ -f "$SHIM_DIR/kill-target-on-reload" ]; then
+      rm -f "$SHIM_DIR/kill-target-on-reload"
+      "$REAL_DOCKER" kill "$GENERATION_TARGET" >/dev/null
+      exit 1
+    fi
     if [ -f "$SHIM_DIR/fail-reload" ]; then
       remaining=$(cat "$SHIM_DIR/fail-reload")
       if [ "$remaining" -gt 0 ]; then
@@ -87,6 +131,49 @@ case "$*" in
     fi ;;
 esac
 exec "$REAL_DOCKER" "$@"
+'''
+
+PROBE_TRANSPORT = '''#!/usr/bin/env python3
+import base64, hashlib, json, os, subprocess, sys
+from pathlib import Path
+config = sys.stdin.read()
+state = Path(os.environ['SHIM_DIR'])
+if (state / 'fail-runtime-probe').exists():
+    sys.exit(1)
+if (state / 'flood-runtime-probe').exists():
+    sys.stdout.buffer.write(b'x' * 70000)
+    sys.exit(0)
+inspected = json.loads(subprocess.check_output([os.environ['REAL_DOCKER'], 'inspect', sys.argv[1]]))[0]
+env = dict(item.split('=', 1) for item in inspected['Config']['Env'] if '=' in item)
+generation = env.get('PHEEEEW_PRESS_RACE_SERVER_GENERATION') or '11111111-1111-1111-1111-111111111111'
+if (state / 'mismatch-runtime-probe').exists():
+    generation = '99999999-9999-9999-9999-999999999999'
+key = next(line.split(': ', 1)[1].rstrip('"') for line in config.splitlines() if 'Sec-WebSocket-Key:' in line)
+accept = base64.b64encode(hashlib.sha1((key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').encode()).digest()).decode()
+payload = json.dumps({'v': 1, 'type': 'protocol.error', 'code': 'DEVICE_NOT_FOUND', 'serverGeneration': generation}).encode()
+header = ('HTTP/1.1 101 Switching Protocols\\r\\nUpgrade: websocket\\r\\nConnection: Upgrade\\r\\nSec-WebSocket-Accept: ' + accept + '\\r\\n\\r\\n').encode()
+frame = bytes([0x81, 126]) + len(payload).to_bytes(2, 'big') + payload
+if (state / 'invalid-runtime-frame').exists():
+    frame = bytes([0x81, 127]) + len(payload).to_bytes(8, 'big') + payload
+sys.stdout.buffer.write(header + frame)
+'''
+
+PSQL_SHIM = '''#!/bin/sh
+# Real PostgreSQL SQL; only transport is adapted to the isolated fixture container.
+if [ -f "$SHIM_DIR/fail-db-restore" ] && [ -f "$SHIM_DIR/db-handed-off" ]; then
+  exit 1
+fi
+sql=$(cat)
+case "$sql" in
+  *'UPDATE press_race_control'*)
+    if [ -f "$SHIM_DIR/lose-handoff-response" ] && [ ! -f "$SHIM_DIR/db-handed-off" ]; then
+      printf '%s' "$sql" | "$REAL_DOCKER" exec -i "$GENERATION_DB" psql -U postgres -d postgres "$@" >/dev/null || exit 1
+      touch "$SHIM_DIR/db-handed-off"
+      exit 1
+    fi
+    touch "$SHIM_DIR/db-handed-off" ;;
+esac
+printf '%s' "$sql" | "$REAL_DOCKER" exec -i -e PGOPTIONS "$GENERATION_DB" psql -U postgres -d postgres "$@"
 '''
 
 CURL_SHIM = '''#!/bin/sh
@@ -133,6 +220,21 @@ class Fixture:
         self._certs()
         self._shims()
         self._compose()
+        shutil.copy(REPO / 'BE/docker/press-generation.py', self.dir / 'press-generation.py')
+        (self.dir / '.env').write_text('')
+        self.db = self.project + '-generation-db'
+        sh('docker', 'run', '-d', '--name', self.db, '-e', 'POSTGRES_HOST_AUTH_METHOD=trust',
+           'postgis/postgis:17-3.5')
+        for _ in range(60):
+            if sh('docker', 'exec', self.db, 'pg_isready', '-h', '127.0.0.1', '-U', 'postgres').returncode == 0:
+                break
+            time.sleep(1)
+        else:
+            sh('docker', 'rm', '-f', self.db)
+            raise Failure('fixture PostgreSQL 이 TCP 연결을 받을 준비가 되지 않았다')
+        migration = (REPO / 'BE/src/main/resources/db/migration/V20261026_2__create_press_race_storage.sql').read_text()
+        self.sql(migration.split('CREATE TABLE press_device_controls')[0])
+        self.sql('CREATE TABLE devices (public_id UUID PRIMARY KEY);')
         shutil.copy(REPO / 'BE/docker/nginx/api-dev.conf', self.confd / 'default.conf')
         self.reset_edge()
 
@@ -145,12 +247,18 @@ class Fixture:
         shutil.copy(self.dir / 'origin.key', self.dir / 'privkey.pem')
 
     def _shims(self):
-        for name, text in (('docker', DOCKER_SHIM), ('curl', CURL_SHIM)):
+        for name, text in (('docker', DOCKER_SHIM), ('curl', CURL_SHIM), ('psql', PSQL_SHIM)):
             path = self.shim / name
             path.write_text(text)
             path.chmod(0o755)
+        probe = self.dir / 'probe-transport'
+        probe.write_text(PROBE_TRANSPORT)
+        probe.chmod(0o755)
 
     def _compose(self):
+        key = subprocess.run(['openssl', 'pkcs8', '-topk8', '-nocrypt', '-in', str(self.dir / 'origin.key'),
+                              '-outform', 'DER'], capture_output=True, check=True)
+        encoded_key = base64.b64encode(key.stdout).decode()
         base = {
             'image': 'python:3.13-alpine',
             'volumes': [f'{self.appstate}:/appstate'],
@@ -160,6 +268,7 @@ class Fixture:
             },
             'stop_grace_period': '5s',
             'init': True,
+            'labels': {'com.pheeeew.press-generation-contract': '1'},
         }
         services = {}
         for color in ('blue', 'green'):
@@ -167,6 +276,14 @@ class Fixture:
             service['command'] = ['python', '-c', APP, f'app-{color}']
             service['container_name'] = f'{self.project}-app-{color}'
             service['profiles'] = [color]
+            variable = 'PRESS_BLUE_GENERATION' if color == 'blue' else 'PRESS_GREEN_GENERATION'
+            default = '11111111-1111-1111-1111-111111111111' if color == 'blue' else ''
+            service['environment'] = {
+                'PHEEEEW_PRESS_RACE_SERVER_GENERATION': '${' + variable + ':-' + default + '}',
+                'DB_URL': 'jdbc:postgresql://fixture-db:5432/postgres?sslmode=disable',
+                'DB_USERNAME': 'postgres', 'DB_PASSWORD': 'fixture',
+                'JWT_PRIVATE_KEY_BASE64': encoded_key,
+            }
             services[f'app-{color}'] = service
         (self.dir / 'compose.yml').write_text(yaml.safe_dump({
             'name': self.project,
@@ -316,12 +433,18 @@ class Fixture:
 
     def deploy_async(self):
         script = remote_script().replace('cd /opt/pheeeew', f'cd {self.dir}')
+        script = script.replace('pheeeew-dev-', self.project + '-')
         env = dict(os.environ)
         env['PATH'] = f'{self.shim}:{env["PATH"]}'
         env['REAL_DOCKER'] = shutil.which('docker')
         env['SHIM_DIR'] = str(self.state)
         env['SHIM_POINTER'] = str(self.pointer)
         env['APP_IMAGE'] = 'python:3.13-alpine'
+        env['GENERATION_DB'] = self.db
+        env['GENERATION_TARGET'] = self.project + '-app-green'
+        env['GENERATION_ACTIVE'] = self.project + '-app-blue'
+        env['GENERATION_NGINX'] = self.project + '-nginx'
+        env['ALLOW_LEGACY_GENERATION'] = 'true' if (self.state / 'allow-legacy-generation').exists() else 'false'
         proc = subprocess.Popen(['bash', '-s'], stdin=subprocess.PIPE,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                 text=True, env=env, cwd=self.dir, start_new_session=True)
@@ -372,10 +495,18 @@ class Fixture:
                 print(f'      헬스체크 {line}')
 
     def cleanup(self):
+        sh('docker', 'rm', '-f', self.db)
         self.compose_nginx('down', '-v', '--remove-orphans')
         self.compose_apps('--profile', 'blue', '--profile', 'green', 'down', '-v',
                           '--remove-orphans')
         sh('docker', 'network', 'rm', f'{self.project}-net')
+
+    def sql(self, sql):
+        result = sh('docker', 'exec', '-i', self.db, 'psql', '-U', 'postgres', '-d', 'postgres',
+                    '-XAt', '-v', 'ON_ERROR_STOP=1', input=sql)
+        if result.returncode:
+            raise Failure(result.stderr)
+        return result.stdout.strip()
 
 
 class Failure(AssertionError):
@@ -397,6 +528,12 @@ def scenario_normal(fx):
     expect(not fx.exists('app-blue'), 'app-blue 가 남아 있다')
     expect(not fx.backup_exists(), '백업 파일이 남아 있다')
     expect('이전 요청이 모두 끝났습니다' in result.stdout, '드레인 확인 로그가 없다')
+    actual = sh('docker', 'inspect', fx.project + '-app-green', '--format',
+                '{{range .Config.Env}}{{println .}}{{end}}').stdout
+    generation = next(line.split('=', 1)[1] for line in actual.splitlines()
+                      if line.startswith('PHEEEEW_PRESS_RACE_SERVER_GENERATION='))
+    expect(fx.sql('SELECT active_server_generation FROM press_race_control;') == generation,
+           '실제 새 컨테이너 UUID와 DB 소유권이 다르다')
 
 
 def scenario_start_fail(fx):
@@ -420,9 +557,9 @@ def scenario_conf_test_fail(fx):
     fx.fix_nginx_conf()
     expect(result.returncode == 1, f'종료 코드 {result.returncode}')
     expect(fx.pointer_color() == 'app-blue', f'전환 파일 {fx.pointer_color()}')
-    expect(not fx.backup_exists(), '백업 파일이 남아 있다')
+    expect(fx.backup_exists(), '복구 확인 전 백업을 삭제했다')
     expect(fx.running('app-blue'), 'app-blue 가 내려갔다')
-    expect(not fx.exists('app-green'), 'app-green 이 남아 있다')
+    expect(fx.exists('app-green'), 'nginx 복구를 확인하지 못했는데 대상을 삭제했다')
     expect('전환 설정이 올바르지 않습니다' in result.stdout, 'nginx -t 실패 안내가 없다')
 
 
@@ -436,6 +573,242 @@ def scenario_reload_fail(fx):
     expect(fx.running('app-blue'), 'app-blue 가 내려갔다')
     expect(not fx.exists('app-green'), 'app-green 이 남아 있다')
     expect('app-blue 로 복구했고 정상 응답을 확인했습니다' in result.stdout, '복구 안내가 없다')
+    expect(fx.sql('SELECT active_server_generation FROM press_race_control;') ==
+           '11111111-1111-1111-1111-111111111111', 'DB 소유권이 blue로 복구되지 않았다')
+
+
+def scenario_lost_db_response(fx):
+    fx.start_app('app-blue')
+    (fx.state / 'lose-handoff-response').touch()
+    result = fx.deploy()
+    expect(result.returncode == 1, '커밋 응답 유실을 성공으로 처리했다')
+    expect(fx.pointer_color() == 'app-blue', '응답 유실 뒤 프록시가 전환됐다')
+    expect(fx.sql('SELECT active_server_generation FROM press_race_control;') ==
+           '11111111-1111-1111-1111-111111111111', '실제 커밋을 다시 읽고 복구하지 않았다')
+    expect(not fx.exists('app-green'), '복구 확인 후 대상이 정리되지 않았다')
+
+
+def scenario_db_restore_fails(fx):
+    fx.start_app('app-blue')
+    fx.fail_reload()
+    (fx.state / 'fail-db-restore').touch()
+    result = fx.deploy()
+    expect(result.returncode == 1, 'DB 복구 실패를 성공으로 처리했다')
+    expect(fx.running('app-blue') and fx.running('app-green'), '불확실한 DB 소유권에서 서버를 삭제했다')
+    expect((fx.dir / '.press-deploy.json').exists(), '복구 실패 기록을 삭제했다')
+
+
+def scenario_target_dies_after_handoff(fx):
+    fx.start_app('app-blue')
+    (fx.state / 'kill-target-on-reload').touch()
+    result = fx.deploy()
+    expect(result.returncode == 1, '새 서버 종료를 성공으로 처리했다')
+    expect(fx.running('app-blue') and not fx.exists('app-green'), '기존 서버 복구 또는 종료된 대상 정리 실패')
+    expect(fx.pointer_color() == 'app-blue', '기존 nginx 대상으로 복귀하지 않았다')
+    expect(fx.sql('SELECT active_server_generation FROM press_race_control;') ==
+           '11111111-1111-1111-1111-111111111111', '새 서버가 죽은 뒤 DB 자격을 복구하지 않았다')
+
+
+def scenario_competition_on(fx):
+    fx.start_app('app-blue')
+    fx.sql('UPDATE press_race_control SET enabled = TRUE;')
+    result = fx.deploy()
+    expect(result.returncode == 1 and not fx.exists('app-green'), '경쟁 ON 상태로 배포했다')
+    expect(fx.pointer_color() == 'app-blue', '경쟁 ON에서 프록시를 변경했다')
+
+
+def scenario_old_image(fx):
+    fx.start_app('app-blue')
+    (fx.state / 'old-image').touch()
+    result = fx.deploy()
+    expect(result.returncode == 1 and not fx.exists('app-green'), '세대 계약 없는 이미지를 기동했다')
+    expect(fx.sql('SELECT active_server_generation FROM press_race_control;') ==
+           '11111111-1111-1111-1111-111111111111', '이미지 거절 전 DB를 변경했다')
+
+
+def assert_image_failure_allows_retry(fx, marker):
+    fx.start_app('app-blue')
+    failure = fx.state / marker
+    failure.touch()
+    result = fx.deploy()
+    expect(result.returncode == 1, '이미지 준비 실패를 성공 처리했다')
+    expect(fx.running('app-blue') and not fx.exists('app-green'), '이미지 준비 실패 전에 컨테이너를 교체했다')
+    expect(fx.sql('SELECT active_server_generation FROM press_race_control;') ==
+           '11111111-1111-1111-1111-111111111111', '이미지 준비 실패 전에 DB 소유권을 변경했다')
+    expect(not (fx.dir / '.press-deploy.json').exists(), '이미지 준비 실패가 다음 배포를 막는다')
+    failure.unlink()
+    retry = fx.deploy()
+    expect(retry.returncode == 0, f'이미지 준비 복구 뒤 재배포 실패: {retry.stdout}{retry.stderr}')
+
+
+def scenario_image_pull_fails(fx):
+    assert_image_failure_allows_retry(fx, 'fail-image-pull')
+
+
+def scenario_image_inspect_fails(fx):
+    assert_image_failure_allows_retry(fx, 'fail-image-inspect')
+
+
+def bootstrap_fixture(fx):
+    # Reproduce the current development server: no configured UUID/contract label, DB owner NULL.
+    compose = yaml.safe_load((fx.dir / 'compose.yml').read_text())
+    blue = compose['services']['app-blue']
+    blue['environment']['PHEEEEW_PRESS_RACE_SERVER_GENERATION'] = ''
+    blue.pop('labels')
+    (fx.dir / 'compose.yml').write_text(yaml.safe_dump(compose))
+    fx.sql('UPDATE press_race_control SET active_server_generation = NULL;')
+    fx.start_app('app-blue')
+
+
+def scenario_bootstrap(fx):
+    bootstrap_fixture(fx)
+    result = fx.deploy()
+    expect(result.returncode == 0, f'초기 지정 실패: {result.stdout}{result.stderr}')
+    expect(fx.sql('SELECT active_server_generation IS NOT NULL AND NOT enabled FROM press_race_control;') == 't',
+           '초기 지정이 없거나 경쟁을 켰다')
+    expect(fx.pointer_color() == 'app-green' and not fx.exists('app-blue'), '초기 서버 전환 실패')
+
+
+def scenario_bootstrap_restore(fx):
+    bootstrap_fixture(fx)
+    fx.fail_reload()
+    result = fx.deploy()
+    expect(result.returncode == 1, '초기 지정 실패를 성공으로 처리했다')
+    expect(fx.sql('SELECT active_server_generation IS NULL AND NOT enabled FROM press_race_control;') == 't',
+           '초기 NULL/OFF 상태로 복귀하지 않았다')
+    expect(fx.running('app-blue') and not fx.exists('app-green'), '초기 복귀의 서버 정리 실패')
+    expect('old HTTP input remains unavailable' in result.stderr, 'NULL 복귀를 HTTP 정상화처럼 보고했다')
+
+
+def scenario_legacy_migration(fx):
+    bootstrap_fixture(fx)
+    fx.sql("UPDATE press_race_control SET active_server_generation = '11111111-1111-1111-1111-111111111111';")
+    (fx.state / 'allow-legacy-generation').touch()
+    result = fx.deploy()
+    expect(result.returncode == 0, f'임시 복구 세대의 명시적 세대 이행 실패: {result.stdout}{result.stderr}')
+    expect(fx.pointer_color() == 'app-green' and not fx.exists('app-blue'), '기존 서버의 최초 이행 실패')
+
+
+def legacy_fixture(fx):
+    bootstrap_fixture(fx)
+    fx.sql("UPDATE press_race_control SET active_server_generation = '11111111-1111-1111-1111-111111111111';")
+    (fx.state / 'allow-legacy-generation').touch()
+
+
+def scenario_legacy_restore(fx):
+    legacy_fixture(fx)
+    fx.fail_reload()
+    result = fx.deploy()
+    expect(result.returncode == 1, '최초 이행 실패를 성공 처리했다')
+    expect(fx.sql('SELECT active_server_generation FROM press_race_control;') ==
+           '11111111-1111-1111-1111-111111111111', '기존 실행 세대를 복원하지 못했다')
+    expect(fx.running('app-blue') and not fx.exists('app-green'), '같은 실행 인스턴스로 복귀하지 못했다')
+    expect('restart resilience still requires migration' in result.stderr, '임시 복귀를 영구 해결로 보고했다')
+
+
+def scenario_legacy_restart_blocks_restore(fx):
+    legacy_fixture(fx)
+    (fx.state / 'restart-active-on-reload').touch()
+    result = fx.deploy()
+    expect(result.returncode == 1, '기존 프로세스 재시작을 성공 처리했다')
+    expect(fx.running('app-blue') and fx.running('app-green'), '재시작된 구 서버의 UUID를 믿고 새 서버를 제거했다')
+    expect((fx.dir / '.press-deploy.json').exists(), '불확실한 복귀 기록을 삭제했다')
+    expect(fx.sql('SELECT active_server_generation FROM press_race_control;') !=
+           '11111111-1111-1111-1111-111111111111', '재시작된 기존 서버에 과거 세대를 복원했다')
+
+
+def scenario_legacy_replacement_blocks_restore(fx):
+    legacy_fixture(fx)
+    (fx.state / 'replace-active-on-reload').touch()
+    result = fx.deploy()
+    expect(result.returncode == 1, '기존 컨테이너 교체를 성공 처리했다')
+    expect(fx.exists('app-blue') and fx.running('app-green'), '교체된 구 서버를 믿고 새 서버를 제거했다')
+    expect((fx.dir / '.press-deploy.json').exists(), '원본이 사라졌는데 전환 기록을 삭제했다')
+    expect(fx.sql('SELECT active_server_generation FROM press_race_control;') !=
+           '11111111-1111-1111-1111-111111111111', '다른 컨테이너에 과거 세대를 복원했다')
+
+
+def scenario_legacy_requires_option(fx):
+    legacy_fixture(fx)
+    (fx.state / 'allow-legacy-generation').unlink()
+    result = fx.deploy()
+    expect(result.returncode == 1 and not fx.exists('app-green'), '기본 배포가 자동으로 최초 이행했다')
+
+
+def scenario_runtime_mismatch(fx):
+    fx.start_app('app-blue')
+    (fx.state / 'mismatch-runtime-probe').touch()
+    result = fx.deploy()
+    expect(result.returncode == 1 and not fx.exists('app-green'), '설정 UUID만 믿고 실제 세대 불일치를 허용했다')
+    expect(not (fx.dir / '.press-deploy.json').exists(), '검증하지 못한 소유자로 전환 기록을 만들었다')
+
+
+def scenario_runtime_probe_fails(fx):
+    legacy_fixture(fx)
+    (fx.state / 'fail-runtime-probe').touch()
+    result = fx.deploy()
+    expect(result.returncode == 1 and not fx.exists('app-green'), '실행 UUID를 확인하지 못했는데 이행했다')
+
+
+def scenario_stable_restart(fx):
+    scenario_normal(fx)
+    generation = fx.sql('SELECT active_server_generation FROM press_race_control;')
+    result = fx.compose_apps('restart', 'app-green')
+    expect(result.returncode == 0, '같은 컨테이너를 재시작하지 못했다')
+    actual = sh('docker', 'inspect', fx.project + '-app-green', '--format',
+                '{{range .Config.Env}}{{println .}}{{end}}').stdout
+    expect('PHEEEEW_PRESS_RACE_SERVER_GENERATION=' + generation in actual, '재시작 후 명시적 세대를 잃었다')
+    expect(fx.sql('SELECT active_server_generation FROM press_race_control;') == generation, '재시작이 소유권을 바꿨다')
+
+
+def scenario_next_replacement(fx):
+    scenario_normal(fx)
+    previous = fx.sql('SELECT active_server_generation FROM press_race_control;')
+    result = fx.deploy()
+    expect(result.returncode == 0, f'다음 배포 실패: {result.stdout}{result.stderr}')
+    expect(fx.pointer_color() == 'app-blue' and not fx.exists('app-green'), '다음 컨테이너 교체 실패')
+    expect(fx.sql('SELECT active_server_generation FROM press_race_control;') != previous, '새 컨테이너가 과거 세대를 재사용했다')
+
+
+def scenario_owner_traffic_mismatch(fx):
+    fx.start_app('app-blue')
+    fx.edge('app-blue', upstream='app-green')
+    result = fx.deploy()
+    expect(result.returncode == 1 and not fx.exists('app-green'), '실제 트래픽과 전환 파일 불일치를 무시했다')
+    expect(not (fx.dir / '.press-deploy.json').exists(), '트래픽 불일치에서 소유권 전환을 준비했다')
+
+
+def scenario_replaced_target_is_preserved(fx):
+    fx.start_app('app-blue')
+    (fx.state / 'replace-target-on-reload').touch()
+    result = fx.deploy()
+    expect(result.returncode == 1, '승격 후 대상 교체를 성공 처리했다')
+    expect(fx.running('app-blue') and fx.exists('app-green'), '다른 ID의 대상 컨테이너를 삭제했다')
+    expect((fx.dir / '.press-deploy.json').exists() and fx.backup_exists(), '불확실한 대상 교체 기록을 삭제했다')
+
+
+def scenario_replaced_active_is_preserved(fx):
+    fx.start_app('app-blue')
+    (fx.state / 'replace-active-before-cleanup').touch()
+    result = fx.deploy()
+    expect(result.returncode == 1, '원본 교체 뒤 성공 정리를 진행했다')
+    expect(fx.exists('app-blue') and fx.running('app-green'), '다른 ID의 원본 컨테이너를 삭제했다')
+    expect((fx.dir / '.press-deploy.json').exists() and fx.backup_exists(), '성공 정리의 불확실한 기록을 삭제했다')
+
+
+def scenario_probe_response_limit(fx):
+    fx.start_app('app-blue')
+    (fx.state / 'flood-runtime-probe').touch()
+    result = fx.deploy()
+    expect(result.returncode == 1 and not fx.exists('app-green'), '세대 조회 응답 상한을 넘겼는데 배포했다')
+    expect('exceeded response limit' in result.stderr, '응답 읽기 상한으로 중단하지 않았다')
+
+
+def scenario_probe_invalid_frame(fx):
+    fx.start_app('app-blue')
+    (fx.state / 'invalid-runtime-frame').touch()
+    result = fx.deploy()
+    expect(result.returncode == 1 and not fx.exists('app-green'), '미지원 프레임을 받아 배포했다')
 
 
 def scenario_not_reflected(fx):
@@ -562,6 +935,8 @@ def scenario_rollback_waits_for_inflight(fx):
     fx.point_at('set $upstream_app app-blue;\n')
     fx.start_app('app-blue')
     fx.edge('app-green', code='503')
+    # Reload acknowledges the signal before the master handles it; hold that window open.
+    (fx.state / 'delay-restore-reload').touch()
     with fx.capture_processes_on_failure() as processes:
         deploy = processes['deploy'] = fx.deploy_async()
         fx.wait_edge_serves('app-green')
@@ -579,6 +954,8 @@ def scenario_rollback_waits_for_inflight(fx):
         expect(fx.pointer_color() == 'app-blue', f'전환 파일 {fx.pointer_color()}')
         expect(fx.running('app-blue'), 'app-blue 가 내려갔다')
         expect(not fx.exists('app-green'), '요청이 끝났는데 app-green 이 남아 있다')
+        expect('app-green 으로 향하던 요청이 모두 끝났습니다.' in result.stdout,
+               f'기록한 worker PID 종료를 확인하지 못했다: {result.stdout}')
         expect(result.stdout.index('복구했고 정상 응답을 확인했습니다')
                < result.stdout.index('app-green 을 정리했습니다'),
                '복구 확인보다 새 서버 삭제가 먼저다')
@@ -619,8 +996,51 @@ def scenario_compose_services_match(fx):
                f'app-{color} 의 profiles 가 [{color}] 가 아니다')
 
 
+def scenario_worker_pid_matching(fx):
+    script = remote_script()
+    functions = script[script.index('read_nginx_processes()'):script.index('wait_drained()')]
+    result = sh('bash', '-s', cwd=fx.dir, input='''set -eu
+NGINX="docker compose -f compose.nginx.yml"
+''' + functions + '''
+capture_workers
+[ -n "$DRAIN_WORKERS" ]
+[ "$(count_previous_workers)" -ge 0 ]
+read_nginx_processes() { printf '%s\\n' '112 nginx: worker process' '34 changed-process-title'; }
+DRAIN_WORKERS='12 34 '
+[ "$(count_previous_workers)" -eq 1 ]
+DRAIN_WORKERS='12 '
+[ "$(count_previous_workers)" -eq 0 ]
+DRAIN_WORKERS=
+if count_previous_workers; then exit 1; fi
+''')
+    expect(result.returncode == 0, f'worker PID 판정 실패: {result.stdout}{result.stderr}')
+
+
 SCENARIOS = (
     ('정상 전환', scenario_normal),
+    ('DB 커밋 응답 유실 복구', scenario_lost_db_response),
+    ('DB 복구 실패 시 서버 보존', scenario_db_restore_fails),
+    ('세대 전환 직후 새 서버 종료 복구', scenario_target_dies_after_handoff),
+    ('경쟁 ON 배포 거부', scenario_competition_on),
+    ('세대 미지원 이미지 거부', scenario_old_image),
+    ('이미지 pull 실패 후 재배포', scenario_image_pull_fails),
+    ('이미지 inspect 실패 후 재배포', scenario_image_inspect_fails),
+    ('NULL 세대 최초 지정', scenario_bootstrap),
+    ('최초 지정 실패 시 NULL 복귀', scenario_bootstrap_restore),
+    ('임시 복구 세대의 최초 이행', scenario_legacy_migration),
+    ('최초 이행 실패의 동일 프로세스 복귀', scenario_legacy_restore),
+    ('기존 랜덤 세대 재시작 시 복귀 중단', scenario_legacy_restart_blocks_restore),
+    ('기존 랜덤 세대 컨테이너 교체 시 복귀 중단', scenario_legacy_replacement_blocks_restore),
+    ('최초 이행 옵션 없으면 거부', scenario_legacy_requires_option),
+    ('실행 세대 불일치 거부', scenario_runtime_mismatch),
+    ('실행 세대 조회 실패 거부', scenario_runtime_probe_fails),
+    ('명시적 세대 컨테이너 재시작', scenario_stable_restart),
+    ('다음 새 컨테이너 교체', scenario_next_replacement),
+    ('트래픽과 전환 파일 불일치 거부', scenario_owner_traffic_mismatch),
+    ('복귀 중 같은 이름의 다른 대상 보존', scenario_replaced_target_is_preserved),
+    ('성공 정리 중 같은 이름의 다른 원본 보존', scenario_replaced_active_is_preserved),
+    ('세대 조회 응답 상한', scenario_probe_response_limit),
+    ('세대 조회 미지원 프레임 거부', scenario_probe_invalid_frame),
     ('새 버전 기동 실패', scenario_start_fail),
     ('새 버전이 최소 API 를 응답하지 않음', scenario_target_api_fails),
     ('새 버전의 최소 API 응답이 멈춤', scenario_target_api_times_out),
@@ -638,12 +1058,18 @@ SCENARIOS = (
     ('전환 파일 이상값', scenario_invalid_pointer),
     ('전환 파일 빈 값', scenario_empty_pointer),
     ('compose 의 색 이름이 배포 스크립트와 일치', scenario_compose_services_match),
+    ('worker PID 캡처와 정확한 종료 판정', scenario_worker_pid_matching),
 )
 
 
 def reset(fx):
     fx.compose_apps('--profile', 'blue', '--profile', 'green', 'rm', '-sf')
     fx.clear_appstate()
+    for path in (fx.dir / '.press-deploy.json', fx.dir / 'press-generations.env',
+                 fx.upstream / 'active.conf.bak'):
+        path.unlink(missing_ok=True)
+    fx.sql("UPDATE press_race_control SET enabled = FALSE, activation_date = NULL, "
+           "active_server_generation = '11111111-1111-1111-1111-111111111111';")
     fx.reset_edge()
     fx.fix_nginx_conf()
     fx.restore_app('app-green')
