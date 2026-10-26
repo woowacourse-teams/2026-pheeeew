@@ -62,9 +62,10 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class EmotionPressServiceIntegrationTest {
 
-    private static final Instant 기준_시각 = Instant.parse("2026-10-06T03:00:00Z");
+    private static final Instant 기준_시각 = Instant.now();
     private static final int 동시_요청_수 = 6;
-    private static final int 데드락_회전_수 = 30;
+    // 공통 bucket의 100회 안에서 잠금 순서를 반복 검증한다. 초과 입력은 별도 제한 테스트가 검증한다.
+    private static final int 데드락_회전_수 = 5;
     private static final int 정합성_회전_수 = 10;
     private static final String 자른_양_지표 = "pheeeew.emotion.press.clamped";
 
@@ -81,6 +82,9 @@ class EmotionPressServiceIntegrationTest {
     private DeviceRepository deviceRepository;
 
     @Autowired
+    private com.pheeeew.pressrace.application.PressRaceService pressRaceService;
+
+    @Autowired
     private JdbcClient jdbc;
 
     @Autowired
@@ -88,6 +92,8 @@ class EmotionPressServiceIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        jdbc.sql("UPDATE press_race_control SET active_server_generation = :generation")
+                .param("generation", pressRaceService.serverGeneration()).update();
         when(clock.getZone()).thenReturn(ZoneId.of("Asia/Seoul"));
         when(clock.instant()).thenReturn(기준_시각);
     }
@@ -96,6 +102,7 @@ class EmotionPressServiceIntegrationTest {
     void tearDown() {
         jdbc.sql("DELETE FROM device_daily_presses").update();
         deviceRepository.deleteAllInBatch();
+        jdbc.sql("UPDATE press_race_control SET active_server_generation = NULL").update();
     }
 
     @Test
@@ -284,21 +291,22 @@ class EmotionPressServiceIntegrationTest {
     }
 
     @Test
-    void KST_자정을_넘기면_날짜가_다른_행이_생기고_응답은_그_날짜_집계만_돌려준다() {
-        // given
+    void HTTP_점수_날짜는_앱_시각이_아닌_DB_시각의_KST_날짜를_사용한다() {
+        // given: 조회용 Clock과 무관하게 저장 시점은 DB가 정한다.
         Device 기기 = 기기를_저장한다();
         when(clock.instant()).thenReturn(Instant.parse("2026-10-06T14:59:59Z"));
-        누른다(기기, Map.of(EmotionState.ANGRY, 2));
+        LocalDate DB_오늘 = jdbc.sql("SELECT (clock_timestamp() AT TIME ZONE 'Asia/Seoul')::date")
+                .query(LocalDate.class).single();
 
         // when
+        EmotionPressResult 결과 = 누른다(기기, Map.of(EmotionState.ANGRY, 2));
         when(clock.instant()).thenReturn(Instant.parse("2026-10-06T15:00:00Z"));
-        EmotionPressResult 결과 = 누른다(기기, Map.of(EmotionState.ANGRY, 1));
+        EmotionPressResult 다음_결과 = 누른다(기기, Map.of(EmotionState.ANGRY, 1));
 
         // then
-        assertThat(결과.counts().get(EmotionState.ANGRY)).isOne();
-        assertThat(결과.total()).isOne();
-        assertThat(행_수()).isEqualTo(2);
-        assertThat(날짜들()).containsExactly(LocalDate.of(2026, 10, 6), LocalDate.of(2026, 10, 7));
+        assertThat(결과.total()).isEqualTo(2);
+        assertThat(다음_결과.total()).isEqualTo(3);
+        assertThat(날짜들()).containsExactly(DB_오늘);
     }
 
     @Test
