@@ -9,11 +9,13 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
@@ -60,6 +62,7 @@ import com.pheeeew.core.audio.LocalAudioFactories
 import com.pheeeew.core.designsystem.component.AppAlertDialog
 import com.pheeeew.core.designsystem.component.AppDialog
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
+import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.core.di.AppGraph
 import com.pheeeew.core.di.UiGraph
@@ -73,11 +76,11 @@ import com.pheeeew.core.navigation.RankingRootDestination
 import com.pheeeew.core.notification.NotificationClickInbox
 import com.pheeeew.core.notification.NotificationPermissionController
 import com.pheeeew.core.notification.NotificationPreferencesStore
-import com.pheeeew.data.remote.api.CollectionTodayApi
 import com.pheeeew.domain.model.device.DeviceSessionResult
 import com.pheeeew.domain.model.version.AppVersionDecision
 import com.pheeeew.feature.component.AppBottomNavigationBar
 import com.pheeeew.feature.component.AppBottomNavigationBarBottomSpacing
+import com.pheeeew.feature.component.AppBottomNavigationBarOverlaySpace
 import com.pheeeew.feature.component.AppDestination
 import com.pheeeew.feature.monitoring.product.LocalProductMonitoringVisible
 import com.pheeeew.feature.notification.NotificationClickEffect
@@ -597,7 +600,6 @@ private fun AppContent(
 
         var collectionNotificationDate by remember { mutableStateOf<String?>(null) }
         var collectionRefreshRevision by remember { mutableStateOf(0L) }
-        val collectionApi = remember(apiDependencies) { CollectionTodayApi(apiDependencies.client.requests) }
 
         NotificationClickEffect(
             inbox = notificationClicks,
@@ -639,9 +641,17 @@ private fun AppContent(
 
         Box(
             modifier =
-                Modifier.fillMaxSize().then(
-                    if (shouldPrepareMapDuringSplash) Modifier.clearAndSetSemantics {} else Modifier,
-                ),
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        if (selectedDestination == AppDestination.Collection) {
+                            AppColors.GroupBackground
+                        } else {
+                            Color.Transparent
+                        },
+                    ).then(
+                        if (shouldPrepareMapDuringSplash) Modifier.clearAndSetSemantics {} else Modifier,
+                    ),
         ) {
             NavHost(
                 navController = navController,
@@ -766,15 +776,23 @@ private fun AppContent(
                     )
                 }
 
-                composable<CollectionRootDestination> {
-                    if (mainFeaturesReady) {
-                        CollectionRoute(
-                            collectionApi,
-                            collectionNotificationDate,
-                            collectionRefreshRevision,
-                            onBack = { navController.popBackStack() },
-                        )
-                    }
+                composable<CollectionRootDestination>(
+                    enterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
+                    exitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
+                    popEnterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
+                    popExitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
+                ) {
+                    if (!mainFeaturesReady) return@composable
+                    CollectionRoute(
+                        sessionGeneration = sessionGeneration,
+                        currentNickname = appEntryState.currentNickname,
+                        notificationDate = collectionNotificationDate,
+                        refreshRevision = collectionRefreshRevision,
+                        modifier = Modifier.fillMaxSize(),
+                        bottomBar = {
+                            Spacer(Modifier.navigationBarsPadding().height(AppBottomNavigationBarOverlaySpace))
+                        },
+                    )
                 }
 
                 composable<RankingRootDestination> {
@@ -949,6 +967,7 @@ private fun androidx.navigation.NavDestination.rootTabIndex(): Int? =
     when {
         hasRoute<MapRootDestination>() -> 0
         hasRoute<PressRootDestination>() -> 1
+        hasRoute<CollectionRootDestination>() -> 2
         else -> null
     }
 

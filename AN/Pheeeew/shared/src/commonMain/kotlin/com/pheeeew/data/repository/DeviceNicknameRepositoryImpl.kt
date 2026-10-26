@@ -4,6 +4,7 @@ import com.pheeeew.core.network.ApiResult
 import com.pheeeew.core.network.MutationCertainty
 import com.pheeeew.core.network.NetworkFailure
 import com.pheeeew.data.remote.api.DeviceNicknameApi
+import com.pheeeew.data.remote.mapper.deviceSessionFailureKind
 import com.pheeeew.domain.model.device.DeviceNicknameAvailability
 import com.pheeeew.domain.model.device.DeviceNicknameLookup
 import com.pheeeew.domain.model.device.DeviceNicknameState
@@ -35,9 +36,9 @@ class DeviceNicknameRepositoryImpl(
                 val result =
                     when (val response = api.findMyNickname()) {
                         is ApiResult.Success -> DeviceNicknameLookup.Found(response.value.nickname)
-                        is ApiResult.Failure -> DeviceNicknameLookup.Failed
+                        is ApiResult.Failure -> DeviceNicknameLookup.Failed(response.reason.deviceSessionFailureKind())
                     }
-                if (mutableNicknameState.value.revision != revision) return@withLock DeviceNicknameLookup.Failed
+                if (mutableNicknameState.value.revision != revision) return@withLock DeviceNicknameLookup.Failed()
                 mutableNicknameState.update {
                     if (it.revision != revision) {
                         it
@@ -52,7 +53,7 @@ class DeviceNicknameRepositoryImpl(
                                 )
                             }
 
-                            DeviceNicknameLookup.Failed -> {
+                            is DeviceNicknameLookup.Failed -> {
                                 it.copy(isRefreshing = false, lookupFailed = true)
                             }
                         }

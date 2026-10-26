@@ -1,5 +1,6 @@
 package com.pheeeew.core.di
 
+import com.pheeeew.feature.screens.collection.CollectionViewModel
 import com.pheeeew.feature.screens.map.MapViewModel
 import com.pheeeew.feature.screens.map.detail.EmotionDetailViewModel
 import com.pheeeew.feature.screens.map.nearby.NearbyEmotionViewModel
@@ -22,6 +23,7 @@ internal interface ViewModelBindings {
         settings: () -> SettingsViewModel,
         press: () -> PressViewModel,
         pressRanking: () -> PressRankingViewModel,
+        collection: () -> CollectionViewModel,
         mapFactory: () -> MapViewModel.Factory,
     ): MetroViewModelFactory =
         AppViewModelFactory(
@@ -34,6 +36,7 @@ internal interface ViewModelBindings {
                 SettingsViewModel::class to settings,
                 PressViewModel::class to press,
                 PressRankingViewModel::class to pressRanking,
+                CollectionViewModel::class to collection,
             ),
             mapOf(
                 MapViewModel.Factory::class to mapFactory,

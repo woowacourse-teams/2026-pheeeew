@@ -112,7 +112,7 @@ class AppEntryViewModelTest {
         runViewModelTest {
             val nicknameRepository =
                 FakeDeviceNicknameRepository().apply {
-                    lookupResults += DeviceNicknameLookup.Failed
+                    lookupResults += DeviceNicknameLookup.Failed()
                 }
             val sessionRepository =
                 FakeDeviceSessionRepository(DeviceSessionResult.NeedsRegistration()) {
@@ -182,13 +182,13 @@ class AppEntryViewModelTest {
         runViewModelTest {
             val nicknameRepository =
                 FakeDeviceNicknameRepository().apply {
-                    lookupResults += DeviceNicknameLookup.Failed
+                    lookupResults += DeviceNicknameLookup.Failed()
                 }
             val viewModel = createViewModel(FakeDeviceSessionRepository(ready()), nicknameRepository)
 
             assertEquals(AppEntryPhase.FAILED, viewModel.uiState.value.phase)
             assertIs<NicknameUiMessage>(viewModel.uiState.value.message)
-            assertEquals(NicknameUiMessage.NICKNAME_LOOKUP_FAILED, viewModel.uiState.value.message)
+            assertEquals(NicknameUiMessage.DEVICE_PREPARATION_FAILED, viewModel.uiState.value.message)
         }
 
     @Test
@@ -276,7 +276,85 @@ class AppEntryViewModelTest {
             manager.deviceUnavailable(manager.accessToken())
             runCurrent()
             assertEquals(AppEntryPhase.FAILED, viewModel.uiState.value.phase)
-            assertEquals(NicknameUiMessage.DEVICE_PREPARATION_FAILED, viewModel.uiState.value.message)
+            assertEquals(NicknameUiMessage.STORAGE_FAILED, viewModel.uiState.value.message)
+        }
+
+    @Test
+    fun `시작 실패는 원인별 안내 하나를 선택한다`() =
+        runViewModelTest {
+            val expected =
+                mapOf(
+                    DeviceSessionFailureKind.NETWORK to NicknameUiMessage.NETWORK_FAILED,
+                    DeviceSessionFailureKind.SERVER to NicknameUiMessage.SERVER_FAILED,
+                    DeviceSessionFailureKind.RATE_LIMITED to NicknameUiMessage.RATE_LIMITED,
+                    DeviceSessionFailureKind.AUTHENTICATION to NicknameUiMessage.AUTHENTICATION_FAILED,
+                    DeviceSessionFailureKind.ATTESTATION to NicknameUiMessage.AUTHENTICATION_FAILED,
+                    DeviceSessionFailureKind.SESSION_CHANGED to NicknameUiMessage.AUTHENTICATION_FAILED,
+                    DeviceSessionFailureKind.STORAGE to NicknameUiMessage.STORAGE_FAILED,
+                    DeviceSessionFailureKind.LEGACY_ENVIRONMENT_UNKNOWN to NicknameUiMessage.STORAGE_FAILED,
+                )
+            for (kind in DeviceSessionFailureKind.entries) {
+                val message = expected[kind] ?: NicknameUiMessage.DEVICE_PREPARATION_FAILED
+                val viewModel =
+                    createViewModel(
+                        FakeDeviceSessionRepository(DeviceSessionResult.Failed(DeviceSessionFailure(kind))),
+                        FakeDeviceNicknameRepository(),
+                    )
+                assertEquals(AppEntryPhase.FAILED, viewModel.uiState.value.phase)
+                assertEquals(message, viewModel.uiState.value.message, kind.name)
+                val lookupViewModel =
+                    createViewModel(
+                        FakeDeviceSessionRepository(ready()),
+                        FakeDeviceNicknameRepository().apply { lookupResults += DeviceNicknameLookup.Failed(kind) },
+                    )
+                assertEquals(AppEntryPhase.FAILED, lookupViewModel.uiState.value.phase)
+                assertEquals(message, lookupViewModel.uiState.value.message, kind.name)
+            }
+        }
+
+    @Test
+    fun `종속 오류보다 근본 원인을 우선하고 입력 순서에 영향받지 않는다`() {
+        val priority =
+            listOf(
+                DeviceSessionFailureKind.NETWORK to NicknameUiMessage.NETWORK_FAILED,
+                DeviceSessionFailureKind.RATE_LIMITED to NicknameUiMessage.RATE_LIMITED,
+                DeviceSessionFailureKind.SERVER to NicknameUiMessage.SERVER_FAILED,
+                DeviceSessionFailureKind.AUTHENTICATION to NicknameUiMessage.AUTHENTICATION_FAILED,
+                DeviceSessionFailureKind.STORAGE to NicknameUiMessage.STORAGE_FAILED,
+                DeviceSessionFailureKind.UNEXPECTED to NicknameUiMessage.DEVICE_PREPARATION_FAILED,
+            )
+        for ((index, cause) in priority.withIndex()) {
+            for ((secondary, _) in priority.drop(index)) {
+                assertEquals(cause.second, appEntryFailureMessage(cause.first, secondary))
+                assertEquals(cause.second, appEntryFailureMessage(secondary, cause.first))
+            }
+        }
+    }
+
+    @Test
+    fun `네트워크 복구 후 재시도하면 시작 오류를 지우고 진입한다`() =
+        runViewModelTest {
+            var now = 1000L
+            var result: DeviceSessionResult =
+                DeviceSessionResult.Failed(
+                    DeviceSessionFailure(DeviceSessionFailureKind.NETWORK),
+                )
+            val repository =
+                object : DeviceSessionRepository {
+                    override suspend fun prepare() = result
+
+                    override suspend fun restore() = result
+                }
+            val manager = DeviceSessionManager(repository, backgroundScope) { now }
+            val viewModel = AppEntryViewModel(manager, FakeDeviceNicknameRepository().apply { nickname = "existing" })
+            runCurrent()
+            assertEquals(NicknameUiMessage.NETWORK_FAILED, viewModel.uiState.value.message)
+            result = ready()
+            now += 1000
+            viewModel.retry()
+            runCurrent()
+            assertEquals(AppEntryPhase.READY, viewModel.uiState.value.phase)
+            assertEquals(null, viewModel.uiState.value.message)
         }
 
     private fun TestScope.createViewModel(
@@ -338,7 +416,7 @@ class AppEntryViewModelTest {
             nicknameState.value =
                 when (result) {
                     is DeviceNicknameLookup.Found -> DeviceNicknameState(nickname = result.nickname, isConfirmed = true)
-                    DeviceNicknameLookup.Failed -> nicknameState.value.copy(lookupFailed = true)
+                    is DeviceNicknameLookup.Failed -> nicknameState.value.copy(lookupFailed = true)
                 }
             return result
         }

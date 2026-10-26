@@ -9,6 +9,7 @@ import com.pheeeew.domain.model.device.DeviceNicknameLookup
 import com.pheeeew.domain.model.device.DeviceNicknamePolicy
 import com.pheeeew.domain.model.device.DeviceNicknameUpdateResult
 import com.pheeeew.domain.model.device.DeviceNicknameValidation
+import com.pheeeew.domain.model.device.DeviceSessionFailureKind
 import com.pheeeew.domain.model.device.DeviceSessionResult
 import com.pheeeew.domain.repository.DeviceNicknameRepository
 import dev.zacsweers.metro.Inject
@@ -59,7 +60,7 @@ class AppEntryViewModel(
                             mutableUiState.update {
                                 it.copy(
                                     phase = AppEntryPhase.FAILED,
-                                    message = NicknameUiMessage.DEVICE_PREPARATION_FAILED,
+                                    message = appEntryFailureMessage(result.reason.kind),
                                 )
                             }
                         }
@@ -133,7 +134,7 @@ class AppEntryViewModel(
 
                 is DeviceSessionResult.Failed -> {
                     mutableUiState.update {
-                        it.copy(phase = AppEntryPhase.FAILED, message = NicknameUiMessage.DEVICE_PREPARATION_FAILED)
+                        it.copy(phase = AppEntryPhase.FAILED, message = appEntryFailureMessage(result.reason.kind))
                     }
                 }
             }
@@ -231,7 +232,7 @@ class AppEntryViewModel(
         val current =
             when (val result = nicknameRepository.findMyNickname()) {
                 is DeviceNicknameLookup.Found -> result.nickname
-                DeviceNicknameLookup.Failed -> return unconfirmedNickname()
+                is DeviceNicknameLookup.Failed -> return unconfirmedNickname()
             }
         if (current?.let(DeviceNicknamePolicy::normalize) == nickname) return completeNickname(nickname)
         if (!nickname.equals(current?.trim(), ignoreCase = true)) checkAvailability(nickname)?.let { return it }
@@ -251,7 +252,7 @@ class AppEntryViewModel(
                         }
                     }
 
-                    DeviceNicknameLookup.Failed -> {
+                    is DeviceNicknameLookup.Failed -> {
                         unconfirmedNickname()
                     }
                 }
@@ -352,7 +353,7 @@ class AppEntryViewModel(
                 }
             }
 
-            DeviceNicknameLookup.Failed -> {
+            is DeviceNicknameLookup.Failed -> {
                 mutableUiState.value.copy(
                     phase = if (inlineFailure) mutableUiState.value.phase else AppEntryPhase.FAILED,
                     isVerificationPending = inlineFailure,
@@ -360,10 +361,34 @@ class AppEntryViewModel(
                         if (inlineFailure) {
                             NicknameUiMessage.RESULT_UNCONFIRMED
                         } else {
-                            NicknameUiMessage.NICKNAME_LOOKUP_FAILED
+                            appEntryFailureMessage(
+                                result.kind,
+                                (session.state.value as? DeviceSessionResult.Failed)?.reason?.kind,
+                            )
                         },
                 )
             }
         }
     }
 }
+
+/** Select one cause; a dependent authentication failure must not hide a network failure. */
+internal fun appEntryFailureMessage(vararg causes: DeviceSessionFailureKind?): NicknameUiMessage =
+    when {
+        DeviceSessionFailureKind.NETWORK in causes -> NicknameUiMessage.NETWORK_FAILED
+
+        DeviceSessionFailureKind.RATE_LIMITED in causes -> NicknameUiMessage.RATE_LIMITED
+
+        DeviceSessionFailureKind.SERVER in causes -> NicknameUiMessage.SERVER_FAILED
+
+        causes.any {
+            it == DeviceSessionFailureKind.AUTHENTICATION || it == DeviceSessionFailureKind.ATTESTATION ||
+                it == DeviceSessionFailureKind.SESSION_CHANGED
+        } -> NicknameUiMessage.AUTHENTICATION_FAILED
+
+        causes.any {
+            it == DeviceSessionFailureKind.STORAGE || it == DeviceSessionFailureKind.LEGACY_ENVIRONMENT_UNKNOWN
+        } -> NicknameUiMessage.STORAGE_FAILED
+
+        else -> NicknameUiMessage.DEVICE_PREPARATION_FAILED
+    }

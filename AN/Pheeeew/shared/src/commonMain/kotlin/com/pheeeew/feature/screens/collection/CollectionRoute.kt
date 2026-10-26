@@ -1,89 +1,202 @@
 package com.pheeeew.feature.screens.collection
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.repeatOnLifecycle
-import com.pheeeew.core.network.ApiResult
-import com.pheeeew.data.remote.api.CollectionToday
-import com.pheeeew.data.remote.api.CollectionTodayApi
+import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.pheeeew.domain.model.collection.COLLECTION_PRESS_CLAIM_TARGET
+import com.pheeeew.domain.model.collection.COLLECTION_STAMP_CLAIM_TARGET
+import com.pheeeew.domain.model.collection.CollectionCardReference
+import com.pheeeew.feature.emotion.model.EmotionType
+import com.pheeeew.feature.screens.collection.card.CollectionCardUiModel
+import dev.zacsweers.metrox.viewmodel.metroViewModel
 
-/** The server's date is authoritative, so a changed device clock cannot validate an old alert. */
 @Composable
 internal fun CollectionRoute(
-    api: CollectionTodayApi,
-    notificationDate: String?,
-    refreshRevision: Long,
-    onBack: () -> Unit,
+    sessionGeneration: Long?,
+    currentNickname: String?,
+    notificationDate: String? = null,
+    refreshRevision: Long = 0L,
+    modifier: Modifier = Modifier,
+    bottomBar: @Composable () -> Unit = {},
+    onRefreshActionChanged: ((() -> Unit)?) -> Unit = {},
 ) {
-    var today by remember { mutableStateOf<CollectionToday?>(null) }
-    var failed by remember { mutableStateOf(false) }
-    var loading by remember { mutableStateOf(true) }
-    var retry by remember { mutableStateOf(0) }
-    val owner = LocalLifecycleOwner.current
-    LaunchedEffect(api, notificationDate, refreshRevision, retry, owner) {
-        owner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            loading = true
-            failed = false
-            today = null
-            when (val result = api.find()) {
-                is ApiResult.Success -> today = result.value
-                is ApiResult.Failure -> failed = true
-            }
-            loading = false
+    val viewModel: CollectionViewModel = metroViewModel()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+    val imageActions = rememberCollectionCardImageActions()
+    val exportState =
+        remember(sessionGeneration, scope, imageActions) {
+            CollectionCardExportState(scope, imageActions)
         }
+    DisposableEffect(exportState) {
+        onDispose { exportState.dispose() }
     }
-    Surface(Modifier.fillMaxSize()) {
-        Column(
-            Modifier
-                .fillMaxSize()
-                .safeDrawingPadding()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp)
-                .padding(top = 24.dp, bottom = 120.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            TextButton(onClick = onBack) { Text("뒤로") }
-            Text("오늘의 컬렉션", style = MaterialTheme.typography.headlineSmall)
-            if (loading) CircularProgressIndicator()
-            if (failed) {
-                Text("컬렉션 진행도를 불러오지 못했어요.")
-                TextButton(onClick = { retry++ }) { Text("다시 시도") }
-            }
-            today?.let { value ->
-                if (notificationDate != null && notificationDate != value.date) {
-                    Text("알림의 날짜가 오늘과 달라요. 오늘의 진행도를 보여드릴게요.")
+    val imageActionResult = exportState.result
+    val currentRefreshActionChanged by rememberUpdatedState(onRefreshActionChanged)
+    DisposableEffect(viewModel) {
+        currentRefreshActionChanged(viewModel::refresh)
+        onDispose { currentRefreshActionChanged(null) }
+    }
+    LaunchedEffect(viewModel, sessionGeneration, currentNickname, refreshRevision) {
+        viewModel.onSessionChanged(sessionGeneration, currentNickname)
+        if (refreshRevision > 0L) viewModel.refresh()
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onScreenResumed() }
+
+    CollectionScreen(
+        uiModel =
+            state.toScreenUiModel(
+                saveCompletionCardId =
+                    imageActionResult
+                        ?.takeIf {
+                            it.action == CollectionImageAction.SAVE &&
+                                it.outcome == CollectionImageActionOutcome.SUCCEEDED
+                        }?.cardId,
+                saveCompletionId = exportState.resultId,
+                imageActionResult = imageActionResult,
+                imageActionErrorId = exportState.resultId,
+                imageActionPhase = exportState.phase,
+                notificationDate = notificationDate,
+            ),
+        onSaveCard = { cardId, capture -> exportState.export(cardId, CollectionImageAction.SAVE, capture) },
+        onShareCard = { cardId, capture -> exportState.export(cardId, CollectionImageAction.SHARE, capture) },
+        onCancelCardCapture = exportState::cancelCapture,
+        onDismissSaveCompletion = exportState::dismissResult,
+        modifier = modifier,
+        bottomBar = bottomBar,
+        onClaim = viewModel::claim,
+        onRetryClaim = viewModel::retryClaim,
+        onFilterChange = viewModel::setFilter,
+        onLoadMore = viewModel::loadNextPage,
+        onRefresh = viewModel::refresh,
+        onRetryCards = viewModel::retryCards,
+        onRetryToday = viewModel::refreshToday,
+        onDismissCard = viewModel::dismissCard,
+        onCardClick = viewModel::selectCard,
+        onRetryCard = viewModel::retrySelectedCard,
+    )
+}
+
+private fun CollectionUiState.toScreenUiModel(
+    saveCompletionCardId: String?,
+    saveCompletionId: Int,
+    imageActionResult: CollectionImageActionResult?,
+    imageActionErrorId: Int,
+    imageActionPhase: CollectionCardExportPhase,
+    notificationDate: String?,
+): CollectionScreenUiModel =
+    CollectionScreenUiModel(
+        isNotificationDateOutdated = notificationDate != null && today != null && notificationDate != today.date,
+        nickname = nickname?.takeIf(String::isNotBlank) ?: "나",
+        cards = cards,
+        totalCount = totalCount,
+        emotionCounts = emotionCounts,
+        selectedFilter = selectedFilter,
+        pendingProgress =
+            today
+                ?.takeUnless { it.hasClaimedCard }
+                ?.let { progress ->
+                    CollectionProgressUiModel(
+                        emotion = progress.claimEmotion?.toUi() ?: collectionCoverFlowEmotionOrder.first(),
+                        stampCount = progress.totalStampCount,
+                        stampTarget = COLLECTION_STAMP_CLAIM_TARGET,
+                        stampRemaining = (COLLECTION_STAMP_CLAIM_TARGET - progress.totalStampCount).coerceAtLeast(0),
+                        stampProgressByEmotion =
+                            collectionCoverFlowEmotionOrder.mapNotNull { emotion ->
+                                progress.items
+                                    .firstOrNull { it.state.name == emotion.name }
+                                    ?.let { item -> CollectionEmotionProgress(emotion, item.stamps.count) }
+                            },
+                        pressCount = progress.totalPressCount,
+                        pressTarget = COLLECTION_PRESS_CLAIM_TARGET,
+                        pressRemaining = (COLLECTION_PRESS_CLAIM_TARGET - progress.totalPressCount).coerceAtLeast(0),
+                        canClaim = progress.canClaim,
+                        pressProgressByEmotion =
+                            collectionCoverFlowEmotionOrder.mapNotNull { emotion ->
+                                progress.items
+                                    .firstOrNull { it.state.name == emotion.name }
+                                    ?.let { item -> CollectionEmotionProgress(emotion, item.presses.count) }
+                            },
+                        hasProgress = true,
+                        isClaiming = claimingState != null,
+                    )
+                },
+        todayLoading = isLoadingToday,
+        todayError = todayError,
+        isLoadingCards = isLoadingCards,
+        isRefreshRequestActive = isRefreshRequestActive,
+        isRefreshIndicatorVisible = isRefreshIndicatorVisible,
+        scrollToTopRequestId = scrollToTopRequestId,
+        cardsError = cardsError,
+        isLoadingNext = isLoadingNext,
+        hasNext = hasNext,
+        claimError = claimError,
+        claimOutcomeUnknown = claimOutcomeUnknown,
+        selectedCard = selectedCard,
+        isLoadingCard = isLoadingCard,
+        cardError = cardError,
+        saveCompletionCardId = saveCompletionCardId,
+        saveCompletionId = saveCompletionId,
+        imageActionError =
+            when {
+                imageActionResult?.outcome == CollectionImageActionOutcome.CAPTURE_FAILED -> {
+                    CollectionCardActionError.CAPTURE
                 }
-                Text(value.date)
-                Text("스탬프 ${value.stamps.count} / ${value.stamps.target}")
-                Text("프레스 ${value.presses.count} / ${value.presses.target}")
-                Text(
-                    when {
-                        value.claimed -> "오늘의 카드는 이미 받았어요."
-                        value.claimable -> "오늘의 카드를 받을 수 있어요."
-                        else -> "스탬프와 프레스를 모아 오늘의 컬렉션을 완성해 보세요."
-                    },
-                )
-            }
-        }
+
+                imageActionResult?.outcome == CollectionImageActionOutcome.FAILED &&
+                    imageActionResult.action == CollectionImageAction.SAVE -> {
+                    CollectionCardActionError.SAVE
+                }
+
+                imageActionResult?.outcome == CollectionImageActionOutcome.FAILED -> {
+                    CollectionCardActionError.SHARE
+                }
+
+                else -> {
+                    null
+                }
+            },
+        imageActionErrorCardId = imageActionResult?.cardId,
+        imageActionErrorId = imageActionErrorId,
+        imageActionPhase = imageActionPhase,
+    )
+
+private fun com.pheeeew.domain.model.emotion.EmotionState.toUi(): EmotionType = EmotionType.valueOf(name)
+
+private fun EmotionType.labelFallback(): String =
+    when (this) {
+        EmotionType.FRUSTRATED -> "답답"
+        EmotionType.IRRITATED -> "짜증"
+        EmotionType.EXHAUSTED -> "지침"
+        EmotionType.DISCOURAGED -> "좌절"
+        EmotionType.ANGRY -> "분노"
     }
+
+private fun CollectionCardReference.toUiModel(
+    nickname: String?,
+    stampCount: Long,
+    pressCount: Long,
+): CollectionCardUiModel {
+    val emotion = state.toUi()
+    return CollectionCardUiModel(
+        id = cardId,
+        period = formatCollectionCardDate(date),
+        title = nickname?.takeIf(String::isNotBlank) ?: "나",
+        emotion = emotion,
+        pressLabel = "${emotion.labelFallback()} 프레스",
+        pressCount = pressCount,
+        stampLabel = "${emotion.labelFallback()} 스탬프",
+        stampCount = stampCount,
+        characterImageUrl = images.characterUrl,
+        textStampImageUrl = images.straightStampUrl,
+        roundStampImageUrl = images.roundStampUrl,
+    )
 }

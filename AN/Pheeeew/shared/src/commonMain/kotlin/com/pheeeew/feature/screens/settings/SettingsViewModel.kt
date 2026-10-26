@@ -241,7 +241,7 @@ class SettingsViewModel(
                 }
             }
 
-            DeviceNicknameLookup.Failed -> {
+            is DeviceNicknameLookup.Failed -> {
                 mutableUiState.value.copy(
                     message = NicknameUiMessage.RESULT_UNCONFIRMED,
                     savedButUnverified = true,
