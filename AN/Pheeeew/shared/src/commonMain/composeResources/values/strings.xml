@@ -360,4 +360,7 @@
     <string name="guide_collection_stats_title">프레스·스탬프 기록도 함께</string>
     <string name="guide_collection_stats_accent">프레스·스탬프 기록</string>
     <string name="onboarding_guide_swipe_hint">옆으로 넘겨보세요 →</string>
+    <string name="daily_notification_rank_context">%1$s · 전국 · 전체 감정</string>
+    <string name="daily_notification_rank_me">해당 날짜 내 순위 %1$s위 · %2$s회 프레스</string>
+    <string name="daily_notification_rank_me_empty">해당 날짜의 프레스 기록이 없어요.</string>
 </resources>
