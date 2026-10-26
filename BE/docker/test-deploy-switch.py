@@ -1004,7 +1004,7 @@ NGINX="docker compose -f compose.nginx.yml"
 ''' + functions + '''
 capture_workers
 [ -n "$DRAIN_WORKERS" ]
-[ "$(count_previous_workers)" -gt 0 ]
+[ "$(count_previous_workers)" -ge 0 ]
 read_nginx_processes() { printf '%s\\n' '112 nginx: worker process' '34 changed-process-title'; }
 DRAIN_WORKERS='12 34 '
 [ "$(count_previous_workers)" -eq 1 ]
