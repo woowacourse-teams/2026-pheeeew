@@ -23,5 +23,7 @@
 	<string>$(API_BASE_URL)</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>컬렉션 카드를 사진 앱에 저장하기 위해 사진 보관함에 추가합니다.</string>
 </dict>
 </plist>
