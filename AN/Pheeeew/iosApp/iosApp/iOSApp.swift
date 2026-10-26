@@ -25,16 +25,19 @@ struct iOSApp: App {
                     if phase == .active {
                         IosMonitoring.shared.foreground()
                         RevisitNotificationLifecycle.shared.foreground()
+                        PushTokenLifecycle.foreground()
                     }
                     if phase == .background {
                         IosMonitoring.shared.background()
                         RevisitNotificationLifecycle.shared.background()
+                        PushTokenLifecycle.background()
                     }
                 }
                 .onAppear {
                     if scenePhase == .active {
                         IosMonitoring.shared.foreground()
                         RevisitNotificationLifecycle.shared.foreground()
+                        PushTokenLifecycle.foreground()
                     }
 #if DEBUG
                     if !monitoringSmokeTestScheduled,

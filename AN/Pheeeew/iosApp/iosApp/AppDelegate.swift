@@ -31,6 +31,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate {
                 if RevisitNotificationDiagnostics.inspectionOnly { return }
 #endif
                 IosRevisitNotifications.shared.refresh()
+                PushTokenLifecycle.permissionChanged()
             }
         }
 
@@ -44,6 +45,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate {
     ) {
         Messaging.messaging().apnsToken = deviceToken
         print("APNs 등록 성공")
+        DispatchQueue.main.async { PushTokenLifecycle.refreshToken() }
     }
 
     func application(
@@ -57,11 +59,10 @@ final class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate {
         _ messaging: Messaging,
         didReceiveRegistrationToken fcmToken: String?
     ) {
-#if DEBUG
-        if let fcmToken {
-            print("FCM 테스트 토큰:", fcmToken)
+        guard let fcmToken, !fcmToken.isEmpty else { return }
+        DispatchQueue.main.async {
+            IosPushTokenSync.shared.tokenReceived(token: fcmToken)
         }
-#endif
     }
 
 }
