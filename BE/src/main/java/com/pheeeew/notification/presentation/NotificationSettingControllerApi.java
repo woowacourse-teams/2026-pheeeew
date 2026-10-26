@@ -74,7 +74,7 @@ public interface NotificationSettingControllerApi {
 
     @Operation(summary = "알림 수신 설정 조회", security = @SecurityRequirement(name = "bearerAuth"),
             description = """
-                    - 이 기기의 컬렉션 발급 가능 알림(collectionClaimableEnabled)과 순위 변동 알림(rankChangedEnabled) 수신 여부를 조회합니다.
+                    - 이 기기의 컬렉션 발급 가능 알림(collectionClaimableEnabled)과 순위 하락 알림(rankChangedEnabled) 수신 여부를 조회합니다.
                     - 한 번도 바꾸지 않은 기기는 두 값 모두 true 입니다.
                     - 기기별 값이며 다른 기기에 영향을 주지 않습니다.
                     - OS 알림 권한과 별개입니다. true 여도 OS 권한이 꺼져 있으면 기기에 표시되지 않습니다.
@@ -102,7 +102,7 @@ public interface NotificationSettingControllerApi {
             description = """
                     - 두 값을 모두 보내는 전체 교체입니다. 하나라도 빠지거나 null 이면 400 입니다.
                     - 이 기기에만 적용합니다.
-                    - 서버는 알림을 보낼 때 그 시점의 설정을 확인합니다. 설정은 컬렉션 발급 가능 알림과 순위 변동 알림 두 가지만 다룹니다.
+                    - 서버는 알림을 보낼 때 그 시점의 설정을 확인합니다. 설정은 컬렉션 발급 가능 알림(23시 리마인더 포함)과 순위 하락 알림 두 가지만 다룹니다.
                     - 같은 값을 여러 번 보내도 결과가 같습니다. 푸시 등록 값을 바꾸거나 다시 등록하거나 해제해도 이 설정은 바뀌지 않습니다.
                     - 푸시 등록 값이 없어도 저장합니다.
                     - 성공하면 본문 없는 204 를 반환합니다. 현재 값은 GET /api/v3/devices/me/notification-settings 로 조회합니다.
