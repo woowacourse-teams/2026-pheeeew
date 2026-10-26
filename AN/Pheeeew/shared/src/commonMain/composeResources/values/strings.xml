@@ -176,6 +176,7 @@
     <string name="settings_nickname_available">사용할 수 있는 닉네임이에요.</string>
     <string name="settings_nickname_taken">이미 사용 중인 닉네임이에요.</string>
     <string name="settings_nickname_availability_failed">사용 가능 여부를 확인하지 못했어요. 다시 시도해주세요.</string>
+    <string name="app_entry_failed_title">앱을 시작하지 못했어요</string>
     <string name="app_entry_network_failed">네트워크 상태를 확인한 후 다시 시도해주세요.</string>
     <string name="app_entry_server_failed">서버에 문제가 생겼어요. 잠시 후 다시 시도해주세요.</string>
     <string name="app_entry_rate_limited_failed">요청이 많아요. 잠시 후 다시 시도해주세요.</string>

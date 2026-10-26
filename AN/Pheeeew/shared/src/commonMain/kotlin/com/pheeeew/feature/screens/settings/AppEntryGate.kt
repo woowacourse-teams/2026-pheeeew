@@ -1,26 +1,19 @@
 package com.pheeeew.feature.screens.settings
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.pheeeew.core.designsystem.component.AppDialog
-import com.pheeeew.feature.screens.settings.components.SettingsColors
+import com.pheeeew.core.designsystem.component.ConfirmDialog
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.app_entry_authentication_failed
+import pheeeew.shared.generated.resources.app_entry_failed_title
 import pheeeew.shared.generated.resources.app_entry_network_failed
 import pheeeew.shared.generated.resources.app_entry_rate_limited_failed
 import pheeeew.shared.generated.resources.app_entry_server_failed
@@ -103,26 +96,15 @@ internal fun AppEntryGate(
         }
 
         AppEntryPhase.FAILED -> {
-            AppDialog(
-                onDismissRequest = {},
+            ConfirmDialog(
+                title = stringResource(Res.string.app_entry_failed_title),
+                content =
+                    state.message?.asText()
+                        ?: stringResource(Res.string.settings_nickname_device_prepare_failed),
+                confirmText = stringResource(Res.string.settings_nickname_retry),
+                onConfirm = onRetry,
                 properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
-            ) {
-                Surface(color = Color.White, shape = RoundedCornerShape(22.dp)) {
-                    Column(
-                        modifier = Modifier.padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        Text(
-                            state.message?.asText()
-                                ?: stringResource(Res.string.settings_nickname_device_prepare_failed),
-                            color = SettingsColors.Ink,
-                            fontSize = 14.sp,
-                        )
-                        TextButton(onClick = onRetry) { Text(stringResource(Res.string.settings_nickname_retry)) }
-                    }
-                }
-            }
+            )
         }
 
         AppEntryPhase.READY -> {
