@@ -36,7 +36,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 @PostgisDataJpaTest
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
-@Import({NotificationSettingService.class, DevicePushTokenRepository.class, DeviceNotificationSettingRepository.class})
+@Import({NotificationSettingService.class, DevicePushTokenRegistrationService.class,
+        DevicePushTokenRepository.class, DeviceNotificationSettingRepository.class})
 class NotificationSettingConcurrencyIntegrationTest {
 
     private static final Duration 대기_상한 = Duration.ofSeconds(10);
