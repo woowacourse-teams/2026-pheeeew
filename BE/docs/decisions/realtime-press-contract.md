@@ -249,6 +249,24 @@ DB 저장 전 서버가 종료되면 앱의 재시도가 필요하다. 서버 �
 - #921의 `snapshotVersion` 같은 큰 정수는 JSON 문자열로 전달한다. 시각은 UTC ISO-8601, 경쟁 날짜는 KST `YYYY-MM-DD`다.
 - 지원하지 않는 `v`·메시지 종류는 명시적 프로토콜 오류, binary·손상된 JSON·크기 초과는 프로토콜/메시지 크기 오류로 종료한다. 인증 없는 요청은 Upgrade 전에 401로 거부한다. 소켓 종료 코드를 입력별 최종 거절로 간주하지 않는다.
 
+#### #921 화면 스냅샷 필드
+
+`session.ready`는 기존 입력 정산 계약을 유지한다. 이후 첫 공통 조회에서 `state.snapshot`을 보내며, 화면 전환은 `{"v":1,"type":"view.change","view":"PRESS"}` 또는 `ALL`을 사용한다. 초기화 전 화면 전환은 `protocol.error / SESSION_NOT_READY`다.
+
+| 필드 | 의미 |
+| --- | --- |
+| `date`, `snapshotVersion`, `generatedAt` | KST 경쟁 날짜, 현재 서버 세대의 로컬 증가 번호 문자열, 조회 관찰 시각(UTC ISO-8601) |
+| `view`, `activeCount` | `PRESS/ALL`, 해당 날짜의 최근 활동 기기 수 |
+| `me` | 내 참여 상태와 실제 점수·등수. 상위 100명 밖도 반환 |
+| `nearby`, `top100` | 전체 공통 순위에서 고른 주변 목록, 표시 순서의 첫 100명. `PRESS`의 `top100`은 빈 목록이며 `ALL`은 두 목록 모두 반환 |
+| `baseline` | 최초·재초기화·화면 전환·날짜 전환의 완전한 기준 상태이면 `true`. 이후 일반 화면 갱신은 `false` |
+
+목록 원소와 `me`는 `publicId`, `nickname`, `score`, `rank`, `participating`으로 구성한다. 참여자의 `publicId`는 해당 날짜의 공개 UUID이며 닉네임이 없는 참여자는 `익명`이다. 미참여 `me`는 `publicId=null, nickname=null, score=0, rank=null, participating=false`다. 인증 UUID·DB 기기 PK는 보내지 않는다.
+
+각 메시지에는 기존 공통 봉투의 `v`, `type`, `serverGeneration`, `connectionGeneration`도 포함한다. `snapshotVersion`은 송신하지 않은 공통 갱신 때문에 건너뛸 수 있다. 생성 시각·번호만 바뀌면 반복 송신하지 않는다. 추월 필드·계산은 #922에서 연결하며 `baseline`만으로 실제 앱 표시 완료를 뜻하지 않는다.
+
+순위 갱신은 기본 Spring 정리 스케줄러와 분리된 단일 실행기에서 조회부터 게시까지 직렬화한다. 커밋 콜백 없이도 매 전체 조회가 DB의 점수·닉네임·활동을 다시 읽는다. 최초·재초기화는 이전 캐시를 보내지 않고 `session.ready` 뒤 다음 공통 조회를 기다린다. 세션별 송신은 공통 조회 밖에서 수행하며 대기는 최신 화면 하나만 유지하고, 화면 전환은 이전 화면 대기를 폐기한다. 이는 느린 송신 watchdog·입력 결과 FIFO·heartbeat 검증(#923)이나 전체 화면 반영 성능 검증(#924)의 완료를 뜻하지 않는다.
+
 ### 5. 공통 순위와 DB 잠금
 
 현재 선택은 **단일 활성 서버·PostgreSQL 원천·기기별 병렬 저장·재생성 가능한 공통 메모리 순위**다. Redis는 도입하지 않는다. 실제 순위판 구현은 #921 범위다.
