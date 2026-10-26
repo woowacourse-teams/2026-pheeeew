@@ -300,6 +300,9 @@ fun CollectionScreen(
                     error = uiModel.cardError,
                     isSaveCompleted = uiModel.saveCompletionCardId == selectedCard.id,
                     saveCompletionId = uiModel.saveCompletionId,
+                    imageActionError = uiModel.imageActionError,
+                    imageActionErrorCardId = uiModel.imageActionErrorCardId,
+                    imageActionErrorId = uiModel.imageActionErrorId,
                     imageActionPhase = uiModel.imageActionPhase,
                     onDismissSaveCompletion = onDismissSaveCompletion,
                     onDismiss = {

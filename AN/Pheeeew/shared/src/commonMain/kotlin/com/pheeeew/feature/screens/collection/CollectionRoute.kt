@@ -61,6 +61,8 @@ internal fun CollectionRoute(
                                 it.outcome == CollectionImageActionOutcome.SUCCEEDED
                         }?.cardId,
                 saveCompletionId = exportState.resultId,
+                imageActionResult = imageActionResult,
+                imageActionErrorId = exportState.resultId,
                 imageActionPhase = exportState.phase,
                 notificationDate = notificationDate,
             ),
@@ -86,6 +88,8 @@ internal fun CollectionRoute(
 private fun CollectionUiState.toScreenUiModel(
     saveCompletionCardId: String?,
     saveCompletionId: Int,
+    imageActionResult: CollectionImageActionResult?,
+    imageActionErrorId: Int,
     imageActionPhase: CollectionCardExportPhase,
     notificationDate: String?,
 ): CollectionScreenUiModel =
@@ -141,6 +145,27 @@ private fun CollectionUiState.toScreenUiModel(
         cardError = cardError,
         saveCompletionCardId = saveCompletionCardId,
         saveCompletionId = saveCompletionId,
+        imageActionError =
+            when {
+                imageActionResult?.outcome == CollectionImageActionOutcome.CAPTURE_FAILED -> {
+                    CollectionCardActionError.CAPTURE
+                }
+
+                imageActionResult?.outcome == CollectionImageActionOutcome.FAILED &&
+                    imageActionResult.action == CollectionImageAction.SAVE -> {
+                    CollectionCardActionError.SAVE
+                }
+
+                imageActionResult?.outcome == CollectionImageActionOutcome.FAILED -> {
+                    CollectionCardActionError.SHARE
+                }
+
+                else -> {
+                    null
+                }
+            },
+        imageActionErrorCardId = imageActionResult?.cardId,
+        imageActionErrorId = imageActionErrorId,
         imageActionPhase = imageActionPhase,
     )
 

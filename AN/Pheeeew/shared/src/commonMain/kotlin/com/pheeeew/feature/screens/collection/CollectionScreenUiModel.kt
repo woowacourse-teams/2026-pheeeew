@@ -3,6 +3,8 @@ package com.pheeeew.feature.screens.collection
 import com.pheeeew.feature.emotion.model.EmotionType
 import com.pheeeew.feature.screens.collection.card.CollectionCardUiModel
 
+enum class CollectionCardActionError { CAPTURE, SAVE, SHARE }
+
 internal val collectionCoverFlowEmotionOrder =
     listOf(
         EmotionType.FRUSTRATED,
@@ -36,6 +38,9 @@ data class CollectionScreenUiModel(
     val cardError: String? = null,
     val saveCompletionCardId: String? = null,
     val saveCompletionId: Int = 0,
+    val imageActionError: CollectionCardActionError? = null,
+    val imageActionErrorCardId: String? = null,
+    val imageActionErrorId: Int = 0,
     val imageActionPhase: CollectionCardExportPhase = CollectionCardExportPhase.IDLE,
 )
 

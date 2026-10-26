@@ -1,7 +1,9 @@
 package com.pheeeew.feature.screens.collection
 
 import android.content.ContentValues
+import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -11,10 +13,18 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
 import java.io.File
 import kotlin.coroutines.resume
 
@@ -23,9 +33,18 @@ private class PendingCollectionCardSave(
     val continuation: CancellableContinuation<CollectionImageActionOutcome>,
 )
 
+internal actual fun ImageBitmap.toPngBytes(): ByteArray =
+    ByteArrayOutputStream().use { output ->
+        check(asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, output)) {
+            "카드 PNG를 인코딩하지 못했습니다"
+        }
+        output.toByteArray()
+    }
+
 @Composable
 internal actual fun rememberCollectionCardImageActions(): CollectionCardImageActions {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val pendingSave = remember { mutableStateOf<PendingCollectionCardSave?>(null) }
     val documentLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("image/png")) { uri ->
@@ -34,30 +53,30 @@ internal actual fun rememberCollectionCardImageActions(): CollectionCardImageAct
             val bytes = pending?.bytes
             pending?.bytes = null
             if (pending != null && pending.continuation.isActive) {
-                val outcome =
-                    when {
-                        uri == null -> {
-                            CollectionImageActionOutcome.CANCELLED
-                        }
+                scope.launch {
+                    val outcome =
+                        when {
+                            uri == null -> {
+                                CollectionImageActionOutcome.CANCELLED
+                            }
 
-                        bytes == null -> {
-                            CollectionImageActionOutcome.FAILED
-                        }
-
-                        else -> {
-                            val succeeded =
-                                runCatching {
-                                    context.contentResolver.openOutputStream(uri)?.use { it.write(bytes) }
-                                        ?: error("저장 위치를 열 수 없습니다")
-                                }.isSuccess
-                            if (succeeded) {
-                                CollectionImageActionOutcome.SUCCEEDED
-                            } else {
+                            bytes == null -> {
                                 CollectionImageActionOutcome.FAILED
                             }
+
+                            else -> {
+                                try {
+                                    withContext(Dispatchers.IO) { writeDocument(context, uri, bytes) }
+                                    CollectionImageActionOutcome.SUCCEEDED
+                                } catch (cancelled: CancellationException) {
+                                    throw cancelled
+                                } catch (_: Exception) {
+                                    CollectionImageActionOutcome.FAILED
+                                }
+                            }
                         }
-                    }
-                pending.continuation.resume(outcome)
+                    if (pending.continuation.isActive) pending.continuation.resume(outcome)
+                }
             }
         }
 
@@ -65,8 +84,17 @@ internal actual fun rememberCollectionCardImageActions(): CollectionCardImageAct
         CollectionCardImageActions(
             save = { bytes ->
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    val result = runCatching { saveToMediaStore(context, bytes) }.getOrDefault(false)
-                    if (result) CollectionImageActionOutcome.SUCCEEDED else CollectionImageActionOutcome.FAILED
+                    try {
+                        if (withContext(Dispatchers.IO) { saveToMediaStore(context, bytes) }) {
+                            CollectionImageActionOutcome.SUCCEEDED
+                        } else {
+                            CollectionImageActionOutcome.FAILED
+                        }
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (_: Exception) {
+                        CollectionImageActionOutcome.FAILED
+                    }
                 } else {
                     suspendCancellableCoroutine { continuation ->
                         if (pendingSave.value != null) {
@@ -87,15 +115,31 @@ internal actual fun rememberCollectionCardImageActions(): CollectionCardImageAct
                 }
             },
             share = { bytes, url ->
-                val result = runCatching { sharePng(context, bytes, url) }.getOrDefault(false)
-                if (result) CollectionImageActionOutcome.SUCCEEDED else CollectionImageActionOutcome.FAILED
+                try {
+                    val chooser = withContext(Dispatchers.IO) { createShareChooser(context, bytes, url) }
+                    withContext(Dispatchers.Main.immediate) { context.startActivity(chooser) }
+                    CollectionImageActionOutcome.SUCCEEDED
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    CollectionImageActionOutcome.FAILED
+                }
             },
         )
     }
 }
 
+private fun writeDocument(
+    context: Context,
+    uri: Uri,
+    bytes: ByteArray,
+) {
+    context.contentResolver.openOutputStream(uri)?.use { it.write(bytes) }
+        ?: error("저장 위치를 열 수 없습니다")
+}
+
 private fun saveToMediaStore(
-    context: android.content.Context,
+    context: Context,
     bytes: ByteArray,
 ): Boolean {
     val resolver = context.contentResolver
@@ -117,11 +161,11 @@ private fun saveToMediaStore(
     }
 }
 
-private fun sharePng(
-    context: android.content.Context,
+private fun createShareChooser(
+    context: Context,
     bytes: ByteArray,
     url: String,
-): Boolean {
+): Intent {
     val directory = File(context.cacheDir, "collection-cards").apply { mkdirs() }
     directory.listFiles()?.filter { System.currentTimeMillis() - it.lastModified() > 86_400_000L }?.forEach(
         File::delete,
@@ -137,6 +181,5 @@ private fun sharePng(
             clipData = android.content.ClipData.newUri(context.contentResolver, "Pheeeew card", uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-    context.startActivity(Intent.createChooser(sendIntent, null))
-    return true
+    return Intent.createChooser(sendIntent, null)
 }

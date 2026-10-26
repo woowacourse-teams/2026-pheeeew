@@ -26,6 +26,38 @@ class CollectionCardDialogTest {
     private val device = UiDevice.getInstance(instrumentation)
 
     @Test
+    fun saveFailureShowsSnackbarInsideDialogWithoutRetryAction() {
+        val activity =
+            instrumentation.startActivitySync(
+                Intent(instrumentation.targetContext, ComponentActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            ) as ComponentActivity
+        try {
+            instrumentation.runOnMainSync {
+                activity.setContent {
+                    AppTheme {
+                        CollectionCardDialog(
+                            card = sampleCard(),
+                            imageActionError = CollectionCardActionError.SAVE,
+                            imageActionErrorCardId = "capture-regression",
+                            imageActionErrorId = 1,
+                            onDismiss = {},
+                            onSave = {},
+                            onShare = {},
+                        )
+                    }
+                }
+            }
+
+            checkNotNull(device.wait(Until.findObject(By.text("카드를 저장하지 못했어요. 다시 시도해 주세요")), 5_000))
+            assertTrue(device.hasObject(By.text("카드 저장")), "Dialog should remain available after save failure")
+            assertTrue(device.wait(Until.gone(By.text("다시 시도")), 1_000), "Failure feedback must not add a retry action")
+        } finally {
+            instrumentation.runOnMainSync { activity.finish() }
+        }
+    }
+
+    @Test
     fun savedPngContainsOpaqueCardPixels() {
         val savedBytes = AtomicReference<ByteArray?>()
         val saved = CountDownLatch(1)
@@ -40,17 +72,7 @@ class CollectionCardDialogTest {
                     AppTheme {
                         val scope = rememberCoroutineScope()
                         CollectionCardDialog(
-                            card =
-                                CollectionCardUiModel(
-                                    id = "capture-regression",
-                                    period = "2026.10.26",
-                                    title = "오늘도히유",
-                                    emotion = EmotionType.EXHAUSTED,
-                                    pressLabel = "지침 프레스",
-                                    pressCount = 312,
-                                    stampLabel = "지침 스탬프",
-                                    stampCount = 23,
-                                ),
+                            card = sampleCard(),
                             onDismiss = {},
                             onSave = { capture ->
                                 scope.launch {
@@ -85,4 +107,16 @@ class CollectionCardDialogTest {
             instrumentation.runOnMainSync { activity.finish() }
         }
     }
+
+    private fun sampleCard() =
+        CollectionCardUiModel(
+            id = "capture-regression",
+            period = "2026.10.26",
+            title = "오늘도히유",
+            emotion = EmotionType.EXHAUSTED,
+            pressLabel = "지침 프레스",
+            pressCount = 312,
+            stampLabel = "지침 스탬프",
+            stampCount = 23,
+        )
 }

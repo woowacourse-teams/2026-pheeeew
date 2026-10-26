@@ -41,6 +41,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.pheeeew.core.designsystem.component.AppDialog
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.component.RaisedCardButton
+import com.pheeeew.core.designsystem.component.Snackbar
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.emotion.model.EmotionType
 import com.pheeeew.feature.screens.collection.card.CollectionCard
@@ -53,6 +54,7 @@ import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.collection_capture_failed
 import pheeeew.shared.generated.resources.collection_close
 import pheeeew.shared.generated.resources.collection_image_creating
 import pheeeew.shared.generated.resources.collection_image_saving
@@ -60,8 +62,10 @@ import pheeeew.shared.generated.resources.collection_image_sharing
 import pheeeew.shared.generated.resources.collection_loading
 import pheeeew.shared.generated.resources.collection_retry
 import pheeeew.shared.generated.resources.collection_save
+import pheeeew.shared.generated.resources.collection_save_failed
 import pheeeew.shared.generated.resources.collection_saved
 import pheeeew.shared.generated.resources.collection_share
+import pheeeew.shared.generated.resources.collection_share_failed
 import pheeeew.shared.generated.resources.ic_check_circle
 import pheeeew.shared.generated.resources.ic_close
 import pheeeew.shared.generated.resources.ic_collection_save
@@ -80,6 +84,9 @@ internal fun CollectionCardDialog(
     error: String? = null,
     isSaveCompleted: Boolean = false,
     saveCompletionId: Int = 0,
+    imageActionError: CollectionCardActionError? = null,
+    imageActionErrorCardId: String? = null,
+    imageActionErrorId: Int = 0,
     imageActionPhase: CollectionCardExportPhase = CollectionCardExportPhase.IDLE,
     onDismissSaveCompletion: () -> Unit = {},
     onDismiss: () -> Unit,
@@ -98,6 +105,9 @@ internal fun CollectionCardDialog(
             error = error,
             isSaveCompleted = isSaveCompleted,
             saveCompletionId = saveCompletionId,
+            imageActionError = imageActionError,
+            imageActionErrorCardId = imageActionErrorCardId,
+            imageActionErrorId = imageActionErrorId,
             imageActionPhase = imageActionPhase,
             onDismissSaveCompletion = onDismissSaveCompletion,
             onDismiss = onDismiss,
@@ -116,6 +126,9 @@ private fun CollectionCardDialogContent(
     error: String? = null,
     isSaveCompleted: Boolean = false,
     saveCompletionId: Int = 0,
+    imageActionError: CollectionCardActionError? = null,
+    imageActionErrorCardId: String? = null,
+    imageActionErrorId: Int = 0,
     imageActionPhase: CollectionCardExportPhase = CollectionCardExportPhase.IDLE,
     onDismissSaveCompletion: () -> Unit = {},
     onDismiss: () -> Unit,
@@ -290,6 +303,24 @@ private fun CollectionCardDialogContent(
                 )
             }
         }
+        val actionError =
+            imageActionError?.takeIf { imageActionErrorCardId == card.id }
+        Snackbar(
+            message =
+                actionError?.let { result ->
+                    stringResource(
+                        when {
+                            result == CollectionCardActionError.CAPTURE -> Res.string.collection_capture_failed
+                            result == CollectionCardActionError.SAVE -> Res.string.collection_save_failed
+                            else -> Res.string.collection_share_failed
+                        },
+                    )
+                },
+            onDismiss = onDismissSaveCompletion,
+            isError = true,
+            presentationKey = imageActionErrorId,
+            modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+        )
     }
 }
 
