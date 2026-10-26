@@ -338,6 +338,42 @@ class PressRaceWebSocketIntegrationTest {
         assertThat(totalPresses()).isZero();
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"RACE_DISABLED", "SERVER_REPLACED"})
+    void 새_연결이_거절되면_실제_사유를_반환하고_기존_연결을_유지한다(String code) throws Exception {
+        // given
+        SocketListener previous = connect(token);
+        JsonNode ready = initialize(previous);
+        if (code.equals("RACE_DISABLED")) {
+            jdbc.sql("UPDATE press_race_control SET enabled = FALSE WHERE id = TRUE").update();
+        } else {
+            jdbc.sql("UPDATE press_race_control SET active_server_generation = :generation WHERE id = TRUE")
+                    .param("generation", UUID.randomUUID()).update();
+        }
+
+        // when
+        SocketListener rejected = connect(token);
+        JsonNode error = rejected.receive();
+
+        // then
+        assertThat(error.path("type").stringValue()).isEqualTo("protocol.error");
+        assertThat(error.path("code").stringValue()).isEqualTo(code);
+        assertThat(rejected.closed.poll(10, TimeUnit.SECONDS)).isEqualTo(1008);
+        assertThat(rejected.closeReasons.poll(10, TimeUnit.SECONDS)).isEqualTo(code);
+        assertThat(jdbc.sql("SELECT connection_generation FROM press_device_controls WHERE device_id = :device")
+                .param("device", device.getId()).query(UUID.class).single())
+                .isEqualTo(UUID.fromString(ready.path("connectionGeneration").stringValue()));
+        assertThat(previous.closed).isEmpty();
+
+        // when: 연결 허용 조건을 복구하면 기존 연결로 계속 입력할 수 있다.
+        activateRace();
+        previous.socket.sendText(submit(UUID.randomUUID(), ready, "{\"ANGRY\":1}"), true).join();
+
+        // then
+        assertThat(previous.receive().path("status").stringValue()).isEqualTo("APPLIED");
+        assertThat(totalPresses()).isEqualTo(1);
+    }
+
     private HttpResponse<String> pressHttp(String counts) throws Exception {
         return client.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/v2/emotions/presses"))
                         .header("Authorization", "Bearer " + token)
@@ -388,6 +424,7 @@ class PressRaceWebSocketIntegrationTest {
 
         private final BlockingQueue<String> messages = new LinkedBlockingQueue<>();
         private final BlockingQueue<Integer> closed = new LinkedBlockingQueue<>();
+        private final BlockingQueue<String> closeReasons = new LinkedBlockingQueue<>();
         private final StringBuilder fragments = new StringBuilder();
         private WebSocket socket;
 
@@ -409,6 +446,7 @@ class PressRaceWebSocketIntegrationTest {
 
         @Override
         public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
+            closeReasons.add(reason);
             closed.add(statusCode);
             return null;
         }

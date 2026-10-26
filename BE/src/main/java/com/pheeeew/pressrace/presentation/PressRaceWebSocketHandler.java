@@ -74,11 +74,28 @@ public class PressRaceWebSocketHandler extends AbstractWebSocketHandler {
                     previous.close(CloseStatus.POLICY_VIOLATION.withReason("CONNECTION_REPLACED"));
                 }
             } catch (PressRaceException exception) {
-                connections.put(session.getId(), connection);
-                sendError(session, connection, exception.code(), exception.requestId());
-                session.close(CloseStatus.POLICY_VIOLATION);
+                rejectConnection(session, connection, exception);
             } catch (InvalidMessage exception) {
                 session.close(CloseStatus.POLICY_VIOLATION.withReason(exception.code));
+            }
+        }
+    }
+
+    private void rejectConnection(WebSocketSession session, PressConnection connection, PressRaceException exception)
+            throws IOException {
+        synchronized (session) {
+            if (connection.expiresAt() == null || !Instant.now().isBefore(connection.expiresAt())) {
+                session.close(CloseStatus.POLICY_VIOLATION.withReason("AUTH_EXPIRED"));
+                return;
+            }
+            Map<String, Object> response = envelope(connection, "protocol.error");
+            response.put("code", exception.code());
+            try {
+                if (session.isOpen()) {
+                    session.sendMessage(new TextMessage(json.writeValueAsString(response)));
+                }
+            } finally {
+                session.close(CloseStatus.POLICY_VIOLATION.withReason(exception.code()));
             }
         }
     }
