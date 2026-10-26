@@ -3,6 +3,7 @@ package com.pheeeew.feature.screens.ranking.press
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -10,47 +11,43 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.component.LoadErrorContent
 import com.pheeeew.core.designsystem.component.RefreshErrorBanner
-import com.pheeeew.core.designsystem.theme.AppColors
-import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.feature.monitoring.product.ProductScreen
-import com.pheeeew.feature.screens.ranking.components.RankingTopBarHeight
-import com.pheeeew.feature.screens.ranking.components.RankingTopBarOverlay
-import com.pheeeew.feature.screens.ranking.components.WeekSelector
-import com.pheeeew.feature.screens.ranking.components.rememberRankingTopBarScrollBehavior
-import com.pheeeew.feature.screens.ranking.press.components.MyPressRankCard
-import com.pheeeew.feature.screens.ranking.press.components.PressEmotionFilter
-import com.pheeeew.feature.screens.ranking.press.components.PressPersonRankList
+import com.pheeeew.feature.screens.ranking.press.components.MyRaceRankCard
+import com.pheeeew.feature.screens.ranking.press.components.PressRaceHeader
+import com.pheeeew.feature.screens.ranking.press.components.PressRaceRow
+import com.pheeeew.feature.screens.ranking.press.components.RankingEncouragementBanner
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
-import pheeeew.shared.generated.resources.ranking_empty_week
-import pheeeew.shared.generated.resources.ranking_press_title
+import pheeeew.shared.generated.resources.press_daily_ranking_back
+import pheeeew.shared.generated.resources.press_daily_ranking_empty
+import pheeeew.shared.generated.resources.press_daily_ranking_people
+import pheeeew.shared.generated.resources.press_daily_ranking_refresh_error
+import pheeeew.shared.generated.resources.press_daily_ranking_title
 
 @Composable
 fun PressRankingRoute(
@@ -69,9 +66,6 @@ fun PressRankingRoute(
     PressRankingScreen(
         onBack = onBack,
         uiState = uiState,
-        onEmotionSelected = viewModel::onEmotionSelected,
-        onPreviousWeek = viewModel::onPreviousWeek,
-        onNextWeek = viewModel::onNextWeek,
         onRetry = viewModel::onRetry,
         onRefresh = viewModel::onRefresh,
         modifier = modifier,
@@ -82,152 +76,96 @@ fun PressRankingRoute(
 internal fun PressRankingScreen(
     onBack: () -> Unit,
     uiState: PressRankingUiState,
-    onEmotionSelected: (PressEmotion) -> Unit,
-    onPreviousWeek: () -> Unit,
-    onNextWeek: () -> Unit,
     onRetry: () -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
+    rows: List<PressRaceRowModel> = uiState.people.toRaceRows(),
 ) {
-    val pullState = rememberPullToRefreshState()
-    val scrollState = rememberScrollState()
-    val topBarBehavior = rememberRankingTopBarScrollBehavior { scrollState.canScrollForward }
-    LaunchedEffect(uiState.isRefreshing, uiState.status, scrollState.maxValue) {
-        if (uiState.isRefreshing || uiState.status == PressRankingStatus.Loading) {
-            scrollState.scrollTo(0)
-            topBarBehavior.show()
-        } else if (scrollState.maxValue == 0) {
-            topBarBehavior.show()
+    val fontScale = LocalDensity.current.fontScale
+    val rankWidth = ((rows.maxOfOrNull { it.rank.toString().length } ?: 1) * 8f * fontScale).coerceAtLeast(28f).dp
+    val textMeasurer = rememberTextMeasurer()
+    val countStyle = LocalTextStyle.current.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold)
+    val countLabels = rows.map { raceCountText(it.count) }
+    val backLabel = stringResource(Res.string.press_daily_ranking_back)
+    val countWidth =
+        with(LocalDensity.current) {
+            val widestCount =
+                countLabels.maxOfOrNull { label ->
+                    textMeasurer.measure(label, countStyle, softWrap = false).size.width
+                } ?: 0
+            (widestCount.toDp() + 12.dp).coerceIn(40.dp, 140.dp)
         }
-    }
-    val pullDistance = with(LocalDensity.current) { 56.dp.toPx() }
-    Column(
-        modifier = modifier.fillMaxSize().background(AppColors.GroupBackground).statusBarsPadding(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
+    Column(modifier.fillMaxSize().background(Color(0xFFFAFAFA)).statusBarsPadding()) {
+        Box(Modifier.fillMaxWidth().height(64.dp), contentAlignment = Alignment.Center) {
+            Text(stringResource(Res.string.press_daily_ranking_title), fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            IconButton(
+                onClick = onBack,
+                modifier =
+                    Modifier.align(Alignment.CenterStart).semantics {
+                        contentDescription =
+                            backLabel
+                    },
+            ) {
+                Text("‹", fontSize = 36.sp, modifier = Modifier.padding(bottom = 4.dp))
+            }
+        }
+        Spacer(Modifier.height(16.dp))
+        RankingEncouragementBanner(Modifier.padding(horizontal = 24.dp))
+        Spacer(Modifier.height(16.dp))
         PullToRefreshBox(
             isRefreshing = uiState.isRefreshing,
             onRefresh = onRefresh,
-            state = pullState,
-            enabled = uiState.status != PressRankingStatus.Loading,
             modifier = Modifier.weight(1f).fillMaxWidth(),
-            indicator = {
-                PullToRefreshDefaults.Indicator(
-                    state = pullState,
-                    isRefreshing = uiState.isRefreshing,
-                    modifier = Modifier.align(Alignment.TopCenter),
-                    containerColor = AppColors.Surface,
-                    color = AppColors.Primary,
-                )
-            },
         ) {
-            Box(Modifier.fillMaxSize()) {
-                Column(
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .nestedScroll(topBarBehavior.nestedScrollConnection)
-                            .graphicsLayer {
-                                translationY = pullState.distanceFraction.coerceIn(0f, 1f) * pullDistance
-                            }.verticalScroll(scrollState),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Spacer(Modifier.height(RankingTopBarHeight))
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 26.dp),
+                contentPadding = PaddingValues(bottom = 24.dp),
+            ) {
+                item {
+                    MyRaceRankCard(uiState.me, uiState.status, onBack, onRetry)
+                    Spacer(Modifier.height(20.dp))
+                    Text(
+                        stringResource(Res.string.press_daily_ranking_people),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
                     Spacer(Modifier.height(12.dp))
-                    WeekSelector(
-                        week = uiState.weekLabel,
-                        onPrevious = onPreviousWeek,
-                        onNext = onNextWeek,
-                        modifier = Modifier.padding(horizontal = 24.dp),
-                        canGoPrevious = uiState.hasPrevious,
-                        canGoNext = uiState.weeksAgo > 0,
-                    )
-                    Spacer(Modifier.height(18.dp))
-                    PressEmotionFilter(
-                        selectedEmotion = uiState.selectedEmotion,
-                        onEmotionSelected = onEmotionSelected,
-                        modifier = Modifier.padding(start = 24.dp),
-                    )
-                    Spacer(Modifier.height(22.dp))
-                    if (uiState.hasRefreshError) {
-                        RefreshErrorBanner(
-                            message = "랭킹을 새로고침하지 못했어요.",
-                            onRetry = onRefresh,
-                            modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 12.dp),
-                        )
-                    }
-                    when (uiState.status) {
-                        PressRankingStatus.Loading -> {
-                            Spacer(Modifier.height(48.dp))
-                            CircularLoadingIndicator(color = AppColors.Primary)
-                        }
-
-                        PressRankingStatus.Failed -> {
-                            LoadErrorContent(
-                                onRetry = onRetry,
-                                modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 96.dp),
-                            )
-                        }
-
-                        PressRankingStatus.Ready -> {
-                            uiState.me?.let { me ->
-                                MyPressRankCard(
-                                    person = me,
-                                    emotion = uiState.selectedEmotion,
-                                    modifier = Modifier.padding(horizontal = 24.dp),
-                                )
-                                Spacer(Modifier.height(24.dp))
-                            }
-                            if (uiState.people.isEmpty()) {
-                                Text(
-                                    text = stringResource(Res.string.ranking_empty_week),
-                                    color = AppColors.RankingSecondaryContent,
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.fillMaxWidth().padding(top = 96.dp),
-                                )
-                            } else {
-                                PressPersonRankList(
-                                    people = uiState.people,
-                                    modifier = Modifier.padding(horizontal = 24.dp),
-                                )
-                            }
-                        }
-                    }
-                    Spacer(Modifier.height(28.dp))
-                    Spacer(Modifier.navigationBarsPadding())
+                    PressRaceHeader(rankWidth, countWidth)
                 }
-                RankingTopBarOverlay(
-                    title = stringResource(Res.string.ranking_press_title),
-                    onBack = onBack,
-                    behavior = topBarBehavior,
-                    modifier = Modifier.align(Alignment.TopCenter),
-                )
+                if (uiState.hasRefreshError) {
+                    item {
+                        RefreshErrorBanner(stringResource(Res.string.press_daily_ranking_refresh_error), onRefresh)
+                    }
+                }
+                when (uiState.status) {
+                    PressRankingStatus.Loading -> {
+                        item {
+                            Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
+                                CircularLoadingIndicator(color = Color(0xFF202323))
+                            }
+                        }
+                    }
+
+                    PressRankingStatus.Failed -> {
+                        item {
+                            LoadErrorContent(onRetry, Modifier.padding(top = 48.dp))
+                        }
+                    }
+
+                    PressRankingStatus.Ready -> {
+                        if (rows.isEmpty()) {
+                            item {
+                                Text(
+                                    stringResource(Res.string.press_daily_ranking_empty),
+                                    Modifier.padding(vertical = 48.dp),
+                                )
+                            }
+                        }
+                        items(rows) { row -> PressRaceRow(row, rankWidth, countWidth) }
+                    }
+                }
+                item { Spacer(Modifier.navigationBarsPadding()) }
             }
         }
-    }
-}
-
-@Preview(name = "프레스 주간 랭킹", widthDp = 360, heightDp = 800)
-@Composable
-private fun PressRankingScreenPreview() {
-    AppTheme {
-        PressRankingScreen(
-            onBack = {},
-            uiState =
-                PressRankingUiState(
-                    weekLabel = samplePressWeeks.last(),
-                    hasPrevious = true,
-                    people = samplePressPersonRanks,
-                    me = samplePressPersonRanks[1],
-                    status = PressRankingStatus.Ready,
-                ),
-            onEmotionSelected = {},
-            onPreviousWeek = {},
-            onNextWeek = {},
-            onRetry = {},
-            onRefresh = {},
-        )
     }
 }
