@@ -83,6 +83,7 @@ internal fun AppBottomNavigationBar(
     selectedDestination: AppDestination,
     onDestinationSelected: (AppDestination) -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     val navigationFont = notoSansKrFontFamily()
     val hapticFeedback = LocalHapticFeedback.current
@@ -126,6 +127,7 @@ internal fun AppBottomNavigationBar(
                             .weight(1f)
                             .height(AppBottomNavigationBarHeight)
                             .clickable(
+                                enabled = enabled,
                                 interactionSource = null,
                                 indication = null,
                                 role = Role.Tab,

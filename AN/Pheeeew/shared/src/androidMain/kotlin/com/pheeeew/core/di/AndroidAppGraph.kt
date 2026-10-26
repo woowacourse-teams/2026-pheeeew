@@ -237,7 +237,17 @@ private class AndroidOnboardingStore(
     override fun isCompleted(): Boolean = preferences.getBoolean("onboarding_completed", false)
 
     override fun complete() {
-        preferences.edit().putBoolean("onboarding_completed", true).apply()
+        preferences
+            .edit()
+            .putBoolean("onboarding_completed", true)
+            .putBoolean("usage_guide_completed", false)
+            .apply()
+    }
+
+    override fun isUsageGuideCompleted(): Boolean = preferences.getBoolean("usage_guide_completed", isCompleted())
+
+    override fun completeUsageGuide() {
+        preferences.edit().putBoolean("usage_guide_completed", true).apply()
     }
 }
 
