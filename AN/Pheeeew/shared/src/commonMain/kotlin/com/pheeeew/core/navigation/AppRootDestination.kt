@@ -10,3 +10,6 @@ data object PressRootDestination
 
 @Serializable
 data object RankingRootDestination
+
+@Serializable
+data object CollectionRootDestination
