@@ -23,8 +23,8 @@ public class RankChangeNotificationService {
 
     private static final int NOTIFIED_RANK_LIMIT = 5;
     private static final String TYPE = "RANK_DROPPED";
-    private static final String TITLE = "프레스 순위가 내려갔어요";
-    private static final String BODY = "오늘 프레스 순위가 %d위에서 %d위로 내려갔어요.";
+    private static final String TITLE = "앗, 프레스 순위가 내려갔어요👀";
+    private static final String BODY = "오늘 내 순위 %d위 → %d위!\n쌓인 마음으로 순위를 올리러 갈까요?";
 
     private final DailyPressCountRepository dailyPressCountRepository;
     private final DevicePushTokenRepository devicePushTokenRepository;

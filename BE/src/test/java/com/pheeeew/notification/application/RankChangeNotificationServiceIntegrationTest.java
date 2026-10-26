@@ -109,7 +109,8 @@ class RankChangeNotificationServiceIntegrationTest {
         assertThat(messages).containsOnlyKeys("first", "second");
         assertThat(messages.get("first").data()).isEqualTo(Map.of(
                 "type", "RANK_DROPPED", "date", "2026-10-26", "previousRank", "1", "currentRank", "2"));
-        assertThat(messages.get("first").body()).isEqualTo("오늘 프레스 순위가 1위에서 2위로 내려갔어요.");
+        assertThat(messages.get("first").title()).isEqualTo("앗, 프레스 순위가 내려갔어요👀");
+        assertThat(messages.get("first").body()).isEqualTo("오늘 내 순위 1위 → 2위!\n쌓인 마음으로 순위를 올리러 갈까요?");
         assertThat(messages.get("second").data()).containsEntry("previousRank", "2").containsEntry("currentRank", "3");
     }
 
