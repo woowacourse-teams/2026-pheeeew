@@ -82,8 +82,12 @@ internal class NotificationSettingsState(
     private suspend fun enableOnly(kind: NotificationKind): NotificationPreferences {
         // While system permission was blocked, every toggle appeared OFF. Respect that
         // visible state when enabling one item rather than restoring hidden ON defaults.
-        NotificationKind.entries.filter { it != kind }.forEach { store.update(it, false) }
-        return store.update(kind, true)
+        return store.replace(
+            NotificationPreferences(
+                collectionEnabled = kind == NotificationKind.COLLECTION,
+                rankDropEnabled = kind == NotificationKind.RANK_DROP,
+            ),
+        )
     }
 
     private suspend fun runOperation(block: suspend () -> Unit) {
