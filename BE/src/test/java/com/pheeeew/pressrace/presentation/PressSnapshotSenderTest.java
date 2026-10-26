@@ -23,6 +23,132 @@ import org.junit.jupiter.api.Test;
 class PressSnapshotSenderTest {
 
     @Test
+    void 늦게_완료된_입력_처리는_더_최신의_Pong_수신시각을_되돌리지_않는다() {
+        // given
+        var executor = new QueuedExecutor();
+        List<String> errors = new ArrayList<>();
+        var sender = new PressSnapshotSender(new Object(), executor, snapshot -> {},
+                failure -> errors.add(failure.getMessage()));
+        long start = System.nanoTime();
+        sender.received(start + TimeUnit.SECONDS.toNanos(40));
+
+        // when: 오래 걸린 입력 처리의 수신 시각이 나중에 기록된다.
+        sender.received(start + TimeUnit.SECONDS.toNanos(1));
+        sender.maintain(start + TimeUnit.SECONDS.toNanos(50), true, () -> {});
+
+        // then
+        assertThat(errors).isEmpty();
+        executor.runNext();
+    }
+
+    @Test
+    void 결과는_FIFO로_보존하고_연속_결과_뒤에도_최신_순위를_보낸다() {
+        // given
+        var executor = new QueuedExecutor();
+        List<String> sent = new ArrayList<>();
+        var sender = new PressSnapshotSender(new Object(), executor,
+                snapshot -> sent.add("snapshot:" + snapshot.snapshotVersion()), failure -> {});
+        for (int index = 1; index <= 8; index++) {
+            String result = "result:" + index;
+            sender.offerResult(() -> sent.add(result), 100);
+        }
+        sender.offer(snapshot(10, PressView.PRESS, "1", true));
+        sender.offer(snapshot(20, PressView.PRESS, "2", false));
+
+        // when
+        executor.runNext();
+
+        // then
+        assertThat(sent).containsExactly("result:1", "result:2", "result:3", "result:4", "snapshot:2",
+                "result:5", "result:6", "result:7", "result:8");
+    }
+
+    @Test
+    void 재초기화는_결과를_보존하고_ready_송신_전에는_새_기준_순위를_보내지_않는다() {
+        // given
+        var executor = new QueuedExecutor();
+        List<String> sent = new ArrayList<>();
+        var sender = new PressSnapshotSender(new Object(), executor,
+                snapshot -> sent.add("snapshot:" + snapshot.snapshotVersion()), failure -> {});
+        for (int index = 1; index <= 6; index++) {
+            String result = "result:" + index;
+            sender.offerResult(() -> sent.add(result), 100);
+        }
+        sender.offerReady(() -> sent.add("ready"), 100);
+        sender.offer(snapshot(20, PressView.ALL, "2", true));
+
+        // when
+        executor.runNext();
+
+        // then
+        assertThat(sent).containsExactly("result:1", "result:2", "result:3", "result:4",
+                "result:5", "result:6", "ready", "snapshot:2");
+    }
+
+    @Test
+    void 결과_32개를_넘으면_덮어쓰거나_계속_송신하지_않고_연결을_종료한다() {
+        // given
+        var executor = new QueuedExecutor();
+        List<String> sent = new ArrayList<>();
+        List<String> errors = new ArrayList<>();
+        var sender = new PressSnapshotSender(new Object(), executor, snapshot -> {},
+                failure -> errors.add(failure.getMessage()));
+        for (int index = 0; index < 32; index++) {
+            sender.offerResult(() -> sent.add("result"), 100);
+        }
+        assertThat(errors).isEmpty();
+
+        // when
+        sender.offerResult(() -> sent.add("overflow"), 100);
+        executor.runNext();
+
+        // then
+        assertThat(errors).containsExactly("RESULT_QUEUE_OVERFLOW");
+        assertThat(sent).isEmpty();
+    }
+
+    @Test
+    void 결과가_32개_미만이어도_64KiB를_초과하면_종료한다() {
+        // given
+        var executor = new QueuedExecutor();
+        List<String> errors = new ArrayList<>();
+        var sender = new PressSnapshotSender(new Object(), executor, snapshot -> {},
+                failure -> errors.add(failure.getMessage()));
+        sender.offerResult(() -> {}, 32 * 1024);
+        sender.offerResult(() -> {}, 32 * 1024);
+        assertThat(errors).isEmpty();
+
+        // when
+        sender.offerResult(() -> {}, 1);
+        executor.runNext();
+
+        // then
+        assertThat(errors).containsExactly("RESULT_QUEUE_OVERFLOW");
+    }
+
+    @Test
+    void 서버_송신은_무응답_시간을_연장하지_않고_정상_수신만_연장한다() {
+        // given: 경계 시간은 단조 시계를 제어한다. 실제 Ping 프레임은 WS 테스트와 구분한다.
+        var executor = new QueuedExecutor();
+        List<String> events = new ArrayList<>();
+        var sender = new PressSnapshotSender(new Object(), executor, snapshot -> events.add("snapshot"),
+                failure -> events.add(failure.getMessage()));
+        long start = System.nanoTime();
+        sender.received(start);
+
+        // when
+        sender.maintain(start + TimeUnit.SECONDS.toNanos(15), true, () -> events.add("ping"));
+        executor.runNext();
+        sender.received(start + TimeUnit.SECONDS.toNanos(44));
+        sender.maintain(start + TimeUnit.SECONDS.toNanos(60), true, () -> events.add("ping"));
+        executor.runNext();
+        sender.maintain(start + TimeUnit.SECONDS.toNanos(89), true, () -> events.add("ping"));
+
+        // then
+        assertThat(events).containsExactly("ping", "ping", "HEARTBEAT_TIMEOUT");
+    }
+
+    @Test
     void 보낸_A_뒤_대기중_B가_최신_A로_바뀌면_B와_중복_A를_보내지_않는다() {
         // given
         var executor = new QueuedExecutor();

@@ -486,14 +486,15 @@ class PressRaceWebSocketIntegrationTest {
         initialize(observer);
         observer.snapshot(state -> state.path("baseline").booleanValue());
 
-        // when: 만료 후 화면 내용이 달라져 자동 송신 경로에서 인증을 다시 확인한다.
+        // when: 만료 뒤 화면이 바뀌더라도 만료 감시기는 변경을 기다리지 않고 연결을 종료한다.
         try (var change = java.util.concurrent.Executors.newSingleThreadScheduledExecutor()) {
             var changed = change.schedule(() -> seedScore(device, 1, UUID.randomUUID()), 6, TimeUnit.SECONDS);
 
             // then
             assertThat(observer.closed.poll(12, TimeUnit.SECONDS)).isEqualTo(1008);
             assertThat(observer.closeReasons.poll(5, TimeUnit.SECONDS)).isEqualTo("AUTH_EXPIRED");
-            changed.get(2, TimeUnit.SECONDS);
+            // JWT 초 단위 반올림으로 종료가 6초 예약 작업보다 2초 이상 빠를 수 있다.
+            changed.get(8, TimeUnit.SECONDS);
         }
     }
 

@@ -45,6 +45,152 @@ import tools.jackson.databind.json.JsonMapper;
 class PressRaceWebSocketHandlerTest {
 
     @Test
+    void 정상_입력이_DB를_기다리는_동안에도_수신_시각은_즉시_갱신한다() throws Exception {
+        // given: 단조 시각만 경계 앞으로 옮기고 서비스 대기는 래치로 제어한다.
+        try (var protocol = new Protocol(); var executor = Executors.newSingleThreadExecutor()) {
+            var socket = protocol.open("receiving");
+            long idleStart;
+            synchronized (socket.session) {
+                idleStart = System.nanoTime();
+            }
+            TimeUnit.MILLISECONDS.sleep(100);
+            UUID requestId = UUID.randomUUID();
+            CountDownLatch entered = new CountDownLatch(1);
+            CountDownLatch release = new CountDownLatch(1);
+            when(protocol.service.status(any(), any())).thenAnswer(invocation -> {
+                entered.countDown();
+                assertThat(release.await(5, TimeUnit.SECONDS)).isTrue();
+                return List.of(PressInputResult.of(requestId, "NOT_FOUND", null, null, null));
+            });
+            var receiving = executor.submit(() -> {
+                protocol.handler.handleTextMessage(socket.session, new TextMessage(
+                        "{\"v\":1,\"type\":\"press.status\",\"requestIds\":[\"" + requestId + "\"]}"));
+                return null;
+            });
+            assertThat(entered.await(5, TimeUnit.SECONDS)).isTrue();
+
+            // when: 이전 수신은 45초가 지났지만 현재 명령 수신은 아직 45초 미만이다.
+            try {
+                synchronized (socket.session) {
+                    protocol.handler.maintain(Instant.now(), idleStart + TimeUnit.SECONDS.toNanos(45));
+                }
+
+                // then: DB 처리 완료를 기다리지 않고 현재 명령 수신으로 연결을 유지한다.
+                assertThat(socket.closed.poll(200, TimeUnit.MILLISECONDS)).isNull();
+            } finally {
+                release.countDown();
+            }
+            receiving.get(2, TimeUnit.SECONDS);
+            assertThat(socket.results.poll(5, TimeUnit.SECONDS).path("status").stringValue()).isEqualTo("NOT_FOUND");
+        }
+    }
+
+    @Test
+    void 블로킹_송신_watchdog은_송신_잠금을_기다리지_않고_닫고_구독을_해제한다() throws Exception {
+        // given: 실제 TCP 송신 중단과 구분해 handler의 잠금 독립 종료를 검증한다.
+        try (var protocol = new Protocol()) {
+            var socket = protocol.open("blocked");
+            CountDownLatch entered = new CountDownLatch(1);
+            CountDownLatch release = new CountDownLatch(1);
+            socket.beforeSend.set(message -> {
+                entered.countDown();
+                try {
+                    assertThat(release.await(5, TimeUnit.SECONDS)).isTrue();
+                } catch (InterruptedException exception) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(exception);
+                }
+            });
+            protocol.publish(10, 11);
+            assertThat(entered.await(5, TimeUnit.SECONDS)).isTrue();
+
+            // when
+            try {
+                protocol.handler.maintain(Instant.now(), System.nanoTime() + TimeUnit.SECONDS.toNanos(2));
+                CloseStatus closed = socket.closed.poll(1, TimeUnit.SECONDS);
+
+                // then: 막힌 소켓을 풀기 전에 종료 콜백을 관찰한다.
+                assertThat(closed).isNotNull();
+                assertThat(closed.getReason()).isEqualTo("SEND_TIMEOUT");
+                when(protocol.reader.read()).thenThrow(new AssertionError("해제된 구독은 조회하지 않는다"));
+                protocol.publisher.refresh();
+            } finally {
+                release.countDown();
+            }
+        }
+    }
+
+    @Test
+    void Pong은_정상_수신으로_처리하고_무응답_종료는_송신과_독립적이다() throws Exception {
+        // given
+        try (var protocol = new Protocol()) {
+            var socket = protocol.open("heartbeat");
+            long now = System.nanoTime();
+
+            // when
+            synchronized (socket.session) {
+                protocol.handler.maintain(Instant.now(), now + TimeUnit.SECONDS.toNanos(15));
+            }
+            assertThat(socket.pings.poll(5, TimeUnit.SECONDS)).isNotNull();
+            protocol.handler.handlePongMessage(socket.session, new org.springframework.web.socket.PongMessage());
+            synchronized (socket.session) {
+                protocol.handler.maintain(Instant.now(), System.nanoTime() + TimeUnit.SECONDS.toNanos(44));
+            }
+            assertThat(socket.pings.poll(5, TimeUnit.SECONDS)).isNotNull();
+            assertThat(socket.closed).isEmpty();
+            synchronized (socket.session) {
+                // 제어한 미래 시각은 실제 송신이 진행 중이지 않을 때만 적용한다.
+                protocol.handler.maintain(Instant.now(), System.nanoTime() + TimeUnit.SECONDS.toNanos(45));
+            }
+
+            // then
+            assertThat(socket.closed.poll(5, TimeUnit.SECONDS).getReason()).isEqualTo("HEARTBEAT_TIMEOUT");
+        }
+    }
+
+    @Test
+    void 처리_결과는_느린_순위_송신을_기다리지_않고_FIFO로_전달한다() throws Exception {
+        // given
+        try (var protocol = new Protocol(); var executor = Executors.newSingleThreadExecutor()) {
+            var socket = protocol.open("observer");
+            CountDownLatch entered = new CountDownLatch(1);
+            CountDownLatch release = new CountDownLatch(1);
+            socket.beforeSend.set(message -> {
+                entered.countDown();
+                try {
+                    assertThat(release.await(5, TimeUnit.SECONDS)).isTrue();
+                } catch (InterruptedException exception) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(exception);
+                }
+            });
+            UUID first = UUID.randomUUID();
+            UUID second = UUID.randomUUID();
+            when(protocol.service.status(any(), any())).thenReturn(List.of(
+                    PressInputResult.of(first, "NOT_FOUND", null, null, null),
+                    PressInputResult.of(second, "NOT_FOUND", null, null, null)));
+            protocol.publish(10, 11);
+            assertThat(entered.await(5, TimeUnit.SECONDS)).isTrue();
+
+            // when: DB 결과를 송신 큐에 보관한 뒤 수신 처리는 즉시 반환한다.
+            try {
+                executor.submit(() -> {
+                    protocol.handler.handleTextMessage(socket.session, new TextMessage(
+                            "{\"v\":1,\"type\":\"press.status\",\"requestIds\":[\"" + first + "\",\"" + second + "\"]}"));
+                    return null;
+                }).get(500, TimeUnit.MILLISECONDS);
+            } finally {
+                release.countDown();
+            }
+
+            // then
+            socket.snapshot();
+            assertThat(socket.results.poll(5, TimeUnit.SECONDS).path("requestId").stringValue()).isEqualTo(first.toString());
+            assertThat(socket.results.poll(5, TimeUnit.SECONDS).path("requestId").stringValue()).isEqualTo(second.toString());
+        }
+    }
+
+    @Test
     void 입력_송신_잠금을_기다린_중간_추월은_JSON으로_내보내지_않는다() throws Exception {
         // given: DB·인증은 실제 WS 통합 테스트로 검증하고 여기서는 소켓 송신 경합을 제어한다.
         try (var protocol = new Protocol()) {
@@ -163,6 +309,7 @@ class PressRaceWebSocketHandlerTest {
         CountDownLatch blocked = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
         List<String> writerMessages = new CopyOnWriteArrayList<>();
+        CountDownLatch writerAck = new CountDownLatch(1);
         var virtualSender = new java.util.concurrent.atomic.AtomicReference<Boolean>();
         doAnswer(invocation -> {
             TextMessage message = invocation.getArgument(0);
@@ -175,6 +322,7 @@ class PressRaceWebSocketHandlerTest {
         }).when(observer).sendMessage(any());
         doAnswer(invocation -> {
             writerMessages.add(((TextMessage) invocation.getArgument(0)).getPayload());
+            writerAck.countDown();
             return null;
         }).when(writer).sendMessage(any());
         UUID requestId = UUID.randomUUID();
@@ -195,6 +343,7 @@ class PressRaceWebSocketHandlerTest {
                 });
                 // 입력 서비스의 기존 반환 경계 뒤 결과 송신이 다른 기기 I/O와 독립인지 확인한다.
                 ack.get(2, TimeUnit.SECONDS);
+                assertThat(writerAck.await(2, TimeUnit.SECONDS)).as("관찰자 송신이 막힌 동안 실제 ACK 송신").isTrue();
             } finally {
                 release.countDown();
                 handler.stopSnapshotExecutor();
@@ -234,6 +383,7 @@ class PressRaceWebSocketHandlerTest {
             var socket = new ProtocolSocket(id);
             handler.afterConnectionEstablished(socket.session);
             handler.handleTextMessage(socket.session, new TextMessage("{\"v\":1,\"type\":\"session.init\",\"view\":\"PRESS\",\"pending\":[]}"));
+            assertThat(socket.ready.poll(5, TimeUnit.SECONDS)).as("초기화 응답").isNotNull();
             return socket;
         }
 
@@ -247,6 +397,9 @@ class PressRaceWebSocketHandlerTest {
 
         private final WebSocketSession session;
         private final BlockingQueue<JsonNode> snapshots = new LinkedBlockingQueue<>();
+        private final BlockingQueue<Boolean> pings = new LinkedBlockingQueue<>();
+        private final BlockingQueue<JsonNode> ready = new LinkedBlockingQueue<>();
+        private final BlockingQueue<JsonNode> results = new LinkedBlockingQueue<>();
         private final BlockingQueue<CloseStatus> closed = new LinkedBlockingQueue<>();
         private final AtomicBoolean fail = new AtomicBoolean();
         private final AtomicBoolean open = new AtomicBoolean(true);
@@ -257,13 +410,23 @@ class PressRaceWebSocketHandlerTest {
             when(session.isOpen()).thenAnswer(invocation -> open.get());
             JsonMapper json = JsonMapper.builder().build();
             doAnswer(invocation -> {
+                if (invocation.getArgument(0) instanceof org.springframework.web.socket.PingMessage) {
+                    pings.add(true);
+                    return null;
+                }
                 JsonNode message = json.readTree(((TextMessage) invocation.getArgument(0)).getPayload());
+                if (message.path("type").stringValue().equals("session.ready")) {
+                    ready.add(message);
+                }
                 if (message.path("type").stringValue().equals("state.snapshot")) {
                     beforeSend.get().accept(message);
                     if (fail.get()) {
                         throw new IOException("제어된 소켓 송신 실패");
                     }
                     snapshots.add(message);
+                }
+                if (message.path("type").stringValue().equals("input.result")) {
+                    results.add(message);
                 }
                 return null;
             }).when(session).sendMessage(any());
