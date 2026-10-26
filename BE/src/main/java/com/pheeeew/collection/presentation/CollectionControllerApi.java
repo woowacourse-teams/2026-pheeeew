@@ -36,7 +36,7 @@ public interface CollectionControllerApi {
             늦게 저장된 카드가 이미 지나간 위치에 있으면 새로고침해야 하며 아직 읽지 않은 위치면 다음 페이지에 포함될 수 있습니다.
 
             카드 조합은 고정이지만 횟수는 각 요청 시점의 최신 집계입니다. 카드 집합이나 횟수의 스냅샷을 고정하지 않습니다.
-            반환 대상 카드의 집계 누락은 목록 전체에 500 COLLECTION-006을 반환하며 서버 오류 로그를 남깁니다.
+            카드 감정의 스탬프, 프레스 집계가 없으면 그 횟수를 0으로 반환합니다.
 
             마지막 페이지는 hasNext=false, nextCursor=null입니다. 조회는 발급이나 재추첨을 수행하지 않습니다.
             """, security = @SecurityRequirement(name = "bearerAuth"))
@@ -45,8 +45,6 @@ public interface CollectionControllerApi {
             @ApiResponse(responseCode = "400", description = "잘못된 emotion·limit 또는 COLLECTION-007: 잘못된 커서·필터 불일치, COLLECTION-008: 페이지 크기 범위 오류",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "401", description = "유효한 기기 인증 없음",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "500", description = "COLLECTION-006: 발급 카드의 활동 집계 누락",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "503", description = "COLLECTION-004: 카드 자산·이미지 주소 설정 미비",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
@@ -63,7 +61,7 @@ public interface CollectionControllerApi {
                     본인 기기가 수령한 오늘 또는 과거 카드를 조회합니다.
                     카드 조합은 수령 당시 값이며 횟수는 해당 날짜·감정의 조회 시점 누적 집계입니다.
                     늦게 저장된 활동은 다음 조회에 반영되며 자정 정산이나 최종 횟수 고정은 하지 않습니다.
-                    발급된 카드의 집계 행이 누락되면 500 COLLECTION-006을 반환하며 카드 소유와 조합은 유지합니다.
+                    카드 감정의 스탬프, 프레스 집계가 없으면 그 횟수를 0으로 반환합니다. 카드는 다섯 감정 합산 조건으로 받으므로 카드 감정에 활동이 없을 수 있습니다.
                     이미지 URL 3개로 앱에서 카드를 조합합니다. 조회는 카드를 생성하거나 재추첨하지 않습니다.
                     """,
             security = @SecurityRequirement(name = "bearerAuth")
@@ -75,8 +73,6 @@ public interface CollectionControllerApi {
             @ApiResponse(responseCode = "401", description = "유효한 기기 인증 없음",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "404", description = "COLLECTION-005: 없는 카드 또는 다른 기기 카드",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "500", description = "COLLECTION-006: 발급된 카드의 활동 집계 누락",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "503", description = "COLLECTION-004: 카드 자산·이미지 주소 설정 미비",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
@@ -92,7 +88,7 @@ public interface CollectionControllerApi {
                     인증된 기기의 한국 시간 기준 오늘 진행도를 반환합니다. 날짜와 기기는 서버가 결정합니다.
 
                     - 다섯 감정을 FRUSTRATED, IRRITATED, EXHAUSTED, DISCOURAGED, ANGRY 순서로 반환합니다.
-                    - 미발급 감정에 활동이 없으면 횟수는 0입니다. 수령 목표는 오늘 다섯 감정 합계로 스탬프 1회, 프레스 100회입니다.
+                    - 발급 여부와 관계없이 그 감정에 활동이 없으면 횟수는 0입니다. 수령 목표는 오늘 다섯 감정 합계로 스탬프 1회, 프레스 100회입니다.
                     - 프레스는 서버가 인정하여 저장한 횟수이며, 목표를 초과해도 실제 횟수를 유지합니다.
                     - 부족분은 목표에서 현재 횟수를 뺀 값이며 최소 0입니다.
                     - card는 수령 API와 같은 카드·이미지 URL 정보이며 미발급 상태이면 null입니다.
@@ -110,8 +106,6 @@ public interface CollectionControllerApi {
             @ApiResponse(responseCode = "401", description = "인증 정보 없음·유효하지 않음 또는 인증된 기기가 존재하지 않음",
                     content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "500", description = "COLLECTION-006: 발급된 카드의 활동 집계 누락",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "503", description = "COLLECTION-001: 날짜 변경 반복 또는 COLLECTION-004: 수령 카드의 자산·이미지 주소 설정 미비",
                     content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ErrorResponse.class)))
