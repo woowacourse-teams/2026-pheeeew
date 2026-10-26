@@ -25,11 +25,11 @@ public class CollectionNotificationService {
 
     private static final Duration CLAIMABLE_NOTIFICATION_DELAY = Duration.ofHours(1);
     private static final String CLAIMABLE_TYPE = "COLLECTION_CLAIMABLE";
-    private static final String CLAIMABLE_TITLE = "컬렉션 카드를 받을 수 있어요";
-    private static final String CLAIMABLE_BODY = "오늘의 감정 카드를 받아 보세요.";
+    private static final String CLAIMABLE_TITLE = "컬렉션 발급 조건 달성!";
+    private static final String CLAIMABLE_BODY = "오늘의 감정 카드를 받으세요. 카드 받으러 가기👉";
     private static final String REMINDER_TYPE = "COLLECTION_CLAIM_REMINDER";
     private static final String REMINDER_TITLE = "아직 받지 않은 카드가 있어요";
-    private static final String REMINDER_BODY = "오늘의 카드는 자정이 지나면 받을 수 없어요.";
+    private static final String REMINDER_BODY = "오늘의 카드는 자정이 지나면 받을 수 없어요. 카드 받으러 가기👉";
 
     private final CollectionProgressRepository collectionProgressRepository;
     private final DevicePushTokenRepository devicePushTokenRepository;
