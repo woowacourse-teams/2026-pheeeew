@@ -56,7 +56,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.toRoute
 import com.pheeeew.core.audio.LocalAudioFactories
 import com.pheeeew.core.designsystem.component.AppAlertDialog
 import com.pheeeew.core.designsystem.component.AppDialog
@@ -65,7 +64,6 @@ import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.core.di.AppGraph
 import com.pheeeew.core.di.UiGraph
 import com.pheeeew.core.navigation.CollectionRootDestination
-import com.pheeeew.core.navigation.DailyPressRankingDestination
 import com.pheeeew.core.navigation.DoubleBackToExitHandler
 import com.pheeeew.core.navigation.FlowBackHandler
 import com.pheeeew.core.navigation.MapRootDestination
@@ -76,7 +74,6 @@ import com.pheeeew.core.notification.NotificationClickInbox
 import com.pheeeew.core.notification.NotificationPermissionController
 import com.pheeeew.core.notification.NotificationPreferencesStore
 import com.pheeeew.data.remote.api.CollectionTodayApi
-import com.pheeeew.data.remote.api.DailyPressRankingApi
 import com.pheeeew.domain.model.device.DeviceSessionResult
 import com.pheeeew.domain.model.version.AppVersionDecision
 import com.pheeeew.feature.component.AppBottomNavigationBar
@@ -112,7 +109,6 @@ import com.pheeeew.feature.screens.onboarding.FeatureGuideScreen
 import com.pheeeew.feature.screens.onboarding.FeatureGuideState
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
 import com.pheeeew.feature.screens.press.PressRoute
-import com.pheeeew.feature.screens.ranking.press.DailyPressRankingRoute
 import com.pheeeew.feature.screens.ranking.press.PressRankingRoute
 import com.pheeeew.feature.screens.report.ReportRoute
 import com.pheeeew.feature.screens.settings.AppEntryGate
@@ -603,27 +599,20 @@ private fun AppContent(
         var collectionRefreshRevision by remember { mutableStateOf(0L) }
         val collectionApi = remember(apiDependencies) { CollectionTodayApi(apiDependencies.client.requests) }
 
-        val dailyRankingApi =
-            remember(apiDependencies) {
-                DailyPressRankingApi(apiDependencies.client.requests) {
-                    (apiDependencies.session.state.value as? DeviceSessionResult.Ready)?.access?.generation
-                }
-            }
-
         NotificationClickEffect(
             inbox = notificationClicks,
             ready =
                 mainFeaturesReady && !shouldPrepareMapDuringSplash &&
                     currentBackStackEntry != null && !isEmotionRecordFlowActive,
-            onNavigate = { destination, notificationId ->
+            onNavigate = { destination ->
                 when (destination) {
-                    is NotificationDestination.DailyPressRanking -> {
+                    NotificationDestination.Press -> {
                         isSettingsVisible = false
                         reportTarget = null
                         nearbyViewModel.dismiss()
                         detailViewModel.dismiss()
                         mapViewModel.dismissFilter()
-                        navController.navigate(DailyPressRankingDestination(destination.date, notificationId)) {
+                        navController.navigate(PressRootDestination) {
                             popUpTo<MapRootDestination>()
                             launchSingleTop = true
                         }
@@ -798,18 +787,6 @@ private fun AppContent(
                             onBack = { navController.popBackStack() },
                         )
                     }
-                }
-
-                composable<DailyPressRankingDestination> { entry ->
-                    if (!mainFeaturesReady) return@composable
-                    val target = entry.toRoute<DailyPressRankingDestination>()
-                    DailyPressRankingRoute(
-                        dailyRankingApi,
-                        target.date,
-                        target.notificationId,
-                        onBack = { navController.popBackStack() },
-                        modifier = Modifier.fillMaxSize(),
-                    )
                 }
 
                 composable<RankingRootDestination> {

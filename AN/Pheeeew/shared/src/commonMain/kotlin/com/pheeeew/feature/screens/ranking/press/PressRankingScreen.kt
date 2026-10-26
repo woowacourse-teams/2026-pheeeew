@@ -80,8 +80,6 @@ internal fun PressRankingScreen(
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
     rows: List<PressRaceRowModel> = uiState.people.toRaceRows(),
-    contextContent: @Composable () -> Unit = { RankingEncouragementBanner(Modifier.padding(horizontal = 24.dp)) },
-    myRankContent: (@Composable () -> Unit)? = null,
 ) {
     val fontScale = LocalDensity.current.fontScale
     val rankWidth = ((rows.maxOfOrNull { it.rank.toString().length } ?: 1) * 8f * fontScale).coerceAtLeast(28f).dp
@@ -112,7 +110,7 @@ internal fun PressRankingScreen(
             }
         }
         Spacer(Modifier.height(16.dp))
-        contextContent()
+        RankingEncouragementBanner(Modifier.padding(horizontal = 24.dp))
         Spacer(Modifier.height(16.dp))
         PullToRefreshBox(
             isRefreshing = uiState.isRefreshing,
@@ -124,13 +122,7 @@ internal fun PressRankingScreen(
                 contentPadding = PaddingValues(bottom = 24.dp),
             ) {
                 item {
-                    if (myRankContent !=
-                        null
-                    ) {
-                        myRankContent()
-                    } else {
-                        MyRaceRankCard(uiState.me, uiState.status, onBack, onRetry)
-                    }
+                    MyRaceRankCard(uiState.me, uiState.status, onBack, onRetry)
                     Spacer(Modifier.height(20.dp))
                     Text(
                         stringResource(Res.string.press_daily_ranking_people),

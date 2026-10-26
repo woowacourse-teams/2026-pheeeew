@@ -13,9 +13,3 @@ data object RankingRootDestination
 
 @Serializable
 data object CollectionRootDestination
-
-@Serializable
-data class DailyPressRankingDestination(
-    val date: String,
-    val notificationId: String,
-)

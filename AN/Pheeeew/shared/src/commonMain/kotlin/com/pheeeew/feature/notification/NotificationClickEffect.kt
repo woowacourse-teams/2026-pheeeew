@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.filterNotNull
 internal fun NotificationClickEffect(
     inbox: NotificationClickInbox?,
     ready: Boolean,
-    onNavigate: (NotificationDestination, String) -> Unit,
+    onNavigate: (NotificationDestination) -> Unit,
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     val navigate by rememberUpdatedState(onNavigate)
@@ -33,7 +33,7 @@ internal fun NotificationClickEffect(
         if (inbox == null || !ready) return@LaunchedEffect
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             inbox.pendingClick.filterNotNull().collect { click ->
-                navigate(NotificationClickRouter.destinationFor(click.target), click.notificationId)
+                navigate(NotificationClickRouter.destinationFor(click.target))
                 // Leave the click pending if navigation fails instead of acknowledging it early.
                 inbox.acknowledge(click.notificationId)
             }
