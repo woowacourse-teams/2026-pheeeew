@@ -101,3 +101,43 @@ private fun PressRaceFourDigitCountPreview() {
         )
     }
 }
+
+@Preview(name = "내 레이스 1위", widthDp = 402, heightDp = 874)
+@Composable
+private fun MyRaceFirstPreview() {
+    AppTheme {
+        PressRankingScreen({
+        }, PressRankingUiState(me = PressPersonRank(1, "나", 1210), status = PressRankingStatus.Ready), {
+        }, {}, rows = raceSample)
+    }
+}
+
+@Preview(name = "내 레이스 2위", widthDp = 402, heightDp = 874)
+@Composable
+private fun MyRaceSecondPreview() {
+    AppTheme {
+        PressRankingScreen({
+        }, PressRankingUiState(me = PressPersonRank(2, "나", 1008), status = PressRankingStatus.Ready), {
+        }, {}, rows = raceSample)
+    }
+}
+
+@Preview(name = "내 레이스 일반 순위", widthDp = 320, heightDp = 720)
+@Preview(name = "내 레이스 큰 글씨", widthDp = 320, heightDp = 720, fontScale = 1.5f)
+@Composable
+private fun MyRaceLargeRankPreview() {
+    AppTheme {
+        PressRankingScreen(
+            {
+            },
+            PressRankingUiState(
+                me = PressPersonRank(10000, "나", Long.MAX_VALUE),
+                status = PressRankingStatus.Ready,
+            ),
+            {
+            },
+            {},
+            rows = raceSample,
+        )
+    }
+}

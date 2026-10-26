@@ -1,6 +1,7 @@
 package com.pheeeew.feature.screens.ranking.press.components
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -10,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -22,9 +22,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
@@ -33,11 +33,25 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.feature.emotion.component.EmotionFeedbackCatalog
+import com.pheeeew.feature.emotion.model.EmotionKind
 import com.pheeeew.feature.screens.ranking.press.PressRaceRowModel
+import com.pheeeew.feature.screens.ranking.press.raceCountText
+import com.pheeeew.feature.screens.ranking.press.raceTrackPosition
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.press_race_column_count
+import pheeeew.shared.generated.resources.press_race_column_person
+import pheeeew.shared.generated.resources.press_race_column_rank
+import pheeeew.shared.generated.resources.press_race_column_track
+import pheeeew.shared.generated.resources.press_race_me
+import pheeeew.shared.generated.resources.press_race_my_row_description
+import pheeeew.shared.generated.resources.press_race_row_description
 
 private val ink = Color(0xFF202323)
 private val muted = Color(0xFF767D78)
-private val markerColors = listOf(Color(0xFFF3B8A4), Color(0xFFE5B4C8), Color(0xFFB4CCD8))
+private val raceFaces = listOf(EmotionKind.Blocked, EmotionKind.Annoyed, EmotionKind.Tired)
 
 @Composable
 internal fun PressRaceHeader(
@@ -49,13 +63,28 @@ internal fun PressRaceHeader(
         modifier.fillMaxWidth().height(28.dp).padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("순위", Modifier.width(rankWidth), fontSize = 11.sp, color = muted)
-        Text("참여자", Modifier.weight(0.85f).padding(start = 8.dp), fontSize = 11.sp, color = muted)
+        Text(
+            stringResource(Res.string.press_race_column_rank),
+            Modifier.width(rankWidth),
+            fontSize = 11.sp,
+            color = muted,
+        )
+        Text(
+            stringResource(Res.string.press_race_column_person),
+            Modifier.weight(0.85f).padding(start = 8.dp),
+            fontSize = 11.sp,
+            color = muted,
+        )
         Box(Modifier.weight(1f)) {
-            Text("레이스", fontSize = 11.sp, color = muted)
-            RaceFlag(Modifier.align(Alignment.CenterEnd).offset(x = 12.8.dp).size(16.dp))
+            Text(stringResource(Res.string.press_race_column_track), fontSize = 11.sp, color = muted)
         }
-        Text("횟수", Modifier.width(countWidth), textAlign = TextAlign.End, fontSize = 11.sp, color = muted)
+        Text(
+            stringResource(Res.string.press_race_column_count),
+            Modifier.width(countWidth),
+            textAlign = TextAlign.End,
+            fontSize = 11.sp,
+            color = muted,
+        )
     }
 }
 
@@ -66,6 +95,13 @@ internal fun PressRaceRow(
     countWidth: Dp,
     modifier: Modifier = Modifier,
 ) {
+    val description =
+        stringResource(
+            if (row.isMe) Res.string.press_race_my_row_description else Res.string.press_race_row_description,
+            row.rank.toString(),
+            row.nickname,
+            row.count.toString(),
+        )
     val shape = RoundedCornerShape(14.dp)
     val background =
         when {
@@ -81,7 +117,7 @@ internal fun PressRaceRow(
             .background(background, shape)
             .then(if (row.isMe) Modifier.border(2.dp, ink, shape) else Modifier)
             .clearAndSetSemantics {
-                contentDescription = "${row.rank}위, ${row.nickname}${if (row.isMe) ", 나" else ""}, ${row.count}회"
+                contentDescription = description
             }.padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -113,7 +149,7 @@ internal fun PressRaceRow(
             )
         }
         Text(
-            if (row.isMe) "나" else row.nickname,
+            if (row.isMe) stringResource(Res.string.press_race_me) else row.nickname,
             Modifier.weight(0.85f).padding(start = 8.dp, end = 6.dp),
             fontSize = 14.sp,
             color = ink,
@@ -121,45 +157,52 @@ internal fun PressRaceRow(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        Canvas(Modifier.weight(1f).fillMaxHeight()) {
-            val end = size.width
-            val radius = minOf(5.5.dp.toPx(), end / 2)
-            val progress = row.progress.takeIf { it.isFinite() }?.coerceIn(0f, 1f) ?: 0f
-            val x = radius + (end - radius * 2).coerceAtLeast(0f) * progress
-            val y = size.height / 2
-            drawLine(Color(0xFFE1E3DB), Offset(radius, y), Offset(end - radius, y), 3.5.dp.toPx(), StrokeCap.Round)
-            drawLine(Color(0xFFC99494), Offset(radius, y), Offset(x, y), 3.5.dp.toPx(), StrokeCap.Round)
-            drawLine(
-                Color(0xFF9B9F98),
-                Offset(end, 0f),
-                Offset(end, size.height),
-                1.dp.toPx(),
-                pathEffect = PathEffect.dashPathEffect(floatArrayOf(2.dp.toPx(), 3.dp.toPx())),
+        Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.CenterStart) {
+            Canvas(Modifier.fillMaxWidth().height(30.dp)) {
+                val y = size.height / 2
+                drawLine(Color(0xFFE0E4DA), Offset(0f, y), Offset(size.width, y), 7.dp.toPx(), StrokeCap.Round)
+                val step = 15.dp.toPx()
+                var x = 0f
+                while (x < size.width) {
+                    drawLine(
+                        Color.White,
+                        Offset(x, y),
+                        Offset((x + 5.dp.toPx()).coerceAtMost(size.width), y),
+                        1.dp.toPx(),
+                    )
+                    x += step
+                }
+            }
+            Image(
+                painterResource(EmotionFeedbackCatalog.face(raceFaces[row.markerIndex.mod(raceFaces.size)])),
+                contentDescription = null,
+                modifier =
+                    Modifier.fillMaxWidth().layout { measurable, constraints ->
+                        val faceSize = minOf(30.dp.roundToPx(), constraints.maxWidth)
+                        val placeable =
+                            measurable.measure(
+                                constraints.copy(
+                                    minWidth = faceSize,
+                                    maxWidth = faceSize,
+                                    minHeight = faceSize,
+                                    maxHeight = faceSize,
+                                ),
+                            )
+                        val available = constraints.maxWidth
+                        layout(available, placeable.height) {
+                            val x =
+                                (
+                                    (available - placeable.width).coerceAtLeast(
+                                        0,
+                                    ) * raceTrackPosition(row.progress)
+                                ).toInt()
+                            placeable.placeRelative(x, 0)
+                        }
+                    },
             )
-            val trailStart = (x - radius - 7.dp.toPx()).coerceAtLeast(0f)
-            drawLine(
-                muted,
-                Offset(trailStart, y - 2.dp.toPx()),
-                Offset(
-                    (x - radius - 1.dp.toPx()).coerceAtLeast(0f),
-                    y - 2.dp.toPx(),
-                ),
-                1.dp.toPx(),
-            )
-            drawLine(
-                muted,
-                Offset(trailStart, y + 2.dp.toPx()),
-                Offset(
-                    (x - radius - 3.dp.toPx()).coerceAtLeast(0f),
-                    y + 2.dp.toPx(),
-                ),
-                1.dp.toPx(),
-            )
-            drawCircle(markerColors[row.markerIndex.mod(markerColors.size)], radius, Offset(x, y))
-            drawCircle(ink, radius, Offset(x, y), style = Stroke(1.dp.toPx()))
         }
         Text(
-            "${row.count}회",
+            raceCountText(row.count),
             Modifier.width(countWidth).padding(start = 4.dp),
             color = ink,
             fontSize = 12.sp,

@@ -284,4 +284,36 @@
     <string name="press_race_entered">▲ 순위권 진입!</string>
     <string name="press_race_overtaken">▲ %1$s명 추월!</string>
     <string name="press_race_overtaken_by">▼ %1$s명이 앞질렀어</string>
+
+    <string name="press_daily_ranking_title">전체 순위</string>
+    <string name="press_daily_ranking_back">뒤로 가기</string>
+    <string name="press_daily_ranking_period">일일 랭킹</string>
+    <string name="press_daily_ranking_people">함께 달리는 사람들</string>
+    <string name="press_daily_ranking_refresh_error">랭킹을 새로고침하지 못했어요.</string>
+    <string name="press_daily_ranking_empty">아직 참여자가 없어요.</string>
+    <string name="press_my_rank_loading">내 순위를 확인하고 있어요</string>
+    <string name="press_my_rank_failed">내 순위를 불러오지 못했어요</string>
+    <string name="press_my_rank_empty">아직 순위가 없어요</string>
+    <string name="press_my_rank_invite">첫 프레스를 남겨볼까요?</string>
+    <string name="press_my_rank_go">프레스 하러 가기 →</string>
+    <string name="press_my_rank_retry">다시 시도</string>
+    <string name="press_my_rank_description">오늘 내 순위 %1$s위, %2$s회 프레스</string>
+    <string name="press_my_rank_title">오늘 나의 레이스</string>
+    <string name="press_my_rank_position">%1$s위</string>
+    <string name="press_my_rank_count">%1$s 프레스</string>
+    <string name="press_my_rank_first">선두에서 달리는 중!</string>
+    <string name="press_my_rank_top_three">멋지게 달리고 있어요!</string>
+    <string name="press_my_rank_running">내 페이스로 달리는 중!</string>
+    <string name="press_race_column_rank">순위</string>
+    <string name="press_race_column_person">참여자</string>
+    <string name="press_race_column_track">레이스</string>
+    <string name="press_race_column_count">횟수</string>
+    <string name="press_race_me">나</string>
+    <string name="press_race_row_description">%1$s위, %2$s, %3$s회</string>
+    <string name="press_race_my_row_description">%1$s위, %2$s, 나, %3$s회</string>
+    <string name="press_race_count_exact">%1$s회</string>
+    <string name="press_race_count_man">%1$s만 회</string>
+    <string name="press_race_count_eok">%1$s억 회</string>
+    <string name="press_race_count_jo">%1$s조 회</string>
+    <string name="press_race_count_gyeong">%1$s경 회</string>
 </resources>
