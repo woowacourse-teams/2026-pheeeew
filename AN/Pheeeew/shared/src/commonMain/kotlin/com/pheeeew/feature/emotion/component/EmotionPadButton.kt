@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import com.pheeeew.feature.emotion.model.EmotionFaceVisual
 import com.pheeeew.feature.emotion.model.EmotionKind
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -67,6 +68,7 @@ private val emotionInk = Color(0xFF242725)
 @Composable
 internal fun EmotionPadButton(
     kind: EmotionKind,
+    faceVisual: EmotionFaceVisual? = null,
     emotionLabel: String,
     count: Long,
     countPlaceholder: String?,
@@ -198,21 +200,23 @@ internal fun EmotionPadButton(
                 contentDescription = null,
                 modifier = Modifier.size((105 * unit).dp, (110 * unit).dp),
             )
-            Image(
-                painter = painterResource(EmotionFeedbackCatalog.buttonFace(kind)),
-                contentDescription = null,
-                modifier =
-                    Modifier
-                        .requiredSize((110 * unit).dp, (115 * unit).dp)
-                        .graphicsLayer {
-                            val transform = motion.sample(frameTime.value)
-                            transformOrigin = TransformOrigin(.5f, .8f)
-                            // Keep the idle face lifted; the 4dp press travel lands it at the base center.
-                            translationY = (transform.y.toFloat() - 4f) * density.density
-                            scaleX = transform.scale.toFloat()
-                            scaleY = scaleX
-                        }.testTag("emotion-surface-${kind.name}"),
-            )
+            val faceModifier =
+                Modifier
+                    .requiredSize(
+                        ((if (faceVisual == null) 110 else PressFaceCatalog.CANVAS_SIZE) * unit).dp,
+                        ((if (faceVisual == null) 115 else PressFaceCatalog.CANVAS_SIZE) * unit).dp,
+                    ).graphicsLayer {
+                        val transform = motion.sample(frameTime.value)
+                        transformOrigin = TransformOrigin(.5f, .8f)
+                        translationY = (transform.y.toFloat() - 4f) * density.density
+                        scaleX = transform.scale.toFloat()
+                        scaleY = scaleX
+                    }.testTag("emotion-surface-${kind.name}")
+            if (faceVisual == null) {
+                Image(painterResource(EmotionFeedbackCatalog.buttonFace(kind)), null, faceModifier)
+            } else {
+                PressFaceArtwork(kind, faceVisual, reducedMotion, faceModifier)
+            }
         }
         Column(
             modifier = Modifier.offset(y = (116 * unit).dp).width((105 * unit).dp),
