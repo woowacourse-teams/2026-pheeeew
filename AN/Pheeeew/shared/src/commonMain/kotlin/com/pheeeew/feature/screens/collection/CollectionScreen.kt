@@ -251,7 +251,7 @@ fun CollectionScreen(
                                 selectedCardId = card.id
                                 onCardClick(card.id)
                             },
-                            modifier = Modifier.weight(1f).padding(top = 20.dp),
+                            modifier = Modifier.weight(1f),
                         )
                     } else {
                         CollectionAlbumSectionWithSavedState(
@@ -519,41 +519,35 @@ private fun CollectionScreenHeader(
 ) {
     Column(
         modifier = modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 16.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        Text(
+            text = stringResource(Res.string.collection_title),
+            fontSize = 24.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = AppColors.GroupInk,
+            modifier = Modifier.semantics { heading() },
+        )
+        Text(
+            text = stringResource(Res.string.collection_subtitle, nickname),
+            fontSize = 12.sp,
+            color = AppColors.TextSecondary,
+            modifier = Modifier.padding(top = 4.dp),
+        )
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(top = 32.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Bottom,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column {
-                Text(
-                    text = stringResource(Res.string.collection_title),
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = AppColors.GroupInk,
-                    modifier = Modifier.semantics { heading() },
-                )
-                Text(
-                    text = stringResource(Res.string.collection_subtitle, nickname),
-                    fontSize = 12.sp,
-                    color = AppColors.TextSecondary,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-            }
             Text(
                 text = stringResource(Res.string.collection_card_count, cardCount.toString()),
                 fontSize = 12.sp,
                 color = AppColors.TextSecondary,
             )
+            CollectionViewModeToggle(
+                selectedMode = viewMode,
+                onModeChange = onViewModeChange,
+            )
         }
-        Spacer(Modifier.height(8.dp))
-        CollectionViewModeToggle(
-            selectedMode = viewMode,
-            onModeChange = onViewModeChange,
-            modifier = Modifier.align(Alignment.End),
-        )
     }
 }
 
@@ -673,7 +667,7 @@ private fun CollectionCoverFlow(
     }
     Column(modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
-            val paginationHeight = 48.dp
+            val paginationHeight = 56.dp
             val cardHeight = (maxHeight - paginationHeight).coerceAtLeast(0.dp)
             val availableWidth = maxWidth
             val cardWidth = minOf(availableWidth * 0.76f, cardHeight * 0.75f)
@@ -750,7 +744,7 @@ private fun CollectionCoverFlow(
                     color = selectedEmotion?.representativeColor ?: AppColors.TextSecondary,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 12.dp),
+                    modifier = Modifier.padding(top = 20.dp),
                 )
                 Row(
                     Modifier.padding(top = 8.dp),
