@@ -104,7 +104,7 @@ public class NotificationDispatcher {
 
     private void warnIfClaimLost(boolean recorded, NotificationOutbox outbox) {
         if (!recorded) {
-            log.warn("선점을 잃어 결과를 기록하지 못했습니다. outboxId={}", outbox.id());
+            log.warn("선점을 잃어 결과를 기록하지 못했습니다. type={}, outboxId={}", outbox.type(), outbox.id());
         }
     }
 
@@ -137,7 +137,8 @@ public class NotificationDispatcher {
         try {
             return pushSender.send(target.token(), outbox.message());
         } catch (RuntimeException exception) {
-            log.warn("알림을 보내지 못했습니다. outboxId={}, deviceId={}", outbox.id(), outbox.deviceId(), exception);
+            log.warn("알림을 보내지 못했습니다. type={}, outboxId={}, deviceId={}",
+                    outbox.type(), outbox.id(), outbox.deviceId(), exception);
             return PushSendResult.RETRYABLE;
         }
     }
