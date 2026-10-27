@@ -176,11 +176,19 @@ class PressOperationsProxyIntegrationTest {
 
         command(List.of("docker", "restart", green.getContainerId()), fixture, Map.of());
         await(() -> appHealthy(green), "후보 재시작 완료");
+        assertThat(connected.closed.poll(8, TimeUnit.SECONDS)).as("재시작으로 기존 연결 종료").isNotNull();
+        SocketListener restarted = connect(NORMAL_WS);
+        initialize(restarted, List.of(), "session.ready");
+        long beforeStop = total();
         operator("emergency-stop", greenName());
 
         assertThat(scalar("SELECT enabled::text FROM press_race_control")).isEqualTo("false");
         assertThat(gateMode(green)).isEqualTo("CLOSED");
-        assertThat(connected.closed.poll(8, TimeUnit.SECONDS)).isNotNull();
+        assertThat(restarted.closed.poll(8, TimeUnit.SECONDS)).as("긴급 OFF로 재시작 후 연결 종료").isNotNull();
+        assertThat(press().statusCode()).isEqualTo(503);
+        SocketListener rejected = connect(NORMAL_WS);
+        assertThat(rejected.receive("protocol.error").path("code").stringValue()).isEqualTo("SERVER_DRAINING");
+        assertTotals(beforeStop);
         JsonNode journal = json.readTree(Files.readString(work.resolve(".press-deploy.json")));
         assertThat(journal.path("phase").stringValue()).isEqualTo("EMERGENCY_OFF_CONFIRMED");
         assertThat(journal.path("target_identity").toString()).isEqualTo(recorded);
