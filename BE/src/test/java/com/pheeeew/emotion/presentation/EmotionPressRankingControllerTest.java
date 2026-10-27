@@ -11,12 +11,14 @@ import com.pheeeew.auth.infra.security.SecurityConfig;
 import com.pheeeew.auth.presentation.config.AuthWebMvcConfig;
 import com.pheeeew.auth.presentation.resolver.CurrentDeviceArgumentResolver;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
+import com.pheeeew.emotion.application.dto.EmotionDailyPressRankingItem;
 import com.pheeeew.emotion.application.dto.EmotionDailyPressRankingResult;
 import com.pheeeew.emotion.application.dto.EmotionPressRankingItem;
 import com.pheeeew.emotion.application.dto.EmotionPressRankingResult;
 import com.pheeeew.emotion.application.dto.EmotionStatePressRankingResult;
 import com.pheeeew.emotion.application.query.EmotionPressRankingService;
 import com.pheeeew.emotion.domain.EmotionState;
+import com.pheeeew.emotion.domain.repository.projection.DeviceDailyPressSum;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -260,7 +262,8 @@ class EmotionPressRankingControllerTest {
     void date_로_그_날짜의_순위를_조회한다() {
         // given
         when(emotionPressRankingService.findDailyPressRanking(DEVICE_PUBLIC_ID, 조회_날짜))
-                .thenReturn(일별_순위표(내_항목));
+                .thenReturn(일별_순위표(EmotionDailyPressRankingItem.of(2,
+                        DeviceDailyPressSum.of("지친다람쥐", 388, true, EmotionState.EXHAUSTED))));
 
         // when
         RestTestClient.ResponseSpec 응답 = 조회한다(DAILY_RANKING_URI + "?date=2026-10-21", "access-token");
@@ -273,6 +276,8 @@ class EmotionPressRankingControllerTest {
                 .jsonPath("$.endAt").isEqualTo("2026-10-21T15:00:00Z")
                 .jsonPath("$.items[0].rank").isEqualTo(1)
                 .jsonPath("$.items[0].mine").doesNotExist()
+                .jsonPath("$.items[0].representativeState").isEqualTo("IRRITATED")
+                .jsonPath("$.me.representativeState").isEqualTo("EXHAUSTED")
                 .jsonPath("$.me.rank").isEqualTo(2)
                 .jsonPath("$.me.pressCount").isEqualTo(388);
         verify(emotionPressRankingService).findDailyPressRanking(DEVICE_PUBLIC_ID, 조회_날짜);
@@ -317,12 +322,28 @@ class EmotionPressRankingControllerTest {
         verifyNoInteractions(emotionPressRankingService);
     }
 
-    private EmotionDailyPressRankingResult 일별_순위표(EmotionPressRankingItem me) {
+    @Test
+    void 일일_대표_감정_추가_후에도_null_me와_식별자_비노출을_유지한다() {
+        // given
+        when(emotionPressRankingService.findDailyPressRanking(DEVICE_PUBLIC_ID, 조회_날짜))
+                .thenReturn(일별_순위표(null));
+
+        // when
+        String 본문 = 본문을_받는다(DAILY_RANKING_URI + "?date=2026-10-21");
+
+        // then
+        assertThat(본문).contains("\"representativeState\":\"IRRITATED\"")
+                .contains("\"me\":null")
+                .doesNotContain("mine", "deviceId", "publicId", DEVICE_PUBLIC_ID.toString());
+    }
+
+    private EmotionDailyPressRankingResult 일별_순위표(EmotionDailyPressRankingItem me) {
         return EmotionDailyPressRankingResult.of(
                 조회_날짜,
                 Instant.parse("2026-10-20T15:00:00Z"),
                 Instant.parse("2026-10-21T15:00:00Z"),
-                List.of(new EmotionPressRankingItem(1, "한숨많은곰", 412, false)),
+                List.of(EmotionDailyPressRankingItem.of(1,
+                        DeviceDailyPressSum.of("한숨많은곰", 412, false, EmotionState.IRRITATED))),
                 me
         );
     }
