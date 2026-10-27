@@ -61,6 +61,8 @@ class PressRaceSessionTest {
                 assertEquals(PressRacePhase.Ready, session.state.value.phase)
                 assertEquals(1, socket.sent.size)
                 assertNull(session.state.value.snapshot)
+                assertTrue(session.state.value.isAwaitingSnapshot)
+                assertNull(session.state.value.currentSnapshot)
                 socket.incoming.send(snapshot("1", PressRaceView.PRESS))
                 runCurrent()
                 assertEquals(
@@ -377,6 +379,94 @@ class PressRaceSessionTest {
             assertTrue(backgroundScope.coroutineContext[Job]!!.isActive)
         }
 
+    @Test
+    fun viewChangeKeepsCachedSnapshotButWaitsForNewBaseline() =
+        runTest {
+            val transport = FakeTransport()
+            val session = session(transport, backgroundScope)
+            try {
+                session.setView(PressRaceView.PRESS)
+                runCurrent()
+                val socket = transport.connections.single()
+                socket.incoming.send(ready())
+                socket.incoming.send(snapshot("1", PressRaceView.PRESS))
+                runCurrent()
+                assertEquals(
+                    "1",
+                    session.state.value.currentSnapshot
+                        ?.snapshotVersion,
+                )
+                session.setView(PressRaceView.ALL)
+                runCurrent()
+                assertTrue(session.state.value.isAwaitingSnapshot)
+                assertNull(session.state.value.currentSnapshot)
+                assertEquals(
+                    "1",
+                    session.state.value.snapshot
+                        ?.snapshotVersion,
+                )
+                socket.incoming.send(
+                    snapshot("2", PressRaceView.ALL, baseline = false),
+                )
+                runCurrent()
+                assertNull(session.state.value.currentSnapshot)
+                socket.incoming.send(snapshot("3", PressRaceView.ALL))
+                runCurrent()
+                assertFalse(session.state.value.isAwaitingSnapshot)
+                assertEquals(
+                    "3",
+                    session.state.value.currentSnapshot
+                        ?.snapshotVersion,
+                )
+            } finally {
+                session.close()
+            }
+        }
+
+    @Test
+    fun readyAfterReentryDoesNotExposeOldRankAsCurrentAndOldCloseCannotFailNewConnection() =
+        runTest {
+            val transport = FakeTransport()
+            val session = session(transport, backgroundScope)
+            try {
+                session.setView(PressRaceView.PRESS)
+                runCurrent()
+                val old = transport.connections.single()
+                old.incoming.send(ready())
+                old.incoming.send(snapshot("10", PressRaceView.PRESS))
+                runCurrent()
+                session.setView(null)
+                runCurrent()
+                assertNull(session.state.value.currentSnapshot)
+                session.setView(PressRaceView.PRESS)
+                runCurrent()
+                val current = transport.connections.last()
+                current.incoming.send(ready())
+                runCurrent()
+                assertEquals(PressRacePhase.Ready, session.state.value.phase)
+                assertEquals(
+                    "10",
+                    session.state.value.snapshot
+                        ?.snapshotVersion,
+                )
+                assertTrue(session.state.value.isAwaitingSnapshot)
+                assertNull(session.state.value.currentSnapshot)
+                old.finish(PressRaceClose(1008, "AUTH_EXPIRED"))
+                runCurrent()
+                assertEquals(PressRacePhase.Ready, session.state.value.phase)
+                assertNull(session.state.value.failure)
+                current.incoming.send(snapshot("1", PressRaceView.PRESS))
+                runCurrent()
+                assertEquals(
+                    "1",
+                    session.state.value.currentSnapshot
+                        ?.snapshotVersion,
+                )
+            } finally {
+                session.close()
+            }
+        }
+
     private fun session(
         transport: FakeTransport,
         scope: CoroutineScope,
@@ -448,6 +538,7 @@ private fun snapshot(
     view: PressRaceView,
     date: String = "2026-10-26",
     server: String = "s1",
+    baseline: Boolean = true,
 ): String {
     val participant = PressRaceParticipant(null, null, 0, null, false)
     val data =
@@ -462,7 +553,7 @@ private fun snapshot(
             participant,
             emptyList(),
             emptyList(),
-            true,
+            baseline,
             PressRaceOvertakes(0, 0),
         )
     return JsonObject(

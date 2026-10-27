@@ -40,7 +40,6 @@ internal class PressRaceSession(
     private var writer: Job? = null
     private var outgoing: Channel<String>? = null
     private var version: String? = null
-    private var awaitingBaseline = true
     private var initializedView: PressRaceView? = null
 
     init {
@@ -87,11 +86,18 @@ internal class PressRaceSession(
         if (current.view == view && current.phase != PressRacePhase.Failed) return
         if (view == null) {
             stopConnection()
-            publish { it.copy(phase = PressRacePhase.Disconnected, view = null, ready = null, failure = null) }
+            publish {
+                it.copy(
+                    phase = PressRacePhase.Disconnected,
+                    view = null,
+                    ready = null,
+                    failure = null,
+                    isAwaitingSnapshot = false,
+                )
+            }
             return
         }
-        publish { it.copy(view = view, failure = null) }
-        awaitingBaseline = true
+        publish { it.copy(view = view, failure = null, isAwaitingSnapshot = true) }
         if (current.phase == PressRacePhase.Ready) {
             send(PressRaceProtocol.changeView(view))
         } else if (current.phase != PressRacePhase.Connecting && current.phase != PressRacePhase.Initializing) {
@@ -103,7 +109,7 @@ internal class PressRaceSession(
     private fun startConnection() {
         val attempt = ++epoch
         version = null
-        publish { it.copy(phase = PressRacePhase.Connecting, ready = null, failure = null) }
+        publish { it.copy(phase = PressRacePhase.Connecting, ready = null, failure = null, isAwaitingSnapshot = true) }
         opening =
             scope.launch {
                 var opened: PressRaceConnection? = null
@@ -179,7 +185,7 @@ internal class PressRaceSession(
                     require(ready.serverGeneration.isNotBlank() && ready.connectionGeneration.isNotBlank())
                     require(ready.counts.values.all { it >= 0L })
                     if (state.value.phase != PressRacePhase.Initializing) return
-                    publish { it.copy(phase = PressRacePhase.Ready, ready = ready) }
+                    publish { it.copy(phase = PressRacePhase.Ready, ready = ready, isAwaitingSnapshot = true) }
                     // Also covers a target changed while init was in flight. A baseline is requested once.
                     state.value.view
                         ?.takeIf { it != initializedView }
@@ -195,7 +201,7 @@ internal class PressRaceSession(
                         return
                     }
                     if (snapshot.view != state.value.view) return
-                    if (awaitingBaseline && !snapshot.baseline) return
+                    if (state.value.isAwaitingSnapshot && !snapshot.baseline) return
                     require(snapshot.activeCount >= 0L)
                     if (version?.let { compareSnapshotVersions(snapshot.snapshotVersion, it) <= 0 } == true) return
                     compareSnapshotVersions(snapshot.snapshotVersion, "0")
@@ -207,8 +213,7 @@ internal class PressRaceSession(
                             }?.date ?: ready.date
                     if (snapshot.date < previousDate) return
                     version = snapshot.snapshotVersion
-                    awaitingBaseline = false
-                    publish { it.copy(snapshot = snapshot) }
+                    publish { it.copy(snapshot = snapshot, isAwaitingSnapshot = false) }
                 }
 
                 is PressRaceMessage.Error -> {
@@ -264,7 +269,7 @@ internal class PressRaceSession(
 
     private suspend fun fail(failure: PressRaceFailure) {
         stopConnection()
-        publish { it.copy(phase = PressRacePhase.Failed, ready = null, failure = failure) }
+        publish { it.copy(phase = PressRacePhase.Failed, ready = null, failure = failure, isAwaitingSnapshot = false) }
     }
 
     private suspend fun stopConnection() {
@@ -281,7 +286,6 @@ internal class PressRaceSession(
         connection = null
         if (previous != null) dispose(previous)
         version = null
-        awaitingBaseline = true
         initializedView = null
     }
 
@@ -305,7 +309,14 @@ internal class PressRaceSession(
     fun close() {
         if (!closed.compareAndSet(false, true)) return
         mutableState.update {
-            it.copy(phase = PressRacePhase.Closed, view = null, ready = null, snapshot = null, failure = null)
+            it.copy(
+                phase = PressRacePhase.Closed,
+                view = null,
+                ready = null,
+                snapshot = null,
+                failure = null,
+                isAwaitingSnapshot = false,
+            )
         }
         events.close()
         scope.cancel()
