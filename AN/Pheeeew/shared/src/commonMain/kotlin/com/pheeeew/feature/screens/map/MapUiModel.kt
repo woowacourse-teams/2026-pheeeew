@@ -12,6 +12,7 @@ data class MapUiModel(
     val mapError: MapErrorUiModel? = null,
     val isRetryingMap: Boolean = false,
     val isOffline: Boolean = false,
+    val isFilterApplied: Boolean = false,
     val locationError: LocationError? = null,
     val mapRevision: Int = 0,
     val cameraCommand: MapCameraCommandUiModel? = null,
