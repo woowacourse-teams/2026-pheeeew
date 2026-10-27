@@ -8,6 +8,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.rememberScrollableState
 import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.Arrangement
@@ -40,17 +42,15 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.SaveableStateHolder
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -66,6 +66,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -112,7 +115,6 @@ import pheeeew.shared.generated.resources.ic_emotion_frustrated
 import kotlin.math.absoluteValue
 
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
 fun CollectionScreen(
     uiModel: CollectionScreenUiModel,
     onSaveCard: (cardId: String, capture: suspend () -> ByteArray) -> Unit,
@@ -143,12 +145,21 @@ fun CollectionScreen(
         }
     val pagerState = rememberPagerState { coverFlowItems.size.coerceAtLeast(1) }
     val albumStateHolder = rememberSaveableStateHolder()
-    val pullToRefreshState = rememberPullToRefreshState()
-    // Forward vertical drags to PullToRefreshBox even when the content only scrolls horizontally.
+    // Forward vertical drags to the refresh connection when content only scrolls horizontally.
     val coverFlowDragState = rememberScrollableState { 0f }
     val hapticFeedback = LocalHapticFeedback.current
     val pullDistance = with(LocalDensity.current) { 56.dp.toPx() }
     val unavailableState =
+    val scope = rememberCoroutineScope()
+    val latestRefresh by rememberUpdatedState(onRefresh)
+    val isPullEnabled by rememberUpdatedState(!uiModel.isRefreshRequestActive)
+    val pullState =
+        remember(scope, pullDistance, hapticFeedback) {
+            CollectionPullRefreshState(scope, pullDistance, { isPullEnabled }) {
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+                latestRefresh()
+            }
+        }
         collectionUnavailableState(
             hasContent = uiModel.cards.isNotEmpty() || uiModel.pendingProgress != null,
             isLoading = uiModel.isLoadingCards || uiModel.todayLoading || uiModel.isRefreshRequestActive,
@@ -177,32 +188,42 @@ fun CollectionScreen(
     Column(
         modifier = modifier.fillMaxSize().background(AppColors.GroupBackground).statusBarsPadding(),
     ) {
-        PullToRefreshBox(
-            isRefreshing = uiModel.isRefreshIndicatorVisible,
-            onRefresh = {
-                hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-                onRefresh()
-            },
-            state = pullToRefreshState,
-            enabled = !uiModel.isRefreshRequestActive,
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-            indicator = {
-                if (pullToRefreshState.distanceFraction >= 0.3f && !uiModel.isRefreshRequestActive) {
-                    Text(
-                        text = "당겨서 새로고침",
-                        color = AppColors.TextSecondary,
-                        fontSize = 10.sp,
-                        modifier = Modifier.align(Alignment.TopCenter).padding(top = 2.dp),
-                    )
-                }
-            },
+        Box(
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .nestedScroll(pullState)
+                    .pointerInput(pullState) {
+                        awaitEachGesture {
+                            awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                            pullState.beginGesture()
+                            var released = false
+                            try {
+                                do {
+                                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                                    released = event.changes.none { it.pressed }
+                                } while (!released)
+                            } finally {
+                                pullState.release(cancelled = !released)
+                            }
+                        }
+                    },
         ) {
             Box(Modifier.fillMaxSize()) {
+            if (pullState.offset >= pullDistance * 0.3f && !uiModel.isRefreshRequestActive) {
+                Text(
+                    text = "당겨서 새로고침",
+                    color = AppColors.TextSecondary,
+                    fontSize = 10.sp,
+                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 2.dp),
+                )
+            }
                 Column(
                     Modifier
                         .fillMaxSize()
                         .graphicsLayer {
-                            translationY = pullToRefreshState.distanceFraction.coerceIn(0f, 1f) * pullDistance
+                            translationY = pullState.offset
                         }.scrollable(
                             state = coverFlowDragState,
                             orientation = Orientation.Vertical,

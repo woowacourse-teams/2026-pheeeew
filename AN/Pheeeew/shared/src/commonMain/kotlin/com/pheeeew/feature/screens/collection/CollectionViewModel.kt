@@ -154,6 +154,7 @@ internal class CollectionViewModel(
         resetToTop: Boolean,
         showIndicator: Boolean,
         cancelInFlight: Boolean = false,
+        resetToTopAfterLoad: Boolean = false,
     ) {
         val generation = sessionGeneration ?: return
         if (refreshJob?.isActive == true) {
@@ -215,6 +216,8 @@ internal class CollectionViewModel(
                             it.copy(
                                 isRefreshRequestActive = false,
                                 isRefreshIndicatorVisible = false,
+                                scrollToTopRequestId =
+                                    if (resetToTopAfterLoad) it.scrollToTopRequestId + 1 else it.scrollToTopRequestId,
                             )
                         }
                         refreshJob = null
@@ -376,7 +379,12 @@ internal class CollectionViewModel(
                             claimOutcomeUnknown = false,
                         )
                     }
-                    refresh(resetToTop = false, showIndicator = false, cancelInFlight = true)
+                    refresh(
+                        resetToTop = false,
+                        showIndicator = false,
+                        cancelInFlight = true,
+                        resetToTopAfterLoad = true,
+                    )
                 }
 
                 is CollectionResult.Failure -> {
