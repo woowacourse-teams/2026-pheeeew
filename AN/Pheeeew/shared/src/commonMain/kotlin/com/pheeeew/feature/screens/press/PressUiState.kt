@@ -5,6 +5,8 @@ import com.pheeeew.domain.model.press.MyDailyPressSnapshot
 import com.pheeeew.feature.emotion.model.EmotionKind
 
 internal data class PressUiState(
+    val nearbyRanking: PressNearbyRankingUiState = PressNearbyRankingUiState(status = PressNearbyRankingStatus.Loading),
+    val activity: PressActivityUiState = PressActivityUiState(),
     val myToday: MyDailyPressSnapshot? = null,
     val allToday: AllDailyPressSnapshot? = null,
     val isLoadingMy: Boolean = true,
