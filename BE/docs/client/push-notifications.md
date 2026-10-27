@@ -1,6 +1,6 @@
 # 푸시 알림 발송과 표시 계약
 
-관련 이슈: [#929](https://github.com/woowacourse-teams/2026-pheeeew/issues/929), [#933](https://github.com/woowacourse-teams/2026-pheeeew/issues/933), [#934](https://github.com/woowacourse-teams/2026-pheeeew/issues/934), [#935](https://github.com/woowacourse-teams/2026-pheeeew/issues/935)
+관련 이슈: [#929](https://github.com/woowacourse-teams/2026-pheeeew/issues/929), [#933](https://github.com/woowacourse-teams/2026-pheeeew/issues/933), [#934](https://github.com/woowacourse-teams/2026-pheeeew/issues/934), [#935](https://github.com/woowacourse-teams/2026-pheeeew/issues/935), [#988](https://github.com/woowacourse-teams/2026-pheeeew/issues/988)
 
 ## 역할 구분
 
@@ -16,12 +16,13 @@
 
 | 알림 | 수신 설정 | 보내는 조건 |
 | --- | --- | --- |
-| 컬렉션 발급 가능 | `collectionClaimableEnabled` | 그날 처음 발급 가능한 것을 확인하고 1시간 뒤에도 오늘 카드를 받지 않았을 때. 기기마다 하루 한 번 |
-| 컬렉션 리마인더 | `collectionClaimableEnabled` | 매일 23:00 KST 에 발급 가능한데 오늘 카드를 받지 않았을 때 |
-| 순위 하락 | `rankChangedEnabled` | 매시 정각(KST)에 개인 일별 프레스 순위를 1시간 전과 비교해, 1시간 전 5위 안이던 기기의 순위가 내려갔을 때 |
+| 컬렉션 발급 가능 | `collectionClaimableEnabled` | 그날 처음 발급 가능한 것을 확인하고 1시간 뒤에도 오늘 카드를 받지 않았을 때. 기기마다 하루 한 번. 보낼 시각이 23:00 KST 이후가 되면 보내지 않고 컬렉션 리마인더가 대신합니다 |
+| 컬렉션 리마인더 | `collectionClaimableEnabled` | 매일 23:00 KST 에 발급 가능한데 오늘 카드를 받지 않았을 때. 23:00 이후에 처음 발급 가능해진 기기는 발급 가능 알림과 리마인더 모두 받지 않습니다 |
+| 순위 하락 | `rankChangedEnabled` | 5분마다(KST 기준 매시 00분, 05분, ... 55분) 개인 일별 프레스 순위를 직전 비교와 비교해, 직전 비교 때 5위 안이던 기기의 순위가 내려갔을 때 |
 
 - 발급 가능은 오늘 이 기기의 스탬프 합계 1개 이상, 프레스 합계 100회 이상(다섯 감정 합)이고 오늘 받은 카드가 없는 상태입니다.
 - 카드는 기기마다 하루 한 장입니다. 오늘 카드를 한 장이라도 받았으면 그날 컬렉션 알림 대상이 아닙니다. 1시간 대기 중에 받으면 보내지 않고, 받은 뒤 활동이 늘어도 다시 세지 않습니다.
+- 컬렉션 발급 가능과 컬렉션 리마인더는 각각 기기마다 하루 한 번만 시도합니다. 보낼 때 수신 설정이 꺼져 있거나 푸시 등록 값이 없어 보내지 못했다면, 그날 설정을 다시 켜거나 등록 값을 보내도 그 알림은 다시 보내지 않습니다.
 - 5위 안에서 내려가거나(2위에서 3위) 5위 밖으로 밀리면(5위에서 6위) 보냅니다. 오른 것(3위에서 2위, 6위에서 5위)과 5위 밖에서만 내려간 것(6위에서 7위)은 보내지 않습니다. 동점은 같은 순위입니다.
 - 순위는 `GET /api/v2/emotions/press-rankings/daily` 와 같은 규칙입니다.
 - 자정에 하루 집계가 초기화되면서 바뀌는 것은 변동으로 보지 않습니다. 그날 첫 비교는 기준만 잡고 보내지 않습니다.
@@ -40,9 +41,16 @@ FCM 메시지는 `notification`(제목, 본문)과 `data` 를 함께 담습니�
 
 | 알림 | `data.type` | 나머지 `data` |
 | --- | --- | --- |
-| 순위 하락 | `RANK_DROPPED` | `date`(집계일, KST, `yyyy-MM-dd`), `previousRank`(1시간 전 순위), `currentRank`(현재 순위) |
+| 순위 하락 | `RANK_DROPPED` | `date`(집계일, KST, `yyyy-MM-dd`), `previousRank`(직전 비교 때 순위), `currentRank`(현재 순위) |
 
 - 순위는 정수 문자열입니다(예: `"3"`).
+
+## 발송 시점과 한계
+
+- 서버는 FCM 이 메시지를 접수하면 보낸 것으로 기록합니다. 기기 전원, 네트워크, OS 알림 권한, 앱 처리에 따라 표시되지 않을 수 있습니다.
+- 일시 오류가 나면 짧은 간격으로 다시 보냅니다(순위 하락은 1분, 2분 뒤, 컬렉션 알림은 1분, 5분, 15분 뒤). 그래서 알림이 늦게 도착하거나, 드물게 같은 알림이 두 번 올 수 있습니다.
+- 자정(KST)이 지나면 그날 알림은 보내지 않습니다. 순위 하락 알림은 그 비교 시각(00분, 05분, ... 55분)부터 5분 안에 보내지 못하면 보내지 않습니다.
+- 서버 점검이나 장애 동안에는 순위 변동을 감지하지 못합니다. 복구 뒤 첫 비교의 `previousRank` 는 5분 전이 아니라 마지막으로 비교했던 때의 순위입니다.
 
 ## 표시 정책
 
