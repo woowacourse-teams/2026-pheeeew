@@ -47,4 +47,17 @@ data class DeviceSessionBuildConfig(
 }
 
 /** Selected once when the app graph is created; there is no runtime fallback. */
-enum class PressInputMode { HTTP, WEBSOCKET_DEVELOPMENT }
+enum class PressInputMode {
+    HTTP,
+    WEBSOCKET_DEVELOPMENT,
+    ;
+
+    companion object {
+        fun fromBuildValue(value: String): PressInputMode =
+            when (value) {
+                "http" -> HTTP
+                "ws" -> WEBSOCKET_DEVELOPMENT
+                else -> error("Unknown press input build mode")
+            }
+    }
+}

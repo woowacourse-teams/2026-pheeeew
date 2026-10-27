@@ -1,6 +1,6 @@
 package com.pheeeew.data.press.race
 
-internal enum class PressRacePhase { Disconnected, Connecting, Initializing, Ready, Failed, Closed }
+internal enum class PressRacePhase { Disconnected, Connecting, Initializing, Ready, Settled, Failed, Closed }
 
 internal enum class PressRaceFailureKind { Authentication, Transport, Protocol }
 
@@ -21,6 +21,10 @@ internal data class PressRaceSessionState(
     /** Ready only completes initialization; this stays true until the current view baseline arrives. */
     val isAwaitingSnapshot: Boolean = false,
     val failure: PressRaceFailure? = null,
+    /** Remains true through backoff/connect/init until a fresh baseline is accepted. */
+    val isRecovering: Boolean = false,
+    /** Server-observed date lower bound, retained across sockets. */
+    val dateFloor: String? = null,
 ) {
     /** A cached snapshot must never be mistaken for fresh data after init or view change. */
     val currentSnapshot: PressRaceSnapshot?

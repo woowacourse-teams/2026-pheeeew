@@ -55,7 +55,11 @@ internal class PressRankingViewModel(
     fun onRefresh() {
         val state = rankings.state.value
         if (state.session.view != PressRaceView.ALL) return
-        if (state.session.phase != PressRacePhase.Failed && !state.isFresh(PressRaceView.ALL)) return
+        if (state.session.phase !in setOf(PressRacePhase.Failed, PressRacePhase.Settled) &&
+            !state.isFresh(PressRaceView.ALL)
+        ) {
+            return
+        }
         if (userRefreshPending) return
         userRefreshPending = state.all != null
         mutableUiState.value = mutableUiState.value.copy(isRefreshing = userRefreshPending)
@@ -66,7 +70,7 @@ internal class PressRankingViewModel(
 internal fun PressRaceRankingState.toRankingUiState(): PressRankingUiState {
     val snapshot = cached(PressRaceView.ALL)
     val fresh = isFresh(PressRaceView.ALL)
-    val failed = session.phase == PressRacePhase.Failed
+    val failed = session.isRecovering || session.phase == PressRacePhase.Failed
     return PressRankingUiState(
         date = snapshot?.date,
         people = snapshot?.top100.orEmpty().mapNotNull { it.toPersonRank(snapshot?.me?.publicId) },

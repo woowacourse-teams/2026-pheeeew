@@ -15,6 +15,43 @@ import kotlin.test.assertTrue
 
 class PressRaceUiMapperTest {
     @Test
+    fun knownFailureStaysUnknownThroughoutRetryButKeepsSameDateRows() {
+        val me = PressRaceParticipant("me", "name", 10, 2, true)
+        val initial = state(me, listOf(me))
+        for (phase in listOf(
+            PressRacePhase.Failed,
+            PressRacePhase.Connecting,
+            PressRacePhase.Initializing,
+            PressRacePhase.Ready,
+            PressRacePhase.Settled,
+        )) {
+            val recovering =
+                initial.copy(
+                    session =
+                        initial.session.copy(
+                            phase = phase,
+                            isAwaitingSnapshot = true,
+                            isRecovering = true,
+                        ),
+                )
+            assertEquals(PressActivityStatus.Unknown, recovering.toActivity().status)
+            assertNull(recovering.toActivity().count)
+            assertEquals(PressNearbyRankingStatus.Reconnecting, recovering.toNearbyRanking().status)
+            assertEquals(initial.toNearbyRanking().rows, recovering.toNearbyRanking().rows)
+        }
+        val nextDay =
+            initial.update(
+                initial.session.copy(
+                    phase = PressRacePhase.Connecting,
+                    ready = null,
+                    isRecovering = true,
+                    dateFloor = "2026-10-28",
+                ),
+            )
+        assertTrue(nextDay.toNearbyRanking().rows.isEmpty())
+    }
+
+    @Test
     fun participantKeySurvivesCrossingsAndNicknameChangesButNotDateChanges() {
         val before = PressNearbyRankRow(10, "same", 10, true, "me")
         val after = before.copy(rank = 9, nickname = "renamed", count = 13)

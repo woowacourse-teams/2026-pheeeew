@@ -7,7 +7,10 @@ import io.ktor.http.Url
 import io.ktor.http.encodedPath
 
 /** Uses the API environment, not the Swagger host. Credentials and queries never belong in this URL. */
-internal fun pressRaceUrl(config: ApiConfig): Url {
+internal fun pressRaceUrl(
+    config: ApiConfig,
+    endpoint: PressRaceEndpoint = PressRaceEndpoint.Competition,
+): Url {
     val base = Url(config.baseUrl)
     require(base.protocol == URLProtocol.HTTPS && base.host.isNotBlank())
     require(base.encodedPath.isEmpty() || base.encodedPath == "/") { "API base URL must be an origin" }
@@ -20,6 +23,10 @@ internal fun pressRaceUrl(config: ApiConfig): Url {
     return URLBuilder(base)
         .apply {
             protocol = URLProtocol.WSS
-            encodedPath = "/api/v1/press-race"
+            encodedPath =
+                when (endpoint) {
+                    PressRaceEndpoint.Competition -> "/api/v1/press-race"
+                    PressRaceEndpoint.RecoveryOnly -> "/api/v1/press-race/recovery"
+                }
         }.build()
 }

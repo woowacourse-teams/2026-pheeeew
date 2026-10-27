@@ -4,9 +4,14 @@ import com.pheeeew.core.network.AccessToken
 import com.pheeeew.core.network.ApiConfig
 
 /** Owns a dedicated WS client. The app-session owner closes it, never an individual screen. */
+internal enum class PressRaceEndpoint { Competition, RecoveryOnly }
+
 internal interface PressRaceTransport {
     /** Cancellation while opening must dispose the entire attempt, including a late Upgrade. */
-    suspend fun connect(accessToken: AccessToken): PressRaceConnection
+    suspend fun connect(
+        accessToken: AccessToken,
+        endpoint: PressRaceEndpoint = PressRaceEndpoint.Competition,
+    ): PressRaceConnection
 
     fun close()
 }

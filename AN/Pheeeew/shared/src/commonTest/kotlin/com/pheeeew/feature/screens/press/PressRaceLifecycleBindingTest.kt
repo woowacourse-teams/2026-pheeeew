@@ -4,12 +4,36 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import com.pheeeew.data.press.race.PressRaceDiagnostic
 import com.pheeeew.data.press.race.PressRaceView
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class PressRaceLifecycleBindingTest {
+    @Test
+    fun recordsVisibilityCauseSeparatelyFromSocketFailureWithoutClosingTwice() {
+        val lifecycle = TestLifecycle(Lifecycle.State.RESUMED)
+        val targets = mutableListOf<PressRaceView?>()
+        val reasons = mutableListOf<PressRaceDiagnostic>()
+        val binding = PressRaceLifecycleBinding(lifecycle, targets::add, reasons::add)
+        binding.attach()
+        binding.update(PressRaceView.PRESS, true)
+        lifecycle.event(Lifecycle.Event.ON_PAUSE)
+        lifecycle.event(Lifecycle.Event.ON_STOP)
+        assertEquals(listOf(PressRaceDiagnostic.LifecyclePaused), reasons)
+        lifecycle.event(Lifecycle.Event.ON_RESUME)
+        binding.update(PressRaceView.PRESS, false)
+        assertEquals(PressRaceDiagnostic.FeatureDisabled, reasons.last())
+        binding.update(PressRaceView.PRESS, true)
+        binding.update(null, true)
+        assertEquals(PressRaceDiagnostic.ViewHidden, reasons.last())
+        binding.update(PressRaceView.PRESS, true)
+        binding.dispose()
+        assertEquals(PressRaceDiagnostic.BindingDisposed, reasons.last())
+        assertEquals(4, targets.count { it == null })
+    }
+
     @Test
     fun screenSwitchDoesNotInsertDisconnectAndRecompositionDoesNotRetry() {
         val lifecycle = TestLifecycle(Lifecycle.State.RESUMED)

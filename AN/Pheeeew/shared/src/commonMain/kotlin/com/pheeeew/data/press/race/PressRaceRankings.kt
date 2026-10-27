@@ -32,7 +32,7 @@ internal data class PressRaceRankingState(
                     it.serverGeneration == ready?.serverGeneration &&
                         it.connectionGeneration == ready?.connectionGeneration
                 }?.date
-        val date = current?.date ?: listOfNotNull(ready?.date, currentGenerationDate).maxOrNull()
+        val date = listOfNotNull(current?.date, ready?.date, currentGenerationDate, next.dateFloor).maxOrNull()
         val retainedPress = press?.takeIf { date == null || it.date == date }
         val retainedAll = all?.takeIf { date == null || it.date == date }
         return copy(

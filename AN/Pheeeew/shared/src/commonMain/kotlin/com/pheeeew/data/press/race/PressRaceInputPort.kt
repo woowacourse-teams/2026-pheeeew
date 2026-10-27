@@ -14,6 +14,9 @@ internal interface PressRaceInputPort {
 
     fun observeInputs(observer: PressRaceInputObserver)
 
+    /** One request per expired input generation; the session owns connection recovery. */
+    fun requestRecovery(generation: String)
+
     /** beforeAttempt runs immediately before send, and may refuse an expired/cancelled input. */
     suspend fun sendInput(
         text: String,

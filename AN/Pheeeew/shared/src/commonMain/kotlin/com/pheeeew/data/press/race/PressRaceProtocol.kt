@@ -4,6 +4,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -67,6 +68,11 @@ internal data class PressRacePendingInput(
 )
 
 internal sealed interface PressRaceMessage {
+    /** Same accounting baseline as ready, but never permits inputs or rank subscriptions. */
+    data class Recovered(
+        val value: PressRaceReady,
+    ) : PressRaceMessage
+
     data class InputResult(
         val value: PressRaceInputResult,
         val server: String,
@@ -167,6 +173,12 @@ internal object PressRaceProtocol {
         val version = root["v"]?.jsonPrimitive
         require(version != null && !version.isString && version.intOrNull == 1)
         return when (root["type"]?.jsonPrimitive?.content) {
+            "session.recovered" -> {
+                val enabled = root["inputEnabled"]?.jsonPrimitive
+                require(enabled != null && !enabled.isString && enabled.booleanOrNull == false)
+                PressRaceMessage.Recovered(json.decodeFromJsonElement(PressRaceReady.serializer(), root))
+            }
+
             "session.ready" -> {
                 PressRaceMessage.Ready(json.decodeFromJsonElement(PressRaceReady.serializer(), root))
             }

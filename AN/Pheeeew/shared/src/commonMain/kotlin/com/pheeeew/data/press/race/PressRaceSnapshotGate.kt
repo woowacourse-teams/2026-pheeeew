@@ -30,7 +30,14 @@ internal class PressRaceSnapshotGate {
                     it.serverGeneration == ready.serverGeneration &&
                         it.connectionGeneration == ready.connectionGeneration
                 }?.date ?: ready.date
-        if (snapshot.date < previousDate) return false
+        require(
+            snapshot.date.matches(Regex("[0-9]{4}-[0-9]{2}-[0-9]{2}")) &&
+                com.pheeeew.domain.model.emotion.SearchDate
+                    .parse(snapshot.date) != null,
+        )
+        if (snapshot.date < previousDate || state.dateFloor?.let { snapshot.date < it } == true) return false
+        if (snapshot.date > previousDate && !snapshot.baseline) return false
+        if (snapshot.baseline) require(snapshot.overtakes.passed == 0L && snapshot.overtakes.passedBy == 0L)
         version = snapshot.snapshotVersion
         return true
     }
