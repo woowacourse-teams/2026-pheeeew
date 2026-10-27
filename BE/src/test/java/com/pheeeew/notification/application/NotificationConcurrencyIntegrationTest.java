@@ -6,6 +6,7 @@ import static com.pheeeew.emotion.fixture.DeviceDailyPressFixture.개인_프레�
 import static com.pheeeew.notification.domain.outbox.NotificationOutboxType.COLLECTION_CLAIMABLE;
 import static com.pheeeew.notification.domain.outbox.NotificationOutboxType.COLLECTION_CLAIM_REMINDER;
 import static com.pheeeew.notification.domain.outbox.NotificationOutboxType.RANK_DROPPED;
+import static com.pheeeew.notification.fixture.NotificationOutboxFixture.기기의_작업;
 import static com.pheeeew.notification.fixture.NotificationOutboxFixture.기기의_작업들;
 import static com.pheeeew.notification.fixture.NotificationOutboxFixture.날짜의_회차들;
 import static com.pheeeew.notification.fixture.NotificationOutboxFixture.리마인더_작업;
@@ -34,6 +35,8 @@ import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.notification.domain.NotificationRankRound;
 import com.pheeeew.notification.domain.PushSendResult;
 import com.pheeeew.notification.domain.outbox.CollectionClaimableOutbox;
+import com.pheeeew.notification.domain.outbox.CollectionReminderOutbox;
+import com.pheeeew.notification.domain.outbox.NotificationOutbox;
 import com.pheeeew.notification.domain.outbox.NotificationOutboxType;
 import com.pheeeew.notification.domain.outbox.RankDroppedOutbox;
 import com.pheeeew.notification.domain.repository.CollectionClaimableOutboxRepository;
@@ -44,6 +47,8 @@ import com.pheeeew.notification.domain.repository.NotificationRankRoundRepositor
 import com.pheeeew.notification.domain.repository.RankDroppedOutboxRepository;
 import com.pheeeew.notification.fixture.NotificationOutboxFixture.작업;
 import com.pheeeew.support.PostgisDataJpaTest;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -53,6 +58,8 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
@@ -62,6 +69,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -70,6 +78,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.stubbing.Answer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Limit;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
@@ -87,6 +96,8 @@ class NotificationConcurrencyIntegrationTest {
     private static final Instant 오전_10시 = 한국_시각("2026-11-02T10:00:00");
     private static final Instant 오전_10시_5분 = 한국_시각("2026-11-02T10:05:00");
     private static final Duration 대기_상한 = Duration.ofSeconds(10);
+    private static final Duration 일분 = Duration.ofMinutes(1);
+
     @Autowired
     private RankChangeNotificationService rankService;
 
@@ -97,6 +108,9 @@ class NotificationConcurrencyIntegrationTest {
     private NotificationDispatcher dispatcher;
 
     @Autowired
+    private NotificationOutboxService outboxService;
+
+    @Autowired
     private DeviceRepository devices;
 
     @Autowired
@@ -104,6 +118,9 @@ class NotificationConcurrencyIntegrationTest {
 
     @Autowired
     private JdbcClient jdbc;
+
+    @Autowired
+    private DataSource dataSource;
 
     @MockitoSpyBean
     private NotificationRankRoundRepository rounds;
@@ -338,6 +355,86 @@ class NotificationConcurrencyIntegrationTest {
         assertThat(멈춘_동안_다른_유형_발송).isTrue();
         assertThat(멈춘_작업_상태).isEqualTo("PENDING");
         assertThat(응답_뒤_멈춘_유형_발송).isTrue();
+    }
+
+    @Test
+    void 다른_세션이_잠근_작업은_건너뛰고_다음_작업을_선점한다() throws Exception {
+        // given
+        Instant 지금 = 한국_시각("2026-11-02T22:00:00");
+        CollectionReminderOutbox 잠긴_작업 = reminderOutboxes.save(
+                리마인더_작업(토큰이_있는_기기("locked").getId(), DAY, 지금.minus(Duration.ofMinutes(2)), 다음_날_자정()));
+        CollectionReminderOutbox 다음_작업 = reminderOutboxes.save(
+                리마인더_작업(토큰이_있는_기기("next").getId(), DAY, 지금.minus(일분), 다음_날_자정()));
+
+        try (Connection 잠근_연결 = dataSource.getConnection()) {
+            잠근_연결.setAutoCommit(false);
+            try (PreparedStatement 잠금 = 잠근_연결.prepareStatement(
+                    "SELECT id FROM collection_reminder_outbox WHERE id = ? FOR UPDATE")) {
+                잠금.setLong(1, 잠긴_작업.getId());
+                잠금.executeQuery().close();
+            }
+
+            // when
+            Optional<NotificationOutbox> 선점한_작업;
+            try (ExecutorService executor = Executors.newSingleThreadExecutor()) {
+                Future<Optional<NotificationOutbox>> 선점 = executor.submit(() -> outboxService.claim(
+                        COLLECTION_CLAIM_REMINDER, UUID.randomUUID(), 지금.plus(일분), 지금));
+                try {
+                    선점한_작업 = 선점.get(대기_상한.toSeconds(), TimeUnit.SECONDS);
+                } finally {
+                    잠근_연결.rollback();
+                }
+            }
+
+            // then
+            assertThat(선점한_작업).map(NotificationOutbox::getId).contains(다음_작업.getId());
+        }
+    }
+
+    @Test
+    void 재선점이_커밋되기_전에_시작한_늦은_기록도_재선점_커밋_뒤_거부된다() throws Exception {
+        // given
+        Device device = 토큰이_있는_기기("reminder");
+        Instant 처음_선점 = 한국_시각("2026-11-02T22:00:00");
+        reminderOutboxes.saveIfAbsent(리마인더_작업(device.getId(), DAY, 처음_선점, 다음_날_자정()));
+        NotificationOutbox 늦은_작업 = outboxService.claim(
+                COLLECTION_CLAIM_REMINDER, UUID.randomUUID(), 처음_선점.plus(일분), 처음_선점).orElseThrow();
+        Instant 다시_선점 = 처음_선점.plus(일분);
+        UUID 새_선점 = UUID.randomUUID();
+        CountDownLatch 재선점이_행을_잠그고_멈춤 = new CountDownLatch(1);
+        CountDownLatch 커밋_허용 = new CountDownLatch(1);
+        Answer<?> 실제_조회 = 실제_동작(reminderOutboxes);
+        doAnswer(invocation -> {
+            Object claimable = 실제_조회.answer(invocation);
+            재선점이_행을_잠그고_멈춤.countDown();
+            커밋_허용.await(대기_상한.toSeconds(), TimeUnit.SECONDS);
+            return claimable;
+        }).when(reminderOutboxes).findClaimable(any(Instant.class), any(Limit.class));
+
+        // when
+        Optional<NotificationOutbox> 재선점;
+        boolean 늦은_기록;
+        try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
+            Future<Optional<NotificationOutbox>> 재선점_실행 = executor.submit(() -> outboxService.claim(
+                    COLLECTION_CLAIM_REMINDER, 새_선점, 다시_선점.plus(일분), 다시_선점));
+            assertThat(재선점이_행을_잠그고_멈춤.await(대기_상한.toSeconds(), TimeUnit.SECONDS)).isTrue();
+            Future<Boolean> 늦은_기록_실행 = executor.submit(() ->
+                    outboxService.markSent(늦은_작업, 다시_선점.plusSeconds(1)));
+            잠금을_기다리는_세션이_생길_때까지_기다린다("collection_reminder_outbox");
+            커밋_허용.countDown();
+            재선점 = 재선점_실행.get(대기_상한.toSeconds(), TimeUnit.SECONDS);
+            늦은_기록 = 늦은_기록_실행.get(대기_상한.toSeconds(), TimeUnit.SECONDS);
+        }
+
+        // then
+        assertThat(재선점).map(NotificationOutbox::getClaimToken).contains(새_선점);
+        assertThat(늦은_기록).isFalse();
+        작업 진행_중 = 기기의_작업(jdbc, device.getId(), COLLECTION_CLAIM_REMINDER.name());
+        assertThat(진행_중.status()).isEqualTo("PENDING");
+        assertThat(진행_중.claimToken()).isEqualTo(새_선점);
+        assertThat(진행_중.attemptCount()).isEqualTo(2);
+        assertThat(진행_중.resultCode()).isNull();
+        assertThat(진행_중.finishedAt()).isNull();
     }
 
     private Device 토큰이_있는_기기(String token) {
