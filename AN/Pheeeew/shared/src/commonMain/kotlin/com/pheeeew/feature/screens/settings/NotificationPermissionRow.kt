@@ -92,7 +92,7 @@ internal fun NotificationPermissionRow(controller: NotificationPermissionControl
         )
     }
     if (dialogVisible && authorization != null && !state.loading) {
-        val needsRequest = authorization == NotificationAuthorization.NOT_DETERMINED
+        val needsRequest = state.canRequestAuthorization
         ConfirmDialog(
             title =
                 stringResource(
@@ -102,7 +102,14 @@ internal fun NotificationPermissionRow(controller: NotificationPermissionControl
                         Res.string.notification_permission_title
                     },
                 ),
-            content = stringResource(authorization.description()),
+            content =
+                stringResource(
+                    if (authorization == NotificationAuthorization.DENIED && state.canRequestAuthorization) {
+                        Res.string.notification_permission_request_body
+                    } else {
+                        authorization.description()
+                    },
+                ),
             confirmText =
                 stringResource(
                     if (needsRequest) {

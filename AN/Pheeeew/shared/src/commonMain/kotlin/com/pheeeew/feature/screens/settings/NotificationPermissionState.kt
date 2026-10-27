@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.asStateFlow
 
 internal data class NotificationPermissionUiState(
     val authorization: NotificationAuthorization? = null,
+    val canRequestAuthorization: Boolean = false,
     val loading: Boolean = false,
     val failed: Boolean = false,
 )
@@ -25,7 +26,10 @@ internal class NotificationPermissionState(
         mutableState.value = NotificationPermissionUiState(loading = true)
         try {
             val authorization = controller.authorization()
-            if (request == generation) mutableState.value = NotificationPermissionUiState(authorization = authorization)
+            val canRequest = controller.canRequestAuthorization()
+            if (request == generation) {
+                mutableState.value = NotificationPermissionUiState(authorization, canRequestAuthorization = canRequest)
+            }
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {
@@ -34,10 +38,12 @@ internal class NotificationPermissionState(
     }
 
     suspend fun requestPermission() {
-        // iOS cannot show the permission prompt again after a user has denied it.
-        if (state.value.authorization != NotificationAuthorization.NOT_DETERMINED) return
         mutableState.value = NotificationPermissionUiState(loading = true)
         try {
+            if (!controller.canRequestAuthorization()) {
+                refresh()
+                return
+            }
             controller.requestAuthorization()
             refresh()
         } catch (cancelled: CancellationException) {

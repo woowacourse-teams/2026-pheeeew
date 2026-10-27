@@ -201,10 +201,10 @@ fun SettingsScreen(
                         notificationPermissionContent = {
                             notificationPermissionController?.let { controller ->
                                 SettingsDivider()
+                                NotificationPermissionRow(controller)
                                 if (notificationPreferencesStore != null) {
+                                    SettingsDivider()
                                     NotificationSettingsRows(controller, notificationPreferencesStore)
-                                } else {
-                                    NotificationPermissionRow(controller)
                                 }
                             }
                         },
