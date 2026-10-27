@@ -6,6 +6,7 @@ import com.pheeeew.data.press.race.transport.PressRaceConnection
 import com.pheeeew.data.press.race.transport.PressRaceTransport
 import com.pheeeew.data.press.race.transport.PressRaceUpgradeException
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -27,18 +28,40 @@ internal class PressRaceSession(
     private val transport: PressRaceTransport,
     private val tokens: AccessTokenProvider,
     parentScope: CoroutineScope,
-) {
+) : PressRaceInputPort {
     private val scope = CoroutineScope(parentScope.coroutineContext + SupervisorJob(parentScope.coroutineContext[Job]))
     private val events = Channel<Event>(Channel.UNLIMITED)
     private val mutableState = MutableStateFlow(PressRaceSessionState())
-    val state = mutableState.asStateFlow()
+    override val state = mutableState.asStateFlow()
     private val closed = MutableStateFlow(false)
-    private var epoch = 0L
+    private val currentEpoch = MutableStateFlow(0L)
+    private var epoch: Long
+        get() = currentEpoch.value
+        set(value) {
+            currentEpoch.value = value
+        }
     private var connection: PressRaceConnection? = null
     private var opening: Job? = null
     private var receiver: Job? = null
     private var writer: Job? = null
-    private var outgoing: Channel<String>? = null
+    private val outgoing = MutableStateFlow<Channel<Outgoing>?>(null)
+    private val inputObserver = MutableStateFlow<PressRaceInputObserver?>(null)
+
+    override fun observeInputs(observer: PressRaceInputObserver) {
+        check(inputObserver.compareAndSet(null, observer))
+    }
+
+    override suspend fun sendInput(
+        text: String,
+        generation: String,
+        beforeAttempt: suspend () -> Boolean,
+    ): Boolean {
+        val completion = CompletableDeferred<Boolean>()
+        val command = Outgoing(text, generation, beforeAttempt, completion)
+        if (outgoing.value?.trySend(command)?.isSuccess != true) return false
+        return completion.await()
+    }
+
     private val snapshots = PressRaceSnapshotGate()
     private var initializedView: PressRaceView? = null
 
@@ -80,7 +103,13 @@ internal class PressRaceSession(
                             val view = state.value.view ?: continue
                             startWriter(event.connection, event.epoch)
                             initializedView = view
-                            if (send(PressRaceProtocol.initialize(view))) receive(event.connection, event.epoch)
+                            val pending = inputObserver.value?.pending().orEmpty()
+                            if (send(
+                                    PressRaceProtocol.initialize(view, pending),
+                                )
+                            ) {
+                                receive(event.connection, event.epoch)
+                            }
                         }
                     }
 
@@ -210,11 +239,22 @@ internal class PressRaceSession(
                     require(ready.serverGeneration.isNotBlank() && ready.connectionGeneration.isNotBlank())
                     require(ready.counts.values.all { it >= 0L })
                     if (state.value.phase != PressRacePhase.Initializing) return
+                    inputObserver.value?.ready(ready)
                     publish { it.copy(phase = PressRacePhase.Ready, ready = ready, isAwaitingSnapshot = true) }
                     // Also covers a target changed while init was in flight. A baseline is requested once.
                     state.value.view
                         ?.takeIf { it != initializedView }
                         ?.let { send(PressRaceProtocol.changeView(it)) }
+                }
+
+                is PressRaceMessage.InputResult -> {
+                    val ready = state.value.ready ?: return
+                    if (state.value.phase != PressRacePhase.Ready || message.server != ready.serverGeneration ||
+                        message.connection != ready.connectionGeneration
+                    ) {
+                        return
+                    }
+                    inputObserver.value?.result(message.value)
                 }
 
                 is PressRaceMessage.Snapshot -> {
@@ -256,12 +296,33 @@ internal class PressRaceSession(
         socket: PressRaceConnection,
         attempt: Long,
     ) {
-        val queue = Channel<String>(Channel.UNLIMITED)
-        outgoing = queue
+        val queue = Channel<Outgoing>(32, onUndeliveredElement = { it.completion?.complete(false) })
+        outgoing.value = queue
         writer =
             scope.launch {
                 try {
-                    for (text in queue) socket.send(text)
+                    for (command in queue) {
+                        try {
+                            val current = state.value
+                            val allowed =
+                                attempt == epoch && (
+                                    command.generation == null ||
+                                        (
+                                            current.phase == PressRacePhase.Ready &&
+                                                current.ready?.connectionGeneration == command.generation
+                                        )
+                                )
+                            if (allowed && (command.beforeAttempt?.invoke() != false)) {
+                                if (attempt != epoch || !currentCoroutineContext().isActive) continue
+                                socket.send(command.text)
+                                command.completion?.complete(true)
+                            } else {
+                                command.completion?.complete(false)
+                            }
+                        } finally {
+                            command.completion?.complete(false)
+                        }
+                    }
                 } catch (cancelled: CancellationException) {
                     if (!currentCoroutineContext().isActive) throw cancelled
                     events.trySend(Event.Failed(attempt, PressRaceFailure(PressRaceFailureKind.Transport)))
@@ -272,7 +333,11 @@ internal class PressRaceSession(
     }
 
     // A connection has one writer; slow sends must not block the actor's deactivate/close handling.
-    private fun send(text: String): Boolean = outgoing?.trySend(text)?.isSuccess == true
+    private fun send(text: String): Boolean {
+        val accepted = outgoing.value?.trySend(Outgoing(text))?.isSuccess == true
+        if (!accepted) events.trySend(Event.Failed(epoch, PressRaceFailure(PressRaceFailureKind.Transport)))
+        return accepted
+    }
 
     private suspend fun fail(failure: PressRaceFailure) {
         stopConnection()
@@ -283,8 +348,8 @@ internal class PressRaceSession(
         epoch++
         opening?.cancelAndJoin()
         opening = null
-        outgoing?.close()
-        outgoing = null
+        outgoing.value?.cancel()
+        outgoing.value = null
         writer?.cancelAndJoin()
         writer = null
         receiver?.cancelAndJoin()
@@ -325,6 +390,8 @@ internal class PressRaceSession(
                 isAwaitingSnapshot = false,
             )
         }
+        outgoing.value?.cancel()
+        outgoing.value = null
         events.close()
         scope.cancel()
         transport.close()
@@ -342,6 +409,13 @@ internal class PressRaceSession(
             closeCode = reason?.code,
             code = reason?.reason?.takeIf { it.matches(Regex("[A-Z0-9_]{1,64}")) },
         )
+
+    private data class Outgoing(
+        val text: String,
+        val generation: String? = null,
+        val beforeAttempt: (suspend () -> Boolean)? = null,
+        val completion: CompletableDeferred<Boolean>? = null,
+    )
 
     private sealed interface Event {
         data class Refresh(

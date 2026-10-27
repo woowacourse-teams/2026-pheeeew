@@ -12,6 +12,8 @@ internal data class PressUiState(
     val isLoadingMy: Boolean = true,
     val isLoadingAll: Boolean = true,
     val isSending: Boolean = false,
+    val isInputEnabled: Boolean = true,
+    val isOutcomeUnknown: Boolean = false,
     val pendingPressCount: Long = 0L,
     val optimisticPressCounts: Map<EmotionKind, Long> = emptyMap(),
     val optimisticAllPressCount: Long = 0L,

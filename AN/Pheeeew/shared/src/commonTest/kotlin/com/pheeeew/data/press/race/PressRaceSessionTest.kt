@@ -12,6 +12,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -508,6 +509,91 @@ class PressRaceSessionTest {
             } finally {
                 session.close()
             }
+        }
+
+    @Test
+    fun inputUsesSameWriterAndFiltersOldEnvelopeWithoutDroppingCurrentResult() =
+        runTest {
+            val transport = FakeTransport()
+            val session = session(transport, backgroundScope)
+            val results = mutableListOf<PressRaceInputResult>()
+            val pending = PressRacePendingInput("original-id", "old-generation", mapOf("ANGRY" to 2))
+            session.observeInputs(
+                object : PressRaceInputObserver {
+                    override suspend fun pending() = listOf(pending)
+
+                    override suspend fun ready(value: PressRaceReady) = Unit
+
+                    override suspend fun result(value: PressRaceInputResult) {
+                        results += value
+                    }
+                },
+            )
+            session.setView(PressRaceView.PRESS)
+            runCurrent()
+            val socket = transport.connections.single()
+            assertTrue(socket.sent.single().contains("old-generation"))
+            socket.incoming.send(ready())
+            runCurrent()
+            var attempts = 0
+            backgroundScope.launch {
+                session.sendInput(PressRaceProtocol.submit(pending), "c1") {
+                    attempts++
+                    true
+                }
+            }
+            runCurrent()
+            assertEquals(1, attempts)
+            assertEquals(2, socket.sent.size)
+            assertTrue(socket.sent.last().contains("old-generation"))
+            for (generation in listOf("old", "c1")) {
+                socket.incoming.send(
+                    """{"v":1,"type":"input.result","serverGeneration":"s1",
+                "connectionGeneration":"$generation","requestId":"original-id","status":"PENDING"}""",
+                )
+            }
+            runCurrent()
+            assertEquals(1, results.size)
+            session.close()
+        }
+
+    @Test
+    fun cancelledQueueDoesNotMarkNeverSentInputAsAttempted() =
+        runTest {
+            val gate = CompletableDeferred<Unit>()
+            val transport = FakeTransport(sendGate = gate)
+            val session = session(transport, backgroundScope)
+            session.setView(PressRaceView.PRESS)
+            runCurrent()
+            transport.connections
+                .single()
+                .incoming
+                .send(ready())
+            runCurrent()
+            var attempts = 0
+            val completion = CompletableDeferred<Boolean>()
+            backgroundScope.launch {
+                completion.complete(
+                    session.sendInput("input", "c1") {
+                        attempts++
+                        true
+                    },
+                )
+            }
+            runCurrent()
+            session.setView(null)
+            runCurrent()
+            assertEquals(0, attempts)
+            assertFalse(completion.await())
+            gate.complete(Unit)
+            runCurrent()
+            assertTrue(
+                transport.connections
+                    .single()
+                    .sent
+                    .isEmpty(),
+            )
+            session.close()
         }
 
     private fun session(

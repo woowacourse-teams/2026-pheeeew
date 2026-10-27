@@ -41,6 +41,7 @@ import com.pheeeew.feature.screens.press.component.PressRankingEntry
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.press_count_unavailable
+import pheeeew.shared.generated.resources.press_race_input_recovery_required
 import pheeeew.shared.generated.resources.press_screen_subtitle
 import pheeeew.shared.generated.resources.press_screen_title
 
@@ -102,6 +103,15 @@ internal fun PressScreen(
                 modifier = Modifier.align(Alignment.End).padding(horizontal = 24.dp),
             )
             PressNearbyRankingCard(nearbyRanking, Modifier.padding(horizontal = 24.dp), activity = activity)
+            if (!uiState.isInputEnabled && uiState.isOutcomeUnknown) {
+                Text(
+                    stringResource(Res.string.press_race_input_recovery_required),
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                    color = AppColors.TextPrimary,
+                    fontFamily = font,
+                    fontSize = 12.sp,
+                )
+            }
             Spacer(Modifier.height(20.dp))
         }
         BoxWithConstraints(
@@ -116,7 +126,7 @@ internal fun PressScreen(
                 faceVisuals = faceVisuals,
                 optimisticPressCounts = uiState.optimisticPressCounts,
                 countTextOverrides = countTextOverrides,
-                enabled = true,
+                enabled = uiState.isInputEnabled,
                 onEmotionTap = { kind ->
                     val accepted = onEmotionTap(kind)
                     if (accepted) runCatching { soundPlayer.play() }

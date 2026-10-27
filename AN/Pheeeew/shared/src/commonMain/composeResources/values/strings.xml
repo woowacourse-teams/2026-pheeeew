@@ -416,4 +416,5 @@
     <string name="collection_notification_outdated">알림의 날짜가 오늘과 달라요. 오늘의 진행도를 보여드릴게요.</string>
     <string name="press_nearby_my_place">내 자리</string>
     <string name="press_nearby_start_hint">한 번 누르면 시작!</string>
+    <string name="press_race_input_recovery_required">전송 결과 확인이 필요해 입력을 잠시 멈췄어요. 다시 연결한 뒤 확인해 주세요.</string>
 </resources>
