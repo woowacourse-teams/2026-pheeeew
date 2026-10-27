@@ -55,6 +55,7 @@ internal fun NotificationPermissionRow(
                         ) {
                             onOpen()
                         } else {
+                            openFailed = false
                             dialogVisible = true
                         }
                     }
@@ -81,7 +82,12 @@ internal fun NotificationPermissionRow(
             onConfirm = {
                 scope.launch {
                     try {
-                        if (permissionState.openSettings()) dialogVisible = false else openFailed = true
+                        if (permissionState.openSettings()) {
+                            openFailed = false
+                            dialogVisible = false
+                        } else {
+                            openFailed = true
+                        }
                     } catch (cancelled: CancellationException) {
                         throw cancelled
                     } catch (_: Exception) {

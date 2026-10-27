@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Switch
@@ -29,6 +30,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -71,7 +75,18 @@ internal fun NotificationSettingsScreen(
             Spacer(Modifier.height(30.dp))
 
             Row(
-                modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = 24.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 64.dp)
+                        .padding(horizontal = 24.dp)
+                        .semantics(mergeDescendants = true) {}
+                        .toggleable(
+                            value = NotificationKind.entries.all { state.checked(it) },
+                            enabled = state.preferences != null,
+                            role = Role.Switch,
+                            onValueChange = onToggleAll,
+                        ),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.End,
             ) {
@@ -80,10 +95,15 @@ internal fun NotificationSettingsScreen(
                 )
                 Spacer(modifier = Modifier.width(16.dp))
                 Switch(
-                    modifier = Modifier.drawWithContent { scale(0.85f) { this@drawWithContent.drawContent() } },
+                    modifier =
+                        Modifier.clearAndSetSemantics {}.drawWithContent {
+                            scale(
+                                0.85f,
+                            ) { this@drawWithContent.drawContent() }
+                        },
                     checked = NotificationKind.entries.all { state.checked(it) },
                     enabled = state.preferences != null,
-                    onCheckedChange = onToggleAll,
+                    onCheckedChange = null,
                     thumbContent = {
                         NotificationSwitchThumb(checked = NotificationKind.entries.all { state.checked(it) })
                     },
@@ -150,16 +170,31 @@ private fun NotificationToggleRow(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier.fillMaxWidth().heightIn(min = 64.dp),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .heightIn(min = 64.dp)
+                .semantics(mergeDescendants = true) {}
+                .toggleable(
+                    value = checked,
+                    enabled = enabled,
+                    role = Role.Switch,
+                    onValueChange = onCheckedChange,
+                ),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(title, modifier = Modifier.weight(1f), color = AppColors.GroupInk, fontSize = 14.sp)
         Switch(
-            modifier = Modifier.drawWithContent { scale(0.85f) { this@drawWithContent.drawContent() } },
+            modifier =
+                Modifier.clearAndSetSemantics {}.drawWithContent {
+                    scale(
+                        0.85f,
+                    ) { this@drawWithContent.drawContent() }
+                },
             checked = checked,
             enabled = enabled,
-            onCheckedChange = onCheckedChange,
+            onCheckedChange = null,
             thumbContent = { NotificationSwitchThumb(checked = checked) },
             colors =
                 SwitchDefaults.colors(
