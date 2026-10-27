@@ -5,6 +5,7 @@ import static com.pheeeew.notification.domain.NotificationOutboxType.COLLECTION_
 import com.pheeeew.collection.domain.repository.CollectionCardRepository;
 import com.pheeeew.notification.domain.NotificationOutbox;
 import com.pheeeew.notification.domain.NotificationOutboxStatus;
+import com.pheeeew.notification.domain.NotificationOutboxType;
 import com.pheeeew.notification.domain.PushRecipient;
 import com.pheeeew.notification.domain.PushSendResult;
 import com.pheeeew.notification.domain.PushTarget;
@@ -47,17 +48,17 @@ public class NotificationDispatcher {
     private final PushSender pushSender;
     private final Clock clock;
 
-    public void dispatch() {
+    public void dispatch(NotificationOutboxType type) {
         if (!pushSender.isAvailable()) {
             return;
         }
-        notificationOutboxRepository.expire(NotificationOutboxStatus.CANCELED, EXPIRED, clock.instant());
+        notificationOutboxRepository.expire(type, NotificationOutboxStatus.CANCELED, EXPIRED, clock.instant());
 
         Map<String, Integer> outcomes = new TreeMap<>();
         for (int count = 0; count < MAX_DISPATCH_COUNT; count++) {
             Instant now = clock.instant();
             Optional<NotificationOutbox> claimed = notificationOutboxRepository.claim(
-                    now, UUID.randomUUID(), now.plus(CLAIM_DURATION));
+                    type, now, UUID.randomUUID(), now.plus(CLAIM_DURATION));
             if (claimed.isEmpty()) {
                 break;
             }
@@ -67,7 +68,7 @@ public class NotificationDispatcher {
                 break;
             }
         }
-        logSummary(outcomes);
+        logSummary(type, outcomes);
     }
 
     public void deleteOldOutbox() {
@@ -168,11 +169,11 @@ public class NotificationDispatcher {
         warnIfClaimLost(recorded, outbox);
     }
 
-    private void logSummary(Map<String, Integer> outcomes) {
+    private void logSummary(NotificationOutboxType type, Map<String, Integer> outcomes) {
         if (outcomes.isEmpty()) {
             return;
         }
         int processed = outcomes.values().stream().mapToInt(Integer::intValue).sum();
-        log.info("알림 발송 작업을 처리했습니다. processed={}, outcomes={}", processed, outcomes);
+        log.info("알림 발송 작업을 처리했습니다. type={}, processed={}, outcomes={}", type, processed, outcomes);
     }
 }

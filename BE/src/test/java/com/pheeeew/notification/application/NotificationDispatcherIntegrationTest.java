@@ -3,6 +3,7 @@ package com.pheeeew.notification.application;
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static com.pheeeew.notification.domain.NotificationOutboxType.COLLECTION_CLAIMABLE;
 import static com.pheeeew.notification.domain.NotificationOutboxType.COLLECTION_CLAIM_REMINDER;
+import static com.pheeeew.notification.domain.NotificationOutboxType.RANK_DROPPED;
 import static com.pheeeew.notification.fixture.NotificationOutboxFixture.기기의_작업;
 import static com.pheeeew.notification.fixture.NotificationOutboxFixture.기기의_작업들;
 import static com.pheeeew.notification.fixture.PushTokenFixture.기본_등록_값;
@@ -12,7 +13,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -38,13 +38,13 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InOrder;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
@@ -118,26 +118,41 @@ class NotificationDispatcherIntegrationTest {
     @Test
     void 선점하고_결과를_남기지_못한_작업은_선점_기한_1분이_지나야_다시_선점해_보낸다() {
         // given
-        Device device = 토큰이_있는_기기(기본_등록_값);
-        Instant 선점_시각 = 한국_시각("2026-10-26T23:00:00");
-        리마인더_작업을_만든다(device, 선점_시각);
+        Instant 선점_시각 = 한국_시각("2026-10-26T22:00:00");
+        Map<NotificationOutboxType, Device> 유형별_기기 = Map.of(
+                COLLECTION_CLAIMABLE, 토큰이_있는_기기("claimable"),
+                COLLECTION_CLAIM_REMINDER, 토큰이_있는_기기("reminder"),
+                RANK_DROPPED, 토큰이_있는_기기("rank"));
+        발급_가능_작업을_만든다(유형별_기기.get(COLLECTION_CLAIMABLE), 선점_시각.minus(Duration.ofHours(1)));
+        리마인더_작업을_만든다(유형별_기기.get(COLLECTION_CLAIM_REMINDER), 선점_시각);
+        순위_작업을_만든다(유형별_기기.get(RANK_DROPPED), 선점_시각, 2, 3);
         UUID 멈춘_서버의_선점 = UUID.randomUUID();
-        NotificationOutbox 멈춘_서버의_작업 = outboxes.claim(선점_시각, 멈춘_서버의_선점, 선점_시각.plus(일분)).orElseThrow();
+        List<NotificationOutbox> 멈춘_서버의_작업들 = Arrays.stream(NotificationOutboxType.values())
+                .map(type -> outboxes.claim(type, 선점_시각, 멈춘_서버의_선점, 선점_시각.plus(일분)).orElseThrow())
+                .toList();
         발송한다(선점_시각.plus(Duration.ofSeconds(59)));
         verify(pushSender, never()).send(anyString(), any());
 
         // when
         발송한다(선점_시각.plus(일분));
-        boolean 늦은_기록 = outboxes.finish(멈춘_서버의_작업.type(), 멈춘_서버의_작업.id(), 멈춘_서버의_선점,
-                NotificationOutboxStatus.SENT, null, 선점_시각.plus(Duration.ofMinutes(2)));
+        List<Boolean> 늦은_기록들 = 멈춘_서버의_작업들.stream()
+                .map(outbox -> outboxes.finish(outbox.type(), outbox.id(), 멈춘_서버의_선점,
+                        NotificationOutboxStatus.SENT, null, 선점_시각.plus(Duration.ofMinutes(2))))
+                .toList();
 
         // then
-        verify(pushSender, times(1)).send(eq(기본_등록_값), any());
-        작업 sent = 기기의_작업(jdbc, device.getId(), COLLECTION_CLAIM_REMINDER.name());
-        assertThat(sent.status()).isEqualTo("SENT");
-        assertThat(sent.attemptCount()).isEqualTo(2);
-        assertThat(sent.finishedAt()).isEqualTo(선점_시각.plus(일분));
-        assertThat(늦은_기록).isFalse();
+        assertThat(멈춘_서버의_작업들).extracting(NotificationOutbox::type)
+                .containsExactly(NotificationOutboxType.values());
+        for (String token : List.of("claimable", "reminder", "rank")) {
+            verify(pushSender, times(1)).send(eq(token), any());
+        }
+        유형별_기기.forEach((type, device) -> {
+            작업 sent = 기기의_작업(jdbc, device.getId(), type.name());
+            assertThat(sent.status()).isEqualTo("SENT");
+            assertThat(sent.attemptCount()).isEqualTo(2);
+            assertThat(sent.finishedAt()).isEqualTo(선점_시각.plus(일분));
+        });
+        assertThat(늦은_기록들).containsOnly(false);
     }
 
     @Test
@@ -147,10 +162,11 @@ class NotificationDispatcherIntegrationTest {
         Instant 처음_선점 = 한국_시각("2026-10-26T23:00:00");
         리마인더_작업을_만든다(device, 처음_선점);
         UUID 옛_선점 = UUID.randomUUID();
-        NotificationOutbox 옛_작업 = outboxes.claim(처음_선점, 옛_선점, 처음_선점.plus(일분)).orElseThrow();
+        NotificationOutbox 옛_작업 = outboxes.claim(COLLECTION_CLAIM_REMINDER, 처음_선점, 옛_선점, 처음_선점.plus(일분))
+                .orElseThrow();
         Instant 다시_선점 = 처음_선점.plus(일분);
         UUID 새_선점 = UUID.randomUUID();
-        outboxes.claim(다시_선점, 새_선점, 다시_선점.plus(일분)).orElseThrow();
+        outboxes.claim(COLLECTION_CLAIM_REMINDER, 다시_선점, 새_선점, 다시_선점.plus(일분)).orElseThrow();
 
         // when
         boolean 옛_실패_기록 = outboxes.finish(옛_작업.type(), 옛_작업.id(), 옛_선점,
@@ -415,7 +431,7 @@ class NotificationDispatcherIntegrationTest {
         when(clock.instant()).thenReturn(오늘_자정.minusMillis(1), 오늘_자정);
 
         // when
-        dispatcher.dispatch();
+        dispatcher.dispatch(COLLECTION_CLAIM_REMINDER);
 
         // then
         verify(pushSender, never()).send(anyString(), any());
@@ -432,7 +448,7 @@ class NotificationDispatcherIntegrationTest {
         when(clock.instant()).thenReturn(오늘_자정.minusMillis(1), 오늘_자정.minusMillis(1), 오늘_자정);
 
         // when
-        dispatcher.dispatch();
+        dispatcher.dispatch(COLLECTION_CLAIM_REMINDER);
 
         // then
         verify(pushSender, never()).send(anyString(), any());
@@ -440,23 +456,6 @@ class NotificationDispatcherIntegrationTest {
         assertThat(expired.status()).isEqualTo("CANCELED");
         assertThat(expired.resultCode()).isEqualTo("EXPIRED");
         assertThat(expired.attemptCount()).isOne();
-    }
-
-    @Test
-    void 함께_보낼_수_있는_작업은_만료가_이른_것부터_선점한다() {
-        // given
-        Device 컬렉션_기기 = 토큰이_있는_기기("collection");
-        Device 순위_기기 = 토큰이_있는_기기("rank");
-        발급_가능_작업을_만든다(컬렉션_기기, 한국_시각("2026-10-26T08:59:00"));
-        순위_작업을_만든다(순위_기기, 한국_시각("2026-10-26T10:00:00"), 2, 3);
-
-        // when
-        발송한다(한국_시각("2026-10-26T10:00:10"));
-
-        // then
-        InOrder 순서 = inOrder(pushSender);
-        순서.verify(pushSender).send(eq("rank"), any());
-        순서.verify(pushSender).send(eq("collection"), any());
     }
 
     @Test
@@ -483,7 +482,8 @@ class NotificationDispatcherIntegrationTest {
         리마인더_작업을_만든다(device, 한국_시각("2026-10-26T23:00:00"));
         Instant 선점_시각 = 오늘_자정.minusSeconds(30);
         UUID 선점 = UUID.randomUUID();
-        NotificationOutbox 발송_중 = outboxes.claim(선점_시각, 선점, 선점_시각.plus(일분)).orElseThrow();
+        NotificationOutbox 발송_중 = outboxes.claim(COLLECTION_CLAIM_REMINDER, 선점_시각, 선점, 선점_시각.plus(일분))
+                .orElseThrow();
 
         // when
         발송한다(오늘_자정.plusSeconds(10));
@@ -504,7 +504,7 @@ class NotificationDispatcherIntegrationTest {
         순위_작업을_만든다(device, 회차, 2, 3);
         for (int 중단 = 0; 중단 < NotificationOutboxType.RANK_DROPPED.maxAttempts(); 중단++) {
             Instant 선점_시각 = 회차.plus(일분.multipliedBy(중단));
-            outboxes.claim(선점_시각, UUID.randomUUID(), 선점_시각.plus(일분)).orElseThrow();
+            outboxes.claim(RANK_DROPPED, 선점_시각, UUID.randomUUID(), 선점_시각.plus(일분)).orElseThrow();
         }
 
         // when
@@ -624,7 +624,9 @@ class NotificationDispatcherIntegrationTest {
 
     private void 발송한다(Instant 지금) {
         when(clock.instant()).thenReturn(지금);
-        dispatcher.dispatch();
+        for (NotificationOutboxType type : NotificationOutboxType.values()) {
+            dispatcher.dispatch(type);
+        }
     }
 
     private long 보낸_횟수() {

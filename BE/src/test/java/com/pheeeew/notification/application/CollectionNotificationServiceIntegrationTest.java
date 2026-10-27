@@ -23,6 +23,7 @@ import com.pheeeew.collection.domain.repository.CollectionProgressRepository;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.emotion.domain.EmotionState;
+import com.pheeeew.notification.domain.NotificationOutboxType;
 import com.pheeeew.notification.domain.NotificationSettings;
 import com.pheeeew.notification.domain.PushMessage;
 import com.pheeeew.notification.domain.PushSendResult;
@@ -367,18 +368,24 @@ class CollectionNotificationServiceIntegrationTest {
 
     private void 발송한다(Instant 지금) {
         when(clock.instant()).thenReturn(지금);
-        dispatcher.dispatch();
+        모든_유형을_발송한다();
     }
 
     private void 탐색하고_발송한다(Instant 지금) {
         탐색한다(지금);
-        dispatcher.dispatch();
+        모든_유형을_발송한다();
     }
 
     private void 리마인더를_만들고_발송한다(Instant 지금) {
         when(clock.instant()).thenReturn(지금);
         service.saveReminderOutbox();
-        dispatcher.dispatch();
+        모든_유형을_발송한다();
+    }
+
+    private void 모든_유형을_발송한다() {
+        for (NotificationOutboxType type : NotificationOutboxType.values()) {
+            dispatcher.dispatch(type);
+        }
     }
 
     private PushMessage 보낸_메시지(String token) {

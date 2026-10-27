@@ -22,9 +22,10 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class NotificationOutboxRepository {
 
-    private static final String COLLECTION_TABLE = "notification_collection_outbox";
-    private static final String RANK_TABLE = "notification_rank_outbox";
-    private static final List<String> TABLES = List.of(RANK_TABLE, COLLECTION_TABLE);
+    private static final String CLAIMABLE_TABLE = "collection_claimable_outbox";
+    private static final String REMINDER_TABLE = "collection_reminder_outbox";
+    private static final String RANK_TABLE = "rank_dropped_outbox";
+    private static final List<String> TABLES = List.of(CLAIMABLE_TABLE, REMINDER_TABLE, RANK_TABLE);
 
     private final JdbcClient jdbc;
 
@@ -37,12 +38,11 @@ public class NotificationOutboxRepository {
             Instant expiresAt
     ) {
         jdbc.sql("""
-                INSERT INTO notification_collection_outbox
-                     (type, device_id, target_date, status, discovered_at, available_at, expires_at, updated_at)
-                     VALUES (:type, :deviceId, :targetDate, :pending, :now, :availableAt, :expiresAt, :now)
+                INSERT INTO %s
+                     (device_id, target_date, status, discovered_at, available_at, expires_at, updated_at)
+                     VALUES (:deviceId, :targetDate, :pending, :now, :availableAt, :expiresAt, :now)
                 ON CONFLICT DO NOTHING
-                """).param("type", type.name())
-                .param("pending", PENDING.name())
+                """.formatted(tableOf(type))).param("pending", PENDING.name())
                 .param("deviceId", deviceId)
                 .param("targetDate", targetDate)
                 .param("now", utc(now))
@@ -61,7 +61,7 @@ public class NotificationOutboxRepository {
             Instant expiresAt
     ) {
         jdbc.sql("""
-                INSERT INTO notification_rank_outbox
+                INSERT INTO rank_dropped_outbox
                      (device_id, target_date, round_at, previous_rank, current_rank, status,
                       discovered_at, available_at, expires_at, updated_at)
                      VALUES (:deviceId, :targetDate, :roundAt, :previousRank, :currentRank, :pending,
@@ -78,25 +78,42 @@ public class NotificationOutboxRepository {
                 .update();
     }
 
-    public int expire(NotificationOutboxStatus status, String resultCode, Instant now) {
-        return TABLES.stream()
-                .mapToInt(table -> jdbc.sql("""
-                        UPDATE %s
-                           SET status = :status, result_code = :resultCode, finished_at = :now,
-                               claim_token = NULL, claim_expires_at = NULL, updated_at = :now
-                         WHERE status = :pending AND expires_at <= :now
-                           AND (claim_expires_at IS NULL OR claim_expires_at <= :now)
-                        """.formatted(table)).param("status", status.name())
-                        .param("resultCode", resultCode)
-                        .param("pending", PENDING.name())
-                        .param("now", utc(now))
-                        .update())
-                .sum();
+    public int expire(NotificationOutboxType type, NotificationOutboxStatus status, String resultCode, Instant now) {
+        return jdbc.sql("""
+                UPDATE %s
+                   SET status = :status, result_code = :resultCode, finished_at = :now,
+                       claim_token = NULL, claim_expires_at = NULL, updated_at = :now
+                 WHERE status = :pending AND expires_at <= :now
+                   AND (claim_expires_at IS NULL OR claim_expires_at <= :now)
+                """.formatted(tableOf(type))).param("status", status.name())
+                .param("resultCode", resultCode)
+                .param("pending", PENDING.name())
+                .param("now", utc(now))
+                .update();
     }
 
-    public Optional<NotificationOutbox> claim(Instant now, UUID claimToken, Instant claimExpiresAt) {
-        return claimRank(now, claimToken, claimExpiresAt)
-                .or(() -> claimCollection(now, claimToken, claimExpiresAt));
+    public Optional<NotificationOutbox> claim(
+            NotificationOutboxType type,
+            Instant now,
+            UUID claimToken,
+            Instant claimExpiresAt
+    ) {
+        return jdbc.sql("""
+                UPDATE %1$s
+                   SET claim_token = :claimToken, claim_expires_at = :claimExpiresAt,
+                       attempt_count = attempt_count + 1, updated_at = :now
+                 WHERE id = (SELECT id FROM %1$s
+                              WHERE status = '%2$s' AND available_at <= :now AND expires_at > :now
+                                AND (claim_expires_at IS NULL OR claim_expires_at <= :now)
+                              ORDER BY expires_at, available_at, id
+                              LIMIT 1
+                              FOR UPDATE SKIP LOCKED)
+                RETURNING *
+                """.formatted(tableOf(type), PENDING.name())).param("claimToken", claimToken)
+                .param("claimExpiresAt", utc(claimExpiresAt))
+                .param("now", utc(now))
+                .query((row, rowNumber) -> toOutbox(row, type))
+                .optional();
     }
 
     public boolean finish(
@@ -151,71 +168,30 @@ public class NotificationOutboxRepository {
                 .sum();
     }
 
-    private Optional<NotificationOutbox> claimRank(Instant now, UUID claimToken, Instant claimExpiresAt) {
-        return jdbc.sql("""
-                UPDATE notification_rank_outbox
-                   SET claim_token = :claimToken, claim_expires_at = :claimExpiresAt,
-                       attempt_count = attempt_count + 1, updated_at = :now
-                 WHERE id = (SELECT id FROM notification_rank_outbox
-                              WHERE status = '%s' AND available_at <= :now AND expires_at > :now
-                                AND (claim_expires_at IS NULL OR claim_expires_at <= :now)
-                              ORDER BY expires_at, available_at, id
-                              LIMIT 1
-                              FOR UPDATE SKIP LOCKED)
-                RETURNING id, device_id, target_date, previous_rank, current_rank, attempt_count,
-                          expires_at, claim_token
-                """.formatted(PENDING.name())).param("claimToken", claimToken)
-                .param("claimExpiresAt", utc(claimExpiresAt))
-                .param("now", utc(now))
-                .query((row, rowNumber) -> toOutbox(row, NotificationOutboxType.RANK_DROPPED,
-                        row.getInt("previous_rank"), row.getInt("current_rank")))
-                .optional();
+    private String tableOf(NotificationOutboxType type) {
+        return switch (type) {
+            case COLLECTION_CLAIMABLE -> CLAIMABLE_TABLE;
+            case COLLECTION_CLAIM_REMINDER -> REMINDER_TABLE;
+            case RANK_DROPPED -> RANK_TABLE;
+        };
     }
 
-    private Optional<NotificationOutbox> claimCollection(Instant now, UUID claimToken, Instant claimExpiresAt) {
-        return jdbc.sql("""
-                UPDATE notification_collection_outbox
-                   SET claim_token = :claimToken, claim_expires_at = :claimExpiresAt,
-                       attempt_count = attempt_count + 1, updated_at = :now
-                 WHERE id = (SELECT id FROM notification_collection_outbox
-                              WHERE status = '%s' AND available_at <= :now AND expires_at > :now
-                                AND (claim_expires_at IS NULL OR claim_expires_at <= :now)
-                              ORDER BY expires_at, available_at, id
-                              LIMIT 1
-                              FOR UPDATE SKIP LOCKED)
-                RETURNING id, type, device_id, target_date, attempt_count, expires_at, claim_token
-                """.formatted(PENDING.name())).param("claimToken", claimToken)
-                .param("claimExpiresAt", utc(claimExpiresAt))
-                .param("now", utc(now))
-                .query((row, rowNumber) -> toOutbox(row, NotificationOutboxType.valueOf(row.getString("type")),
-                        null, null))
-                .optional();
+    private OffsetDateTime utc(Instant instant) {
+        return instant.atOffset(ZoneOffset.UTC);
     }
 
-    private NotificationOutbox toOutbox(
-            ResultSet row,
-            NotificationOutboxType type,
-            Integer previousRank,
-            Integer currentRank
-    ) throws SQLException {
+    private NotificationOutbox toOutbox(ResultSet row, NotificationOutboxType type) throws SQLException {
+        boolean rank = type == NotificationOutboxType.RANK_DROPPED;
         return NotificationOutbox.of(
                 row.getLong("id"),
                 type,
                 row.getLong("device_id"),
                 row.getObject("target_date", LocalDate.class),
-                previousRank,
-                currentRank,
+                rank ? row.getInt("previous_rank") : null,
+                rank ? row.getInt("current_rank") : null,
                 row.getInt("attempt_count"),
                 row.getObject("expires_at", OffsetDateTime.class).toInstant(),
                 row.getObject("claim_token", UUID.class)
         );
-    }
-
-    private String tableOf(NotificationOutboxType type) {
-        return type.isCollection() ? COLLECTION_TABLE : RANK_TABLE;
-    }
-
-    private OffsetDateTime utc(Instant instant) {
-        return instant.atOffset(ZoneOffset.UTC);
     }
 }

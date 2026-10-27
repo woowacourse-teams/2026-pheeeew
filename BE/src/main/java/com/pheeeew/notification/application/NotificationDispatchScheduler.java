@@ -1,5 +1,6 @@
 package com.pheeeew.notification.application;
 
+import com.pheeeew.notification.domain.NotificationOutboxType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -12,7 +13,9 @@ public class NotificationDispatchScheduler {
 
     @Scheduled(fixedDelayString = "PT10S", initialDelayString = "PT30S")
     public void dispatch() {
-        notificationDispatcher.dispatch();
+        for (NotificationOutboxType type : NotificationOutboxType.values()) {
+            notificationDispatcher.dispatch(type);
+        }
     }
 
     @Scheduled(cron = "0 0 4 * * *", zone = "Asia/Seoul")

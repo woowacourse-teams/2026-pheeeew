@@ -17,6 +17,7 @@ import static org.mockito.Mockito.when;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.emotion.domain.EmotionState;
+import com.pheeeew.notification.domain.NotificationOutboxType;
 import com.pheeeew.notification.domain.NotificationSettings;
 import com.pheeeew.notification.domain.PushMessage;
 import com.pheeeew.notification.domain.PushSendResult;
@@ -439,7 +440,9 @@ class RankChangeNotificationServiceIntegrationTest {
 
     private void 발송한다(Instant 지금) {
         when(clock.instant()).thenReturn(지금);
-        dispatcher.dispatch();
+        for (NotificationOutboxType type : NotificationOutboxType.values()) {
+            dispatcher.dispatch(type);
+        }
     }
 
     private List<작업> 순위_작업들(List<Device> 기기들) {

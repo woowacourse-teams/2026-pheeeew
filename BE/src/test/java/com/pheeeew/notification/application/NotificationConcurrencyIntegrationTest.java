@@ -190,13 +190,17 @@ class NotificationConcurrencyIntegrationTest {
     }
 
     @Test
-    void 두_발송기가_동시에_선점해도_작업마다_한_번만_보낸다() throws Exception {
+    void 세_유형을_유형마다_두_발송기가_동시에_선점해도_작업마다_한_번만_보낸다() throws Exception {
         // given
-        int 작업_수 = 20;
-        Instant 지금 = 한국_시각("2026-11-02T23:00:00");
-        for (int index = 0; index < 작업_수; index++) {
-            Device device = 토큰이_있는_기기("token-" + index);
-            outboxes.saveCollection(COLLECTION_CLAIM_REMINDER, device.getId(), DAY, 지금, 지금, 다음_날_자정());
+        int 유형별_작업_수 = 20;
+        Instant 지금 = 한국_시각("2026-11-02T22:00:00");
+        for (int index = 0; index < 유형별_작업_수; index++) {
+            outboxes.saveCollection(COLLECTION_CLAIMABLE, 토큰이_있는_기기("claimable-" + index).getId(), DAY,
+                    지금.minus(Duration.ofHours(1)), 지금, 다음_날_자정());
+            outboxes.saveCollection(COLLECTION_CLAIM_REMINDER, 토큰이_있는_기기("reminder-" + index).getId(), DAY,
+                    지금, 지금, 다음_날_자정());
+            outboxes.saveRank(토큰이_있는_기기("rank-" + index).getId(), DAY, 지금, 2, 3, 지금,
+                    지금.plus(Duration.ofMinutes(5)));
         }
         when(clock.instant()).thenReturn(지금);
         Map<String, AtomicInteger> 보낸_횟수 = new ConcurrentHashMap<>();
@@ -205,28 +209,28 @@ class NotificationConcurrencyIntegrationTest {
             Thread.sleep(20);
             return PushSendResult.SENT;
         }).when(pushSender).send(anyString(), any());
-        CyclicBarrier 동시_시작 = new CyclicBarrier(2);
+        List<NotificationOutboxType> 발송기들 = new ArrayList<>();
+        for (NotificationOutboxType type : NotificationOutboxType.values()) {
+            발송기들.addAll(List.of(type, type));
+        }
+        CyclicBarrier 동시_시작 = new CyclicBarrier(발송기들.size());
 
         // when
-        try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
-            List<Future<?>> 실행들 = List.of(
-                    executor.submit(() -> {
+        try (ExecutorService executor = Executors.newFixedThreadPool(발송기들.size())) {
+            List<Future<?>> 실행들 = 발송기들.stream()
+                    .<Future<?>>map(type -> executor.submit(() -> {
                         동시_시작.await();
-                        dispatcher.dispatch();
+                        dispatcher.dispatch(type);
                         return null;
-                    }),
-                    executor.submit(() -> {
-                        동시_시작.await();
-                        dispatcher.dispatch();
-                        return null;
-                    }));
+                    }))
+                    .toList();
             for (Future<?> 실행 : 실행들) {
                 실행.get(대기_상한.toSeconds(), TimeUnit.SECONDS);
             }
         }
 
         // then
-        assertThat(보낸_횟수).hasSize(작업_수);
+        assertThat(보낸_횟수).hasSize(유형별_작업_수 * NotificationOutboxType.values().length);
         assertThat(보낸_횟수.values()).allSatisfy(count -> assertThat(count.get()).isOne());
         assertThat(만든_기기들).allSatisfy(deviceId -> assertThat(기기의_작업들(jdbc, deviceId))
                 .extracting(작업::status, 작업::attemptCount)
@@ -259,7 +263,7 @@ class NotificationConcurrencyIntegrationTest {
             assertThat(먼저_온_서버가_작업을_넣고_멈춤.await(대기_상한.toSeconds(), TimeUnit.SECONDS)).isTrue();
             when(clock.instant()).thenReturn(오전_10시.plusSeconds(4));
             Future<?> 나중 = executor.submit(collectionService::saveClaimableOutbox);
-            잠금을_기다리는_세션이_생길_때까지_기다린다("INSERT INTO notification_collection_outbox");
+            잠금을_기다리는_세션이_생길_때까지_기다린다("INSERT INTO collection_claimable_outbox");
             커밋_허용.countDown();
             먼저.get(대기_상한.toSeconds(), TimeUnit.SECONDS);
             나중.get(대기_상한.toSeconds(), TimeUnit.SECONDS);
