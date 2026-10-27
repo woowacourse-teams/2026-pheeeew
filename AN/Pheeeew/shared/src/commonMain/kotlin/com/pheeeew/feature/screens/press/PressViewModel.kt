@@ -18,12 +18,20 @@ internal class PressViewModel(
     private val repository: PressRepository,
     rankings: PressRaceRankings,
 ) : ViewModel() {
+    // A recreated screen may borrow ranking cache but never replays an already published alert.
+    private val initialNoticeId =
+        rankings.state.value.session.notice
+            ?.id
+
     // Project the session cache synchronously so a recreated screen never flashes its empty default state.
     private val mutableUiState =
         MutableStateFlow(
             repository.state.value.toUiState().copy(
                 nearbyRanking = rankings.state.value.toNearbyRanking(),
-                activity = rankings.state.value.toActivity(),
+                activity =
+                    rankings.state.value
+                        .toActivity()
+                        .copy(notice = null),
             ),
         )
     val uiState = mutableUiState.asStateFlow()
@@ -33,7 +41,10 @@ internal class PressViewModel(
             combine(repository.state, rankings.state) { sessionState, ranking ->
                 sessionState.toUiState().copy(
                     nearbyRanking = ranking.toNearbyRanking(),
-                    activity = ranking.toActivity(),
+                    activity =
+                        ranking.toActivity().let { activity ->
+                            activity.copy(notice = activity.notice?.takeUnless { it.displayId == initialNoticeId })
+                        },
                 )
             }.collect { mutableUiState.value = it }
         }
