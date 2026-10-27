@@ -13,8 +13,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 class DeviceNicknameTest {
 
     @ParameterizedTest
-    @ValueSource(strings = {"가", "Star K", "가나다라마바사아자차", "ㄱㅏ", "잠에서 깨는 너구리"})
-    void 한글_영문_공백과_길이_경계를_허용한다(String nickname) {
+    @ValueSource(strings = {"가", "Star K", "가나다라마바사아자차", "ㄱㅏ", "잠에서 깨는 너구리", "스타1", "7", "1234567890"})
+    void 한글_영문_숫자_공백과_길이_경계를_허용한다(String nickname) {
         // given / when
         DeviceNickname result = DeviceNickname.from(nickname);
 
@@ -43,7 +43,7 @@ class DeviceNicknameTest {
     @ParameterizedTest
     @NullSource
     @ValueSource(strings = {
-            "", "   ", "익명", " 익명 ", "스타1", "스타!", "abcdefghijk",
+            "", "   ", "익명", " 익명 ", "스타!", "abcdefghijk", "12345678901",
             "スター", "😀", "Star\tK", "Star\nK", "\tStark", "Stark\n", "\u2003Stark", "Stark\u00a0"
     })
     void 규칙을_위반한_닉네임을_거부한다(String nickname) {

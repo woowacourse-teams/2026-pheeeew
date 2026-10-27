@@ -384,7 +384,7 @@ class SecurityAuthorizationIntegrationTest {
 
         // then
         result.expectStatus().isBadRequest().expectBody().json("""
-                {"code":"DEVICE-008","message":"닉네임은 한글, 영문, 공백으로 1~10자여야 하며 익명은 사용할 수 없습니다."}
+                {"code":"DEVICE-008","message":"닉네임은 한글, 영문, 숫자, 공백으로 1~10자여야 하며 익명은 사용할 수 없습니다."}
                 """, JsonCompareMode.STRICT);
         assertThat(deviceRepository.findAll()).extracting(Device::getNickname).containsExactly("기기 A");
     }
@@ -503,14 +503,14 @@ class SecurityAuthorizationIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"", "   ", " 익명 ", "Star1", "abcdefghijk", "Star\tK"})
+    @ValueSource(strings = {"", "   ", " 익명 ", "Star!", "abcdefghijk", "Star\tK"})
     void 닉네임_규칙을_어긴_등록은_400을_반환하고_기기와_토큰을_남기지_않는다(String nickname) {
         // given / when
         RestTestClient.ResponseSpec result = 닉네임으로_등록한다(UUID.randomUUID(), nickname);
 
         // then
         result.expectStatus().isBadRequest().expectBody().json("""
-                {"code":"DEVICE-008","message":"닉네임은 한글, 영문, 공백으로 1~10자여야 하며 익명은 사용할 수 없습니다."}
+                {"code":"DEVICE-008","message":"닉네임은 한글, 영문, 숫자, 공백으로 1~10자여야 하며 익명은 사용할 수 없습니다."}
                 """, JsonCompareMode.STRICT);
         assertThat(deviceRepository.count()).isZero();
         assertThat(deviceRefreshTokenRepository.count()).isZero();
@@ -648,7 +648,7 @@ class SecurityAuthorizationIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"", "   ", " 익명 ", "Star1", "abcdefghijk", "Star\tK"})
+    @ValueSource(strings = {"", "   ", " 익명 ", "Star!", "abcdefghijk", "Star\tK"})
     void 토큰_없이_잘못된_닉네임을_조회하면_400을_반환한다(String nickname) {
         // given / when
         RestTestClient.ResponseSpec result = client.get()
@@ -657,7 +657,7 @@ class SecurityAuthorizationIntegrationTest {
 
         // then
         result.expectStatus().isBadRequest().expectBody().json("""
-                {"code":"DEVICE-008","message":"닉네임은 한글, 영문, 공백으로 1~10자여야 하며 익명은 사용할 수 없습니다."}
+                {"code":"DEVICE-008","message":"닉네임은 한글, 영문, 숫자, 공백으로 1~10자여야 하며 익명은 사용할 수 없습니다."}
                 """, JsonCompareMode.STRICT);
     }
 
