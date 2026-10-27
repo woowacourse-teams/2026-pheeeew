@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -38,6 +40,8 @@ import com.pheeeew.feature.emotion.model.EmotionFaceVisual
 import com.pheeeew.feature.emotion.model.EmotionKind
 import com.pheeeew.feature.screens.press.component.PressNearbyRankingCard
 import com.pheeeew.feature.screens.press.component.PressRankingEntry
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.press_count_unavailable
@@ -56,7 +60,9 @@ internal fun PressScreen(
     faceVisuals: Map<EmotionKind, EmotionFaceVisual> = emptyMap(),
 ) {
     val soundPlayer = rememberPressSoundPlayer()
-    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { soundPlayer.stop() }
+    val feedbackScope = rememberCoroutineScope()
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { soundPlayer.prepare() }
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { soundPlayer.stop() }
     val font = notoSansKrFontFamily()
     val emotionCounts =
         EmotionKind.entries.map { kind ->
@@ -128,8 +134,16 @@ internal fun PressScreen(
                 countTextOverrides = countTextOverrides,
                 enabled = uiState.isInputEnabled,
                 onEmotionTap = { kind ->
+                    val sample = soundPlayer.feedbackProbe?.begin()
                     val accepted = onEmotionTap(kind)
                     if (accepted) runCatching { soundPlayer.play() }
+                    sample?.callbackReturned()
+                    if (accepted && sample != null) {
+                        feedbackScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                            withFrameNanos { }
+                            sample.nextFrame()
+                        }
+                    }
                     accepted
                 },
                 arrangement = EmotionPadArrangement.TwoThree,
