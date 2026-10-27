@@ -95,7 +95,7 @@ class NotificationSettingsApi(
             )
         requireGeneration(generation)
         check(result is ApiResult.Success) { "Notification settings could not be saved" }
-        return fetch(generation)
+        return value
     }
 
     @Serializable
