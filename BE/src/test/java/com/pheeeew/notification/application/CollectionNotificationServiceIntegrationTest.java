@@ -173,7 +173,7 @@ class CollectionNotificationServiceIntegrationTest {
     }
 
     @Test
-    void 발송_직전에_수신_설정이_꺼져_있으면_NO_TARGET으로_닫고_다시_켜도_그날은_다시_만들지_않는다() {
+    void 발송_직전에_수신_설정이_꺼져_있으면_NOTIFICATION_DISABLED로_닫고_다시_켜도_그날은_다시_만들지_않는다() {
         // given
         Device device = 토큰이_있는_기기(기본_등록_값);
         발급_가능하게_만든다(device, EmotionState.ANGRY);
@@ -191,11 +191,11 @@ class CollectionNotificationServiceIntegrationTest {
         List<작업> 작업들 = 기기의_작업들(jdbc, device.getId());
         assertThat(작업들).hasSize(1);
         assertThat(작업들.getFirst().status()).isEqualTo("CANCELED");
-        assertThat(작업들.getFirst().resultCode()).isEqualTo("NO_TARGET");
+        assertThat(작업들.getFirst().resultCode()).isEqualTo("NOTIFICATION_DISABLED");
     }
 
     @Test
-    void 발송_직전에_토큰이_없으면_NO_TARGET으로_닫고_다시_등록해도_그날은_다시_만들지_않는다() {
+    void 발송_직전에_토큰이_없으면_NO_TOKEN으로_닫고_다시_등록해도_그날은_다시_만들지_않는다() {
         // given
         Device device = 토큰이_있는_기기(기본_등록_값);
         발급_가능하게_만든다(device, EmotionState.ANGRY);
@@ -212,7 +212,7 @@ class CollectionNotificationServiceIntegrationTest {
         verify(pushSender, never()).send(anyString(), any());
         List<작업> 작업들 = 기기의_작업들(jdbc, device.getId());
         assertThat(작업들).hasSize(1);
-        assertThat(작업들.getFirst().resultCode()).isEqualTo("NO_TARGET");
+        assertThat(작업들.getFirst().resultCode()).isEqualTo("NO_TOKEN");
     }
 
     @Test

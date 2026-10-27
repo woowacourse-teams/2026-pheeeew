@@ -317,7 +317,7 @@ class RankChangeNotificationServiceIntegrationTest {
     }
 
     @Test
-    void 수신_설정을_끈_기기와_토큰이_없는_기기는_발송_직전에_NO_TARGET으로_닫고_프레스가_없는_기기는_작업이_없다() {
+    void 수신_설정을_끈_기기와_토큰이_없는_기기는_발송_직전에_사유를_나눠_닫고_프레스가_없는_기기는_작업이_없다() {
         // given
         Device 설정을_끈_기기 = 토큰이_있는_기기("off");
         settings.save(설정을_끈_기기.getId(), NotificationSettings.of(true, false), 오전_10시);
@@ -335,11 +335,12 @@ class RankChangeNotificationServiceIntegrationTest {
 
         // then
         assertThat(보낸_메시지들()).containsOnlyKeys("on");
-        assertThat(List.of(설정을_끈_기기, 토큰이_없는_기기)).allSatisfy(device -> {
-            작업 canceled = 기기의_작업(jdbc, device.getId(), "RANK_DROPPED");
-            assertThat(canceled.status()).isEqualTo("CANCELED");
-            assertThat(canceled.resultCode()).isEqualTo("NO_TARGET");
-        });
+        작업 설정을_끈_기기의_작업 = 기기의_작업(jdbc, 설정을_끈_기기.getId(), "RANK_DROPPED");
+        assertThat(설정을_끈_기기의_작업.status()).isEqualTo("CANCELED");
+        assertThat(설정을_끈_기기의_작업.resultCode()).isEqualTo("NOTIFICATION_DISABLED");
+        작업 토큰이_없는_기기의_작업 = 기기의_작업(jdbc, 토큰이_없는_기기.getId(), "RANK_DROPPED");
+        assertThat(토큰이_없는_기기의_작업.status()).isEqualTo("CANCELED");
+        assertThat(토큰이_없는_기기의_작업.resultCode()).isEqualTo("NO_TOKEN");
         assertThat(기기의_작업들(jdbc, 프레스가_없는_기기.getId())).isEmpty();
     }
 

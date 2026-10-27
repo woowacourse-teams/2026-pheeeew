@@ -4,6 +4,7 @@ import static com.pheeeew.notification.domain.NotificationOutboxType.COLLECTION_
 
 import com.pheeeew.collection.domain.repository.CollectionCardRepository;
 import com.pheeeew.notification.domain.NotificationOutbox;
+import com.pheeeew.notification.domain.PushRecipient;
 import com.pheeeew.notification.domain.PushSendResult;
 import com.pheeeew.notification.domain.PushTarget;
 import com.pheeeew.notification.domain.repository.DevicePushTokenRepository;
@@ -13,7 +14,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
@@ -31,7 +31,8 @@ public class NotificationDispatcher {
     private static final Duration CLAIM_DURATION = Duration.ofMinutes(1);
     private static final LocalTime REMINDER_TAKEOVER_TIME = LocalTime.of(23, 0);
     private static final int RETENTION_DAYS = 7;
-    private static final String NO_TARGET = "NO_TARGET";
+    private static final String NO_TOKEN = "NO_TOKEN";
+    private static final String NOTIFICATION_DISABLED = "NOTIFICATION_DISABLED";
     private static final String CARD_CLAIMED = "CARD_CLAIMED";
     private static final String SUPERSEDED = "SUPERSEDED";
     private static final String EXPIRED = "EXPIRED";
@@ -79,9 +80,12 @@ public class NotificationDispatcher {
         if (isTakenOverByReminder(outbox, now)) {
             return cancel(outbox, SUPERSEDED);
         }
-        Optional<PushTarget> target = findTarget(outbox);
-        if (target.isEmpty()) {
-            return cancel(outbox, NO_TARGET);
+        Optional<PushRecipient> recipient = devicePushTokenRepository.findRecipientByDeviceId(outbox.deviceId());
+        if (recipient.isEmpty()) {
+            return cancel(outbox, NO_TOKEN);
+        }
+        if (!recipient.get().accepts(outbox.type())) {
+            return cancel(outbox, NOTIFICATION_DISABLED);
         }
         if (outbox.type().isCollection() && isCardClaimed(outbox)) {
             return cancel(outbox, CARD_CLAIMED);
@@ -90,8 +94,9 @@ public class NotificationDispatcher {
             return cancel(outbox, EXPIRED);
         }
 
-        PushSendResult result = send(outbox, target.get());
-        record(outbox, target.get(), result);
+        PushTarget target = recipient.get().target();
+        PushSendResult result = send(outbox, target);
+        record(outbox, target, result);
         return result.name();
     }
 
@@ -118,14 +123,6 @@ public class NotificationDispatcher {
                 outbox.type(), outbox.id(), outbox.claimToken(), resultCode, clock.instant());
         warnIfClaimLost(recorded, outbox);
         return resultCode;
-    }
-
-    private Optional<PushTarget> findTarget(NotificationOutbox outbox) {
-        List<Long> deviceIds = List.of(outbox.deviceId());
-        List<PushTarget> targets = outbox.type().isCollection()
-                ? devicePushTokenRepository.findCollectionClaimableTargets(deviceIds)
-                : devicePushTokenRepository.findRankChangedTargets(deviceIds);
-        return targets.stream().findFirst();
     }
 
     private boolean isCardClaimed(NotificationOutbox outbox) {

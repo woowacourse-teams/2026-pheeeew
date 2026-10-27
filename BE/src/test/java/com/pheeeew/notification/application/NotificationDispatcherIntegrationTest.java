@@ -155,7 +155,7 @@ class NotificationDispatcherIntegrationTest {
         boolean 옛_실패_기록 = outboxes.fail(옛_작업.type(), 옛_작업.id(), 옛_선점, "REJECTED", 다시_선점.plusSeconds(1));
         boolean 옛_재예약 = outboxes.retry(
                 옛_작업.type(), 옛_작업.id(), 옛_선점, 다시_선점.plusSeconds(30), 다시_선점.plusSeconds(1));
-        boolean 옛_취소 = outboxes.cancel(옛_작업.type(), 옛_작업.id(), 옛_선점, "NO_TARGET", 다시_선점.plusSeconds(1));
+        boolean 옛_취소 = outboxes.cancel(옛_작업.type(), 옛_작업.id(), 옛_선점, "NO_TOKEN", 다시_선점.plusSeconds(1));
         작업 진행_중 = 기기의_작업(jdbc, device.getId(), COLLECTION_CLAIM_REMINDER.name());
         boolean 새_발송_기록 = outboxes.markSent(옛_작업.type(), 옛_작업.id(), 새_선점, 다시_선점.plusSeconds(2));
 
@@ -528,7 +528,7 @@ class NotificationDispatcherIntegrationTest {
         verify(pushSender, times(1)).send(anyString(), any());
         작업 reminder = 기기의_작업(jdbc, device.getId(), COLLECTION_CLAIM_REMINDER.name());
         assertThat(reminder.status()).isEqualTo("CANCELED");
-        assertThat(reminder.resultCode()).isEqualTo("NO_TARGET");
+        assertThat(reminder.resultCode()).isEqualTo("NOTIFICATION_DISABLED");
         assertThat(기기의_작업(jdbc, device.getId(), "RANK_DROPPED").status()).isEqualTo("SENT");
     }
 
