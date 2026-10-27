@@ -19,6 +19,8 @@ import com.pheeeew.core.monitoring.StateDecoder
 import com.pheeeew.core.monitoring.createAndroidMonitoring
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.ConnectivityObserver
+import com.pheeeew.core.notification.AndroidNotificationPermissionController
+import com.pheeeew.core.notification.NotificationPermissionController
 import com.pheeeew.core.permission.AndroidAppSettingsLauncher
 import com.pheeeew.core.permission.AppSettingsLauncher
 import com.pheeeew.data.local.device.AndroidDeviceCredentialStorage
@@ -145,11 +147,13 @@ internal interface ActivityRetainedGraph :
     UiGraph,
     UiBindings {
     val permissionOwner: AttachedLocationPermission
+    val notificationPermissionOwner: AttachedNotificationPermission
 
     @GraphExtension.Factory
     interface Factory {
         fun create(
             @Provides permission: AttachedLocationPermission,
+            @Provides notificationPermission: AttachedNotificationPermission,
         ): ActivityRetainedGraph
     }
 
@@ -189,6 +193,8 @@ class ActivityRetainedGraphOwner private constructor(
     private val app: AndroidAppGraph,
 ) : ViewModel() {
     private var retained: ActivityRetainedGraph? = null
+    val notificationPermissionController: NotificationPermissionController
+        get() = requireNotNull(retained).notificationPermissionOwner.controller
     var uiSession = AppUiSession()
         private set
 
@@ -196,6 +202,7 @@ class ActivityRetainedGraphOwner private constructor(
     fun clearUiSession() {
         uiSession.close()
         retained?.permissionOwner?.controller?.close()
+        retained?.notificationPermissionOwner?.controller?.close()
         retained = null
         uiSession = AppUiSession()
     }
@@ -204,17 +211,27 @@ class ActivityRetainedGraphOwner private constructor(
         val existing = retained
         if (existing != null) {
             existing.permissionOwner.controller.attach(activity)
+            existing.notificationPermissionOwner.controller.attach(activity)
             return existing
         }
-        return app.retainedFactory.create(AttachedLocationPermission(app.permissionFactory.create(activity))).also {
-            retained =
-                it
-        }
+        val graph =
+            app.retainedFactory.create(
+                AttachedLocationPermission(app.permissionFactory.create(activity)),
+                AttachedNotificationPermission(
+                    AndroidNotificationPermissionController(
+                        activity,
+                        app.appSettingsLauncher,
+                    ),
+                ),
+            )
+        retained = graph
+        return graph
     }
 
     override fun onCleared() {
         uiSession.close()
         retained?.permissionOwner?.controller?.close()
+        retained?.notificationPermissionOwner?.controller?.close()
         retained = null
     }
 
@@ -253,4 +270,8 @@ private class AndroidOnboardingStore(
 
 internal class AttachedLocationPermission(
     val controller: AndroidLocationPermissionController,
+)
+
+internal class AttachedNotificationPermission(
+    val controller: AndroidNotificationPermissionController,
 )

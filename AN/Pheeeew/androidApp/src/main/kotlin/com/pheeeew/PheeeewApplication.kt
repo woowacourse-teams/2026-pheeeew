@@ -24,6 +24,7 @@ class PheeeewApplication :
 
     override fun onCreate() {
         super<Application>.onCreate()
+        AndroidNotificationChannels.create(this)
         val config =
             MonitoringConfig(
                 environment = BuildConfig.MONITORING_ENVIRONMENT,
