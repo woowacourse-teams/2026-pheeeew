@@ -16,7 +16,12 @@ import com.pheeeew.support.SharedJwtTestConfiguration;
 import com.pheeeew.support.SharedPostgisTestConfiguration;
 import java.net.URI;
 import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.net.http.WebSocket;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
 import java.time.Duration;
 import java.time.Instant;
@@ -33,6 +38,7 @@ import java.util.function.BooleanSupplier;
 import java.util.stream.IntStream;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -43,6 +49,8 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.JsonNode;
@@ -55,6 +63,15 @@ import tools.jackson.databind.json.JsonMapper;
         "pheeeew.s3.key-prefix=pheeeew/test/", "pheeeew.s3.region=ap-northeast-2"
 })
 class PressRecoveryWebSocketIntegrationTest {
+
+    private static final Path ADMISSION_FILE = Path.of(System.getProperty("java.io.tmpdir"),
+            "pheeeew-press-recovery-" + UUID.randomUUID() + ".admission");
+
+    @DynamicPropertySource
+    static void admissionFile(DynamicPropertyRegistry registry) {
+        registry.add("pheeeew.press-race.admission-file", ADMISSION_FILE::toString);
+        registry.add("pheeeew.press-race.admission-required", () -> "true");
+    }
 
     @LocalServerPort
     private int port;
@@ -80,7 +97,8 @@ class PressRecoveryWebSocketIntegrationTest {
     private String token;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
+        writeAdmission("OPEN");
         client = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
         device = devices.save(기본_기기_빌더().build());
         token = tokens.issue(device.getPublicId()).accessToken();
@@ -100,6 +118,148 @@ class PressRecoveryWebSocketIntegrationTest {
                 UPDATE press_race_control SET active_server_generation = NULL, enabled = FALSE,
                     activation_date = NULL WHERE id = TRUE
                 """).update();
+    }
+
+    @AfterAll
+    static void deleteAdmissionFiles() throws Exception {
+        Files.deleteIfExists(ADMISSION_FILE);
+        Files.deleteIfExists(ADMISSION_FILE.resolveSibling(ADMISSION_FILE.getFileName() + ".closed"));
+    }
+
+    @Test
+    void 공통_잠금을_기다리던_HTTP는_차단_후_재개되어도_이전_허용_번호로_저장하지_않는다() throws Exception {
+        // given
+        HttpRequest request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port
+                        + "/api/v2/emotions/presses")).timeout(Duration.ofSeconds(10))
+                .header("Authorization", "Bearer " + token).header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString("{\"counts\":{\"ANGRY\":1}}"))
+                .build();
+        try (Connection fence = dataSource.getConnection()) {
+            fence.setAutoCommit(false);
+            fence.createStatement().executeUpdate("UPDATE press_race_control SET enabled = enabled WHERE id = TRUE");
+            var waiting = client.sendAsync(request, HttpResponse.BodyHandlers.ofString());
+            awaitLock("press_race_control", null);
+
+            // when: 요청은 OPEN을 본 뒤 잠금을 기다리는 동안 다른 허용 번호로 재개된다.
+            writeAdmission("PAUSED");
+            writeAdmission("OPEN");
+            fence.commit();
+            HttpResponse<String> response = waiting.get(5, TimeUnit.SECONDS);
+
+            // then
+            assertThat(response.statusCode()).isEqualTo(503);
+            assertThat(json.readTree(response.body()).path("code").stringValue()).isEqualTo("SERVER_DRAINING");
+            assertThat(total()).isZero();
+        }
+        assertThat(client.send(request, HttpResponse.BodyHandlers.ofString()).statusCode()).isEqualTo(200);
+        assertThat(total()).isEqualTo(1);
+    }
+
+    @Test
+    void 닫힘은_초기화_전_연결과_복구_연결까지_종료하고_같은_상태의_확인_파일을_남긴다() throws Exception {
+        // given
+        SocketListener uninitialized = connect(token);
+        Device recoveryDevice = devices.save(기본_기기_빌더().build());
+        Device initializedDevice = devices.save(기본_기기_빌더().build());
+        try {
+            SocketListener recovery = connect(tokens.issue(recoveryDevice.getPublicId()).accessToken(), "/recovery");
+            SocketListener initialized = connect(tokens.issue(initializedDevice.getPublicId()).accessToken());
+            initialize(initialized, List.of());
+
+            // when
+            String closed = writeAdmission("CLOSED");
+
+            // then
+            assertThat(uninitialized.closeReasons.poll(5, TimeUnit.SECONDS)).isEqualTo("SERVER_DRAINING");
+            assertThat(recovery.closeReasons.poll(5, TimeUnit.SECONDS)).isEqualTo("SERVER_DRAINING");
+            assertThat(initialized.closeReasons.poll(5, TimeUnit.SECONDS)).isEqualTo("SERVER_DRAINING");
+            await(() -> acknowledged(closed));
+            writeAdmission("OPEN");
+            assertThat(initialize(connect(token), List.of()).path("type").stringValue()).isEqualTo("session.ready");
+        } finally {
+            devices.deleteById(recoveryDevice.getId());
+            devices.deleteById(initializedDevice.getId());
+        }
+    }
+
+    @Test
+    void 경쟁_OFF의_복구_전용_연결은_본인_입력을_정산하고_신규_프레스는_허용하지_않는다() throws Exception {
+        // given
+        SocketListener previous = connect(token);
+        JsonNode previousReady = initialize(previous, List.of());
+        PressConnection previousConnection = connection(previousReady);
+        UUID applied = UUID.randomUUID();
+        UUID pending = UUID.randomUUID();
+        UUID unreceived = UUID.randomUUID();
+        previous.socket.sendText(submit(applied, previousReady, 3), true).join();
+        assertThat(previous.receive().path("status").stringValue()).isEqualTo("APPLIED");
+        assertThat(service.receive(previousConnection, pending, Map.of(EmotionState.ANGRY, 2)).status())
+                .isEqualTo("PENDING");
+        jdbc.sql("UPDATE press_race_control SET enabled = FALSE WHERE id = TRUE").update();
+
+        // when
+        SocketListener recovery = connect(token, "/recovery");
+        recovery.socket.sendText(json.writeValueAsString(Map.of("v", 1, "type", "session.init", "view", "PRESS",
+                "pending", List.of(pending(applied, previousConnection.connectionGeneration(), 3),
+                        pending(pending, previousConnection.connectionGeneration(), 2),
+                        pending(unreceived, previousConnection.connectionGeneration(), 1)))), true).join();
+        JsonNode recovered = recovery.receive();
+        recovery.socket.sendText(submit(UUID.randomUUID(), recovered, 1), true).join();
+        JsonNode rejected = recovery.receive();
+
+        // then
+        assertThat(recovered.path("type").stringValue()).isEqualTo("session.recovered");
+        assertThat(recovered.path("inputEnabled").booleanValue()).isFalse();
+        assertThat(recovered.path("counts").path("ANGRY").longValue()).isEqualTo(3);
+        assertThat(recovered.path("results").get(0).path("status").stringValue()).isEqualTo("APPLIED");
+        assertRejected(recovered.path("results").get(1), pending);
+        assertRejected(recovered.path("results").get(2), unreceived);
+        assertThat(rejected.path("code").stringValue()).isEqualTo("RECOVERY_ONLY");
+        assertThat(recovery.snapshots.poll(400, TimeUnit.MILLISECONDS)).isNull();
+        assertThat(total()).isEqualTo(3);
+        assertThat(jdbc.sql("SELECT ready FROM press_device_controls WHERE device_id = :device")
+                .param("device", device.getId()).query(Boolean.class).single()).isFalse();
+        SocketListener denied = connect(token);
+        assertThat(denied.receive().path("code").stringValue()).isEqualTo("RACE_DISABLED");
+        HttpResponse<String> http = client.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port
+                        + "/api/v2/emotions/presses")).header("Authorization", "Bearer " + token)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString("{\"counts\":{\"ANGRY\":1}}"))
+                .build(), HttpResponse.BodyHandlers.ofString());
+        assertThat(http.statusCode()).isEqualTo(200);
+        assertThat(total()).isEqualTo(4);
+    }
+
+    @Test
+    void 복구_전용_연결은_인증이_필요하고_다른_기기의_성공_결과를_노출하지_않는다() throws Exception {
+        // given
+        SocketListener previous = connect(token);
+        JsonNode ready = initialize(previous, List.of());
+        UUID applied = UUID.randomUUID();
+        previous.socket.sendText(submit(applied, ready, 3), true).join();
+        assertThat(previous.receive().path("status").stringValue()).isEqualTo("APPLIED");
+        Device another = devices.save(기본_기기_빌더().build());
+        try {
+            jdbc.sql("UPDATE press_race_control SET enabled = FALSE WHERE id = TRUE").update();
+
+            // when
+            assertThatThrownBy(() -> client.newWebSocketBuilder().buildAsync(
+                    URI.create("ws://127.0.0.1:" + port + "/api/v1/press-race/recovery"), new SocketListener()).join())
+                    .hasCauseInstanceOf(java.net.http.WebSocketHandshakeException.class);
+            SocketListener recovery = connect(tokens.issue(another.getPublicId()).accessToken(), "/recovery");
+            recovery.socket.sendText(json.writeValueAsString(Map.of("v", 1, "type", "session.init", "view", "PRESS",
+                    "pending", List.of(pending(applied,
+                            UUID.fromString(ready.path("connectionGeneration").stringValue()), 3)))), true).join();
+            JsonNode result = recovery.receive();
+
+            // then
+            assertThat(result.path("type").stringValue()).isEqualTo("session.recovered");
+            assertRejected(result.path("results").get(0), applied);
+            assertThat(result.path("counts").path("ANGRY").longValue()).isZero();
+            assertThat(total()).isEqualTo(3);
+        } finally {
+            devices.deleteById(another.getId());
+        }
     }
 
     @Test
@@ -343,6 +503,23 @@ class PressRecoveryWebSocketIntegrationTest {
         assertThat(result.has("appliedCounts")).isFalse();
     }
 
+    private String writeAdmission(String mode) throws Exception {
+        String contents = mode + " " + UUID.randomUUID() + " " + service.serverGeneration() + "\n";
+        Path temporary = ADMISSION_FILE.resolveSibling(ADMISSION_FILE.getFileName() + ".new");
+        Files.writeString(temporary, contents);
+        Files.move(temporary, ADMISSION_FILE, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        return contents;
+    }
+
+    private boolean acknowledged(String contents) {
+        try {
+            return Files.readString(ADMISSION_FILE.resolveSibling(ADMISSION_FILE.getFileName() + ".closed"))
+                    .equals(contents);
+        } catch (java.io.IOException exception) {
+            return false;
+        }
+    }
+
     private PressConnection connection(JsonNode ready) {
         return PressConnection.of(device.getPublicId(), UUID.fromString(ready.path("serverGeneration").stringValue()),
                 UUID.fromString(ready.path("connectionGeneration").stringValue()), Instant.now().plusSeconds(600));
@@ -388,9 +565,13 @@ class PressRecoveryWebSocketIntegrationTest {
     }
 
     private SocketListener connect(String accessToken) throws Exception {
+        return connect(accessToken, "");
+    }
+
+    private SocketListener connect(String accessToken, String suffix) throws Exception {
         SocketListener listener = new SocketListener();
         listener.socket = client.newWebSocketBuilder().header("Authorization", "Bearer " + accessToken)
-                .buildAsync(URI.create("ws://127.0.0.1:" + port + "/api/v1/press-race"), listener)
+                .buildAsync(URI.create("ws://127.0.0.1:" + port + "/api/v1/press-race" + suffix), listener)
                 .get(10, TimeUnit.SECONDS);
         sockets.add(listener.socket);
         return listener;

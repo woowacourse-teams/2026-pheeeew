@@ -197,6 +197,22 @@ jobs:
           chmod 600 ~/.ssh/config
           ssh -o ConnectTimeout=30 target 'echo 터널 연결 확인'
 
+      - name: 운영 단일 앱 경로의 프레스 계약 확인
+        env:
+          IMAGE: ${{ secrets.DOCKERHUB_IMAGE }}:prod-${{ github.sha }}
+        run: |
+          set -eu
+          ssh -F ~/.ssh/config target "APP_IMAGE='$IMAGE' bash -s" <<'REMOTE'
+          set -eu
+          docker pull "$APP_IMAGE"
+          contract=$(docker image inspect --format '{{index .Config.Labels "com.pheeeew.press-generation-contract"}}' "$APP_IMAGE")
+          if [ "$contract" = 2 ]; then
+            echo "프레스 계약 2는 기존 운영 단일 앱 배포로 열 수 없습니다."
+            echo "설정과 실행 서버를 유지합니다. 운영 세대·입력 차단 이행을 별도로 승인·검증해야 합니다."
+            exit 1
+          fi
+          REMOTE
+
       - name: compose, nginx, Alloy 설정 전송
         run: |
           set -eu
@@ -270,6 +286,12 @@ jobs:
           }
 
           docker compose -f compose.yml pull app
+
+          contract=$(docker image inspect --format '{{index .Config.Labels "com.pheeeew.press-generation-contract"}}' "$APP_IMAGE")
+          if [ "$contract" = 2 ]; then
+            echo "프레스 계약 2는 승인·검증된 운영 이행 경로가 필요합니다. 기존 앱을 교체하지 않습니다."
+            exit 1
+          fi
 
           started=1
           if ! docker compose -f compose.yml up -d; then

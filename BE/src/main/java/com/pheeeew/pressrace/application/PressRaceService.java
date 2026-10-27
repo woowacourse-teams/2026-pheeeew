@@ -22,7 +22,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
-import java.util.function.Supplier;
+import java.util.function.Function;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -43,65 +44,69 @@ public class PressRaceService {
     private final DeviceDailyPressRepository presses;
     private final TransactionTemplate transaction;
     private final UUID serverGeneration;
+    private final PressAdmission admission;
 
+    @Autowired
     public PressRaceService(PressRaceRepository repository, DeviceDailyPressRepository presses,
             PlatformTransactionManager manager,
-            @Value("${pheeeew.press-race.server-generation:}") String configuredGeneration) {
+            @Value("${pheeeew.press-race.server-generation:}") String configuredGeneration,
+            @Value("${pheeeew.press-race.admission-file:}") String admissionFile,
+            @Value("${pheeeew.press-race.admission-required:false}") boolean admissionRequired) {
         this.repository = repository;
         this.presses = presses;
         this.transaction = new TransactionTemplate(manager);
         this.transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         this.serverGeneration = configuredGeneration.isBlank() ? UUID.randomUUID() : UUID.fromString(configuredGeneration);
+        this.admission = new PressAdmission(admissionFile, serverGeneration, admissionRequired);
+    }
+
+    public PressRaceService(PressRaceRepository repository, DeviceDailyPressRepository presses,
+            PlatformTransactionManager manager, String configuredGeneration) {
+        this(repository, presses, manager, configuredGeneration, "", false);
     }
 
     public UUID serverGeneration() {
         return serverGeneration;
     }
 
+    public boolean admissionClosed() {
+        return admission.isClosed();
+    }
+
+    public String admissionRevision() {
+        return admission.openRevision();
+    }
+
+    public void requireAdmissionRevision(String revision) {
+        admission.requireOpen(revision);
+    }
+
+    public void acknowledgeAdmissionClosed() {
+        admission.acknowledgeClosed();
+    }
+
     public void connect(PressConnection connection) {
-        inTransaction(() -> {
-            Map<String, Object> control = repository.lockServerFence();
-            long deviceId = repository.deviceId(connection.devicePublicId());
-            repository.lockDevice(deviceId);
-            Instant now = repository.now();
-            checkServer(control, connection.serverGeneration());
-            checkToken(connection, now);
-            checkEnabled(control, now);
-            repository.connection(deviceId, connection.connectionGeneration(), false);
-            return null;
-        });
+        connect(connection, admission.openRevision());
+    }
+
+    public void connect(PressConnection connection, String revision) {
+        connect(connection, false, revision);
+    }
+
+    public void connectRecovery(PressConnection connection) {
+        connectRecovery(connection, admission.openRevision());
+    }
+
+    public void connectRecovery(PressConnection connection, String revision) {
+        connect(connection, true, revision);
     }
 
     public PressSessionResult initialize(PressConnection connection, List<PendingPress> pending) {
-        if (pending == null || pending.size() > 20) {
-            throw new PressRaceException("INVALID_INPUT");
-        }
-        return inTransaction(() -> {
-            Map<String, Object> control = repository.lockServerFence();
-            long deviceId = repository.deviceId(connection.devicePublicId());
-            Map<String, Object> device = repository.lockDevice(deviceId);
-            Instant now = repository.now();
-            checkConnection(control, device, connection, false, now);
-            repository.recover(deviceId, connection.connectionGeneration(), now);
-            List<PressInputResult> results = new ArrayList<>();
-            for (PendingPress input : pending) {
-                if (input.requestId() == null || input.connectionGeneration() == null
-                        || input.connectionGeneration().equals(connection.connectionGeneration())) {
-                    throw new PressRaceException("INVALID_INPUT");
-                }
-                String normalized = normalize(input.counts());
-                Map<String, Object> row = repository.input(deviceId, input.requestId()).orElse(null);
-                if (row == null) {
-                    repository.tombstone(deviceId, input.requestId(), normalized, hash(normalized),
-                            connection.connectionGeneration(), now);
-                    row = repository.input(deviceId, input.requestId()).orElseThrow();
-                }
-                results.add(result(input.requestId(), normalized, row));
-            }
-            repository.connection(deviceId, connection.connectionGeneration(), true);
-            LocalDate date = date(now);
-            return PressSessionResult.of(repository.counts(deviceId, date), List.copyOf(results), date);
-        });
+        return initialize(connection, pending, false);
+    }
+
+    public PressSessionResult initializeRecovery(PressConnection connection, List<PendingPress> pending) {
+        return initialize(connection, pending, true);
     }
 
     public PressInputResult submit(PressConnection connection, UUID requestId, Map<EmotionState, Integer> counts) {
@@ -115,8 +120,8 @@ public class PressRaceService {
     public PressInputResult receive(PressConnection connection, UUID requestId, Map<EmotionState, Integer> counts) {
         String normalized = normalize(counts);
         requireRequestId(requestId);
-        return inTransaction(() -> {
-            Map<String, Object> control = repository.lockServerFence();
+        return inTransaction(revision -> {
+            Map<String, Object> control = lockServerFence(revision);
             long deviceId = repository.deviceId(connection.devicePublicId());
             Map<String, Object> device = repository.lockDevice(deviceId);
             Map<String, Object> existing = repository.input(deviceId, requestId).orElse(null);
@@ -134,8 +139,8 @@ public class PressRaceService {
     public PressInputResult apply(PressConnection connection, UUID requestId, Map<EmotionState, Integer> counts) {
         String normalized = normalize(counts);
         requireRequestId(requestId);
-        return inTransaction(() -> {
-            Map<String, Object> control = repository.lockServerFence();
+        return inTransaction(revision -> {
+            Map<String, Object> control = lockServerFence(revision);
             long deviceId = repository.deviceId(connection.devicePublicId());
             Map<String, Object> device = repository.lockDevice(deviceId);
             Map<String, Object> row = repository.input(deviceId, requestId).orElse(null);
@@ -166,8 +171,8 @@ public class PressRaceService {
         if (requestIds == null || requestIds.size() > 20 || requestIds.stream().anyMatch(java.util.Objects::isNull)) {
             throw new PressRaceException("INVALID_INPUT");
         }
-        return inTransaction(() -> {
-            Map<String, Object> control = repository.lockServerFence();
+        return inTransaction(revision -> {
+            Map<String, Object> control = lockServerFence(revision);
             long deviceId = repository.deviceId(connection.devicePublicId());
             Map<String, Object> device = repository.lockDevice(deviceId);
             checkReadable(control, device, connection, repository.now());
@@ -178,8 +183,8 @@ public class PressRaceService {
     }
 
     public Map<EmotionState, Long> pressHttp(UUID devicePublicId, PressCounts counts) {
-        return inTransaction(() -> {
-            Map<String, Object> control = repository.lockServerFence();
+        return inTransaction(revision -> {
+            Map<String, Object> control = lockServerFence(revision);
             long deviceId = repository.deviceId(devicePublicId);
             Map<String, Object> device = repository.lockDevice(deviceId);
             Instant now = repository.now();
@@ -192,6 +197,57 @@ public class PressRaceService {
                 increase(deviceId, today, counts.presses(), now);
             }
             return repository.counts(deviceId, today);
+        });
+    }
+
+    private void connect(PressConnection connection, boolean recoveryOnly, String revision) {
+        inTransaction(revision, permit -> {
+            Map<String, Object> control = lockServerFence(permit);
+            long deviceId = repository.deviceId(connection.devicePublicId());
+            repository.lockDevice(deviceId);
+            Instant now = repository.now();
+            checkServer(control, connection.serverGeneration());
+            checkToken(connection, now);
+            if (!recoveryOnly) {
+                checkEnabled(control, now);
+            }
+            repository.connection(deviceId, connection.connectionGeneration(), false);
+            return null;
+        });
+    }
+
+    private PressSessionResult initialize(PressConnection connection, List<PendingPress> pending, boolean recoveryOnly) {
+        if (pending == null || pending.size() > 20) {
+            throw new PressRaceException("INVALID_INPUT");
+        }
+        return inTransaction(revision -> {
+            Map<String, Object> control = lockServerFence(revision);
+            long deviceId = repository.deviceId(connection.devicePublicId());
+            Map<String, Object> device = repository.lockDevice(deviceId);
+            Instant now = repository.now();
+            checkReadable(control, device, connection, now);
+            if (!recoveryOnly) {
+                checkEnabled(control, now);
+            }
+            repository.recover(deviceId, connection.connectionGeneration(), now);
+            List<PressInputResult> results = new ArrayList<>();
+            for (PendingPress input : pending) {
+                if (input.requestId() == null || input.connectionGeneration() == null
+                        || input.connectionGeneration().equals(connection.connectionGeneration())) {
+                    throw new PressRaceException("INVALID_INPUT");
+                }
+                String normalized = normalize(input.counts());
+                Map<String, Object> row = repository.input(deviceId, input.requestId()).orElse(null);
+                if (row == null) {
+                    repository.tombstone(deviceId, input.requestId(), normalized, hash(normalized),
+                            connection.connectionGeneration(), now);
+                    row = repository.input(deviceId, input.requestId()).orElseThrow();
+                }
+                results.add(result(input.requestId(), normalized, row));
+            }
+            repository.connection(deviceId, connection.connectionGeneration(), !recoveryOnly);
+            LocalDate date = date(now);
+            return PressSessionResult.of(repository.counts(deviceId, date), List.copyOf(results), date);
         });
     }
 
@@ -330,7 +386,19 @@ public class PressRaceService {
         return LocalDate.ofInstant(now, KST);
     }
 
-    private <T> T inTransaction(Supplier<T> operation) {
-        return transaction.execute(status -> operation.get());
+    private Map<String, Object> lockServerFence(String revision) {
+        Map<String, Object> control = repository.lockServerFence();
+        admission.requireOpen(revision);
+        return control;
+    }
+
+    private <T> T inTransaction(Function<String, T> operation) {
+        String revision = admission.openRevision();
+        return inTransaction(revision, operation);
+    }
+
+    private <T> T inTransaction(String revision, Function<String, T> operation) {
+        admission.requireOpen(revision);
+        return transaction.execute(status -> operation.apply(revision));
     }
 }
