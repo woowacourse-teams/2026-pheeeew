@@ -26,7 +26,6 @@ import com.pheeeew.collection.domain.repository.CollectionProgressRepository;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.emotion.domain.EmotionState;
-import com.pheeeew.notification.domain.DeviceNotificationSetting;
 import com.pheeeew.notification.domain.NotificationSettings;
 import com.pheeeew.notification.domain.PushMessage;
 import com.pheeeew.notification.domain.PushSendResult;
@@ -58,7 +57,7 @@ import org.springframework.transaction.annotation.Transactional;
 @PostgisDataJpaTest
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @Import({CollectionNotificationService.class, NotificationDispatcher.class, NotificationOutboxService.class,
-        CollectionProgressRepository.class})
+        NotificationSettingService.class, DevicePushTokenRegistrationService.class, CollectionProgressRepository.class})
 class CollectionNotificationServiceIntegrationTest {
 
     private static final ZoneId 서울 = ZoneId.of("Asia/Seoul");
@@ -71,6 +70,9 @@ class CollectionNotificationServiceIntegrationTest {
 
     @Autowired
     private NotificationDispatcher dispatcher;
+
+    @Autowired
+    private NotificationSettingService notificationSettingService;
 
     @Autowired
     private DeviceRepository devices;
@@ -404,9 +406,8 @@ class CollectionNotificationServiceIntegrationTest {
     }
 
     private void 수신_설정을_바꾼다(Device device, NotificationSettings 새_설정) {
-        DeviceNotificationSetting setting = settings.findByDeviceId(device.getId()).orElseThrow();
-        setting.update(새_설정);
-        settings.save(setting);
+        notificationSettingService.updateSettings(
+                device.getPublicId(), 새_설정.collectionClaimableEnabled(), 새_설정.rankChangedEnabled());
     }
 
     private void 발급_가능하게_만든다(Device device, EmotionState state) {
