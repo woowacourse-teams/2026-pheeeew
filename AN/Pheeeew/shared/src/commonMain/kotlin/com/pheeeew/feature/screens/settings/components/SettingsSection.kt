@@ -42,7 +42,7 @@ internal fun SettingsCard(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    val shape = RoundedCornerShape(25.dp)
+    val shape = RoundedCornerShape(24.dp)
     Column(
         modifier =
             modifier

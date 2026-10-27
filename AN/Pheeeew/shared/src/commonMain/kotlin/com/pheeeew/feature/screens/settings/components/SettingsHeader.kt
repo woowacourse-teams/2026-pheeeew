@@ -14,12 +14,14 @@ import pheeeew.shared.generated.resources.settings_title
 internal fun SettingsHeader(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
+    title: String = stringResource(Res.string.settings_title),
 ) {
     BasicTopBar(
-        title = stringResource(Res.string.settings_title),
+        title = title,
         onBack = onBackClick,
         modifier = modifier,
         height = 64.dp,
+        titleStartAligned = true,
         showBackIndication = false,
     )
 }
