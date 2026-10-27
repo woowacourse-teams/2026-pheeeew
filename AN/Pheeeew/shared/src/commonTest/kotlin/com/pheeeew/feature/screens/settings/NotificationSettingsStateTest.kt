@@ -5,6 +5,9 @@ import com.pheeeew.core.notification.NotificationKind
 import com.pheeeew.core.notification.NotificationPermissionController
 import com.pheeeew.core.notification.NotificationPreferences
 import com.pheeeew.core.notification.NotificationPreferencesStore
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -12,6 +15,73 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class NotificationSettingsStateTest {
+    @Test
+    fun `응답 전 즉시 바뀌고 실패하면 이전 값과 실패 안내를 복구한다`() =
+        runTest {
+            val gate = CompletableDeferred<Unit>()
+            val store =
+                Store().apply {
+                    saved = NotificationPreferences(false, false)
+                    beforeUpdate = { gate.await() }
+                    fail = true
+                }
+            val model = NotificationSettingsState(Permissions(), store)
+            model.refresh()
+            val save = launch(start = CoroutineStart.UNDISPATCHED) { model.toggle(NotificationKind.COLLECTION, true) }
+            assertTrue(model.state.value.checked(NotificationKind.COLLECTION))
+            gate.complete(Unit)
+            save.join()
+            assertFalse(model.state.value.checked(NotificationKind.COLLECTION))
+            val notice = requireNotNull(model.state.value.saveFailureNoticeId)
+            model.acknowledgeSaveFailure(notice)
+            assertEquals(null, model.state.value.saveFailureNoticeId)
+        }
+
+    @Test
+    fun `전체 변경 응답이 연속 입력한 개별 토글을 덮어쓰지 않는다`() =
+        runTest {
+            val gate = CompletableDeferred<Unit>()
+            val store = Store().apply { beforeUpdate = { gate.await() } }
+            val model = NotificationSettingsState(Permissions(), store)
+            model.refresh()
+            val all = launch(start = CoroutineStart.UNDISPATCHED) { model.toggleAll(false) }
+            assertFalse(model.state.value.checked(NotificationKind.COLLECTION))
+            assertFalse(model.state.value.checked(NotificationKind.RANK_DROP))
+            val collection =
+                launch(start = CoroutineStart.UNDISPATCHED) { model.toggle(NotificationKind.COLLECTION, true) }
+            assertTrue(model.state.value.checked(NotificationKind.COLLECTION))
+            assertFalse(model.state.value.checked(NotificationKind.RANK_DROP))
+            gate.complete(Unit)
+            all.join()
+            collection.join()
+            assertEquals(NotificationPreferences(true, false), store.saved)
+            assertEquals(store.saved, model.state.value.preferences)
+        }
+
+    @Test
+    fun `전체 알림은 두 수신 설정을 함께 변경한다`() =
+        runTest {
+            val store = Store().apply { saved = NotificationPreferences(false, true) }
+            val model = NotificationSettingsState(Permissions(), store)
+            model.refresh()
+            model.toggleAll(true)
+            assertEquals(NotificationPreferences(true, true), store.saved)
+            model.toggleAll(false)
+            assertEquals(NotificationPreferences(false, false), store.saved)
+        }
+
+    @Test
+    fun `권한이 없으면 전체 알림을 켜도 저장하지 않는다`() =
+        runTest {
+            val permissions = Permissions().apply { status = NotificationAuthorization.DENIED }
+            val store = Store().apply { saved = NotificationPreferences(false, false) }
+            val model = NotificationSettingsState(permissions, store)
+            model.refresh()
+            model.toggleAll(true)
+            assertEquals(NotificationPreferences(false, false), store.saved)
+            assertTrue(model.state.value.failed)
+        }
+
     @Test
     fun `최초 기본 ON은 시스템 허용일 때만 켜짐으로 표시한다`() =
         runTest {
@@ -251,6 +321,7 @@ class NotificationSettingsStateTest {
         var saved = NotificationPreferences()
         var fail = false
         var updates = 0
+        var beforeUpdate: suspend () -> Unit = {}
 
         override suspend fun read() = saved
 
@@ -258,6 +329,7 @@ class NotificationSettingsStateTest {
             kind: NotificationKind,
             enabled: Boolean,
         ): NotificationPreferences {
+            beforeUpdate()
             if (fail) error("save failed")
             updates++
             saved =
