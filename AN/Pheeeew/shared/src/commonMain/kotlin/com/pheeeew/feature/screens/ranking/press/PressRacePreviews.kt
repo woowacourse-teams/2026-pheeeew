@@ -161,3 +161,18 @@ private fun PressRaceDisconnectedPreview() {
         )
     }
 }
+
+@Preview(name = "일일 순위 상단바 날짜·최대 글씨", widthDp = 320, heightDp = 568, fontScale = 2f)
+@Composable
+private fun PressRaceDatedLargeTextPreview() {
+    AppTheme {
+        PressRankingScreen(
+            onBack = {},
+            uiState = PressRankingUiState(status = PressRankingStatus.Ready),
+            onRetry = {},
+            onRefresh = {},
+            rows = raceSample,
+            dailyDate = "2026-10-27",
+        )
+    }
+}
