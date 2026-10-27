@@ -14,7 +14,9 @@ sealed interface DeviceNicknameLookup {
         val nickname: String?,
     ) : DeviceNicknameLookup
 
-    data object Failed : DeviceNicknameLookup
+    data class Failed(
+        val kind: DeviceSessionFailureKind = DeviceSessionFailureKind.UNEXPECTED,
+    ) : DeviceNicknameLookup
 }
 
 sealed interface DeviceNicknameAvailability {

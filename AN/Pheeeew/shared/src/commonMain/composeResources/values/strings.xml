@@ -1,6 +1,7 @@
 <resources>
 
     <!-- 앱 공통 및 권한 -->
+    <string name="app_name_kr">히유</string>
     <string name="app_update_suggested_title">새로운 버전이 나왔어요</string>
     <string name="app_update_suggested_message">최신 버전으로 업데이트하면 더 나은 앱을 이용할 수 있어요.</string>
     <string name="app_update">업데이트</string>
@@ -40,6 +41,8 @@
     <string name="map_nearby_emotions">감정 목록</string>
     <string name="map_refresh">지도 새로고침</string>
     <string name="map_filter">지도 필터</string>
+    <string name="map_filter_applied">필터 적용됨</string>
+    <string name="map_filter_default">기본 필터</string>
     <string name="map_current_location">내 위치로 이동</string>
     <string name="map_settings">설정 버튼</string>
     <string name="map_refresh_nearby">감정 목록 새로고침</string>
@@ -169,6 +172,12 @@
     <string name="settings_nickname_available">사용할 수 있는 닉네임이에요.</string>
     <string name="settings_nickname_taken">이미 사용 중인 닉네임이에요.</string>
     <string name="settings_nickname_availability_failed">사용 가능 여부를 확인하지 못했어요. 다시 시도해주세요.</string>
+    <string name="app_entry_failed_title">앱을 시작하지 못했어요</string>
+    <string name="app_entry_network_failed">네트워크 상태를 확인한 후 다시 시도해주세요.</string>
+    <string name="app_entry_server_failed">서버에 문제가 생겼어요. 잠시 후 다시 시도해주세요.</string>
+    <string name="app_entry_rate_limited_failed">요청이 많아요. 잠시 후 다시 시도해주세요.</string>
+    <string name="app_entry_authentication_failed">기기 인증을 완료하지 못했어요. 다시 시도해주세요.</string>
+    <string name="app_entry_storage_failed">앱에 저장된 정보를 불러오지 못했어요. 다시 시도해주세요.</string>
     <string name="settings_nickname_device_prepare_failed">앱을 시작하는 중 문제가 생겼어요. 다시 시도해주세요.</string>
     <string name="settings_nickname_lookup_failed">닉네임을 확인하지 못했어요. 네트워크 연결을 확인하고 다시 시도해주세요.</string>
     <string name="settings_nickname_registration_failed">설정을 완료하지 못했어요. 다시 시도해주세요.</string>
@@ -242,6 +251,50 @@
     <string name="emotion_emoji_angry_1">🤬</string>
     <string name="emotion_emoji_angry_2">💢</string>
     <string name="emotion_emoji_angry_3">😡</string>
+
+    <string name="emotion_label_frustrated">답답</string>
+    <string name="emotion_label_irritated">짜증</string>
+    <string name="emotion_label_exhausted">지침</string>
+    <string name="emotion_label_discouraged">좌절</string>
+    <string name="emotion_label_angry">분노</string>
+    <string name="collection_title">나의 감정 컬렉션</string>
+    <string name="collection_subtitle">%1$s님의 감정 카드</string>
+    <string name="collection_card_count">모은 카드 %1$s장</string>
+    <string name="collection_cover_flow">커버플로</string>
+    <string name="collection_album">앨범</string>
+    <string name="collection_empty">아직 모은 감정 카드가 없어요</string>
+    <string name="collection_empty_hint">감정을 기록하고 카드로 모아보세요</string>
+    <string name="collection_save">카드 저장</string>
+    <string name="collection_share">공유</string>
+    <string name="collection_close">닫기</string>
+    <string name="collection_image_load_failed">이미지를 불러오는데 실패했습니다.\n다시 시도해주세요</string>
+    <string name="collection_image_creating">이미지 생성 중</string>
+    <string name="collection_image_saving">카드 저장 중</string>
+    <string name="collection_image_sharing">공유 메뉴 여는 중</string>
+    <string name="collection_progress_card_description">%1$s 카드 진행도</string>
+    <string name="collection_unissued_card_description">발급 전 카드 진행도</string>
+    <string name="collection_unissued_label_compact">발급전</string>
+    <string name="collection_unissued_label">발급 전</string>
+    <string name="collection_stamp_label">스탬프</string>
+    <string name="collection_press_label">프레스</string>
+    <string name="collection_activity_count">%1$s %2$d / %3$d</string>
+    <string name="collection_claim_condition_met">조건이 달성되었어요\n카드를 발급받아보세요!</string>
+    <string name="collection_claim_condition_not_met">아직 조건이 달성되지 않았어요!</string>
+    <string name="collection_goal_reached">목표 달성</string>
+    <string name="collection_goal_remaining">%1$d회 남음</string>
+    <string name="collection_issue_card">발급하기</string>
+    <string name="collection_progress_unavailable">진행도를 표시할 수 없어요</string>
+    <string name="collection_filter_all">전체</string>
+    <string name="collection_refresh_failed">컬렉션을 불러오지 못했어요.</string>
+    <string name="collection_card_accessibility_description">%1$s 카드 · %2$s</string>
+    <string name="collection_progress_card_accessibility_description">발급 전 카드 · %1$s 진행도</string>
+    <string name="collection_retry">다시 시도</string>
+    <string name="collection_loading">불러오는 중…</string>
+    <string name="collection_saved">저장이 완료되었습니다</string>
+    <string name="collection_save_failed">카드를 저장하지 못했어요. 다시 시도해 주세요</string>
+    <string name="collection_shared">공유 메뉴를 열었어요</string>
+    <string name="collection_share_failed">카드를 공유하지 못했어요. 다시 시도해 주세요</string>
+    <string name="collection_capture_failed">카드 이미지를 준비하지 못했어요. 다시 시도해 주세요</string>
     <string name="notification_permission_title">알림 권한</string>
     <string name="notification_permission_loading">확인 중</string>
     <string name="notification_permission_failed">확인 실패 · 재시도</string>
@@ -360,4 +413,5 @@
     <string name="guide_collection_stats_title">프레스·스탬프 기록도 함께</string>
     <string name="guide_collection_stats_accent">프레스·스탬프 기록</string>
     <string name="onboarding_guide_swipe_hint">옆으로 넘겨보세요 →</string>
+    <string name="collection_notification_outdated">알림의 날짜가 오늘과 달라요. 오늘의 진행도를 보여드릴게요.</string>
 </resources>

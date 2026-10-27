@@ -52,6 +52,9 @@ private final class FoundationMapContainerView: UIView {
     }
 
     func update(state: FoundationIosMapRenderUiModel) {
+        // A retained, hidden map must not intercept touches intended for another tab.
+        isUserInteractionEnabled = state.isVisible
+        accessibilityElementsHidden = !state.isVisible
         hostController.update(state: state)
     }
 

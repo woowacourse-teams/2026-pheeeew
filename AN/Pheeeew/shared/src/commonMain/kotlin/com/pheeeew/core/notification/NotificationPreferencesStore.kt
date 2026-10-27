@@ -13,9 +13,14 @@ data class NotificationPreferences(
         }
 }
 
-/** Replace the local implementation with the device-authenticated backend adapter when available. */
+/** Device preferences are independent of the operating system permission. */
 interface NotificationPreferencesStore {
     suspend fun read(): NotificationPreferences
+
+    suspend fun replace(preferences: NotificationPreferences): NotificationPreferences {
+        update(NotificationKind.COLLECTION, preferences.collectionEnabled)
+        return update(NotificationKind.RANK_DROP, preferences.rankDropEnabled)
+    }
 
     suspend fun update(
         kind: NotificationKind,

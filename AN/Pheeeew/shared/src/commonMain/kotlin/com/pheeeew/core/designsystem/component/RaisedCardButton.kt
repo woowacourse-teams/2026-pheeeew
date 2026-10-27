@@ -10,8 +10,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
@@ -32,10 +34,13 @@ fun RaisedCardButton(
     backgroundColor: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val coroutineScope = rememberCoroutineScope()
+    val currentEnabled by rememberUpdatedState(enabled)
+    val currentOnClick by rememberUpdatedState(onClick)
     val shape = RoundedCornerShape(16.dp)
     Box(
         modifier =
@@ -57,13 +62,14 @@ fun RaisedCardButton(
                 ).background(backgroundColor, shape)
                 .border(AppBorders.Standard, AppColors.GroupInk, shape)
                 .clickable(
+                    enabled = enabled,
                     interactionSource = interactionSource,
                     indication = null,
                     role = Role.Button,
                     onClick = {
                         coroutineScope.launch {
                             delay(120L)
-                            onClick()
+                            if (currentEnabled) currentOnClick()
                         }
                     },
                 ),

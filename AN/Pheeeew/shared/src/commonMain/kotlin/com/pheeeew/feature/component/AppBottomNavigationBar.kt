@@ -55,6 +55,7 @@ import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.bottom_navigation_collection
 import pheeeew.shared.generated.resources.bottom_navigation_map
 import pheeeew.shared.generated.resources.bottom_navigation_press
+import pheeeew.shared.generated.resources.nav_collection
 import pheeeew.shared.generated.resources.nav_press
 
 private val NavigationInk = Color(0xFF202323)
@@ -116,7 +117,8 @@ internal fun AppBottomNavigationBar(
                 .width(itemWidth - indicatorInset * 2)
                 .height(AppBottomNavigationBarHeight - indicatorInset * 2)
                 .clip(CircleShape)
-                .background(AppColors.Primary),
+                .background(AppColors.Primary, CircleShape)
+                .border(1.5.dp, NavigationInk, CircleShape),
         )
         Row(Modifier.fillMaxWidth()) {
             destinations.forEach { destination ->
@@ -127,7 +129,7 @@ internal fun AppBottomNavigationBar(
                             .weight(1f)
                             .height(AppBottomNavigationBarHeight)
                             .clickable(
-                                enabled = enabled && destination != AppDestination.Collection,
+                                enabled = enabled,
                                 interactionSource = null,
                                 indication = null,
                                 role = Role.Tab,
@@ -175,6 +177,14 @@ private fun DestinationIconView(
     icon: DestinationIcon,
     pressScale: Float,
 ) {
+    if (icon == DestinationIcon.Collection) {
+        Image(
+            painter = painterResource(Res.drawable.nav_collection),
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+        )
+        return
+    }
     if (icon == DestinationIcon.Press) {
         PressNavigationIcon(pressScale = icon.visualScale * pressScale)
         return

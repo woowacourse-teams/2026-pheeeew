@@ -35,6 +35,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -51,11 +53,14 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_map_filter
+import pheeeew.shared.generated.resources.ic_map_filter_active
 import pheeeew.shared.generated.resources.ic_menu
 import pheeeew.shared.generated.resources.ic_my_location
 import pheeeew.shared.generated.resources.ic_refresh
 import pheeeew.shared.generated.resources.map_current_location
 import pheeeew.shared.generated.resources.map_filter
+import pheeeew.shared.generated.resources.map_filter_applied
+import pheeeew.shared.generated.resources.map_filter_default
 import pheeeew.shared.generated.resources.map_nearby_emotions
 import pheeeew.shared.generated.resources.map_open_list
 import pheeeew.shared.generated.resources.map_refresh
@@ -82,6 +87,7 @@ fun MapOverlay(
     showNavigationButtons: Boolean = true,
     nearbyMapControlHeight: Dp = 0.dp,
     isMapCameraMoving: Boolean = false,
+    isFilterApplied: Boolean = false,
 ) {
     val scope = rememberCoroutineScope()
     val promptVisibility = remember(scope) { MapPromptVisibilityState(scope) }
@@ -203,9 +209,14 @@ fun MapOverlay(
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
+                    val filterStateDescription =
+                        stringResource(
+                            if (isFilterApplied) Res.string.map_filter_applied else Res.string.map_filter_default,
+                        )
                     MapControlButton(
-                        icon = Res.drawable.ic_map_filter,
+                        icon = if (isFilterApplied) Res.drawable.ic_map_filter_active else Res.drawable.ic_map_filter,
                         contentDescription = stringResource(Res.string.map_filter),
+                        modifier = Modifier.semantics { stateDescription = filterStateDescription },
                         onClick = onFilterClick,
                         tint = Color.Unspecified,
                     )

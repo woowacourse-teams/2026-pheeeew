@@ -25,21 +25,21 @@ class NotificationClickTest {
     }
 
     @Test
-    fun `랭킹 데이터는 기간과 그룹을 포함해 보존한다`() {
+    fun `일별 프레스 랭킹은 서버 날짜와 이전 현재 순위를 보존한다`() {
         val data = rankingData()
         assertEquals(
-            NotificationClickTarget.Ranking("PRESS", "period-1", "group-1", 5, 6),
+            NotificationClickTarget.DailyPressRanking("2026-10-26", 5, 6),
             parseNotificationClick(data, "request-1").target,
         )
         assertEquals(
-            NotificationClickTarget.Ranking("PRESS", "period-1", null, 5, 6),
-            parseNotificationClick(data - "groupId", "request-1").target,
+            NotificationClickTarget.DailyPressRanking("2026-10-26", 5, 6),
+            parseNotificationClick(data + ("unused" to "ignored"), "request-1").target,
         )
     }
 
     @Test
     fun `누락 필드와 잘못된 순위는 안전한 앱 열기로 처리한다`() {
-        for (field in listOf("rankingType", "periodId", "previousRank", "currentRank")) {
+        for (field in listOf("date", "previousRank", "currentRank")) {
             assertEquals(NotificationClickTarget.OpenApp, parseNotificationClick(rankingData() - field, "r").target)
         }
         for (rank in listOf("0", "-1", "not-a-number", "999999999999")) {
@@ -52,6 +52,16 @@ class NotificationClickTest {
             NotificationClickTarget.OpenApp,
             parseNotificationClick(mapOf("type" to "COLLECTION_ISSUED", "collectionId" to " "), "r").target,
         )
+    }
+
+    @Test
+    fun `순위 알림의 누락 날짜와 잘못된 날짜는 기본 화면으로 처리한다`() {
+        for (date in listOf("", "2026-02-29", "2026-13-01", "2026-04-31", "2026-1-1")) {
+            assertEquals(
+                NotificationClickTarget.OpenApp,
+                parseNotificationClick(rankingData() + ("date" to date), "r").target,
+            )
+        }
     }
 
     @Test
@@ -69,6 +79,7 @@ class NotificationClickTest {
         inbox.receive(click("first"))
         inbox.receive(click("latest"))
         assertNull(inbox.pendingClick.value)
+        assertEquals(click("latest"), inbox.queuedClick.value)
         inbox.setReady(true)
         assertEquals(click("latest"), inbox.pendingClick.value)
         inbox.setReady(false)
@@ -85,6 +96,7 @@ class NotificationClickTest {
         inbox.acknowledge("same")
         inbox.receive(click("same"))
         assertNull(inbox.pendingClick.value)
+        assertNull(inbox.queuedClick.value)
     }
 
     @Test
@@ -95,6 +107,7 @@ class NotificationClickTest {
         inbox.receive(click("latest"))
         inbox.acknowledge("first")
         assertEquals(click("latest"), inbox.pendingClick.value)
+        assertEquals(click("latest"), inbox.queuedClick.value)
     }
 
     private fun click(id: String) = NotificationClick(id, NotificationClickTarget.OpenApp)
@@ -102,9 +115,7 @@ class NotificationClickTest {
     private fun rankingData() =
         mapOf(
             "type" to "RANK_DROPPED",
-            "rankingType" to "PRESS",
-            "periodId" to "period-1",
-            "groupId" to "group-1",
+            "date" to "2026-10-26",
             "previousRank" to "5",
             "currentRank" to "6",
         )
