@@ -14,9 +14,7 @@ sealed interface NotificationClickTarget {
     ) : NotificationClickTarget
 
     data class Ranking(
-        val rankingType: String,
-        val periodId: String,
-        val groupId: String?,
+        val date: String,
         val previousRank: Int,
         val currentRank: Int,
     ) : NotificationClickTarget

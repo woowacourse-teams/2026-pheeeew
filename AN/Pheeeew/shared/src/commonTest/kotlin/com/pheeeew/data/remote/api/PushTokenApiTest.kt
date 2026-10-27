@@ -4,6 +4,7 @@ import com.pheeeew.core.network.AccessToken
 import com.pheeeew.core.network.AccessTokenProvider
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.ApiResult
+import com.pheeeew.core.network.NetworkFailure
 import com.pheeeew.core.network.RecoverableAccessTokenProvider
 import com.pheeeew.core.network.createApiClient
 import io.ktor.client.engine.mock.MockEngine
@@ -16,8 +17,29 @@ import io.ktor.http.headersOf
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 
 class PushTokenApiTest {
+    @Test
+    fun `토큰 등록은 예상한 세션 세대가 아니면 HTTP 전송하지 않는다`() =
+        runTest {
+            val client =
+                createApiClient(
+                    MockEngine { error("stale session must not send a request") },
+                    ApiConfig("https://api.example.test"),
+                    AccessTokenProvider { AccessToken("device-auth", 8) },
+                )
+            try {
+                val failure =
+                    assertIs<ApiResult.Failure>(
+                        PushTokenApi(client.requests).register("token", expectedSessionGeneration = 7),
+                    )
+                assertIs<NetworkFailure.SessionUnavailable>(failure.reason)
+            } finally {
+                client.close()
+            }
+        }
+
     @Test
     fun `PUT은 기존 인증과 원문 token 필드만 보내고 204를 성공 처리한다`() =
         runTest {

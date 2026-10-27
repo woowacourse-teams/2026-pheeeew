@@ -59,6 +59,7 @@ internal class CollectionViewModel(
     private var historyJob: Job? = null
     private var refreshJob: Job? = null
     private var detailJob: Job? = null
+    private var notificationRefreshPending = false
     private var refreshRequestId = 0L
     private var todayRequestId = 0L
     private var historyRequestId = 0L
@@ -82,6 +83,7 @@ internal class CollectionViewModel(
             return
         }
         sessionGeneration = generation
+        notificationRefreshPending = false
         refreshRequestId += 1
         todayRequestId += 1
         historyRequestId += 1
@@ -139,6 +141,14 @@ internal class CollectionViewModel(
     }
 
     fun refresh() = refresh(resetToTop = true, showIndicator = true)
+
+    fun refreshFromNotification() {
+        if (refreshJob?.isActive == true) {
+            notificationRefreshPending = true
+            return
+        }
+        refresh(resetToTop = false, showIndicator = false)
+    }
 
     private fun refresh(
         resetToTop: Boolean,
@@ -207,6 +217,11 @@ internal class CollectionViewModel(
                                 isRefreshIndicatorVisible = false,
                             )
                         }
+                        refreshJob = null
+                        if (notificationRefreshPending) {
+                            notificationRefreshPending = false
+                            refresh(resetToTop = false, showIndicator = false)
+                        }
                     }
                 }
             }
@@ -239,6 +254,10 @@ internal class CollectionViewModel(
             )
         }
         loadFirstHistoryPage(filter, showIndicator = cached == null)
+        if (notificationRefreshPending) {
+            notificationRefreshPending = false
+            refresh(resetToTop = false, showIndicator = false, cancelInFlight = true)
+        }
     }
 
     fun loadNextPage() {

@@ -6,16 +6,55 @@ import com.pheeeew.core.network.MutationCertainty
 import com.pheeeew.core.network.NetworkFailure
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PushTokenSyncCoordinatorTest {
+    @Test
+    fun `foreground Worker 재시도는 소진된 이전 결과 대신 새 전송을 시작한다`() =
+        runTest {
+            val f = fixture(saved = "token")
+            f.api.result = failure(503)
+            f.activate()
+            runCurrent()
+            advanceTimeBy(1_000)
+            runCurrent()
+            assertEquals(PushTokenSyncState.FAILED, f.sync.state.value)
+            f.api.result = ApiResult.Success(Unit)
+            val request = f.sync.requestSynchronization()
+            val result = async { f.sync.awaitSynchronization(request) }
+            runCurrent()
+            assertEquals(PushTokenBackgroundSyncResult.SYNCHRONIZED, result.await())
+            assertEquals(4, f.api.operations.size)
+        }
+
+    @Test
+    fun `새 토큰 요청은 이전 성공을 완료 결과로 사용하지 않는다`() =
+        runTest {
+            val f = fixture(saved = "old")
+            f.activate()
+            runCurrent()
+            val gate = CompletableDeferred<Unit>()
+            f.api.gate = gate
+            f.sync.tokenReceived("new")
+            val request = f.sync.requestSynchronization()
+            val result = async { f.sync.awaitSynchronization(request) }
+            runCurrent()
+            assertFalse(result.isCompleted)
+            assertEquals(listOf("PUT:old", "PUT:new"), f.api.operations)
+            gate.complete(Unit)
+            runCurrent()
+            assertEquals(PushTokenBackgroundSyncResult.SYNCHRONIZED, result.await())
+        }
+
     @Test
     fun `인증 전 SDK 토큰은 보관하고 인증 완료 후에만 등록한다`() =
         runTest {
@@ -89,6 +128,34 @@ class PushTokenSyncCoordinatorTest {
             f.sync.tokenReceived("latest")
             runCurrent()
             assertEquals(listOf("PUT:latest"), f.api.operations)
+        }
+
+    @Test
+    fun `백그라운드 SDK 토큰 갱신은 저장하고 동기화한다`() =
+        runTest {
+            val f = fixture()
+            f.sync.sessionChanged(3)
+            f.sync.connectivityChanged(true)
+            f.sync.tokenReceived("background-token")
+            runCurrent()
+
+            assertEquals("background-token", f.store.saved)
+            assertEquals(listOf("PUT:background-token"), f.api.operations)
+            assertEquals(listOf(3L), f.api.generations)
+        }
+
+    @Test
+    fun `WorkManager 호출은 같은 조정자에서 완료 결과를 기다린다`() =
+        runTest {
+            val f = fixture(saved = "stored-token")
+            f.sync.sessionChanged(4)
+            f.sync.connectivityChanged(true)
+            val result = async { f.sync.synchronizeInBackground() }
+            runCurrent()
+
+            assertEquals(PushTokenBackgroundSyncResult.SYNCHRONIZED, result.await())
+            assertEquals(listOf("PUT:stored-token"), f.api.operations)
+            assertEquals(listOf(4L), f.api.generations)
         }
 
     @Test
@@ -215,6 +282,7 @@ class PushTokenSyncCoordinatorTest {
             f.sync.sessionChanged(2)
             runCurrent()
             assertEquals(listOf("PUT:token", "PUT:token"), f.api.operations)
+            assertEquals(listOf(1L, 2L), f.api.generations)
         }
 
     @Test
@@ -313,11 +381,16 @@ class PushTokenSyncCoordinatorTest {
 
     private class Repository : PushTokenRepository {
         val operations = mutableListOf<String>()
+        val generations = mutableListOf<Long>()
         var result: ApiResult<Unit> = ApiResult.Success(Unit)
         var gate: CompletableDeferred<Unit>? = null
 
-        override suspend fun register(token: String): ApiResult<Unit> {
+        override suspend fun register(
+            token: String,
+            expectedSessionGeneration: Long,
+        ): ApiResult<Unit> {
             operations += "PUT:$token"
+            generations += expectedSessionGeneration
             gate?.let {
                 gate = null
                 it.await()
@@ -325,8 +398,9 @@ class PushTokenSyncCoordinatorTest {
             return result
         }
 
-        override suspend fun unregister(): ApiResult<Unit> {
+        override suspend fun unregister(expectedSessionGeneration: Long): ApiResult<Unit> {
             operations += "DELETE"
+            generations += expectedSessionGeneration
             return result
         }
     }

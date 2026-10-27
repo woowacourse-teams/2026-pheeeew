@@ -35,6 +35,7 @@ dependencies {
     implementation(project(":shared"))
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
+    implementation(libs.androidx.work.runtime)
     debugImplementation(project(":developerTools"))
     debugImplementation(libs.compose.foundation)
     implementation("androidx.lifecycle:lifecycle-process:2.10.0")

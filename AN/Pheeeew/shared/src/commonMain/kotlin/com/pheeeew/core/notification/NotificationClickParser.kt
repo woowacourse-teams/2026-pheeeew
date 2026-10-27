@@ -1,6 +1,6 @@
 package com.pheeeew.core.notification
 
-/** Field names follow the notification contract draft; screen-specific routing is handled by each feature. */
+/** Parse fields emitted by the server notification contract. */
 fun parseNotificationClick(
     data: Map<String, String>,
     requestId: String,
@@ -30,15 +30,12 @@ fun parseNotificationClick(
                 }
 
                 "RANK_DROPPED" -> {
-                    val rankingType = field("rankingType")
-                    val periodId = field("periodId")
+                    val date = field("date")?.takeIf(::isCollectionNotificationDate)
                     val previousRank = field("previousRank")?.toIntOrNull()?.takeIf { it > 0 }
                     val currentRank = field("currentRank")?.toIntOrNull()?.takeIf { it > 0 }
-                    if (rankingType != null && periodId != null && previousRank != null && currentRank != null) {
+                    if (date != null && previousRank != null && currentRank != null) {
                         NotificationClickTarget.Ranking(
-                            rankingType = rankingType,
-                            periodId = periodId,
-                            groupId = field("groupId"),
+                            date = date,
                             previousRank = previousRank,
                             currentRank = currentRank,
                         )

@@ -20,6 +20,11 @@ import kotlinx.coroutines.withContext
 import java.lang.ref.WeakReference
 import java.util.UUID
 
+/** The Activity forwards a completed OS request to the process owner. */
+interface NotificationPermissionResultListener {
+    fun onNotificationPermissionResult()
+}
+
 /** Android notification permission bridge retained across Activity recreation. */
 class AndroidNotificationPermissionController(
     activity: ComponentActivity,
@@ -58,6 +63,7 @@ class AndroidNotificationPermissionController(
                 history.onResult(granted, shouldShowRationale())
                 preferences.edit().putBoolean(KEY_HAS_OBSERVED_RATIONALE, history.hasObservedRationale).apply()
                 requests.complete()
+                (activityReference.get() as? NotificationPermissionResultListener)?.onNotificationPermissionResult()
             }
         activity.lifecycle.addObserver(lifecycleObserver)
     }

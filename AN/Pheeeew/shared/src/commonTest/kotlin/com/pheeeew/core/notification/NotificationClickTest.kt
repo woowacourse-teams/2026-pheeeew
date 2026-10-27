@@ -25,21 +25,17 @@ class NotificationClickTest {
     }
 
     @Test
-    fun `랭킹 데이터는 기간과 그룹을 포함해 보존한다`() {
+    fun `일별 랭킹은 서버 날짜와 순위를 보존한다`() {
         val data = rankingData()
         assertEquals(
-            NotificationClickTarget.Ranking("PRESS", "period-1", "group-1", 5, 6),
+            NotificationClickTarget.Ranking("2026-10-21", 5, 6),
             parseNotificationClick(data, "request-1").target,
-        )
-        assertEquals(
-            NotificationClickTarget.Ranking("PRESS", "period-1", null, 5, 6),
-            parseNotificationClick(data - "groupId", "request-1").target,
         )
     }
 
     @Test
     fun `누락 필드와 잘못된 순위는 안전한 앱 열기로 처리한다`() {
-        for (field in listOf("rankingType", "periodId", "previousRank", "currentRank")) {
+        for (field in listOf("date", "previousRank", "currentRank")) {
             assertEquals(NotificationClickTarget.OpenApp, parseNotificationClick(rankingData() - field, "r").target)
         }
         for (rank in listOf("0", "-1", "not-a-number", "999999999999")) {
@@ -97,14 +93,55 @@ class NotificationClickTest {
         assertEquals(click("latest"), inbox.pendingClick.value)
     }
 
+    @Test
+    fun `복원 시 완료한 클릭만 중복을 막고 대기 중 클릭은 다시 처리한다`() {
+        val saved = ClickStore()
+        val original = NotificationClickInbox(saved)
+        original.setReady(true)
+        original.receive(click("done"))
+        original.acknowledge("done")
+        original.receive(click("waiting"))
+
+        val restored = NotificationClickInbox(saved)
+        restored.setReady(true)
+        assertEquals(click("waiting"), restored.pendingClick.value)
+        restored.receive(click("done"))
+        assertEquals(click("waiting"), restored.pendingClick.value)
+        restored.acknowledge("waiting")
+        val completed = NotificationClickInbox(saved)
+        completed.setReady(true)
+        completed.receive(click("waiting"))
+        assertNull(completed.pendingClick.value)
+    }
+
+    @Test
+    fun `이전 launch Intent가 복원한 최신 대기 클릭을 덮어쓰지 않는다`() {
+        val saved = ClickStore()
+        val original = NotificationClickInbox(saved)
+        original.receive(click("launch"))
+        original.receive(click("new-intent"))
+        val restored = NotificationClickInbox(saved)
+        restored.receive(click("launch"))
+        restored.setReady(true)
+        assertEquals(click("new-intent"), restored.pendingClick.value)
+    }
+
+    private class ClickStore : NotificationClickStore {
+        var snapshot = NotificationClickSnapshot()
+
+        override fun read() = snapshot
+
+        override fun write(snapshot: NotificationClickSnapshot) {
+            this.snapshot = snapshot
+        }
+    }
+
     private fun click(id: String) = NotificationClick(id, NotificationClickTarget.OpenApp)
 
     private fun rankingData() =
         mapOf(
             "type" to "RANK_DROPPED",
-            "rankingType" to "PRESS",
-            "periodId" to "period-1",
-            "groupId" to "group-1",
+            "date" to "2026-10-21",
             "previousRank" to "5",
             "currentRank" to "6",
         )

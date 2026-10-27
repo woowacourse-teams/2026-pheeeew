@@ -44,10 +44,13 @@ object IosPushTokenSync {
         object : PushTokenRepository {
             private val api = PushTokenApi(dependencies.client.requests)
 
-            override suspend fun register(token: String): ApiResult<Unit> =
-                api.register(token).also { report("PUT", it) }
+            override suspend fun register(
+                token: String,
+                expectedSessionGeneration: Long,
+            ): ApiResult<Unit> = api.register(token, expectedSessionGeneration).also { report("PUT", it) }
 
-            override suspend fun unregister(): ApiResult<Unit> = api.unregister().also { report("DELETE", it) }
+            override suspend fun unregister(expectedSessionGeneration: Long): ApiResult<Unit> =
+                api.unregister(expectedSessionGeneration).also { report("DELETE", it) }
         }
 
     private fun report(

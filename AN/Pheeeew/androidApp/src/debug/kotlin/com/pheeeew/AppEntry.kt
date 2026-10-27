@@ -4,6 +4,8 @@ import androidx.activity.ComponentActivity
 import androidx.compose.runtime.Composable
 import com.pheeeew.core.di.ActivityRetainedGraphOwner
 import com.pheeeew.core.di.AppGraph
+import com.pheeeew.core.notification.NotificationClickInbox
+import com.pheeeew.core.notification.NotificationMessageInbox
 import com.pheeeew.developertools.DeveloperToolsHost
 import com.pheeeew.developertools.DeveloperToolsInfo
 import com.pheeeew.developertools.DeveloperToolsSettingsEntry
@@ -13,6 +15,8 @@ internal fun AppEntry(
     activity: ComponentActivity,
     appGraph: AppGraph,
     owner: ActivityRetainedGraphOwner,
+    notificationClicks: NotificationClickInbox,
+    notificationMessages: NotificationMessageInbox,
 ) {
     val build = appGraph.apiDependencies.buildConfig
     DeveloperToolsHost(
@@ -27,6 +31,12 @@ internal fun AppEntry(
             ),
         onClearUiSession = owner::clearUiSession,
     ) { onOpen ->
-        AndroidAppContent(activity, appGraph, owner) { DeveloperToolsSettingsEntry(onOpen) }
+        AndroidAppContent(
+            activity,
+            appGraph,
+            owner,
+            notificationClicks,
+            notificationMessages,
+        ) { DeveloperToolsSettingsEntry(onOpen) }
     }
 }

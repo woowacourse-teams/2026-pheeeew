@@ -7,6 +7,8 @@ import androidx.compose.runtime.remember
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import com.pheeeew.core.di.ActivityRetainedGraphOwner
 import com.pheeeew.core.di.AppGraph
+import com.pheeeew.core.notification.NotificationClickInbox
+import com.pheeeew.core.notification.NotificationMessageInbox
 import com.pheeeew.data.remote.api.NotificationSettingsApi
 import com.pheeeew.domain.model.device.DeviceSessionResult
 
@@ -15,6 +17,8 @@ fun AndroidAppContent(
     activity: ComponentActivity,
     appGraph: AppGraph,
     owner: ActivityRetainedGraphOwner,
+    notificationClicks: NotificationClickInbox,
+    notificationMessages: NotificationMessageInbox,
     settingsContent: @Composable () -> Unit = {},
 ) {
     val uiGraph = remember(owner) { owner.attach(activity) }
@@ -31,6 +35,8 @@ fun AndroidAppContent(
             settingsContent = settingsContent,
             notificationPermissionController = owner.notificationPermissionController,
             notificationPreferencesStore = notificationSettings,
+            notificationClicks = notificationClicks,
+            notificationMessages = notificationMessages,
         )
     }
 }

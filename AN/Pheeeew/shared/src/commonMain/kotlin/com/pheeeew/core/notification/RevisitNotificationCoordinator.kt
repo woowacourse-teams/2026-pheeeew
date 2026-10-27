@@ -18,7 +18,7 @@ interface RevisitNotificationScheduler {
 }
 
 class RevisitNotificationCoordinator(
-    private val permissions: NotificationPermissionController,
+    private val permissions: NotificationAuthorizationProvider,
     private val store: RevisitNotificationStore,
     private val scheduler: RevisitNotificationScheduler,
     private val policy: RevisitNotificationPolicy = RevisitNotificationPolicy(),

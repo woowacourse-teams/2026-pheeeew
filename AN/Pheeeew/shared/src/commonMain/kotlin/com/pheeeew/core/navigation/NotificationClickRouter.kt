@@ -8,6 +8,10 @@ internal sealed interface NotificationDestination {
     data class Collection(
         val date: String,
     ) : NotificationDestination
+
+    data class DailyRanking(
+        val date: String,
+    ) : NotificationDestination
 }
 
 /** Translate notification intent independently of the navigation implementation. */
@@ -18,6 +22,6 @@ internal object NotificationClickRouter {
             NotificationClickTarget.Revisit -> NotificationDestination.Map
             is NotificationClickTarget.CollectionClaimable -> NotificationDestination.Collection(target.date)
             is NotificationClickTarget.Collection -> NotificationDestination.Map
-            is NotificationClickTarget.Ranking -> NotificationDestination.Map
+            is NotificationClickTarget.Ranking -> NotificationDestination.DailyRanking(target.date)
         }
 }

@@ -9,9 +9,11 @@ enum class NotificationAuthorization {
     UNKNOWN,
 }
 
-interface NotificationPermissionController {
+interface NotificationAuthorizationProvider {
     suspend fun authorization(): NotificationAuthorization
+}
 
+interface NotificationPermissionController : NotificationAuthorizationProvider {
     /** Whether this platform can show an authorization prompt right now. */
     suspend fun canRequestAuthorization(): Boolean = authorization() == NotificationAuthorization.NOT_DETERMINED
 

@@ -58,6 +58,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import com.pheeeew.core.audio.LocalAudioFactories
 import com.pheeeew.core.designsystem.component.AppAlertDialog
 import com.pheeeew.core.designsystem.component.AppDialog
@@ -67,6 +68,7 @@ import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.core.di.AppGraph
 import com.pheeeew.core.di.UiGraph
 import com.pheeeew.core.navigation.CollectionRootDestination
+import com.pheeeew.core.navigation.DailyPressRankingRootDestination
 import com.pheeeew.core.navigation.DoubleBackToExitHandler
 import com.pheeeew.core.navigation.FlowBackHandler
 import com.pheeeew.core.navigation.MapRootDestination
@@ -74,6 +76,7 @@ import com.pheeeew.core.navigation.NotificationDestination
 import com.pheeeew.core.navigation.PressRootDestination
 import com.pheeeew.core.navigation.RankingRootDestination
 import com.pheeeew.core.notification.NotificationClickInbox
+import com.pheeeew.core.notification.NotificationMessageInbox
 import com.pheeeew.core.notification.NotificationPermissionController
 import com.pheeeew.core.notification.NotificationPreferencesStore
 import com.pheeeew.domain.model.device.DeviceSessionResult
@@ -112,6 +115,7 @@ import com.pheeeew.feature.screens.onboarding.FeatureGuideScreen
 import com.pheeeew.feature.screens.onboarding.FeatureGuideState
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
 import com.pheeeew.feature.screens.press.PressRoute
+import com.pheeeew.feature.screens.ranking.press.DailyPressRankingRoute
 import com.pheeeew.feature.screens.ranking.press.PressRankingRoute
 import com.pheeeew.feature.screens.report.ReportRoute
 import com.pheeeew.feature.screens.settings.AppEntryGate
@@ -201,6 +205,7 @@ fun App(
     notificationClicks: NotificationClickInbox? = null,
     notificationPermissionController: NotificationPermissionController? = null,
     notificationPreferencesStore: NotificationPreferencesStore? = null,
+    notificationMessages: NotificationMessageInbox? = null,
 ) {
     val factory = remember(uiGraph) { uiGraph.viewModelFactory }
     val featureGuide =
@@ -230,6 +235,7 @@ fun App(
                 notificationClicks,
                 notificationPermissionController,
                 notificationPreferencesStore,
+                notificationMessages,
             )
         }
     }
@@ -244,6 +250,7 @@ private fun AppContent(
     notificationClicks: NotificationClickInbox?,
     notificationPermissionController: NotificationPermissionController?,
     notificationPreferencesStore: NotificationPreferencesStore?,
+    notificationMessages: NotificationMessageInbox?,
 ) {
     val apiDependencies = appGraph.apiDependencies
     val appVersion = appGraph.appVersion
@@ -600,40 +607,89 @@ private fun AppContent(
 
         var collectionNotificationDate by remember { mutableStateOf<String?>(null) }
         var collectionRefreshRevision by remember { mutableStateOf(0L) }
+        var dailyRankingRefreshRevision by remember { mutableStateOf(0L) }
+        val dailyRankingDate =
+            currentBackStackEntry
+                ?.takeIf { it.destination.hasRoute<DailyPressRankingRootDestination>() }
+                ?.toRoute<DailyPressRankingRootDestination>()
+                ?.date
+        val foregroundMessage = notificationMessages?.pending?.collectAsStateWithLifecycle()?.value
+        val messageMatchesVisibleScreen =
+            foregroundMessage?.let { message ->
+                !isSettingsVisible && reportTarget == null && !isEmotionRecordFlowActive &&
+                    when (message.data["type"]) {
+                        "COLLECTION_CLAIMABLE", "COLLECTION_CLAIM_REMINDER" -> {
+                            currentBackStackEntry?.destination?.hasRoute<CollectionRootDestination>() == true
+                        }
+
+                        "RANK_DROPPED" -> {
+                            dailyRankingDate != null && message.data["date"] == dailyRankingDate
+                        }
+
+                        else -> {
+                            false
+                        }
+                    }
+            } == true
+
+        val navigateFromNotification: (NotificationDestination) -> Unit = { destination ->
+            when (destination) {
+                is NotificationDestination.Collection -> {
+                    isSettingsVisible = false
+                    reportTarget = null
+                    nearbyViewModel.dismiss()
+                    detailViewModel.dismiss()
+                    collectionNotificationDate = destination.date
+                    collectionRefreshRevision++
+                    navController.navigate(CollectionRootDestination) {
+                        popUpTo<MapRootDestination>()
+                        launchSingleTop = true
+                    }
+                }
+
+                is NotificationDestination.DailyRanking -> {
+                    isSettingsVisible = false
+                    reportTarget = null
+                    nearbyViewModel.dismiss()
+                    detailViewModel.dismiss()
+                    navController.navigate(DailyPressRankingRootDestination(destination.date)) {
+                        popUpTo<MapRootDestination>()
+                        launchSingleTop = true
+                    }
+                }
+
+                NotificationDestination.Map -> {
+                    isSettingsVisible = false
+                    reportTarget = null
+                    nearbyViewModel.dismiss()
+                    detailViewModel.dismiss()
+                    mapViewModel.dismissFilter()
+                    navController.navigate(MapRootDestination) {
+                        popUpTo<MapRootDestination>()
+                        launchSingleTop = true
+                    }
+                }
+            }
+        }
+
+        LaunchedEffect(foregroundMessage?.id, messageMatchesVisibleScreen, mainFeaturesReady) {
+            val message = foregroundMessage ?: return@LaunchedEffect
+            if (!mainFeaturesReady) return@LaunchedEffect
+            if (messageMatchesVisibleScreen) {
+                when (message.data["type"]) {
+                    "COLLECTION_CLAIMABLE", "COLLECTION_CLAIM_REMINDER" -> collectionRefreshRevision++
+                    "RANK_DROPPED" -> dailyRankingRefreshRevision++
+                }
+            }
+            notificationMessages.acknowledge(message.id)
+        }
 
         NotificationClickEffect(
             inbox = notificationClicks,
             ready =
                 mainFeaturesReady && !shouldPrepareMapDuringSplash &&
                     currentBackStackEntry != null && !isEmotionRecordFlowActive,
-            onNavigate = { destination ->
-                when (destination) {
-                    is NotificationDestination.Collection -> {
-                        isSettingsVisible = false
-                        reportTarget = null
-                        nearbyViewModel.dismiss()
-                        detailViewModel.dismiss()
-                        collectionNotificationDate = destination.date
-                        collectionRefreshRevision++
-                        navController.navigate(CollectionRootDestination) {
-                            popUpTo<MapRootDestination>()
-                            launchSingleTop = true
-                        }
-                    }
-
-                    NotificationDestination.Map -> {
-                        isSettingsVisible = false
-                        reportTarget = null
-                        nearbyViewModel.dismiss()
-                        detailViewModel.dismiss()
-                        mapViewModel.dismissFilter()
-                        navController.navigate(MapRootDestination) {
-                            popUpTo<MapRootDestination>()
-                            launchSingleTop = true
-                        }
-                    }
-                }
-            },
+            onNavigate = navigateFromNotification,
         )
 
         // Register the exit fallback before navigation and screen-specific back handlers.
@@ -805,6 +861,18 @@ private fun AppContent(
                             onBack = { navController.popBackStack() },
                         )
                     }
+                }
+
+                composable<DailyPressRankingRootDestination> { entry ->
+                    if (!mainFeaturesReady) return@composable
+                    val destination = entry.toRoute<DailyPressRankingRootDestination>()
+                    DailyPressRankingRoute(
+                        date = destination.date,
+                        sessionGeneration = sessionGeneration,
+                        refreshRevision = dailyRankingRefreshRevision,
+                        onBack = { navController.popBackStack() },
+                        modifier = Modifier.fillMaxSize(),
+                    )
                 }
             }
             reportTarget?.let { (id, stamp, source) ->
