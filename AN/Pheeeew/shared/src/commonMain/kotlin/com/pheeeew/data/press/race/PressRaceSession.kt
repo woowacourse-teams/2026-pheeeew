@@ -36,6 +36,7 @@ internal class PressRaceSession(
     parentScope: CoroutineScope,
     private val reconnectPolicy: PressRaceReconnectPolicy = PressRaceReconnectPolicy(),
     private val diagnostics: PressRaceDiagnostics = PressRaceDiagnostics { _, _ -> },
+    private val noticeClock: () -> Long = newPressRaceClock(),
 ) : PressRaceInputPort {
     private val scope = CoroutineScope(parentScope.coroutineContext + SupervisorJob(parentScope.coroutineContext[Job]))
     private val events = Channel<Event>(Channel.UNLIMITED)
@@ -75,6 +76,34 @@ internal class PressRaceSession(
     }
 
     private val snapshots = PressRaceSnapshotGate()
+    private val notices = PressRaceNoticeReducer()
+    private var noticeExpiry: Job? = null
+
+    private fun clearNotices() {
+        noticeExpiry?.cancel()
+        noticeExpiry = null
+        notices.reset()
+        publish { it.copy(notice = null) }
+    }
+
+    private fun noticeFor(snapshot: PressRaceSnapshot): PressRaceNoticeState? {
+        val previous = notices.notice?.id
+        val next = notices.accept(snapshot, epoch, noticeClock())
+        if (previous != next?.id) {
+            noticeExpiry?.cancel()
+            noticeExpiry = null
+            if (next != null) {
+                val attempt = epoch
+                noticeExpiry =
+                    scope.launch {
+                        delay((next.expiresAtMillis - noticeClock()).coerceAtLeast(0L))
+                        events.send(Event.ExpireNotice(attempt, next.id))
+                    }
+            }
+        }
+        return next
+    }
+
     private var initializedView: PressRaceView? = null
     private var endpoint = PressRaceEndpoint.Competition
     private var usedToken: AccessToken? = null
@@ -106,11 +135,19 @@ internal class PressRaceSession(
             for (event in events) {
                 if (closed.value) break
                 when (event) {
+                    is Event.ExpireNotice -> {
+                        if (event.epoch == epoch && notices.expire(event.id, noticeClock())) {
+                            noticeExpiry = null
+                            publish { it.copy(notice = null) }
+                        }
+                    }
+
                     is Event.Refresh -> {
                         if (state.value.view == event.view) {
                             when (state.value.phase) {
                                 PressRacePhase.Ready -> {
                                     if (state.value.isAwaitingSnapshot) continue
+                                    clearNotices()
                                     publish { it.copy(isAwaitingSnapshot = true) }
                                     send(PressRaceProtocol.changeView(event.view))
                                     armWatchdog()
@@ -214,6 +251,7 @@ internal class PressRaceSession(
     private suspend fun target(view: PressRaceView?) {
         val current = state.value
         if (current.view == view && current.phase !in setOf(PressRacePhase.Failed, PressRacePhase.Settled)) return
+        clearNotices()
         if (view == null) {
             trace(PressRaceDiagnostic.Inactive)
             stopConnection()
@@ -247,6 +285,7 @@ internal class PressRaceSession(
     }
 
     private fun startConnection(rejected: AccessToken? = null) {
+        clearNotices()
         val attempt = ++epoch
         snapshots.reset()
         publish { it.copy(phase = PressRacePhase.Connecting, ready = null, isAwaitingSnapshot = true) }
@@ -381,6 +420,7 @@ internal class PressRaceSession(
                         startConnection()
                         return
                     }
+                    val notice = noticeFor(snapshot)
                     dateFloor = snapshot.date
                     if (snapshot.baseline) trace(PressRaceDiagnostic.BaselineReceived)
                     watchdog?.cancel()
@@ -390,6 +430,7 @@ internal class PressRaceSession(
                     publish {
                         it.copy(
                             snapshot = snapshot,
+                            notice = notice,
                             isAwaitingSnapshot = false,
                             isRecovering = false,
                             failure = null,
@@ -440,6 +481,7 @@ internal class PressRaceSession(
         require(ids.size == ids.distinct().size && ids.toSet() == initPending)
         require(ready.results.all { it.status in setOf("APPLIED", "REJECTED") })
         require(ready.counts.values.all { it >= 0L })
+        clearNotices()
         inputObserver.value?.ready(ready)
         dateFloor = ready.date
         if (recoveryOnly) {
@@ -564,6 +606,7 @@ internal class PressRaceSession(
     }
 
     private suspend fun stopConnection() {
+        clearNotices()
         epoch++
         reconnect?.cancel()
         reconnect = null
@@ -610,6 +653,7 @@ internal class PressRaceSession(
         mutableState.update {
             it.copy(
                 phase = PressRacePhase.Closed,
+                notice = null,
                 view = null,
                 ready = null,
                 snapshot = null,
@@ -646,6 +690,11 @@ internal class PressRaceSession(
     )
 
     private sealed interface Event {
+        data class ExpireNotice(
+            val epoch: Long,
+            val id: Long,
+        ) : Event
+
         data class RecoverInputs(
             val generation: String,
         ) : Event

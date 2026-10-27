@@ -25,6 +25,7 @@ internal data class PressRaceSessionState(
     val isRecovering: Boolean = false,
     /** Server-observed date lower bound, retained across sockets. */
     val dateFloor: String? = null,
+    val notice: PressRaceNoticeState? = null,
 ) {
     /** A cached snapshot must never be mistaken for fresh data after init or view change. */
     val currentSnapshot: PressRaceSnapshot?
