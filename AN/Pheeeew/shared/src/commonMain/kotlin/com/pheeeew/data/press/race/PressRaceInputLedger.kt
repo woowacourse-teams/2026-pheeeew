@@ -39,7 +39,7 @@ internal class PressRaceInputLedger {
 
     fun add(batch: PressRaceInputBatch) {
         require(batch.input.requestId !in entries && canStore(batch))
-        entries[batch.input.requestId] = batch
+        entries[batch.input.requestId] = batch.copy(input = batch.input.copy(counts = batch.input.counts.toMap()))
     }
 
     fun attempted(
