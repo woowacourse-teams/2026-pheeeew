@@ -94,8 +94,8 @@ class DeviceNicknameMigrationIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"가", "Star K", "가나다라마바사아자차", "ㄱㅏ"})
-    void 한글_영문_중간_공백과_길이_경계를_허용한다(String nickname) {
+    @ValueSource(strings = {"가", "Star K", "가나다라마바사아자차", "ㄱㅏ", "스타1", "1234567890"})
+    void 한글_영문_숫자_중간_공백과_길이_경계를_허용한다(String nickname) {
         // given
         기기를_저장한다(jdbc);
 
@@ -108,7 +108,7 @@ class DeviceNicknameMigrationIntegrationTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "", "   ", "익명", " 스타크", "스타크 ", "스타1", "스타!",
+            "", "   ", "익명", " 스타크", "스타크 ", "스타!", "12345678901",
             "Star\tK", "Star\nK", "スター", "😀", "abcdefghijk"
     })
     void 닉네임_규칙을_위반한_값은_DB에서도_거부한다(String nickname) {
