@@ -44,6 +44,7 @@ import com.pheeeew.core.designsystem.component.LoadErrorContent
 import com.pheeeew.core.designsystem.component.RefreshErrorBanner
 import com.pheeeew.feature.emotion.component.rememberTapReducedMotion
 import com.pheeeew.feature.monitoring.product.ProductScreen
+import com.pheeeew.feature.screens.press.measurement.pressRaceDrawMeasurement
 import com.pheeeew.feature.screens.ranking.press.components.MyRaceRankCard
 import com.pheeeew.feature.screens.ranking.press.components.PressRaceHeader
 import com.pheeeew.feature.screens.ranking.press.components.PressRaceRow
@@ -77,7 +78,7 @@ fun PressRankingRoute(
         uiState = uiState,
         onRetry = viewModel::onRetry,
         onRefresh = viewModel::onRefresh,
-        modifier = modifier,
+        modifier = modifier.pressRaceDrawMeasurement(uiState.frameKey, viewModel::onFrameDrawn),
     )
 }
 

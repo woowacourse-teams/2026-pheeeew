@@ -23,6 +23,7 @@ internal class PressRaceInputCoordinator(
     private val scope: CoroutineScope,
     private val now: () -> Long = monotonicClock(),
     private val newId: () -> String = { Uuid.random().toString() },
+    private val measurements: PressRaceMeasurements = PressRaceMeasurements(),
 ) : PressRepository,
     PressRaceInputObserver {
     private val ownerContext = scope.coroutineContext.minusKey(Job)
@@ -78,6 +79,7 @@ internal class PressRaceInputCoordinator(
         val candidate = PressRaceInputBatch(input, PressRaceProtocol.submit(input))
         if (!ledger.canStore(candidate) || !numericCapacity(emotion)) return PressAcceptance.NumericLimit
         buffered = candidate
+        measurements.tap(input.requestId)
         if (flushAt == null) flushAt = now() + PressRaceInputPolicy.BATCH_MS
         rejected = false
         if (input.counts.values.sum() == 100) freeze()
@@ -95,7 +97,11 @@ internal class PressRaceInputCoordinator(
 
     override suspend fun ready(value: PressRaceReady) =
         withContext(ownerContext) {
+            val outstanding = ledger.batches.map { it.input.requestId }.toSet()
             ledger.ready(value)
+            value.results.filter { it.requestId in outstanding }.forEach {
+                measurements.finalResult(it.requestId, it.status, recovered = true)
+            }
             discardUnsent()
             baselineGeneration = value.connectionGeneration
             lastStatus = null
@@ -107,7 +113,10 @@ internal class PressRaceInputCoordinator(
 
     override suspend fun result(value: PressRaceInputResult) =
         withContext(ownerContext) {
-            if (ledger.settle(value) && value.status == "REJECTED") rejected = true
+            if (ledger.settle(value)) {
+                measurements.finalResult(value.requestId, value.status)
+                if (value.status == "REJECTED") rejected = true
+            }
             publish()
             wake.trySend(Unit)
             Unit
@@ -125,6 +134,8 @@ internal class PressRaceInputCoordinator(
     }
 
     private fun discardUnsent() {
+        buffered?.let { measurements.discard(it.input.requestId) }
+        ledger.batches.filter { it.firstAttempt == null }.forEach { measurements.discard(it.input.requestId) }
         buffered = null
         flushAt = null
         ledger.discardUnsent()
@@ -189,6 +200,7 @@ internal class PressRaceInputCoordinator(
                                         )
                                 if (allowed) {
                                     ledger.attempted(id, now())
+                                    measurements.firstSend(id)
                                     publish()
                                     wake.trySend(Unit)
                                 }

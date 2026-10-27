@@ -37,6 +37,7 @@ internal class PressRaceSession(
     private val reconnectPolicy: PressRaceReconnectPolicy = PressRaceReconnectPolicy(),
     private val diagnostics: PressRaceDiagnostics = PressRaceDiagnostics { _, _ -> },
     private val noticeClock: () -> Long = newPressRaceClock(),
+    private val measurements: PressRaceMeasurements = PressRaceMeasurements(),
 ) : PressRaceInputPort {
     private val scope = CoroutineScope(parentScope.coroutineContext + SupervisorJob(parentScope.coroutineContext[Job]))
     private val events = Channel<Event>(Channel.UNLIMITED)
@@ -210,7 +211,7 @@ internal class PressRaceSession(
                     }
 
                     is Event.Text -> {
-                        if (event.epoch == epoch) message(event.text)
+                        if (event.epoch == epoch) message(event.text, event.receivedAt)
                     }
 
                     is Event.Failed -> {
@@ -371,7 +372,7 @@ internal class PressRaceSession(
                 try {
                     while (true) {
                         val text = socket.receive() ?: break
-                        events.send(Event.Text(attempt, text))
+                        events.send(Event.Text(attempt, text, measurements.nowMillis()))
                     }
                     events.send(Event.Failed(attempt, closeFailure(socket.awaitCloseReason())))
                 } catch (cancelled: CancellationException) {
@@ -384,7 +385,10 @@ internal class PressRaceSession(
             }
     }
 
-    private suspend fun message(text: String) {
+    private suspend fun message(
+        text: String,
+        receivedAt: Long,
+    ) {
         try {
             when (val message = PressRaceProtocol.decode(text)) {
                 is PressRaceMessage.Recovered -> {
@@ -420,6 +424,7 @@ internal class PressRaceSession(
                         startConnection()
                         return
                     }
+                    measurements.received(snapshot.frameKey(), receivedAt)
                     val notice = noticeFor(snapshot)
                     dateFloor = snapshot.date
                     if (snapshot.baseline) trace(PressRaceDiagnostic.BaselineReceived)
@@ -716,6 +721,7 @@ internal class PressRaceSession(
         data class Text(
             val epoch: Long,
             val text: String,
+            val receivedAt: Long,
         ) : Event
 
         data class Reconnect(

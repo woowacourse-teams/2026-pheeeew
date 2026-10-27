@@ -4,11 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.monitoring.NoOpMonitoring
+import com.pheeeew.data.press.race.PressRaceFrameKey
+import com.pheeeew.data.press.race.PressRaceMeasurements
 import com.pheeeew.data.press.race.PressRaceParticipant
 import com.pheeeew.data.press.race.PressRacePhase
 import com.pheeeew.data.press.race.PressRaceRankingState
 import com.pheeeew.data.press.race.PressRaceRankings
 import com.pheeeew.data.press.race.PressRaceView
+import com.pheeeew.data.press.race.frameKey
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,6 +20,7 @@ import kotlinx.coroutines.launch
 
 internal data class PressRankingUiState(
     val date: String? = null,
+    val frameKey: PressRaceFrameKey? = null,
     val people: List<PressPersonRank> = emptyList(),
     val me: PressPersonRank? = null,
     val status: PressRankingStatus = PressRankingStatus.Loading,
@@ -31,11 +35,15 @@ internal enum class PressRankingStatus { Loading, Ready, Failed }
 internal class PressRankingViewModel(
     private val rankings: PressRaceRankings,
     monitoring: Monitoring = NoOpMonitoring,
+    private val measurements: PressRaceMeasurements = PressRaceMeasurements(),
 ) : ViewModel() {
     val telemetry = ProductMonitoring(monitoring, "ranking")
     private val mutableUiState = MutableStateFlow(rankings.state.value.toRankingUiState())
     val uiState = mutableUiState.asStateFlow()
     private var userRefreshPending = false
+    private val initialFrameKey =
+        rankings.state.value.session.currentSnapshot
+            ?.frameKey()
 
     init {
         viewModelScope.launch {
@@ -45,10 +53,19 @@ internal class PressRankingViewModel(
                 ) {
                     userRefreshPending = false
                 }
-                mutableUiState.value = state.toRankingUiState().copy(isRefreshing = userRefreshPending)
+                val key =
+                    state.session.currentSnapshot
+                        ?.takeIf { measurements.isEnabled }
+                        ?.takeIf { it.view == PressRaceView.ALL }
+                        ?.frameKey()
+                        ?.takeUnless { it == initialFrameKey }
+                mutableUiState.value = state.toRankingUiState().copy(isRefreshing = userRefreshPending, frameKey = key)
+                key?.let(measurements::uiApplied)
             }
         }
     }
+
+    fun onFrameDrawn(key: PressRaceFrameKey) = measurements.drawn(key)
 
     fun onRetry() = onRefresh()
 
