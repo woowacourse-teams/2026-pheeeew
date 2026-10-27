@@ -20,6 +20,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import com.pheeeew.core.audio.rememberPressSoundPlayer
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
@@ -51,6 +54,8 @@ internal fun PressScreen(
     activity: PressActivityUiState? = null,
     faceVisuals: Map<EmotionKind, EmotionFaceVisual> = emptyMap(),
 ) {
+    val soundPlayer = rememberPressSoundPlayer()
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { soundPlayer.stop() }
     val font = notoSansKrFontFamily()
     val emotionCounts =
         EmotionKind.entries.map { kind ->
@@ -112,7 +117,11 @@ internal fun PressScreen(
                 optimisticPressCounts = uiState.optimisticPressCounts,
                 countTextOverrides = countTextOverrides,
                 enabled = true,
-                onEmotionTap = onEmotionTap,
+                onEmotionTap = { kind ->
+                    val accepted = onEmotionTap(kind)
+                    if (accepted) runCatching { soundPlayer.play() }
+                    accepted
+                },
                 arrangement = EmotionPadArrangement.TwoThree,
                 modifier = Modifier.width(padWidth).padding(horizontal = 16.dp),
             )
