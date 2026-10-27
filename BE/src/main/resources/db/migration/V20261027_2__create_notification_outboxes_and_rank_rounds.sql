@@ -7,15 +7,14 @@ CREATE TABLE collection_claimable_outbox
     discovered_at    TIMESTAMPTZ NOT NULL,
     available_at     TIMESTAMPTZ NOT NULL,
     expires_at       TIMESTAMPTZ NOT NULL,
-    attempt_count    INTEGER     NOT NULL DEFAULT 0,
+    attempt_count    INTEGER     NOT NULL,
     claim_token      UUID,
     claim_expires_at TIMESTAMPTZ,
     result_code      VARCHAR(40),
     finished_at      TIMESTAMPTZ,
+    created_at       TIMESTAMPTZ NOT NULL,
     updated_at       TIMESTAMPTZ NOT NULL,
-    CONSTRAINT fk_collection_claimable_outbox_device FOREIGN KEY (device_id) REFERENCES devices (id),
-    CONSTRAINT ck_collection_claimable_outbox_claim CHECK ((claim_token IS NULL) = (claim_expires_at IS NULL)),
-    CONSTRAINT ck_collection_claimable_outbox_attempt_count CHECK (attempt_count >= 0)
+    CONSTRAINT fk_collection_claimable_outbox_device FOREIGN KEY (device_id) REFERENCES devices (id)
 );
 
 CREATE UNIQUE INDEX uk_collection_claimable_outbox
@@ -33,15 +32,14 @@ CREATE TABLE collection_reminder_outbox
     discovered_at    TIMESTAMPTZ NOT NULL,
     available_at     TIMESTAMPTZ NOT NULL,
     expires_at       TIMESTAMPTZ NOT NULL,
-    attempt_count    INTEGER     NOT NULL DEFAULT 0,
+    attempt_count    INTEGER     NOT NULL,
     claim_token      UUID,
     claim_expires_at TIMESTAMPTZ,
     result_code      VARCHAR(40),
     finished_at      TIMESTAMPTZ,
+    created_at       TIMESTAMPTZ NOT NULL,
     updated_at       TIMESTAMPTZ NOT NULL,
-    CONSTRAINT fk_collection_reminder_outbox_device FOREIGN KEY (device_id) REFERENCES devices (id),
-    CONSTRAINT ck_collection_reminder_outbox_claim CHECK ((claim_token IS NULL) = (claim_expires_at IS NULL)),
-    CONSTRAINT ck_collection_reminder_outbox_attempt_count CHECK (attempt_count >= 0)
+    CONSTRAINT fk_collection_reminder_outbox_device FOREIGN KEY (device_id) REFERENCES devices (id)
 );
 
 CREATE UNIQUE INDEX uk_collection_reminder_outbox
@@ -62,15 +60,14 @@ CREATE TABLE rank_dropped_outbox
     discovered_at    TIMESTAMPTZ NOT NULL,
     available_at     TIMESTAMPTZ NOT NULL,
     expires_at       TIMESTAMPTZ NOT NULL,
-    attempt_count    INTEGER     NOT NULL DEFAULT 0,
+    attempt_count    INTEGER     NOT NULL,
     claim_token      UUID,
     claim_expires_at TIMESTAMPTZ,
     result_code      VARCHAR(40),
     finished_at      TIMESTAMPTZ,
+    created_at       TIMESTAMPTZ NOT NULL,
     updated_at       TIMESTAMPTZ NOT NULL,
-    CONSTRAINT fk_rank_dropped_outbox_device FOREIGN KEY (device_id) REFERENCES devices (id),
-    CONSTRAINT ck_rank_dropped_outbox_claim CHECK ((claim_token IS NULL) = (claim_expires_at IS NULL)),
-    CONSTRAINT ck_rank_dropped_outbox_attempt_count CHECK (attempt_count >= 0)
+    CONSTRAINT fk_rank_dropped_outbox_device FOREIGN KEY (device_id) REFERENCES devices (id)
 );
 
 CREATE UNIQUE INDEX uk_rank_dropped_outbox
@@ -83,14 +80,17 @@ CREATE TABLE notification_rank_rounds
 (
     round_at    TIMESTAMPTZ PRIMARY KEY,
     target_date DATE        NOT NULL,
-    created_at  TIMESTAMPTZ NOT NULL
+    created_at  TIMESTAMPTZ NOT NULL,
+    updated_at  TIMESTAMPTZ NOT NULL
 );
 
 CREATE TABLE notification_rank_snapshots
 (
-    round_at  TIMESTAMPTZ NOT NULL,
-    device_id BIGINT      NOT NULL,
-    rank      INTEGER     NOT NULL,
+    round_at   TIMESTAMPTZ NOT NULL,
+    device_id  BIGINT      NOT NULL,
+    rank       INTEGER     NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL,
     CONSTRAINT pk_notification_rank_snapshots PRIMARY KEY (round_at, device_id),
     CONSTRAINT fk_notification_rank_snapshots_round
         FOREIGN KEY (round_at) REFERENCES notification_rank_rounds (round_at) ON DELETE CASCADE,

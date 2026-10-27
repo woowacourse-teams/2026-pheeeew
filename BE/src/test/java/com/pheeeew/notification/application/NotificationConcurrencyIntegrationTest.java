@@ -3,24 +3,26 @@ package com.pheeeew.notification.application;
 import static com.pheeeew.collection.fixture.DeviceDailyStampFixture.일별_스탬프를_저장한다;
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static com.pheeeew.emotion.fixture.DeviceDailyPressFixture.개인_프레스를_저장한다;
-import static com.pheeeew.notification.domain.NotificationOutboxType.COLLECTION_CLAIMABLE;
-import static com.pheeeew.notification.domain.NotificationOutboxType.COLLECTION_CLAIM_REMINDER;
-import static com.pheeeew.notification.domain.NotificationOutboxType.RANK_DROPPED;
+import static com.pheeeew.notification.domain.outbox.NotificationOutboxType.COLLECTION_CLAIMABLE;
+import static com.pheeeew.notification.domain.outbox.NotificationOutboxType.COLLECTION_CLAIM_REMINDER;
+import static com.pheeeew.notification.domain.outbox.NotificationOutboxType.RANK_DROPPED;
 import static com.pheeeew.notification.fixture.NotificationOutboxFixture.기기의_작업들;
 import static com.pheeeew.notification.fixture.NotificationOutboxFixture.날짜의_회차들;
+import static com.pheeeew.notification.fixture.NotificationOutboxFixture.리마인더_작업;
+import static com.pheeeew.notification.fixture.NotificationOutboxFixture.발급_가능_작업;
+import static com.pheeeew.notification.fixture.NotificationOutboxFixture.순위_작업;
 import static com.pheeeew.notification.fixture.NotificationOutboxFixture.알림_데이터를_지운다;
 import static com.pheeeew.notification.fixture.NotificationOutboxFixture.회차의_스냅샷;
+import static com.pheeeew.notification.fixture.PushTokenFixture.기기_등록_값;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mockingDetails;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -29,13 +31,17 @@ import com.pheeeew.collection.domain.repository.CollectionProgressRepository;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.emotion.domain.EmotionState;
-import com.pheeeew.notification.domain.NotificationOutboxType;
+import com.pheeeew.notification.domain.NotificationRankRound;
 import com.pheeeew.notification.domain.PushSendResult;
+import com.pheeeew.notification.domain.outbox.CollectionClaimableOutbox;
+import com.pheeeew.notification.domain.outbox.NotificationOutboxType;
+import com.pheeeew.notification.domain.outbox.RankDroppedOutbox;
+import com.pheeeew.notification.domain.repository.CollectionClaimableOutboxRepository;
+import com.pheeeew.notification.domain.repository.CollectionReminderOutboxRepository;
 import com.pheeeew.notification.domain.repository.DailyPressCountRepository;
-import com.pheeeew.notification.domain.repository.DeviceNotificationSettingRepository;
 import com.pheeeew.notification.domain.repository.DevicePushTokenRepository;
-import com.pheeeew.notification.domain.repository.NotificationOutboxRepository;
 import com.pheeeew.notification.domain.repository.NotificationRankRoundRepository;
+import com.pheeeew.notification.domain.repository.RankDroppedOutboxRepository;
 import com.pheeeew.notification.fixture.NotificationOutboxFixture.작업;
 import com.pheeeew.support.PostgisDataJpaTest;
 import java.time.Clock;
@@ -61,6 +67,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.mockito.stubbing.Answer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -72,8 +79,7 @@ import org.springframework.transaction.annotation.Transactional;
 @PostgisDataJpaTest
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @Import({RankChangeNotificationService.class, CollectionNotificationService.class, NotificationDispatcher.class,
-        NotificationOutboxRepository.class, NotificationRankRoundRepository.class, DailyPressCountRepository.class,
-        CollectionProgressRepository.class, DevicePushTokenRepository.class, DeviceNotificationSettingRepository.class})
+        NotificationOutboxService.class, DailyPressCountRepository.class, CollectionProgressRepository.class})
 class NotificationConcurrencyIntegrationTest {
 
     private static final ZoneId 서울 = ZoneId.of("Asia/Seoul");
@@ -81,7 +87,6 @@ class NotificationConcurrencyIntegrationTest {
     private static final Instant 오전_10시 = 한국_시각("2026-11-02T10:00:00");
     private static final Instant 오전_10시_5분 = 한국_시각("2026-11-02T10:05:00");
     private static final Duration 대기_상한 = Duration.ofSeconds(10);
-
     @Autowired
     private RankChangeNotificationService rankService;
 
@@ -104,7 +109,13 @@ class NotificationConcurrencyIntegrationTest {
     private NotificationRankRoundRepository rounds;
 
     @MockitoSpyBean
-    private NotificationOutboxRepository outboxes;
+    private RankDroppedOutboxRepository rankOutboxes;
+
+    @MockitoSpyBean
+    private CollectionClaimableOutboxRepository claimableOutboxes;
+
+    @MockitoSpyBean
+    private CollectionReminderOutboxRepository reminderOutboxes;
 
     @MockitoBean
     private PushSender pushSender;
@@ -136,14 +147,15 @@ class NotificationConcurrencyIntegrationTest {
         CountDownLatch 먼저_온_서버가_회차를_넣고_멈춤 = new CountDownLatch(1);
         CountDownLatch 커밋_허용 = new CountDownLatch(1);
         AtomicBoolean 처음 = new AtomicBoolean(true);
+        Answer<?> 실제_조회 = 실제_동작(rounds);
         doAnswer(invocation -> {
-            Object previous = invocation.callRealMethod();
+            Object previous = 실제_조회.answer(invocation);
             if (처음.compareAndSet(true, false)) {
                 먼저_온_서버가_회차를_넣고_멈춤.countDown();
                 커밋_허용.await(대기_상한.toSeconds(), TimeUnit.SECONDS);
             }
             return previous;
-        }).when(rounds).findPreviousSnapshot(any(LocalDate.class), any(Instant.class));
+        }).when(rounds).findFirstByTargetDateAndRoundAtBeforeOrderByRoundAtDesc(any(LocalDate.class), any(Instant.class));
 
         // when
         try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
@@ -159,9 +171,8 @@ class NotificationConcurrencyIntegrationTest {
         // then
         assertThat(날짜의_회차들(jdbc, DAY)).containsExactly(오전_10시, 오전_10시_5분);
         assertThat(회차의_스냅샷(jdbc, 오전_10시_5분)).hasSize(3);
-        verify(rounds, times(3)).saveRound(any(Instant.class), any(LocalDate.class), any(Instant.class));
-        verify(outboxes, times(2)).saveRank(anyLong(), any(LocalDate.class), any(Instant.class), anyInt(), anyInt(),
-                any(Instant.class), any(Instant.class));
+        verify(rounds, times(3)).saveIfAbsent(any(NotificationRankRound.class));
+        verify(rankOutboxes, times(2)).save(any(RankDroppedOutbox.class));
         assertThat(기기들).extracting(device -> 기기의_작업들(jdbc, device.getId()).size()).containsExactly(1, 1, 0);
     }
 
@@ -171,8 +182,7 @@ class NotificationConcurrencyIntegrationTest {
         List<Device> 기기들 = 순서대로_누른_기기들(300, 200, 100);
         비교한다(오전_10시);
         개인_프레스를_저장한다(jdbc, 기기들.get(2).getId(), DAY, EmotionState.ANGRY, 250);
-        doThrow(new IllegalStateException("작업 저장 실패")).when(outboxes).saveRank(anyLong(), any(LocalDate.class),
-                any(Instant.class), anyInt(), anyInt(), any(Instant.class), any(Instant.class));
+        doThrow(new IllegalStateException("작업 저장 실패")).when(rankOutboxes).save(any(RankDroppedOutbox.class));
         when(clock.instant()).thenReturn(오전_10시_5분);
 
         // when
@@ -182,8 +192,7 @@ class NotificationConcurrencyIntegrationTest {
         assertThat(날짜의_회차들(jdbc, DAY)).containsExactly(오전_10시);
         assertThat(회차의_스냅샷(jdbc, 오전_10시_5분)).isEmpty();
         assertThat(기기들).allSatisfy(device -> assertThat(기기의_작업들(jdbc, device.getId())).isEmpty());
-        doCallRealMethod().when(outboxes).saveRank(anyLong(), any(LocalDate.class), any(Instant.class), anyInt(),
-                anyInt(), any(Instant.class), any(Instant.class));
+        doAnswer(실제_동작(rankOutboxes)).when(rankOutboxes).save(any(RankDroppedOutbox.class));
         rankService.compareRanks();
         List<Integer> 다시_처리한_이전_순위들 = 기기들.stream()
                 .flatMap(device -> 기기의_작업들(jdbc, device.getId()).stream())
@@ -198,12 +207,12 @@ class NotificationConcurrencyIntegrationTest {
         int 유형별_작업_수 = 20;
         Instant 지금 = 한국_시각("2026-11-02T22:00:00");
         for (int index = 0; index < 유형별_작업_수; index++) {
-            outboxes.saveCollection(COLLECTION_CLAIMABLE, 토큰이_있는_기기("claimable-" + index).getId(), DAY,
-                    지금.minus(Duration.ofHours(1)), 지금, 다음_날_자정());
-            outboxes.saveCollection(COLLECTION_CLAIM_REMINDER, 토큰이_있는_기기("reminder-" + index).getId(), DAY,
-                    지금, 지금, 다음_날_자정());
-            outboxes.saveRank(토큰이_있는_기기("rank-" + index).getId(), DAY, 지금, 2, 3, 지금,
-                    지금.plus(Duration.ofMinutes(5)));
+            claimableOutboxes.saveIfAbsent(발급_가능_작업(토큰이_있는_기기("claimable-" + index).getId(), DAY,
+                    지금.minus(Duration.ofHours(1)), 지금, 다음_날_자정()));
+            reminderOutboxes.saveIfAbsent(리마인더_작업(토큰이_있는_기기("reminder-" + index).getId(), DAY,
+                    지금, 다음_날_자정()));
+            rankOutboxes.save(순위_작업(토큰이_있는_기기("rank-" + index).getId(), DAY, 지금, 2, 3, 지금,
+                    지금.plus(Duration.ofMinutes(5))));
         }
         when(clock.instant()).thenReturn(지금);
         Map<String, AtomicInteger> 보낸_횟수 = new ConcurrentHashMap<>();
@@ -250,15 +259,15 @@ class NotificationConcurrencyIntegrationTest {
         CountDownLatch 먼저_온_서버가_작업을_넣고_멈춤 = new CountDownLatch(1);
         CountDownLatch 커밋_허용 = new CountDownLatch(1);
         AtomicBoolean 처음 = new AtomicBoolean(true);
+        Answer<?> 실제_저장 = 실제_동작(claimableOutboxes);
         doAnswer(invocation -> {
-            invocation.callRealMethod();
+            실제_저장.answer(invocation);
             if (처음.compareAndSet(true, false)) {
                 먼저_온_서버가_작업을_넣고_멈춤.countDown();
                 커밋_허용.await(대기_상한.toSeconds(), TimeUnit.SECONDS);
             }
             return null;
-        }).when(outboxes).saveCollection(eq(COLLECTION_CLAIMABLE), anyLong(), any(LocalDate.class), any(Instant.class),
-                any(Instant.class), any(Instant.class));
+        }).when(claimableOutboxes).saveIfAbsent(any(CollectionClaimableOutbox.class));
 
         // when
         try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
@@ -288,11 +297,12 @@ class NotificationConcurrencyIntegrationTest {
                 COLLECTION_CLAIMABLE, 토큰이_있는_기기(COLLECTION_CLAIMABLE.name()),
                 COLLECTION_CLAIM_REMINDER, 토큰이_있는_기기(COLLECTION_CLAIM_REMINDER.name()),
                 RANK_DROPPED, 토큰이_있는_기기(RANK_DROPPED.name()));
-        outboxes.saveCollection(COLLECTION_CLAIMABLE, 유형별_기기.get(COLLECTION_CLAIMABLE).getId(), DAY,
-                지금.minus(Duration.ofHours(1)), 지금, 다음_날_자정());
-        outboxes.saveCollection(COLLECTION_CLAIM_REMINDER, 유형별_기기.get(COLLECTION_CLAIM_REMINDER).getId(), DAY,
-                지금, 지금, 다음_날_자정());
-        outboxes.saveRank(유형별_기기.get(RANK_DROPPED).getId(), DAY, 지금, 2, 3, 지금, 지금.plus(Duration.ofMinutes(5)));
+        claimableOutboxes.saveIfAbsent(발급_가능_작업(유형별_기기.get(COLLECTION_CLAIMABLE).getId(), DAY,
+                지금.minus(Duration.ofHours(1)), 지금, 다음_날_자정()));
+        reminderOutboxes.saveIfAbsent(리마인더_작업(유형별_기기.get(COLLECTION_CLAIM_REMINDER).getId(), DAY,
+                지금, 다음_날_자정()));
+        rankOutboxes.save(순위_작업(유형별_기기.get(RANK_DROPPED).getId(), DAY, 지금, 2, 3, 지금,
+                지금.plus(Duration.ofMinutes(5))));
         when(clock.instant()).thenReturn(지금);
         CountDownLatch 멈춘_발송_시작 = new CountDownLatch(1);
         CountDownLatch 멈춘_발송_응답 = new CountDownLatch(1);
@@ -333,7 +343,7 @@ class NotificationConcurrencyIntegrationTest {
     private Device 토큰이_있는_기기(String token) {
         Device device = devices.saveAndFlush(기본_기기_빌더().build());
         만든_기기들.add(device.getId());
-        pushTokens.save(device.getId(), token, 오전_10시);
+        pushTokens.save(기기_등록_값(device.getId(), token));
         return device;
     }
 
@@ -350,6 +360,10 @@ class NotificationConcurrencyIntegrationTest {
     private void 비교한다(Instant 지금) {
         when(clock.instant()).thenReturn(지금);
         rankService.compareRanks();
+    }
+
+    private Answer<?> 실제_동작(Object spy) {
+        return mockingDetails(spy).getMockCreationSettings().getDefaultAnswer();
     }
 
     private Instant 다음_날_자정() {

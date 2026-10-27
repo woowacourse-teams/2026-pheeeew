@@ -1,5 +1,8 @@
 package com.pheeeew.notification.fixture;
 
+import com.pheeeew.notification.domain.outbox.CollectionClaimableOutbox;
+import com.pheeeew.notification.domain.outbox.CollectionReminderOutbox;
+import com.pheeeew.notification.domain.outbox.RankDroppedOutbox;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -33,6 +36,58 @@ public final class NotificationOutboxFixture {
             """;
 
     private NotificationOutboxFixture() {
+    }
+
+    public static CollectionClaimableOutbox 발급_가능_작업(
+            Long deviceId,
+            LocalDate targetDate,
+            Instant discoveredAt,
+            Instant availableAt,
+            Instant expiresAt
+    ) {
+        return CollectionClaimableOutbox.builder()
+                .deviceId(deviceId)
+                .targetDate(targetDate)
+                .discoveredAt(discoveredAt)
+                .availableAt(availableAt)
+                .expiresAt(expiresAt)
+                .build();
+    }
+
+    public static CollectionReminderOutbox 리마인더_작업(
+            Long deviceId,
+            LocalDate targetDate,
+            Instant discoveredAt,
+            Instant expiresAt
+    ) {
+        return CollectionReminderOutbox.builder()
+                .deviceId(deviceId)
+                .targetDate(targetDate)
+                .discoveredAt(discoveredAt)
+                .availableAt(discoveredAt)
+                .expiresAt(expiresAt)
+                .build();
+    }
+
+    public static RankDroppedOutbox 순위_작업(
+            Long deviceId,
+            LocalDate targetDate,
+            Instant roundAt,
+            int previousRank,
+            int currentRank,
+            Instant discoveredAt,
+            Instant expiresAt
+    ) {
+        return RankDroppedOutbox.builder()
+                .deviceId(deviceId)
+                .targetDate(targetDate)
+                .roundAt(roundAt)
+                .previousRank(previousRank)
+                .currentRank(currentRank)
+                .discoveredAt(discoveredAt)
+                .availableAt(discoveredAt)
+                .expiresAt(expiresAt)
+                .build();
     }
 
     public static List<작업> 기기의_작업들(JdbcClient jdbc, Long deviceId) {

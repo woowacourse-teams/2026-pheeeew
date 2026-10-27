@@ -1,63 +1,32 @@
 package com.pheeeew.notification.domain.repository;
 
+import com.pheeeew.notification.domain.NotificationRankRound;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.util.Map;
-import java.util.stream.Collectors;
-import lombok.RequiredArgsConstructor;
-import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.stereotype.Repository;
+import java.util.Optional;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
-@RequiredArgsConstructor
-@Repository
-public class NotificationRankRoundRepository {
+public interface NotificationRankRoundRepository extends JpaRepository<NotificationRankRound, Instant> {
 
-    private final JdbcClient jdbc;
+    @Transactional
+    @Modifying
+    @Query(value = """
+            INSERT INTO notification_rank_rounds (round_at, target_date, created_at, updated_at)
+                 VALUES (:#{#round.roundAt}, :#{#round.targetDate}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ON CONFLICT DO NOTHING
+            """, nativeQuery = true)
+    int saveIfAbsent(@Param("round") NotificationRankRound round);
 
-    public boolean saveRound(Instant roundAt, LocalDate targetDate, Instant now) {
-        return jdbc.sql("""
-                INSERT INTO notification_rank_rounds (round_at, target_date, created_at)
-                     VALUES (:roundAt, :targetDate, :now)
-                ON CONFLICT DO NOTHING
-                """).param("roundAt", utc(roundAt))
-                .param("targetDate", targetDate)
-                .param("now", utc(now))
-                .update() == 1;
-    }
+    Optional<NotificationRankRound> findFirstByTargetDateAndRoundAtBeforeOrderByRoundAtDesc(
+            LocalDate targetDate,
+            Instant roundAt
+    );
 
-    public Map<Long, Integer> findPreviousSnapshot(LocalDate targetDate, Instant roundAt) {
-        return jdbc.sql("""
-                SELECT device_id, rank
-                  FROM notification_rank_snapshots
-                 WHERE round_at = (SELECT MAX(round_at) FROM notification_rank_rounds
-                                    WHERE target_date = :targetDate AND round_at < :roundAt)
-                """).param("targetDate", targetDate)
-                .param("roundAt", utc(roundAt))
-                .query((row, rowNumber) -> Map.entry(row.getLong("device_id"), row.getInt("rank")))
-                .list()
-                .stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-    }
-
-    public void saveSnapshot(Instant roundAt, Long deviceId, int rank) {
-        jdbc.sql("""
-                INSERT INTO notification_rank_snapshots (round_at, device_id, rank)
-                     VALUES (:roundAt, :deviceId, :rank)
-                """).param("roundAt", utc(roundAt))
-                .param("deviceId", deviceId)
-                .param("rank", rank)
-                .update();
-    }
-
-    public int deleteByTargetDateBefore(LocalDate date) {
-        return jdbc.sql("DELETE FROM notification_rank_rounds WHERE target_date < :date")
-                .param("date", date)
-                .update();
-    }
-
-    private OffsetDateTime utc(Instant instant) {
-        return instant.atOffset(ZoneOffset.UTC);
-    }
+    @Modifying
+    @Query("DELETE FROM NotificationRankRound r WHERE r.targetDate < :date")
+    int deleteByTargetDateBefore(@Param("date") LocalDate date);
 }

@@ -1,11 +1,17 @@
 package com.pheeeew.notification.application;
 
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
-import static com.pheeeew.notification.domain.NotificationOutboxType.COLLECTION_CLAIMABLE;
-import static com.pheeeew.notification.domain.NotificationOutboxType.COLLECTION_CLAIM_REMINDER;
-import static com.pheeeew.notification.domain.NotificationOutboxType.RANK_DROPPED;
+import static com.pheeeew.notification.domain.outbox.NotificationOutboxType.COLLECTION_CLAIMABLE;
+import static com.pheeeew.notification.domain.outbox.NotificationOutboxType.COLLECTION_CLAIM_REMINDER;
+import static com.pheeeew.notification.domain.outbox.NotificationOutboxType.RANK_DROPPED;
 import static com.pheeeew.notification.fixture.NotificationOutboxFixture.기기의_작업;
 import static com.pheeeew.notification.fixture.NotificationOutboxFixture.기기의_작업들;
+import static com.pheeeew.notification.fixture.NotificationOutboxFixture.리마인더_작업;
+import static com.pheeeew.notification.fixture.NotificationOutboxFixture.발급_가능_작업;
+import static com.pheeeew.notification.fixture.NotificationOutboxFixture.순위_작업;
+import static com.pheeeew.notification.fixture.NotificationOutboxFixture.알림_데이터를_지운다;
+import static com.pheeeew.notification.fixture.NotificationSettingFixture.기기_수신_설정;
+import static com.pheeeew.notification.fixture.PushTokenFixture.기기_등록_값;
 import static com.pheeeew.notification.fixture.PushTokenFixture.기본_등록_값;
 import static com.pheeeew.notification.fixture.PushTokenFixture.새_등록_값;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -20,15 +26,16 @@ import static org.mockito.Mockito.when;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
-import com.pheeeew.notification.domain.NotificationOutbox;
-import com.pheeeew.notification.domain.NotificationOutboxStatus;
-import com.pheeeew.notification.domain.NotificationOutboxType;
 import com.pheeeew.notification.domain.NotificationSettings;
 import com.pheeeew.notification.domain.PushMessage;
 import com.pheeeew.notification.domain.PushSendResult;
+import com.pheeeew.notification.domain.outbox.NotificationOutbox;
+import com.pheeeew.notification.domain.outbox.NotificationOutboxType;
+import com.pheeeew.notification.domain.repository.CollectionClaimableOutboxRepository;
+import com.pheeeew.notification.domain.repository.CollectionReminderOutboxRepository;
 import com.pheeeew.notification.domain.repository.DeviceNotificationSettingRepository;
 import com.pheeeew.notification.domain.repository.DevicePushTokenRepository;
-import com.pheeeew.notification.domain.repository.NotificationOutboxRepository;
+import com.pheeeew.notification.domain.repository.RankDroppedOutboxRepository;
 import com.pheeeew.notification.fixture.NotificationOutboxFixture.작업;
 import com.pheeeew.support.PostgisDataJpaTest;
 import java.time.Clock;
@@ -42,6 +49,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -50,10 +58,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 @PostgisDataJpaTest
-@Import({NotificationDispatcher.class, NotificationOutboxRepository.class, DevicePushTokenRepository.class,
-        DeviceNotificationSettingRepository.class})
+@Transactional(propagation = Propagation.NOT_SUPPORTED)
+@Import({NotificationDispatcher.class, NotificationOutboxService.class, DevicePushTokenRegistrationService.class})
 class NotificationDispatcherIntegrationTest {
 
     private static final ZoneId 서울 = ZoneId.of("Asia/Seoul");
@@ -65,7 +75,19 @@ class NotificationDispatcherIntegrationTest {
     private NotificationDispatcher dispatcher;
 
     @Autowired
-    private NotificationOutboxRepository outboxes;
+    private NotificationOutboxService outboxService;
+
+    @Autowired
+    private CollectionClaimableOutboxRepository claimableOutboxes;
+
+    @Autowired
+    private CollectionReminderOutboxRepository reminderOutboxes;
+
+    @Autowired
+    private RankDroppedOutboxRepository rankOutboxes;
+
+    @Autowired
+    private DevicePushTokenRegistrationService pushTokenRegistrationService;
 
     @Autowired
     private DeviceRepository devices;
@@ -85,11 +107,18 @@ class NotificationDispatcherIntegrationTest {
     @MockitoBean
     private Clock clock;
 
+    private final List<Long> 만든_기기들 = new ArrayList<>();
+
     @BeforeEach
     void setUp() {
         when(clock.getZone()).thenReturn(서울);
         when(pushSender.isAvailable()).thenReturn(true);
         when(pushSender.send(anyString(), any())).thenReturn(PushSendResult.SENT);
+    }
+
+    @AfterEach
+    void tearDown() {
+        알림_데이터를_지운다(jdbc, List.of(TODAY), 만든_기기들);
     }
 
     @Test
@@ -128,7 +157,7 @@ class NotificationDispatcherIntegrationTest {
         순위_작업을_만든다(유형별_기기.get(RANK_DROPPED), 선점_시각, 2, 3);
         UUID 멈춘_서버의_선점 = UUID.randomUUID();
         List<NotificationOutbox> 멈춘_서버의_작업들 = Arrays.stream(NotificationOutboxType.values())
-                .map(type -> outboxes.claim(type, 선점_시각, 멈춘_서버의_선점, 선점_시각.plus(일분)).orElseThrow())
+                .map(type -> outboxService.claim(type, 멈춘_서버의_선점, 선점_시각.plus(일분), 선점_시각).orElseThrow())
                 .toList();
         발송한다(선점_시각.plus(Duration.ofSeconds(59)));
         verify(pushSender, never()).send(anyString(), any());
@@ -136,8 +165,7 @@ class NotificationDispatcherIntegrationTest {
         // when
         발송한다(선점_시각.plus(일분));
         List<Boolean> 늦은_기록들 = 멈춘_서버의_작업들.stream()
-                .map(outbox -> outboxes.finish(outbox.type(), outbox.id(), 멈춘_서버의_선점,
-                        NotificationOutboxStatus.SENT, null, 선점_시각.plus(Duration.ofMinutes(2))))
+                .map(outbox -> outboxService.markSent(outbox, 선점_시각.plus(Duration.ofMinutes(2))))
                 .toList();
 
         // then
@@ -162,25 +190,23 @@ class NotificationDispatcherIntegrationTest {
         Instant 처음_선점 = 한국_시각("2026-10-26T23:00:00");
         리마인더_작업을_만든다(device, 처음_선점);
         UUID 옛_선점 = UUID.randomUUID();
-        NotificationOutbox 옛_작업 = outboxes.claim(COLLECTION_CLAIM_REMINDER, 처음_선점, 옛_선점, 처음_선점.plus(일분))
+        NotificationOutbox 옛_작업 = outboxService.claim(COLLECTION_CLAIM_REMINDER, 옛_선점, 처음_선점.plus(일분), 처음_선점)
                 .orElseThrow();
         Instant 다시_선점 = 처음_선점.plus(일분);
         UUID 새_선점 = UUID.randomUUID();
-        outboxes.claim(COLLECTION_CLAIM_REMINDER, 다시_선점, 새_선점, 다시_선점.plus(일분)).orElseThrow();
+        NotificationOutbox 새_작업 = outboxService.claim(COLLECTION_CLAIM_REMINDER, 새_선점, 다시_선점.plus(일분), 다시_선점)
+                .orElseThrow();
 
         // when
-        boolean 옛_실패_기록 = outboxes.finish(옛_작업.type(), 옛_작업.id(), 옛_선점,
-                NotificationOutboxStatus.FAILED, "REJECTED", 다시_선점.plusSeconds(1));
-        boolean 옛_재예약 = outboxes.retry(옛_작업.type(), 옛_작업.id(), 옛_선점,
-                "RETRYABLE", 다시_선점.plusSeconds(30), 다시_선점.plusSeconds(1));
-        boolean 옛_취소 = outboxes.finish(옛_작업.type(), 옛_작업.id(), 옛_선점,
-                NotificationOutboxStatus.CANCELED, "NO_TOKEN", 다시_선점.plusSeconds(1));
+        boolean 옛_실패_기록 = outboxService.fail(옛_작업, "REJECTED", 다시_선점.plusSeconds(1));
+        boolean 옛_재예약 = outboxService.scheduleRetry(옛_작업, 다시_선점.plusSeconds(30), 다시_선점.plusSeconds(1));
+        boolean 옛_취소 = outboxService.cancel(옛_작업, "NO_TOKEN", 다시_선점.plusSeconds(1));
+        boolean 옛_발송_기록 = outboxService.markSent(옛_작업, 다시_선점.plusSeconds(1));
         작업 진행_중 = 기기의_작업(jdbc, device.getId(), COLLECTION_CLAIM_REMINDER.name());
-        boolean 새_발송_기록 = outboxes.finish(옛_작업.type(), 옛_작업.id(), 새_선점,
-                NotificationOutboxStatus.SENT, null, 다시_선점.plusSeconds(2));
+        boolean 새_발송_기록 = outboxService.markSent(새_작업, 다시_선점.plusSeconds(2));
 
         // then
-        assertThat(List.of(옛_실패_기록, 옛_재예약, 옛_취소)).containsOnly(false);
+        assertThat(List.of(옛_실패_기록, 옛_재예약, 옛_취소, 옛_발송_기록)).containsOnly(false);
         assertThat(진행_중.status()).isEqualTo("PENDING");
         assertThat(진행_중.claimToken()).isEqualTo(새_선점);
         assertThat(진행_중.resultCode()).isNull();
@@ -355,7 +381,7 @@ class NotificationDispatcherIntegrationTest {
         Instant 지금 = 한국_시각("2026-10-26T23:00:00");
         리마인더_작업을_만든다(device, 지금);
         doAnswer(invocation -> {
-            pushTokens.save(device.getId(), 새_등록_값, 지금);
+            pushTokenRegistrationService.updatePushToken(device.getId(), 새_등록_값);
             return PushSendResult.UNREGISTERED;
         }).when(pushSender).send(eq(기본_등록_값), any());
 
@@ -552,13 +578,12 @@ class NotificationDispatcherIntegrationTest {
         리마인더_작업을_만든다(device, 한국_시각("2026-10-26T23:00:00"));
         Instant 선점_시각 = 오늘_자정.minusSeconds(30);
         UUID 선점 = UUID.randomUUID();
-        NotificationOutbox 발송_중 = outboxes.claim(COLLECTION_CLAIM_REMINDER, 선점_시각, 선점, 선점_시각.plus(일분))
+        NotificationOutbox 발송_중 = outboxService.claim(COLLECTION_CLAIM_REMINDER, 선점, 선점_시각.plus(일분), 선점_시각)
                 .orElseThrow();
 
         // when
         발송한다(오늘_자정.plusSeconds(10));
-        boolean 기록 = outboxes.finish(
-                발송_중.type(), 발송_중.id(), 선점, NotificationOutboxStatus.SENT, null, 오늘_자정.plusSeconds(10));
+        boolean 기록 = outboxService.markSent(발송_중, 오늘_자정.plusSeconds(10));
 
         // then
         verify(pushSender, never()).send(anyString(), any());
@@ -574,7 +599,7 @@ class NotificationDispatcherIntegrationTest {
         순위_작업을_만든다(device, 회차, 2, 3);
         for (int 중단 = 0; 중단 < NotificationOutboxType.RANK_DROPPED.maxAttempts(); 중단++) {
             Instant 선점_시각 = 회차.plus(일분.multipliedBy(중단));
-            outboxes.claim(RANK_DROPPED, 선점_시각, UUID.randomUUID(), 선점_시각.plus(일분)).orElseThrow();
+            outboxService.claim(RANK_DROPPED, UUID.randomUUID(), 선점_시각.plus(일분), 선점_시각).orElseThrow();
         }
 
         // when
@@ -592,7 +617,7 @@ class NotificationDispatcherIntegrationTest {
     void 발송_직전에는_작업_유형에_맞는_수신_설정만_본다() {
         // given
         Device device = 토큰이_있는_기기(기본_등록_값);
-        settings.save(device.getId(), NotificationSettings.of(false, true), 한국_시각("2026-10-26T09:00:00"));
+        settings.save(기기_수신_설정(device.getId(), NotificationSettings.of(false, true)));
         리마인더_작업을_만든다(device, 한국_시각("2026-10-26T23:00:00"));
         순위_작업을_만든다(device, 한국_시각("2026-10-26T23:00:00"), 1, 2);
 
@@ -660,8 +685,8 @@ class NotificationDispatcherIntegrationTest {
         Device device = 토큰이_있는_기기(기본_등록_값);
         for (int 며칠_전 = 7; 며칠_전 <= 8; 며칠_전++) {
             Instant 그날 = 한국_시각("2026-10-26T23:00:00").minus(Duration.ofDays(며칠_전));
-            outboxes.saveCollection(COLLECTION_CLAIM_REMINDER, device.getId(), TODAY.minusDays(며칠_전), 그날, 그날,
-                    오늘_자정.minus(Duration.ofDays(며칠_전)));
+            reminderOutboxes.saveIfAbsent(리마인더_작업(device.getId(), TODAY.minusDays(며칠_전), 그날,
+                    오늘_자정.minus(Duration.ofDays(며칠_전))));
         }
         when(clock.instant()).thenReturn(한국_시각("2026-10-26T04:00:00"));
 
@@ -675,21 +700,22 @@ class NotificationDispatcherIntegrationTest {
 
     private Device 토큰이_있는_기기(String token) {
         Device device = devices.saveAndFlush(기본_기기_빌더().build());
-        pushTokens.save(device.getId(), token, 한국_시각("2026-10-26T09:00:00"));
+        만든_기기들.add(device.getId());
+        pushTokens.save(기기_등록_값(device.getId(), token));
         return device;
     }
 
     private void 발급_가능_작업을_만든다(Device device, Instant 발견) {
-        outboxes.saveCollection(COLLECTION_CLAIMABLE, device.getId(), TODAY, 발견, 발견.plus(Duration.ofHours(1)),
-                오늘_자정);
+        claimableOutboxes.saveIfAbsent(발급_가능_작업(device.getId(), TODAY, 발견, 발견.plus(Duration.ofHours(1)),
+                오늘_자정));
     }
 
     private void 리마인더_작업을_만든다(Device device, Instant 생성) {
-        outboxes.saveCollection(COLLECTION_CLAIM_REMINDER, device.getId(), TODAY, 생성, 생성, 오늘_자정);
+        reminderOutboxes.saveIfAbsent(리마인더_작업(device.getId(), TODAY, 생성, 오늘_자정));
     }
 
     private void 순위_작업을_만든다(Device device, Instant 회차, int 이전_순위, int 현재_순위) {
-        outboxes.saveRank(device.getId(), TODAY, 회차, 이전_순위, 현재_순위, 회차, 회차.plus(Duration.ofMinutes(5)));
+        rankOutboxes.save(순위_작업(device.getId(), TODAY, 회차, 이전_순위, 현재_순위, 회차, 회차.plus(Duration.ofMinutes(5))));
     }
 
     private void 발송한다(Instant 지금) {

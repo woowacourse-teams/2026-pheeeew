@@ -1,5 +1,7 @@
 package com.pheeeew.notification.domain;
 
+import com.pheeeew.notification.domain.outbox.NotificationOutboxType;
+
 public record PushRecipient(PushTarget target, NotificationSettings settings) {
 
     public static PushRecipient of(PushTarget target, NotificationSettings settings) {

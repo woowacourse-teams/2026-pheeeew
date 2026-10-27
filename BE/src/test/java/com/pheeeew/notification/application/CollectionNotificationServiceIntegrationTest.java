@@ -6,6 +6,9 @@ import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static com.pheeeew.emotion.fixture.DeviceDailyPressFixture.개인_프레스를_저장한다;
 import static com.pheeeew.notification.fixture.NotificationOutboxFixture.기기의_작업;
 import static com.pheeeew.notification.fixture.NotificationOutboxFixture.기기의_작업들;
+import static com.pheeeew.notification.fixture.NotificationOutboxFixture.알림_데이터를_지운다;
+import static com.pheeeew.notification.fixture.NotificationSettingFixture.기기_수신_설정;
+import static com.pheeeew.notification.fixture.PushTokenFixture.기기_등록_값;
 import static com.pheeeew.notification.fixture.PushTokenFixture.기본_등록_값;
 import static com.pheeeew.notification.fixture.PushTokenFixture.새_등록_값;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -23,13 +26,13 @@ import com.pheeeew.collection.domain.repository.CollectionProgressRepository;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.emotion.domain.EmotionState;
-import com.pheeeew.notification.domain.NotificationOutboxType;
+import com.pheeeew.notification.domain.DeviceNotificationSetting;
 import com.pheeeew.notification.domain.NotificationSettings;
 import com.pheeeew.notification.domain.PushMessage;
 import com.pheeeew.notification.domain.PushSendResult;
+import com.pheeeew.notification.domain.outbox.NotificationOutboxType;
 import com.pheeeew.notification.domain.repository.DeviceNotificationSettingRepository;
 import com.pheeeew.notification.domain.repository.DevicePushTokenRepository;
-import com.pheeeew.notification.domain.repository.NotificationOutboxRepository;
 import com.pheeeew.notification.fixture.NotificationOutboxFixture.작업;
 import com.pheeeew.support.PostgisDataJpaTest;
 import java.time.Clock;
@@ -38,8 +41,10 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -47,10 +52,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 @PostgisDataJpaTest
-@Import({CollectionNotificationService.class, NotificationDispatcher.class, NotificationOutboxRepository.class,
-        CollectionProgressRepository.class, DevicePushTokenRepository.class, DeviceNotificationSettingRepository.class})
+@Transactional(propagation = Propagation.NOT_SUPPORTED)
+@Import({CollectionNotificationService.class, NotificationDispatcher.class, NotificationOutboxService.class,
+        CollectionProgressRepository.class})
 class CollectionNotificationServiceIntegrationTest {
 
     private static final ZoneId 서울 = ZoneId.of("Asia/Seoul");
@@ -85,11 +93,18 @@ class CollectionNotificationServiceIntegrationTest {
     @MockitoBean
     private Clock clock;
 
+    private final List<Long> 만든_기기들 = new ArrayList<>();
+
     @BeforeEach
     void setUp() {
         when(clock.getZone()).thenReturn(서울);
         when(pushSender.isAvailable()).thenReturn(true);
         when(pushSender.send(anyString(), any())).thenReturn(PushSendResult.SENT);
+    }
+
+    @AfterEach
+    void tearDown() {
+        알림_데이터를_지운다(jdbc, List.of(TODAY, TODAY.plusDays(1)), 만든_기기들);
     }
 
     @Test
@@ -179,11 +194,11 @@ class CollectionNotificationServiceIntegrationTest {
         Device device = 토큰이_있는_기기(기본_등록_값);
         발급_가능하게_만든다(device, EmotionState.ANGRY);
         탐색한다(오전_10시);
-        settings.save(device.getId(), NotificationSettings.of(false, true), 오전_10시.plus(Duration.ofMinutes(30)));
+        settings.save(기기_수신_설정(device.getId(), NotificationSettings.of(false, true)));
         탐색하고_발송한다(오전_10시.plus(한_시간));
 
         // when
-        settings.save(device.getId(), NotificationSettings.of(true, true), 오전_10시.plus(Duration.ofMinutes(70)));
+        수신_설정을_바꾼다(device, NotificationSettings.of(true, true));
         탐색하고_발송한다(오전_10시.plus(Duration.ofMinutes(75)));
         탐색하고_발송한다(오전_10시.plus(Duration.ofHours(3)));
 
@@ -205,7 +220,7 @@ class CollectionNotificationServiceIntegrationTest {
         탐색하고_발송한다(오전_10시.plus(한_시간));
 
         // when
-        pushTokens.save(device.getId(), 새_등록_값, 오전_10시.plus(Duration.ofMinutes(70)));
+        pushTokens.save(기기_등록_값(device.getId(), 새_등록_값));
         탐색하고_발송한다(오전_10시.plus(Duration.ofMinutes(75)));
         탐색하고_발송한다(오전_10시.plus(Duration.ofHours(3)));
 
@@ -383,8 +398,15 @@ class CollectionNotificationServiceIntegrationTest {
 
     private Device 토큰이_있는_기기(String token) {
         Device device = devices.saveAndFlush(기본_기기_빌더().build());
-        pushTokens.save(device.getId(), token, 오전_10시);
+        만든_기기들.add(device.getId());
+        pushTokens.save(기기_등록_값(device.getId(), token));
         return device;
+    }
+
+    private void 수신_설정을_바꾼다(Device device, NotificationSettings 새_설정) {
+        DeviceNotificationSetting setting = settings.findByDeviceId(device.getId()).orElseThrow();
+        setting.update(새_설정);
+        settings.save(setting);
     }
 
     private void 발급_가능하게_만든다(Device device, EmotionState state) {

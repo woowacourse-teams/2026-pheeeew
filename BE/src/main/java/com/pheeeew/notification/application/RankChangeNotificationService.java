@@ -2,9 +2,13 @@ package com.pheeeew.notification.application;
 
 import com.pheeeew.common.application.Ranking;
 import com.pheeeew.notification.domain.DevicePressCount;
+import com.pheeeew.notification.domain.NotificationRankRound;
+import com.pheeeew.notification.domain.NotificationRankSnapshot;
+import com.pheeeew.notification.domain.outbox.RankDroppedOutbox;
 import com.pheeeew.notification.domain.repository.DailyPressCountRepository;
-import com.pheeeew.notification.domain.repository.NotificationOutboxRepository;
 import com.pheeeew.notification.domain.repository.NotificationRankRoundRepository;
+import com.pheeeew.notification.domain.repository.NotificationRankSnapshotRepository;
+import com.pheeeew.notification.domain.repository.RankDroppedOutboxRepository;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -28,7 +32,8 @@ public class RankChangeNotificationService {
 
     private final DailyPressCountRepository dailyPressCountRepository;
     private final NotificationRankRoundRepository notificationRankRoundRepository;
-    private final NotificationOutboxRepository notificationOutboxRepository;
+    private final NotificationRankSnapshotRepository notificationRankSnapshotRepository;
+    private final RankDroppedOutboxRepository rankDroppedOutboxRepository;
     private final PushSender pushSender;
     private final Clock clock;
 
@@ -40,11 +45,15 @@ public class RankChangeNotificationService {
         Instant now = clock.instant();
         Instant roundAt = roundOf(now);
         LocalDate targetDate = LocalDate.ofInstant(roundAt, clock.getZone());
-        if (!notificationRankRoundRepository.saveRound(roundAt, targetDate, now)) {
+        NotificationRankRound round = NotificationRankRound.builder()
+                .roundAt(roundAt)
+                .targetDate(targetDate)
+                .build();
+        if (notificationRankRoundRepository.saveIfAbsent(round) == 0) {
             return;
         }
 
-        Map<Long, Integer> previousRanks = notificationRankRoundRepository.findPreviousSnapshot(targetDate, roundAt);
+        Map<Long, Integer> previousRanks = findPreviousRanks(targetDate, roundAt);
         Map<Long, Integer> currentRanks = findRanks(targetDate);
         saveSnapshot(roundAt, currentRanks);
         saveDroppedOutbox(previousRanks, currentRanks, targetDate, roundAt, now);
@@ -60,6 +69,15 @@ public class RankChangeNotificationService {
         return Instant.ofEpochSecond(epochSecond - Math.floorMod(epochSecond, ROUND_INTERVAL.toSeconds()));
     }
 
+    private Map<Long, Integer> findPreviousRanks(LocalDate targetDate, Instant roundAt) {
+        return notificationRankRoundRepository.findFirstByTargetDateAndRoundAtBeforeOrderByRoundAtDesc(
+                        targetDate, roundAt)
+                .map(previousRound -> notificationRankSnapshotRepository.findByRoundAt(previousRound.getRoundAt()))
+                .orElseGet(List::of)
+                .stream()
+                .collect(Collectors.toMap(NotificationRankSnapshot::getDeviceId, NotificationRankSnapshot::getRank));
+    }
+
     private Map<Long, Integer> findRanks(LocalDate date) {
         List<DevicePressCount> counts = dailyPressCountRepository.findByDate(date);
         return Ranking.rank(counts, DevicePressCount::pressCount, (rank, count) -> Map.entry(count.deviceId(), rank))
@@ -70,7 +88,11 @@ public class RankChangeNotificationService {
     private void saveSnapshot(Instant roundAt, Map<Long, Integer> currentRanks) {
         currentRanks.forEach((deviceId, rank) -> {
             if (rank <= NOTIFIED_RANK_LIMIT) {
-                notificationRankRoundRepository.saveSnapshot(roundAt, deviceId, rank);
+                notificationRankSnapshotRepository.save(NotificationRankSnapshot.builder()
+                        .roundAt(roundAt)
+                        .deviceId(deviceId)
+                        .rank(rank)
+                        .build());
             }
         });
     }
@@ -86,8 +108,16 @@ public class RankChangeNotificationService {
         previousRanks.forEach((deviceId, previousRank) -> {
             Integer currentRank = currentRanks.get(deviceId);
             if (isDroppedFromTop(previousRank, currentRank)) {
-                notificationOutboxRepository.saveRank(
-                        deviceId, targetDate, roundAt, previousRank, currentRank, now, expiresAt);
+                rankDroppedOutboxRepository.save(RankDroppedOutbox.builder()
+                        .deviceId(deviceId)
+                        .targetDate(targetDate)
+                        .roundAt(roundAt)
+                        .previousRank(previousRank)
+                        .currentRank(currentRank)
+                        .discoveredAt(now)
+                        .availableAt(now)
+                        .expiresAt(expiresAt)
+                        .build());
             }
         });
     }

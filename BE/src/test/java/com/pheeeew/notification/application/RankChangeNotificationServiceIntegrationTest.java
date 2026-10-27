@@ -5,7 +5,10 @@ import static com.pheeeew.emotion.fixture.DeviceDailyPressFixture.개인_프레�
 import static com.pheeeew.notification.fixture.NotificationOutboxFixture.기기의_작업;
 import static com.pheeeew.notification.fixture.NotificationOutboxFixture.기기의_작업들;
 import static com.pheeeew.notification.fixture.NotificationOutboxFixture.날짜의_회차들;
+import static com.pheeeew.notification.fixture.NotificationOutboxFixture.알림_데이터를_지운다;
 import static com.pheeeew.notification.fixture.NotificationOutboxFixture.회차의_스냅샷;
+import static com.pheeeew.notification.fixture.NotificationSettingFixture.기기_수신_설정;
+import static com.pheeeew.notification.fixture.PushTokenFixture.기기_등록_값;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
@@ -17,15 +20,13 @@ import static org.mockito.Mockito.when;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.emotion.domain.EmotionState;
-import com.pheeeew.notification.domain.NotificationOutboxType;
 import com.pheeeew.notification.domain.NotificationSettings;
 import com.pheeeew.notification.domain.PushMessage;
 import com.pheeeew.notification.domain.PushSendResult;
+import com.pheeeew.notification.domain.outbox.NotificationOutboxType;
 import com.pheeeew.notification.domain.repository.DailyPressCountRepository;
 import com.pheeeew.notification.domain.repository.DeviceNotificationSettingRepository;
 import com.pheeeew.notification.domain.repository.DevicePushTokenRepository;
-import com.pheeeew.notification.domain.repository.NotificationOutboxRepository;
-import com.pheeeew.notification.domain.repository.NotificationRankRoundRepository;
 import com.pheeeew.notification.fixture.NotificationOutboxFixture.작업;
 import com.pheeeew.support.PostgisDataJpaTest;
 import java.time.Clock;
@@ -33,10 +34,12 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -44,11 +47,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 @PostgisDataJpaTest
-@Import({RankChangeNotificationService.class, NotificationDispatcher.class, NotificationOutboxRepository.class,
-        NotificationRankRoundRepository.class, DailyPressCountRepository.class, DevicePushTokenRepository.class,
-        DeviceNotificationSettingRepository.class})
+@Transactional(propagation = Propagation.NOT_SUPPORTED)
+@Import({RankChangeNotificationService.class, NotificationDispatcher.class, NotificationOutboxService.class,
+        DailyPressCountRepository.class})
 class RankChangeNotificationServiceIntegrationTest {
 
     private static final ZoneId 서울 = ZoneId.of("Asia/Seoul");
@@ -81,11 +86,18 @@ class RankChangeNotificationServiceIntegrationTest {
     @MockitoBean
     private Clock clock;
 
+    private final List<Long> 만든_기기들 = new ArrayList<>();
+
     @BeforeEach
     void setUp() {
         when(clock.getZone()).thenReturn(서울);
         when(pushSender.isAvailable()).thenReturn(true);
         when(pushSender.send(anyString(), any())).thenReturn(PushSendResult.SENT);
+    }
+
+    @AfterEach
+    void tearDown() {
+        알림_데이터를_지운다(jdbc, List.of(TODAY, TODAY.plusDays(1), TODAY.minusDays(7), TODAY.minusDays(8)), 만든_기기들);
     }
 
     @Test
@@ -339,8 +351,8 @@ class RankChangeNotificationServiceIntegrationTest {
     void 수신_설정을_끈_기기와_토큰이_없는_기기는_발송_직전에_사유를_나눠_닫고_프레스가_없는_기기는_작업이_없다() {
         // given
         Device 설정을_끈_기기 = 토큰이_있는_기기("off");
-        settings.save(설정을_끈_기기.getId(), NotificationSettings.of(true, false), 오전_10시);
-        Device 토큰이_없는_기기 = devices.saveAndFlush(기본_기기_빌더().build());
+        settings.save(기기_수신_설정(설정을_끈_기기.getId(), NotificationSettings.of(true, false)));
+        Device 토큰이_없는_기기 = 기기를_만든다();
         Device 받을_기기 = 토큰이_있는_기기("on");
         Device 프레스가_없는_기기 = 토큰이_있는_기기("no-press");
         List.of(설정을_끈_기기, 토큰이_없는_기기, 받을_기기).forEach(device -> 프레스를_누른다(device, 100));
@@ -434,8 +446,14 @@ class RankChangeNotificationServiceIntegrationTest {
     }
 
     private Device 토큰이_있는_기기(String token) {
+        Device device = 기기를_만든다();
+        pushTokens.save(기기_등록_값(device.getId(), token));
+        return device;
+    }
+
+    private Device 기기를_만든다() {
         Device device = devices.saveAndFlush(기본_기기_빌더().build());
-        pushTokens.save(device.getId(), token, 오전_10시);
+        만든_기기들.add(device.getId());
         return device;
     }
 

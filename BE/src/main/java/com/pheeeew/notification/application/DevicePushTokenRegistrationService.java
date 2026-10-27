@@ -1,7 +1,7 @@
 package com.pheeeew.notification.application;
 
+import com.pheeeew.notification.domain.DevicePushToken;
 import com.pheeeew.notification.domain.repository.DevicePushTokenRepository;
-import java.time.Clock;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,11 +12,18 @@ import org.springframework.transaction.annotation.Transactional;
 public class DevicePushTokenRegistrationService {
 
     private final DevicePushTokenRepository devicePushTokenRepository;
-    private final Clock clock;
 
     @Transactional
     public void updatePushToken(Long deviceId, String token) {
         devicePushTokenRepository.deleteByTokenAndDeviceIdNot(token, deviceId);
-        devicePushTokenRepository.save(deviceId, token, clock.instant());
+        DevicePushToken pushToken = DevicePushToken.builder()
+                .deviceId(deviceId)
+                .token(token)
+                .build();
+        if (devicePushTokenRepository.saveIfAbsent(pushToken) == 1) {
+            return;
+        }
+        devicePushTokenRepository.findByDeviceIdForUpdate(deviceId)
+                .ifPresent(registered -> registered.changeToken(token));
     }
 }

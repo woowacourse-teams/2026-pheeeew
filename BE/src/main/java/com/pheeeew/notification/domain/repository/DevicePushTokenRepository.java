@@ -1,65 +1,43 @@
 package com.pheeeew.notification.domain.repository;
 
-import com.pheeeew.notification.domain.NotificationSettings;
-import com.pheeeew.notification.domain.PushRecipient;
-import com.pheeeew.notification.domain.PushTarget;
-import java.time.Instant;
-import java.time.ZoneOffset;
+import com.pheeeew.notification.domain.DevicePushToken;
+import jakarta.persistence.LockModeType;
 import java.util.Optional;
-import lombok.RequiredArgsConstructor;
-import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
-@RequiredArgsConstructor
-@Repository
-public class DevicePushTokenRepository {
+public interface DevicePushTokenRepository extends JpaRepository<DevicePushToken, Long> {
 
-    private final JdbcClient jdbc;
+    @Transactional
+    @Modifying
+    @Query(value = """
+            INSERT INTO device_push_tokens (device_id, token, created_at, updated_at)
+                 VALUES (:#{#pushToken.deviceId}, :#{#pushToken.token}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ON CONFLICT (device_id) DO NOTHING
+            """, nativeQuery = true)
+    int saveIfAbsent(@Param("pushToken") DevicePushToken pushToken);
 
-    public void deleteByTokenAndDeviceIdNot(String token, Long deviceId) {
-        jdbc.sql("DELETE FROM device_push_tokens WHERE token = :token AND device_id <> :deviceId")
-                .param("token", token).param("deviceId", deviceId)
-                .update();
-    }
+    Optional<DevicePushToken> findByDeviceId(Long deviceId);
 
-    public void save(Long deviceId, String token, Instant now) {
-        jdbc.sql("""
-                INSERT INTO device_push_tokens (device_id, token, created_at, updated_at)
-                     VALUES (:deviceId, :token, :now, :now)
-                ON CONFLICT (device_id) DO UPDATE
-                   SET token = :token,
-                       updated_at = :now
-                """).param("deviceId", deviceId).param("token", token)
-                .param("now", now.atOffset(ZoneOffset.UTC))
-                .update();
-    }
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT t FROM DevicePushToken t WHERE t.deviceId = :deviceId")
+    Optional<DevicePushToken> findByDeviceIdForUpdate(@Param("deviceId") Long deviceId);
 
-    public void deleteByDeviceId(Long deviceId) {
-        jdbc.sql("DELETE FROM device_push_tokens WHERE device_id = :deviceId")
-                .param("deviceId", deviceId)
-                .update();
-    }
+    @Modifying
+    @Query("DELETE FROM DevicePushToken t WHERE t.token = :token AND t.deviceId <> :deviceId")
+    void deleteByTokenAndDeviceIdNot(@Param("token") String token, @Param("deviceId") Long deviceId);
 
-    public void deleteByDeviceIdAndToken(Long deviceId, String token) {
-        jdbc.sql("DELETE FROM device_push_tokens WHERE device_id = :deviceId AND token = :token")
-                .param("deviceId", deviceId).param("token", token)
-                .update();
-    }
+    @Transactional
+    @Modifying
+    @Query("DELETE FROM DevicePushToken t WHERE t.deviceId = :deviceId")
+    void deleteByDeviceId(@Param("deviceId") Long deviceId);
 
-    public Optional<PushRecipient> findRecipientByDeviceId(Long deviceId) {
-        return jdbc.sql("""
-                SELECT tokens.device_id, tokens.token,
-                       COALESCE(settings.collection_claimable_enabled, TRUE) AS collection_claimable_enabled,
-                       COALESCE(settings.rank_changed_enabled, TRUE) AS rank_changed_enabled
-                FROM device_push_tokens tokens
-                LEFT JOIN device_notification_settings settings ON settings.device_id = tokens.device_id
-                WHERE tokens.device_id = :deviceId
-                """).param("deviceId", deviceId)
-                .query((row, index) -> PushRecipient.of(
-                        PushTarget.of(row.getLong("device_id"), row.getString("token")),
-                        NotificationSettings.of(
-                                row.getBoolean("collection_claimable_enabled"),
-                                row.getBoolean("rank_changed_enabled"))))
-                .optional();
-    }
+    @Transactional
+    @Modifying
+    @Query("DELETE FROM DevicePushToken t WHERE t.deviceId = :deviceId AND t.token = :token")
+    void deleteByDeviceIdAndToken(@Param("deviceId") Long deviceId, @Param("token") String token);
 }

@@ -1,16 +1,18 @@
 package com.pheeeew.notification.application;
 
-import static com.pheeeew.notification.domain.NotificationOutboxType.COLLECTION_CLAIMABLE;
+import static com.pheeeew.notification.domain.outbox.NotificationOutboxType.COLLECTION_CLAIMABLE;
 
 import com.pheeeew.collection.domain.repository.CollectionCardRepository;
-import com.pheeeew.notification.domain.NotificationOutbox;
-import com.pheeeew.notification.domain.NotificationOutboxStatus;
-import com.pheeeew.notification.domain.NotificationOutboxType;
+import com.pheeeew.notification.domain.DeviceNotificationSetting;
+import com.pheeeew.notification.domain.DevicePushToken;
+import com.pheeeew.notification.domain.NotificationSettings;
 import com.pheeeew.notification.domain.PushRecipient;
 import com.pheeeew.notification.domain.PushSendResult;
 import com.pheeeew.notification.domain.PushTarget;
+import com.pheeeew.notification.domain.outbox.NotificationOutbox;
+import com.pheeeew.notification.domain.outbox.NotificationOutboxType;
+import com.pheeeew.notification.domain.repository.DeviceNotificationSettingRepository;
 import com.pheeeew.notification.domain.repository.DevicePushTokenRepository;
-import com.pheeeew.notification.domain.repository.NotificationOutboxRepository;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -42,8 +44,9 @@ public class NotificationDispatcher {
     private static final String REJECTED = "REJECTED";
     private static final String RETRY_EXHAUSTED = "RETRY_EXHAUSTED";
 
-    private final NotificationOutboxRepository notificationOutboxRepository;
+    private final NotificationOutboxService notificationOutboxService;
     private final DevicePushTokenRepository devicePushTokenRepository;
+    private final DeviceNotificationSettingRepository deviceNotificationSettingRepository;
     private final CollectionCardRepository collectionCardRepository;
     private final PushSender pushSender;
     private final Clock clock;
@@ -52,13 +55,13 @@ public class NotificationDispatcher {
         if (!pushSender.isAvailable()) {
             return;
         }
-        notificationOutboxRepository.expire(type, NotificationOutboxStatus.CANCELED, EXPIRED, clock.instant());
+        notificationOutboxService.expire(type, EXPIRED, clock.instant());
 
         Map<String, Integer> outcomes = new TreeMap<>();
         for (int count = 0; count < MAX_DISPATCH_COUNT; count++) {
             Instant now = clock.instant();
-            Optional<NotificationOutbox> claimed = notificationOutboxRepository.claim(
-                    type, now, UUID.randomUUID(), now.plus(CLAIM_DURATION));
+            Optional<NotificationOutbox> claimed = notificationOutboxService.claim(
+                    type, UUID.randomUUID(), now.plus(CLAIM_DURATION), now);
             if (claimed.isEmpty()) {
                 break;
             }
@@ -72,17 +75,17 @@ public class NotificationDispatcher {
     }
 
     public void deleteOldOutbox() {
-        notificationOutboxRepository.deleteByTargetDateBefore(LocalDate.now(clock).minusDays(RETENTION_DAYS));
+        notificationOutboxService.deleteByTargetDateBefore(LocalDate.now(clock).minusDays(RETENTION_DAYS));
     }
 
     private String deliver(NotificationOutbox outbox, Instant now) {
-        if (outbox.attemptCount() > outbox.type().maxAttempts()) {
+        if (outbox.getAttemptCount() > outbox.type().maxAttempts()) {
             return fail(outbox, RETRY_EXHAUSTED);
         }
         if (isTakenOverByReminder(outbox, now)) {
             return cancel(outbox, SUPERSEDED);
         }
-        Optional<PushRecipient> recipient = devicePushTokenRepository.findRecipientByDeviceId(outbox.deviceId());
+        Optional<PushRecipient> recipient = findRecipient(outbox.getDeviceId());
         if (recipient.isEmpty()) {
             return cancel(outbox, NO_TOKEN);
         }
@@ -92,7 +95,7 @@ public class NotificationDispatcher {
         if (outbox.type().isCollection() && isCardClaimed(outbox)) {
             return cancel(outbox, CARD_CLAIMED);
         }
-        if (!clock.instant().isBefore(outbox.expiresAt())) {
+        if (!clock.instant().isBefore(outbox.getExpiresAt())) {
             return cancel(outbox, EXPIRED);
         }
 
@@ -103,19 +106,14 @@ public class NotificationDispatcher {
     }
 
     private String fail(NotificationOutbox outbox, String resultCode) {
-        return finish(outbox, NotificationOutboxStatus.FAILED, resultCode);
-    }
-
-    private String finish(NotificationOutbox outbox, NotificationOutboxStatus status, String resultCode) {
-        boolean recorded = notificationOutboxRepository.finish(
-                outbox.type(), outbox.id(), outbox.claimToken(), status, resultCode, clock.instant());
+        boolean recorded = notificationOutboxService.fail(outbox, resultCode, clock.instant());
         warnIfClaimLost(recorded, outbox);
         return resultCode;
     }
 
     private void warnIfClaimLost(boolean recorded, NotificationOutbox outbox) {
         if (!recorded) {
-            log.warn("선점을 잃어 결과를 기록하지 못했습니다. type={}, outboxId={}", outbox.type(), outbox.id());
+            log.warn("선점을 잃어 결과를 기록하지 못했습니다. type={}, outboxId={}", outbox.type(), outbox.getId());
         }
     }
 
@@ -125,11 +123,25 @@ public class NotificationDispatcher {
     }
 
     private String cancel(NotificationOutbox outbox, String resultCode) {
-        return finish(outbox, NotificationOutboxStatus.CANCELED, resultCode);
+        boolean recorded = notificationOutboxService.cancel(outbox, resultCode, clock.instant());
+        warnIfClaimLost(recorded, outbox);
+        return resultCode;
+    }
+
+    private Optional<PushRecipient> findRecipient(Long deviceId) {
+        Optional<PushTarget> target = devicePushTokenRepository.findByDeviceId(deviceId)
+                .map(DevicePushToken::toTarget);
+        if (target.isEmpty()) {
+            return Optional.empty();
+        }
+        NotificationSettings settings = deviceNotificationSettingRepository.findByDeviceId(deviceId)
+                .map(DeviceNotificationSetting::toSettings)
+                .orElseGet(NotificationSettings::defaults);
+        return Optional.of(PushRecipient.of(target.get(), settings));
     }
 
     private boolean isCardClaimed(NotificationOutbox outbox) {
-        return collectionCardRepository.findByDeviceIdAndCardDate(outbox.deviceId(), outbox.targetDate())
+        return collectionCardRepository.findByDeviceIdAndCardDate(outbox.getDeviceId(), outbox.getTargetDate())
                 .isPresent();
     }
 
@@ -138,14 +150,14 @@ public class NotificationDispatcher {
             return pushSender.send(target.token(), outbox.message());
         } catch (RuntimeException exception) {
             log.warn("알림을 보내지 못했습니다. type={}, outboxId={}, deviceId={}",
-                    outbox.type(), outbox.id(), outbox.deviceId(), exception);
+                    outbox.type(), outbox.getId(), outbox.getDeviceId(), exception);
             return PushSendResult.RETRYABLE;
         }
     }
 
     private void record(NotificationOutbox outbox, PushTarget target, PushSendResult result) {
         switch (result) {
-            case SENT -> finish(outbox, NotificationOutboxStatus.SENT, null);
+            case SENT -> markSent(outbox);
             case UNREGISTERED -> {
                 devicePushTokenRepository.deleteByDeviceIdAndToken(target.deviceId(), target.token());
                 fail(outbox, UNREGISTERED);
@@ -155,17 +167,21 @@ public class NotificationDispatcher {
         }
     }
 
+    private void markSent(NotificationOutbox outbox) {
+        boolean recorded = notificationOutboxService.markSent(outbox, clock.instant());
+        warnIfClaimLost(recorded, outbox);
+    }
+
     private void retryOrFail(NotificationOutbox outbox) {
         Instant failedAt = clock.instant();
-        Optional<Instant> nextAvailableAt = outbox.type().retryDelayAfter(outbox.attemptCount())
+        Optional<Instant> nextAvailableAt = outbox.type().retryDelayAfter(outbox.getAttemptCount())
                 .map(failedAt::plus)
-                .filter(availableAt -> availableAt.isBefore(outbox.expiresAt()));
+                .filter(availableAt -> availableAt.isBefore(outbox.getExpiresAt()));
         if (nextAvailableAt.isEmpty()) {
             fail(outbox, RETRY_EXHAUSTED);
             return;
         }
-        boolean recorded = notificationOutboxRepository.retry(outbox.type(), outbox.id(), outbox.claimToken(),
-                PushSendResult.RETRYABLE.name(), nextAvailableAt.get(), failedAt);
+        boolean recorded = notificationOutboxService.scheduleRetry(outbox, nextAvailableAt.get(), failedAt);
         warnIfClaimLost(recorded, outbox);
     }
 

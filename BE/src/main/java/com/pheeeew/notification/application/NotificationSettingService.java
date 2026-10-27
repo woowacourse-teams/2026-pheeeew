@@ -5,15 +5,16 @@ import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
+import com.pheeeew.notification.domain.DeviceNotificationSetting;
 import com.pheeeew.notification.domain.NotificationSettings;
 import com.pheeeew.notification.domain.repository.DeviceNotificationSettingRepository;
 import com.pheeeew.notification.domain.repository.DevicePushTokenRepository;
 import java.sql.SQLException;
-import java.time.Clock;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DuplicateKeyException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @RequiredArgsConstructor
 @Service
@@ -26,13 +27,12 @@ public class NotificationSettingService {
     private final DevicePushTokenRepository devicePushTokenRepository;
     private final DeviceNotificationSettingRepository deviceNotificationSettingRepository;
     private final DevicePushTokenRegistrationService devicePushTokenRegistrationService;
-    private final Clock clock;
 
     public void updatePushToken(UUID devicePublicId, String token) {
         Long deviceId = findDeviceId(devicePublicId);
         try {
             devicePushTokenRegistrationService.updatePushToken(deviceId, token);
-        } catch (DuplicateKeyException exception) {
+        } catch (DataIntegrityViolationException exception) {
             if (!isTokenTakenConcurrently(exception)) {
                 throw exception;
             }
@@ -46,12 +46,23 @@ public class NotificationSettingService {
 
     public NotificationSettings findSettings(UUID devicePublicId) {
         return deviceNotificationSettingRepository.findByDeviceId(findDeviceId(devicePublicId))
+                .map(DeviceNotificationSetting::toSettings)
                 .orElseGet(NotificationSettings::defaults);
     }
 
+    @Transactional
     public void updateSettings(UUID devicePublicId, boolean collectionClaimableEnabled, boolean rankChangedEnabled) {
+        Long deviceId = findDeviceId(devicePublicId);
         NotificationSettings settings = NotificationSettings.of(collectionClaimableEnabled, rankChangedEnabled);
-        deviceNotificationSettingRepository.save(findDeviceId(devicePublicId), settings, clock.instant());
+        DeviceNotificationSetting setting = DeviceNotificationSetting.builder()
+                .deviceId(deviceId)
+                .settings(settings)
+                .build();
+        if (deviceNotificationSettingRepository.saveIfAbsent(setting) == 1) {
+            return;
+        }
+        deviceNotificationSettingRepository.findByDeviceIdForUpdate(deviceId)
+                .ifPresent(saved -> saved.update(settings));
     }
 
     private Long findDeviceId(UUID devicePublicId) {
@@ -60,7 +71,7 @@ public class NotificationSettingService {
                 .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
     }
 
-    private boolean isTokenTakenConcurrently(DuplicateKeyException exception) {
+    private boolean isTokenTakenConcurrently(DataIntegrityViolationException exception) {
         Throwable cause = exception.getMostSpecificCause();
 
         return cause instanceof SQLException sqlException

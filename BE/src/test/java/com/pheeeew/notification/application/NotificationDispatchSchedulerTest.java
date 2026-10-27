@@ -1,6 +1,6 @@
 package com.pheeeew.notification.application;
 
-import static com.pheeeew.notification.domain.NotificationOutboxType.RANK_DROPPED;
+import static com.pheeeew.notification.domain.outbox.NotificationOutboxType.RANK_DROPPED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;

@@ -1,4 +1,4 @@
-package com.pheeeew.notification.domain;
+package com.pheeeew.notification.domain.outbox;
 
 import java.time.Duration;
 import java.util.List;

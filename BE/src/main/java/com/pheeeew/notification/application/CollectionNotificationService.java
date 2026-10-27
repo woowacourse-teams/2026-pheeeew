@@ -1,10 +1,10 @@
 package com.pheeeew.notification.application;
 
-import static com.pheeeew.notification.domain.NotificationOutboxType.COLLECTION_CLAIMABLE;
-import static com.pheeeew.notification.domain.NotificationOutboxType.COLLECTION_CLAIM_REMINDER;
-
 import com.pheeeew.collection.domain.repository.CollectionProgressRepository;
-import com.pheeeew.notification.domain.repository.NotificationOutboxRepository;
+import com.pheeeew.notification.domain.outbox.CollectionClaimableOutbox;
+import com.pheeeew.notification.domain.outbox.CollectionReminderOutbox;
+import com.pheeeew.notification.domain.repository.CollectionClaimableOutboxRepository;
+import com.pheeeew.notification.domain.repository.CollectionReminderOutboxRepository;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -21,7 +21,8 @@ public class CollectionNotificationService {
     private static final Duration CLAIMABLE_NOTIFICATION_DELAY = Duration.ofHours(1);
 
     private final CollectionProgressRepository collectionProgressRepository;
-    private final NotificationOutboxRepository notificationOutboxRepository;
+    private final CollectionClaimableOutboxRepository collectionClaimableOutboxRepository;
+    private final CollectionReminderOutboxRepository collectionReminderOutboxRepository;
     private final PushSender pushSender;
     private final Clock clock;
 
@@ -36,8 +37,13 @@ public class CollectionNotificationService {
         Instant expiresAt = endOf(today);
 
         collectionProgressRepository.findClaimableDeviceIds(today).forEach(deviceId ->
-                notificationOutboxRepository.saveCollection(
-                        COLLECTION_CLAIMABLE, deviceId, today, now, availableAt, expiresAt));
+                collectionClaimableOutboxRepository.saveIfAbsent(CollectionClaimableOutbox.builder()
+                        .deviceId(deviceId)
+                        .targetDate(today)
+                        .discoveredAt(now)
+                        .availableAt(availableAt)
+                        .expiresAt(expiresAt)
+                        .build()));
     }
 
     @Transactional
@@ -50,8 +56,13 @@ public class CollectionNotificationService {
         Instant expiresAt = endOf(today);
 
         collectionProgressRepository.findClaimableDeviceIds(today).forEach(deviceId ->
-                notificationOutboxRepository.saveCollection(
-                        COLLECTION_CLAIM_REMINDER, deviceId, today, now, now, expiresAt));
+                collectionReminderOutboxRepository.saveIfAbsent(CollectionReminderOutbox.builder()
+                        .deviceId(deviceId)
+                        .targetDate(today)
+                        .discoveredAt(now)
+                        .availableAt(now)
+                        .expiresAt(expiresAt)
+                        .build()));
     }
 
     private Instant endOf(LocalDate date) {

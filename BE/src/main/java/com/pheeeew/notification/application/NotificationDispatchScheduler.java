@@ -1,7 +1,7 @@
 package com.pheeeew.notification.application;
 
 import com.pheeeew.common.logging.ScheduledTaskErrorHandler;
-import com.pheeeew.notification.domain.NotificationOutboxType;
+import com.pheeeew.notification.domain.outbox.NotificationOutboxType;
 import jakarta.annotation.PreDestroy;
 import java.time.Duration;
 import java.util.ArrayList;
