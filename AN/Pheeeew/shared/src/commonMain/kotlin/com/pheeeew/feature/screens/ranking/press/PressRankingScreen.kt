@@ -192,16 +192,30 @@ internal fun PressRankingScreen(
                     Spacer(Modifier.height(16.dp))
                     MyRaceRankCard(uiState.me, uiState.status, onBack, onRetry)
                     Spacer(Modifier.height(20.dp))
-                    Text(
-                        stringResource(Res.string.press_daily_ranking_people),
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            stringResource(Res.string.press_daily_ranking_people),
+                            modifier = Modifier.weight(1f).padding(end = 12.dp),
+                            fontSize = 16.sp,
+                            lineHeight = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        if (uiState.date != null && dailyDate == null) {
+                            Text(
+                                uiState.date,
+                                modifier = Modifier.weight(0.65f),
+                                fontSize = 12.sp,
+                                lineHeight = 18.sp,
+                                color = Color(0xFF767D78),
+                                textAlign = TextAlign.End,
+                            )
+                        }
+                    }
                     Spacer(Modifier.height(12.dp))
                     PressRaceHeader(rankWidth, countWidth)
-                }
-                if (uiState.date != null && dailyDate == null) {
-                    item { Text(uiState.date, fontSize = 12.sp, color = Color(0xFF767D78)) }
                 }
                 if (uiState.hasRefreshError) {
                     item {
