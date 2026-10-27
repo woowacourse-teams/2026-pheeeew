@@ -136,6 +136,8 @@ internal fun PressRaceRow(
             }
             Text(
                 row.rank.toString(),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 color =

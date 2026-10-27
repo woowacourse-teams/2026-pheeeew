@@ -51,6 +51,7 @@ internal class PressRaceSession(
                         if (state.value.view == event.view) {
                             when (state.value.phase) {
                                 PressRacePhase.Ready -> {
+                                    if (state.value.isAwaitingSnapshot) continue
                                     publish { it.copy(isAwaitingSnapshot = true) }
                                     send(PressRaceProtocol.changeView(event.view))
                                 }

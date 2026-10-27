@@ -83,7 +83,7 @@ internal fun PressRankingScreen(
     rows: List<PressRaceRowModel> = uiState.people.toRaceRows(),
 ) {
     val fontScale = LocalDensity.current.fontScale
-    val rankWidth = ((rows.maxOfOrNull { it.rank.toString().length } ?: 1) * 8f * fontScale).coerceAtLeast(28f).dp
+    val rankWidth = ((rows.maxOfOrNull { it.rank.toString().length } ?: 1) * 8f * fontScale).coerceIn(28f, 80f).dp
     val textMeasurer = rememberTextMeasurer()
     val countStyle = LocalTextStyle.current.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold)
     val countLabels = rows.map { raceCountText(it.count) }

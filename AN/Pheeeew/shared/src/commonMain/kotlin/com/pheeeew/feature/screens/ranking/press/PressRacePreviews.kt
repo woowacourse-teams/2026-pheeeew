@@ -141,3 +141,23 @@ private fun MyRaceLargeRankPreview() {
         )
     }
 }
+
+@Preview(name = "일일 순위 연결 끊김과 캐시", widthDp = 320, heightDp = 720, fontScale = 1.5f)
+@Composable
+private fun PressRaceDisconnectedPreview() {
+    AppTheme {
+        PressRankingScreen(
+            {},
+            PressRankingUiState(
+                date = "2026-10-27",
+                me = PressPersonRank(101, "나", Long.MAX_VALUE),
+                status = PressRankingStatus.Ready,
+                isStale = true,
+                hasRefreshError = true,
+            ),
+            {},
+            {},
+            rows = raceSample,
+        )
+    }
+}
