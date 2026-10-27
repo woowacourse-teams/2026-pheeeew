@@ -27,7 +27,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pheeeew.core.audio.VoiceRecorder
-import com.pheeeew.core.designsystem.component.AppDialog
 import com.pheeeew.core.designsystem.component.ConfirmDialog
 import com.pheeeew.core.navigation.FlowBackHandler
 import com.pheeeew.core.permission.AppSettingsLauncher

@@ -1,6 +1,5 @@
 package com.pheeeew
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -95,7 +94,6 @@ import com.pheeeew.feature.screens.collection.CollectionRoute
 import com.pheeeew.feature.screens.map.EmotionPinUiModel
 import com.pheeeew.feature.screens.map.HighlightedPinPosition
 import com.pheeeew.feature.screens.map.MapContentRenderState
-import com.pheeeew.feature.screens.map.MapErrorUiModel
 import com.pheeeew.feature.screens.map.MapScreen
 import com.pheeeew.feature.screens.map.MapTransientNoticeUiModel
 import com.pheeeew.feature.screens.map.MapViewModel

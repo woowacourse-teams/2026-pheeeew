@@ -9,7 +9,6 @@ import android.content.SharedPreferences
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.graphics.Bitmap
-import android.graphics.Rect
 import android.os.Bundle
 import android.os.SystemClock
 import android.view.View

@@ -41,7 +41,6 @@ import dev.zacsweers.metro.GraphExtension
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.createGraphFactory
-import kotlin.random.Random
 
 class AndroidAppConfig(
     val device: DeviceSessionBuildConfig,

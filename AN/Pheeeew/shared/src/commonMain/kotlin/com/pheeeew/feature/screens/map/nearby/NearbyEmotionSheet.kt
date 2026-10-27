@@ -2,21 +2,15 @@ package com.pheeeew.feature.screens.map.nearby
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -34,14 +28,11 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.pheeeew.core.audio.rememberEmotionAudioPlayer
 import com.pheeeew.core.designsystem.component.ConfirmDialog
 import com.pheeeew.core.navigation.PredictiveBackEffect
 import com.pheeeew.domain.model.GeoCoordinate
@@ -51,19 +42,16 @@ import com.pheeeew.feature.component.emotion.face
 import com.pheeeew.feature.monitoring.product.rememberObservedEmotionPlayer
 import com.pheeeew.feature.monitoring.product.stopForReplacement
 import com.pheeeew.feature.screens.map.monitoring.rememberMonitoringForeground
-import com.pheeeew.feature.screens.map.record.noRippleClickable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import org.jetbrains.compose.resources.DrawableResource
-import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.app_cancel
 import pheeeew.shared.generated.resources.emotion_block_action
 import pheeeew.shared.generated.resources.emotion_block_confirm
 import pheeeew.shared.generated.resources.emotion_moderation_hidden_notice
-import pheeeew.shared.generated.resources.ic_refresh
 import kotlin.time.TimeSource
 import kotlin.time.TimeSource.Monotonic.ValueTimeMark
 

@@ -15,7 +15,6 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertIs
 
 /** Measures virtual source-to-state timing, not network or rendered-frame latency. */
 @OptIn(ExperimentalCoroutinesApi::class)

@@ -10,6 +10,7 @@ trim_trailing_whitespace = true
 
 [*.{kt,kts}]
 max_line_length = 120
+ktlint_standard_no-unused-imports = enabled
 ktlint_function_naming_ignore_when_annotated_with = Composable
 ij_kotlin_allow_trailing_comma = true
 ij_kotlin_allow_trailing_comma_on_call_site = true
