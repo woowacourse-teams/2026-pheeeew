@@ -39,8 +39,8 @@ class IosNotificationPermissionController(
             }
         }
 
-    override suspend fun requestAuthorization(): Unit =
-        suspendCancellableCoroutine { continuation ->
+    override suspend fun requestAuthorization() {
+        suspendCancellableCoroutine<Unit> { continuation ->
             UNUserNotificationCenter.currentNotificationCenter().requestAuthorizationWithOptions(
                 UNAuthorizationOptionAlert or UNAuthorizationOptionBadge or UNAuthorizationOptionSound,
             ) { _, error ->
@@ -53,6 +53,11 @@ class IosNotificationPermissionController(
                 }
             }
         }
+        withContext(Dispatchers.Main.immediate) {
+            IosRevisitNotifications.refresh()
+            IosPushTokenSync.permissionChanged()
+        }
+    }
 
     override suspend fun openSettings(): Boolean {
         val opened =

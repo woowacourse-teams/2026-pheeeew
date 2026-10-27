@@ -11,7 +11,17 @@ import kotlinx.serialization.Serializable
 class PushTokenApi(
     private val requests: ApiRequestExecutor,
 ) : PushTokenRepository {
-    override suspend fun register(token: String): ApiResult<Unit> =
+    override suspend fun register(
+        token: String,
+        expectedSessionGeneration: Long,
+    ): ApiResult<Unit> = registerInternal(token, expectedSessionGeneration)
+
+    suspend fun register(token: String): ApiResult<Unit> = registerInternal(token, null)
+
+    private suspend fun registerInternal(
+        token: String,
+        expectedSessionGeneration: Long?,
+    ): ApiResult<Unit> =
         requests.executeNoContent(
             ApiRequest(
                 method = HttpMethod.Put,
@@ -20,10 +30,16 @@ class PushTokenApi(
                 body = PushTokenRequest(token),
                 replayAfterAuthentication = true,
                 monitoringEndpoint = "device_push_token",
+                expectedSessionGeneration = expectedSessionGeneration,
             ),
         )
 
-    override suspend fun unregister(): ApiResult<Unit> =
+    override suspend fun unregister(expectedSessionGeneration: Long): ApiResult<Unit> =
+        unregisterInternal(expectedSessionGeneration)
+
+    suspend fun unregister(): ApiResult<Unit> = unregisterInternal(null)
+
+    private suspend fun unregisterInternal(expectedSessionGeneration: Long?): ApiResult<Unit> =
         requests.executeNoContent(
             ApiRequest(
                 method = HttpMethod.Delete,
@@ -31,6 +47,7 @@ class PushTokenApi(
                 kind = RequestKind.WRITE,
                 replayAfterAuthentication = true,
                 monitoringEndpoint = "device_push_token",
+                expectedSessionGeneration = expectedSessionGeneration,
             ),
         )
 

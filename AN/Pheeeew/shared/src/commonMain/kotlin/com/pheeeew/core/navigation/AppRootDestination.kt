@@ -12,4 +12,9 @@ data object PressRootDestination
 data object RankingRootDestination
 
 @Serializable
+data class DailyPressRankingRootDestination(
+    val date: String,
+)
+
+@Serializable
 data object CollectionRootDestination

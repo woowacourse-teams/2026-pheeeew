@@ -9,6 +9,7 @@ import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import com.pheeeew.core.di.AppUiSession
 import com.pheeeew.core.di.IosGraphs
 import com.pheeeew.core.notification.IosNotificationClicks
+import com.pheeeew.core.notification.IosNotificationMessages
 import com.pheeeew.core.notification.IosNotificationPermissionController
 import com.pheeeew.data.remote.api.NotificationSettingsApi
 import com.pheeeew.domain.model.device.DeviceSessionResult
@@ -41,6 +42,7 @@ fun MainApp(settingsContent: @Composable () -> Unit = {}) {
             uiGraph,
             settingsContent,
             notificationClicks = IosNotificationClicks.inbox,
+            notificationMessages = IosNotificationMessages.inbox,
             notificationPermissionController = notificationPermissions,
             notificationPreferencesStore = notificationPreferences,
         )

@@ -116,7 +116,6 @@ fun MapScreen(
     var permissionDialog by remember { mutableStateOf<PermissionDialogUiModel?>(null) }
     var isRequestingBubblePermission by remember { mutableStateOf(false) }
     LaunchedEffect(voiceRecorder) {
-        voiceRecorder.refreshPermissionStatus()
         voiceRecorder.state
             .map { it.microphonePermissionDenied }
             .distinctUntilChanged()
@@ -154,8 +153,6 @@ fun MapScreen(
                 if (event == Lifecycle.Event.ON_STOP && !voiceRecorder.state.value.requestingPermission) {
                     voiceRecorder.stop()
                     voiceRecorder.pause()
-                } else if (event == Lifecycle.Event.ON_RESUME) {
-                    voiceRecorder.refreshPermissionStatus()
                 }
             }
         lifecycleOwner.lifecycle.addObserver(observer)

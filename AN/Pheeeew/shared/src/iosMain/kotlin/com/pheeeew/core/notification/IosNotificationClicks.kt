@@ -11,3 +11,14 @@ object IosNotificationClicks {
         inbox.receive(parseNotificationClick(data, requestId))
     }
 }
+
+object IosNotificationMessages {
+    val inbox = NotificationMessageInbox()
+
+    fun receive(
+        data: Map<String, String>,
+        messageId: String,
+    ) {
+        inbox.receive(NotificationMessage(messageId, data))
+    }
+}

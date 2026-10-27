@@ -28,6 +28,7 @@ struct iOSApp: App {
                         PushTokenLifecycle.foreground()
                     }
                     if phase == .background {
+                        IosNotificationMessages.shared.inbox.clearPending()
                         IosMonitoring.shared.background()
                         RevisitNotificationLifecycle.shared.background()
                         PushTokenLifecycle.background()

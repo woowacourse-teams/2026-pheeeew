@@ -18,23 +18,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate {
 
         let notificationCenter = UNUserNotificationCenter.current()
         notificationCenter.delegate = self
-        notificationCenter.requestAuthorization(
-            options: [.alert, .badge, .sound]
-        ) { granted, error in
-            print("알림 권한 허용:", granted)
-
-            if let error {
-                print("알림 권한 요청 실패:", error.localizedDescription)
-            }
-            DispatchQueue.main.async {
-#if DEBUG
-                if RevisitNotificationDiagnostics.inspectionOnly { return }
-#endif
-                IosRevisitNotifications.shared.refresh()
-                PushTokenLifecycle.permissionChanged()
-            }
-        }
-
         application.registerForRemoteNotifications()
         return true
     }
@@ -104,8 +87,25 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
 #if DEBUG
         print("포그라운드 알림 수신")
 #endif
-        // Present incoming notifications through iOS even while the app is active.
-        // Navigation is handled only when the user taps the system notification.
+        let request = notification.request
+        let fields = request.content.userInfo.reduce(into: [String: String]()) { result, entry in
+            if let key = entry.key as? String, let value = entry.value as? String {
+                result[key] = value
+            }
+        }
+        if fields["type"] == "REVISIT_REMINDER" {
+            completionHandler([])
+            return
+        }
+        DispatchQueue.main.async {
+            guard UIApplication.shared.applicationState == .active else {
+                return
+            }
+            IosNotificationMessages.shared.receive(
+                data: fields,
+                messageId: request.identifier
+            )
+        }
         completionHandler([.banner, .list, .sound])
     }
 }

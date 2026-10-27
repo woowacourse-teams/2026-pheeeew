@@ -5,6 +5,7 @@ import com.pheeeew.core.network.AccessTokenProvider
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.ApiResult
 import com.pheeeew.core.network.createApiClient
+import com.pheeeew.data.remote.dto.DailyPressRankingResponseDto
 import com.pheeeew.data.remote.dto.PressRankingResponseDto
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -18,6 +19,38 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 class PressRankingApiTest {
+    @Test
+    fun `일별 랭킹은 date query만 보내고 응답에 포함된 내 순위를 보존한다`() =
+        runTest {
+            var requestedPath = ""
+            var requestedDate: String? = null
+            val client =
+                createApiClient(
+                    engine =
+                        MockEngine { request ->
+                            requestedPath = request.url.encodedPath
+                            requestedDate = request.url.parameters["date"]
+                            assertEquals(setOf("date"), request.url.parameters.names())
+                            assertEquals("Bearer app-access-token", request.headers[HttpHeaders.Authorization])
+                            respond(DAILY_RANKING, headers = jsonHeaders())
+                        },
+                    config = ApiConfig("https://api.test"),
+                    accessTokenProvider = AccessTokenProvider { AccessToken("app-access-token", 42) },
+                )
+
+            try {
+                val result =
+                    assertIs<ApiResult.Success<DailyPressRankingResponseDto>>(
+                        PressRankingApi(client.requests).findDaily("2026-10-21", expectedSessionGeneration = 42),
+                    )
+                assertEquals("/api/v2/emotions/press-rankings/daily", requestedPath)
+                assertEquals("2026-10-21", requestedDate)
+                assertEquals(150, result.value.me?.rank)
+            } finally {
+                client.close()
+            }
+        }
+
     @Test
     fun `전체 랭킹은 weeksAgo와 인증 토큰으로 요청한다`() =
         runTest {
@@ -118,5 +151,7 @@ class PressRankingApiTest {
             """{"weeksAgo":0,"startAt":"2026-09-28T00:00:00Z","endAt":"2026-10-05T00:00:00Z","items":[],"me":null}"""
         const val RANKING_WITH_MINE =
             """{"state":"IRRITATED","weeksAgo":2,"startAt":"2026-09-14T00:00:00Z","endAt":"2026-09-21T00:00:00Z","items":[{"rank":2,"nickname":"익명","pressCount":3000000000}],"me":{"rank":150,"nickname":"한숨많은곰","pressCount":31}}"""
+        const val DAILY_RANKING =
+            """{"date":"2026-10-21","startAt":"2026-10-20T15:00:00Z","endAt":"2026-10-21T15:00:00Z","items":[],"me":{"rank":150,"nickname":"익명","pressCount":31}}"""
     }
 }

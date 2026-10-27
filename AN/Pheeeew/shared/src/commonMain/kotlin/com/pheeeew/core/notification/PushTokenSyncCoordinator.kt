@@ -7,6 +7,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -18,9 +19,16 @@ enum class PushTokenSyncState {
     FAILED,
 }
 
+enum class PushTokenBackgroundSyncResult {
+    SYNCHRONIZED,
+    DEFERRED,
+    RETRY,
+    FAILED,
+}
+
 /** All entry points run on the app's main scope. One worker owns persistence and HTTP writes. */
 class PushTokenSyncCoordinator(
-    private val permissions: NotificationPermissionController,
+    private val permissions: NotificationAuthorizationProvider,
     private val repository: PushTokenRepository,
     private val store: PushTokenStore,
     scope: CoroutineScope,
@@ -36,6 +44,7 @@ class PushTokenSyncCoordinator(
     private var syncedRevision = -1L
     private var latestToken: String? = null
     private var receivedSdkToken = false
+    private var backgroundSyncRequested = false
     private var loaded = false
     private var storedToken: String? = null
 
@@ -63,16 +72,20 @@ class PushTokenSyncCoordinator(
                         Outcome.SUCCESS -> {
                             syncedRevision = version
                             mutableState.value = PushTokenSyncState.SYNCED
+                            if (!foreground) backgroundSyncRequested = false
+                            completions.value = Completion(version, PushTokenBackgroundSyncResult.SYNCHRONIZED)
                             break
                         }
 
                         Outcome.WAIT -> {
                             mutableState.value = PushTokenSyncState.WAITING
+                            completions.value = Completion(version, PushTokenBackgroundSyncResult.DEFERRED)
                             break
                         }
 
                         Outcome.STOP -> {
                             mutableState.value = PushTokenSyncState.FAILED
+                            completions.value = Completion(version, PushTokenBackgroundSyncResult.FAILED)
                             break
                         }
 
@@ -80,6 +93,7 @@ class PushTokenSyncCoordinator(
                             val delay = retryDelaysMillis.getOrNull(failures++)
                             if (delay == null) {
                                 mutableState.value = PushTokenSyncState.FAILED
+                                completions.value = Completion(version, PushTokenBackgroundSyncResult.RETRY)
                                 break
                             }
                             mutableState.value = PushTokenSyncState.RETRYING
@@ -98,8 +112,13 @@ class PushTokenSyncCoordinator(
 
     fun tokenReceived(token: String) {
         if (token.isBlank()) return
+        if (latestToken == token) {
+            receivedSdkToken = true
+            return
+        }
         latestToken = token
         receivedSdkToken = true
+        backgroundSyncRequested = true
         wake()
     }
 
@@ -117,6 +136,7 @@ class PushTokenSyncCoordinator(
 
     fun onForeground() {
         foreground = true
+        backgroundSyncRequested = false
         wake() // The backend requires PUT/DELETE even when the previous value is unchanged.
     }
 
@@ -127,9 +147,37 @@ class PushTokenSyncCoordinator(
 
     fun permissionChanged() = wake()
 
-    private fun wake() {
+    /** A durable platform worker joins the same serialized sync owner and retries on a later run. */
+    suspend fun synchronizeInBackground(): PushTokenBackgroundSyncResult =
+        awaitSynchronization(requestSynchronization())
+
+    /** Join foreground work when requested; otherwise start a fresh attempt. Main thread only. */
+    fun requestSynchronization(joinForegroundAttempt: Boolean = false): Long {
+        val canJoin =
+            completions.value.revision < revision ||
+                mutableState.value == PushTokenSyncState.SYNCING ||
+                mutableState.value == PushTokenSyncState.RETRYING ||
+                mutableState.value == PushTokenSyncState.SYNCED
+        if (joinForegroundAttempt && foreground && canJoin) return revision
+        backgroundSyncRequested = true
+        return wake()
+    }
+
+    suspend fun awaitSynchronization(targetRevision: Long): PushTokenBackgroundSyncResult {
+        val completion =
+            withTimeoutOrNull(BACKGROUND_SYNC_TIMEOUT_MILLIS) {
+                completions.first { it.revision >= targetRevision }
+            } ?: return PushTokenBackgroundSyncResult.RETRY
+        return completion.result
+    }
+
+    private val completions = MutableStateFlow(Completion(-1, PushTokenBackgroundSyncResult.DEFERRED))
+
+    private fun wake(): Long {
         revision++
+        mutableState.value = PushTokenSyncState.WAITING
         events.trySend(Unit)
+        return revision
     }
 
     private suspend fun persistLatest() {
@@ -148,7 +196,7 @@ class PushTokenSyncCoordinator(
     private suspend fun reconcile(): Outcome {
         // Persist pre-auth and background callbacks too. Never queue a stale PUT/DELETE action.
         persistLatest()
-        if (!foreground || !connected || generation == null) return Outcome.WAIT
+        if ((!foreground && !backgroundSyncRequested) || !connected || generation == null) return Outcome.WAIT
         if (syncedRevision == revision) return Outcome.SUCCESS
         val beforePermission = revision
         val authorization = permissions.authorization()
@@ -158,12 +206,12 @@ class PushTokenSyncCoordinator(
                 authorization.allowsNotifications() -> {
                     val token = latestToken ?: return Outcome.WAIT
                     mutableState.value = PushTokenSyncState.SYNCING
-                    repository.register(token)
+                    repository.register(token, generation ?: return Outcome.WAIT)
                 }
 
                 authorization == NotificationAuthorization.DENIED -> {
                     mutableState.value = PushTokenSyncState.SYNCING
-                    repository.unregister()
+                    repository.unregister(generation ?: return Outcome.WAIT)
                 }
 
                 else -> {
@@ -185,4 +233,13 @@ class PushTokenSyncCoordinator(
         }
 
     private enum class Outcome { SUCCESS, WAIT, STOP, RETRY }
+
+    private data class Completion(
+        val revision: Long,
+        val result: PushTokenBackgroundSyncResult,
+    )
+
+    private companion object {
+        const val BACKGROUND_SYNC_TIMEOUT_MILLIS = 55_000L
+    }
 }
