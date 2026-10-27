@@ -5,6 +5,8 @@ import com.pheeeew.core.notification.NotificationClickTarget
 internal sealed interface NotificationDestination {
     data object Map : NotificationDestination
 
+    data object Press : NotificationDestination
+
     data class Collection(
         val date: String,
     ) : NotificationDestination
@@ -18,6 +20,6 @@ internal object NotificationClickRouter {
             NotificationClickTarget.Revisit -> NotificationDestination.Map
             is NotificationClickTarget.CollectionClaimable -> NotificationDestination.Collection(target.date)
             is NotificationClickTarget.Collection -> NotificationDestination.Map
-            is NotificationClickTarget.Ranking -> NotificationDestination.Map
+            is NotificationClickTarget.DailyPressRanking -> NotificationDestination.Press
         }
 }

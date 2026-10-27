@@ -7,17 +7,24 @@ import kotlin.test.assertEquals
 
 class NotificationClickRouterTest {
     @Test
-    fun `현재 지원하는 모든 알림은 지도 이동 정책을 사용한다`() {
+    fun `기본 알림과 기존 컬렉션 타입은 지도 이동 정책을 사용한다`() {
         val targets =
             listOf(
                 NotificationClickTarget.OpenApp,
                 NotificationClickTarget.Revisit,
                 NotificationClickTarget.Collection("collection-1"),
-                NotificationClickTarget.Ranking("PRESS", "period-1", "group-1", 5, 6),
             )
         targets.forEach { target ->
             assertEquals(NotificationDestination.Map, NotificationClickRouter.destinationFor(target))
         }
+    }
+
+    @Test
+    fun `순위 하락 알림은 바로 누를 수 있는 프레스 화면에 연결한다`() {
+        assertEquals(
+            NotificationDestination.Press,
+            NotificationClickRouter.destinationFor(NotificationClickTarget.DailyPressRanking("2026-10-26", 5, 6)),
+        )
     }
 
     @Test
