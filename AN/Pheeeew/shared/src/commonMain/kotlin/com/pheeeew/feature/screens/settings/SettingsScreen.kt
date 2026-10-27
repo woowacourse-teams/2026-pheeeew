@@ -174,6 +174,7 @@ fun SettingsScreen(
 ) {
     var versionTaps by remember { mutableStateOf(0) }
     var analyticsIdentity by remember { mutableStateOf<String?>(null) }
+    var notificationSettingsVisible by remember { mutableStateOf(false) }
     var selectedLegalDocument by remember { mutableStateOf<LegalDocument?>(null) }
     val telemetry = remember(monitoring) { ProductMonitoring(monitoring, "settings") }
     val legalTelemetry = remember(monitoring) { ProductMonitoring(monitoring, "legaldocument") }
@@ -204,12 +205,11 @@ fun SettingsScreen(
                     SettingsScreen(
                         appVersion = appVersion,
                         notificationPermissionContent = {
-                            notificationPermissionController?.let { controller ->
+                            if (notificationPermissionController != null && notificationPreferencesStore != null) {
                                 SettingsDivider()
-                                NotificationPermissionRow(controller)
-                                if (notificationPreferencesStore != null) {
-                                    SettingsDivider()
-                                    NotificationSettingsRows(controller, notificationPreferencesStore)
+                                NotificationPermissionRow(notificationPermissionController) {
+                                    notificationSettingsVisible =
+                                        true
                                 }
                             }
                         },
@@ -311,6 +311,21 @@ fun SettingsScreen(
                     )
                 },
             )
+
+            if (notificationSettingsVisible && notificationPermissionController != null &&
+                notificationPreferencesStore != null
+            ) {
+                PredictiveBackContent(
+                    onBack = { notificationSettingsVisible = false },
+                    content = {
+                        NotificationSettingsRoute(
+                            permissions = notificationPermissionController,
+                            store = notificationPreferencesStore,
+                            onBackClick = { notificationSettingsVisible = false },
+                        )
+                    },
+                )
+            }
 
             selectedLegalDocument?.let { document ->
                 PredictiveBackContent(

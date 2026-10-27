@@ -295,7 +295,7 @@
     <string name="collection_shared">공유 메뉴를 열었어요</string>
     <string name="collection_share_failed">카드를 공유하지 못했어요. 다시 시도해 주세요</string>
     <string name="collection_capture_failed">카드 이미지를 준비하지 못했어요. 다시 시도해 주세요</string>
-    <string name="notification_permission_title">알림 권한</string>
+    <string name="notification_permission_title">알림 설정</string>
     <string name="notification_permission_loading">확인 중</string>
     <string name="notification_permission_failed">확인 실패 · 재시도</string>
     <string name="notification_permission_not_determined">미요청</string>
@@ -315,8 +315,10 @@
     <string name="notification_permission_settings">기기 설정 열기</string>
     <string name="notification_permission_cancel">닫기</string>
     <string name="notification_permission_open_failed">기기 설정을 열지 못했어요. 다시 시도해 주세요.</string>
+    <string name="notification_all_toggle">전체 알림</string>
     <string name="notification_collection_toggle">컬렉션 발급 알림</string>
     <string name="notification_rank_toggle">순위 알림</string>
+    <string name="notification_settings_save_failed">알림 설정을 변경하지 못했어요.</string>
     <string name="notification_settings_failed">설정을 적용하지 못했어요. 다시 확인해 주세요.</string>
     <string name="notification_settings_retry">다시 확인</string>
     <string name="press_view_ranking">전체 순위 보기</string>
