@@ -13,6 +13,7 @@ import com.pheeeew.core.network.ConnectivityObserver
 import com.pheeeew.core.session.DeviceSessionManager
 import com.pheeeew.data.local.device.DeviceCredentialStorage
 import com.pheeeew.data.local.mapfilter.InMemoryMapFilterSettingsRepository
+import com.pheeeew.data.press.race.PressRaceDiagnostics
 import com.pheeeew.data.press.race.PressRaceInputCoordinator
 import com.pheeeew.data.press.race.PressRaceRankingStore
 import com.pheeeew.data.press.race.PressRaceRankings
@@ -233,7 +234,19 @@ internal interface ApiBindings {
         transport: PressRaceTransport,
         session: DeviceSessionManager,
         @SessionWork scope: CoroutineScope,
-    ): PressRaceSession = PressRaceSession(transport, session, scope)
+        build: DeviceSessionBuildConfig,
+    ): PressRaceSession =
+        PressRaceSession(
+            transport,
+            session,
+            scope,
+            diagnostics =
+                PressRaceDiagnostics { event, connection ->
+                    if (build.isDebug && build.pressInputMode == PressInputMode.WEBSOCKET_DEVELOPMENT) {
+                        println("[PressRaceDebug] event=${event.name} localConnection=$connection")
+                    }
+                },
+        )
 
     @Provides
     @SingleIn(AppScope::class)

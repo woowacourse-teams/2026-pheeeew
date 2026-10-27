@@ -35,6 +35,7 @@ internal class PressRaceSession(
     private val tokens: RecoverableAccessTokenProvider,
     parentScope: CoroutineScope,
     private val reconnectPolicy: PressRaceReconnectPolicy = PressRaceReconnectPolicy(),
+    private val diagnostics: PressRaceDiagnostics = PressRaceDiagnostics { _, _ -> },
 ) : PressRaceInputPort {
     private val scope = CoroutineScope(parentScope.coroutineContext + SupervisorJob(parentScope.coroutineContext[Job]))
     private val events = Channel<Event>(Channel.UNLIMITED)
@@ -151,6 +152,7 @@ internal class PressRaceSession(
                         if (event.epoch != epoch) {
                             dispose(event.connection)
                         } else {
+                            trace(PressRaceDiagnostic.UpgradeOpened)
                             connection = event.connection
                             usedToken = event.token
                             identity = event.token.generation
@@ -210,6 +212,7 @@ internal class PressRaceSession(
         val current = state.value
         if (current.view == view && current.phase !in setOf(PressRacePhase.Failed, PressRacePhase.Settled)) return
         if (view == null) {
+            trace(PressRaceDiagnostic.Inactive)
             stopConnection()
             endpoint = PressRaceEndpoint.Competition
             recoveryProbed = false
@@ -265,6 +268,7 @@ internal class PressRaceSession(
                             return@withTimeout
                         }
                         if (attempt != epoch || closed.value) return@withTimeout
+                        if (rejected != null) trace(PressRaceDiagnostic.TokenRecovered)
                         opened = transport.connect(access, mode)
                         events.send(Event.Opened(attempt, opened!!, access))
                         opened = null
@@ -357,6 +361,10 @@ internal class PressRaceSession(
                         return
                     }
                     inputObserver.value?.result(message.value)
+                    when (message.value.status) {
+                        "APPLIED" -> trace(PressRaceDiagnostic.AppliedResultReceived)
+                        "REJECTED" -> trace(PressRaceDiagnostic.RejectedResultReceived)
+                    }
                 }
 
                 is PressRaceMessage.Snapshot -> {
@@ -371,6 +379,7 @@ internal class PressRaceSession(
                         return
                     }
                     dateFloor = snapshot.date
+                    if (snapshot.baseline) trace(PressRaceDiagnostic.BaselineReceived)
                     watchdog?.cancel()
                     watchdog = null
                     failures = 0
@@ -431,6 +440,7 @@ internal class PressRaceSession(
         inputObserver.value?.ready(ready)
         dateFloor = ready.date
         if (recoveryOnly) {
+            trace(PressRaceDiagnostic.RecoveryOnlySettled)
             stopConnection()
             publish {
                 it.copy(
@@ -442,6 +452,7 @@ internal class PressRaceSession(
                 )
             }
         } else {
+            trace(PressRaceDiagnostic.ReadyReceived)
             publish {
                 it.copy(
                     phase = PressRacePhase.Ready,
@@ -541,6 +552,7 @@ internal class PressRaceSession(
         if (mode == PressRaceEndpoint.RecoveryOnly && failures >= 3) return
         val attempt = epoch
         val wait = reconnectPolicy.delayMillis(++failures)
+        trace(PressRaceDiagnostic.RetryScheduled)
         reconnect =
             scope.launch {
                 delay(wait)
@@ -579,6 +591,10 @@ internal class PressRaceSession(
                 // Continue releasing ownership.
             }
         }
+    }
+
+    private fun trace(event: PressRaceDiagnostic) {
+        runCatching { diagnostics.record(event, epoch) }
     }
 
     private inline fun publish(change: (PressRaceSessionState) -> PressRaceSessionState) {

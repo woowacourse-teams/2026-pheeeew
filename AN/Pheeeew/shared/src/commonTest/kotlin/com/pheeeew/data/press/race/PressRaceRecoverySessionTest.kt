@@ -34,6 +34,64 @@ class PressRaceRecoverySessionTest {
     ) = PressRaceSession(transport, tokens, backgroundScope, PressRaceReconnectPolicy({ 0.0 }))
 
     @Test
+    fun lostAckReconnectionSettlesOriginalInputWithoutRepeatingTheOptimisticCount() =
+        runTest {
+            val transport = RecoveryTransport()
+            val events = mutableListOf<PressRaceDiagnostic>()
+            val session =
+                PressRaceSession(
+                    transport,
+                    RecoveryTokens(),
+                    backgroundScope,
+                    PressRaceReconnectPolicy({ 0.0 }),
+                    PressRaceDiagnostics { event, _ -> events += event },
+                )
+            val input =
+                PressRaceInputCoordinator(session, backgroundScope, { testScheduler.currentTime }, { "local-input" })
+            session.setView(PressRaceView.PRESS)
+            runCurrent()
+            val first = transport.sockets.single()
+            first.incoming.send(baseline(results = "[]"))
+            first.incoming.send(rank())
+            runCurrent()
+            repeat(100) { input.accept(com.pheeeew.domain.model.emotion.EmotionState.ANGRY) }
+            runCurrent()
+            assertTrue(first.sent.last().contains("local-input"))
+            assertEquals(100L, input.state.value.pendingPressCount)
+            first.finish(null)
+            runCurrent()
+            advanceTimeBy(500)
+            runCurrent()
+            val next = transport.sockets.last()
+            assertTrue(next.sent.single().contains("local-input"))
+            assertTrue(next.sent.single().contains("\"connectionGeneration\":\"c\""))
+            val results = """[{"requestId":"local-input","status":"APPLIED",
+                "appliedDate":"2026-10-27","appliedCounts":{"ANGRY":100}}]"""
+            next.incoming.send(
+                baseline(results = results)
+                    .replace("\"connectionGeneration\":\"c\"", "\"connectionGeneration\":\"c2\"")
+                    .replace("\"counts\":{}", "\"counts\":{\"ANGRY\":100}"),
+            )
+            next.incoming.send(rank().replace("\"connectionGeneration\":\"c\"", "\"connectionGeneration\":\"c2\""))
+            runCurrent()
+            assertEquals(
+                100L,
+                input.state.value.myToday
+                    ?.total,
+            )
+            assertEquals(0L, input.state.value.pendingPressCount)
+            assertEquals(
+                0L,
+                input.state.value.optimisticCounts.values
+                    .sum(),
+            )
+            assertEquals(2, events.count { it == PressRaceDiagnostic.ReadyReceived })
+            assertEquals(2, events.count { it == PressRaceDiagnostic.BaselineReceived })
+            assertFalse(next.sent.any { it.contains("press.submit") })
+            session.close()
+        }
+
+    @Test
     fun httpAndWebSocketShareTheDeviceManagersSingleRefreshFlight() =
         runTest {
             var calls = 0
