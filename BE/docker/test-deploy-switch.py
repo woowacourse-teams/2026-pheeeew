@@ -246,6 +246,13 @@ case "$sql" in
       touch "$SHIM_DIR/db-handed-off"
       exit 1
     fi
+    if [ -f "$SHIM_DIR/restart-after-control" ]; then
+      rm -f "$SHIM_DIR/restart-after-control"
+      result=$(printf '%s' "$sql" | "$REAL_DOCKER" exec -i -e PGOPTIONS "$GENERATION_DB" psql -U postgres -d postgres "$@") || exit 1
+      "$REAL_DOCKER" restart "$GENERATION_TARGET" >/dev/null || exit 1
+      printf '%s\\n' "$result"
+      exit 0
+    fi
     touch "$SHIM_DIR/db-handed-off" ;;
 esac
 printf '%s' "$sql" | "$REAL_DOCKER" exec -i -e PGOPTIONS "$GENERATION_DB" psql -U postgres -d postgres "$@"
@@ -827,6 +834,146 @@ def scenario_v2_restart_blocks_restore(fx):
            '같은 UUID 재시작으로 차단이 풀렸다')
 
 
+def scenario_emergency_stopped_candidate(fx):
+    operations_fixture(fx)
+    active, target = fx.project + '-app-blue', fx.project + '-app-green'
+    expect(fx.tool('prepare', active, 'app-green').returncode == 0, '후보 준비 실패')
+    result = sh('docker', 'compose', '--env-file', str(fx.dir / '.env'), '--env-file',
+                str(fx.dir / 'press-generations.env'), '-f', str(fx.dir / 'compose.yml'),
+                'up', '-d', '--wait', '--wait-timeout', '60', 'app-green')
+    expect(result.returncode == 0 and fx.tool('record-target', target).returncode == 0, '후보 기록 실패')
+    for action, name in (('handoff', target), ('close-active', active)):
+        expect(fx.tool(action, name).returncode == 0, action + ' 실패')
+    fx.point_at('set $upstream_app app-green;\n')
+    for action in ('verify', 'open-target'):
+        expect(fx.tool(action, target).returncode == 0, action + ' 실패')
+    path = fx.dir / '.press-deploy.json'
+    original = path.read_text()
+    journal = json.loads(original)
+    old_command = next(item for item in journal['gate_commands'] if item['purpose'] == 'open-target')
+    for key, value in (('database', ['wrong-host', 5432, 'other', 'fixture']),
+                       ('target_generation', '99999999-9999-9999-9999-999999999999')):
+        altered = json.loads(original)
+        altered[key] = value
+        path.write_text(json.dumps(altered))
+        expect(fx.tool('emergency-stop', target).returncode != 0
+               and fx.sql('SELECT enabled FROM press_race_control;') == 't', key + ' 불일치인데 OFF 처리했다')
+    altered = json.loads(original)
+    altered['target_identity']['id'] = '0' * 64
+    path.write_text(json.dumps(altered))
+    expect(fx.tool('emergency-stop', target).returncode != 0
+           and fx.sql('SELECT enabled FROM press_race_control;') == 't', '바뀐 후보를 신뢰했다')
+    path.write_text(original)
+    expect(sh('docker', 'stop', target).returncode == 0, '후보 중단 실패')
+    result = fx.tool('emergency-stop', target)
+    expect(result.returncode != 0 and fx.sql('SELECT enabled FROM press_race_control;') == 'f',
+           '중단 후보에 대한 DB OFF 또는 미완료 보고 실패: ' + result.stderr)
+    journal = json.loads((fx.dir / '.press-deploy.json').read_text())
+    expect(journal['phase'] == 'EMERGENCY_OFF_PENDING_CANDIDATE', '미완료 기록을 보존하지 않았다')
+    expect(journal['target_identity'] == json.loads(original)['target_identity'], '기록된 후보 신원을 덮어썼다')
+    expect(fx.tool('resume-off', target, '--expected-generation', journal['target_generation'],
+                   '--expected-activation-date', journal['activation_date']).returncode != 0,
+           '차단 미확인 상태에서 재개했다')
+    expect(sh('docker', 'start', target).returncode == 0, '후보 재시작 실패')
+    result = fx.tool('emergency-stop', target)
+    expect(result.returncode == 0 and fx.sql('SELECT enabled FROM press_race_control;') == 'f',
+           '동일 후보 재시작 후 긴급 OFF 실패: ' + result.stderr)
+    expect(sh('docker', 'exec', target, 'cat', '/app/press-admission').stdout.startswith('CLOSED '),
+           '재시작 후보의 입력이 열린 채로 남았다')
+    expect(replay_gate_command(fx, old_command).returncode != 0, '지연된 OPEN이 긴급 차단을 덮어썼다')
+
+
+def scenario_emergency_retired_unavailable(fx):
+    operations_fixture(fx)
+    (fx.state / 'fail-monitoring').touch()
+    expect(fx.deploy().returncode != 0 and not fx.exists('app-blue'), '이전 서버 정리 경계 재현 실패')
+    target = fx.project + '-app-green'
+    (fx.state / 'fail-runtime-probe').touch()
+    result = fx.tool('emergency-stop', target)
+    expect(result.returncode != 0 and fx.sql('SELECT enabled FROM press_race_control;') == 'f',
+           '실행 중이지만 응답 없는 후보의 DB OFF 실패: ' + result.stderr)
+    path = fx.dir / '.press-deploy.json'
+    expect(json.loads(path.read_text())['phase'] == 'EMERGENCY_OFF_PENDING_CANDIDATE', '미완료 기록을 잃었다')
+    (fx.state / 'fail-runtime-probe').unlink()
+    expect(sh('docker', 'stop', target).returncode == 0, '후보 중단 실패')
+    expect(fx.tool('emergency-stop', target).returncode != 0
+           and fx.sql('SELECT enabled FROM press_race_control;') == 'f', '중단 후보 미완료 상태를 잘못 처리했다')
+    expect(sh('docker', 'start', target).returncode == 0, '후보 재시작 실패')
+    fx.edge('app-green', code='503')
+    result = fx.tool('emergency-stop', target)
+    expect(result.returncode == 0 and fx.sql('SELECT enabled FROM press_race_control;') == 'f',
+           '프록시 불응 중 후보 차단 실패: ' + result.stderr)
+    expect(sh('docker', 'exec', target, 'cat', '/app/press-admission').stdout.startswith('CLOSED '),
+           '입력을 차단하지 않았다')
+
+
+def scenario_emergency_restart_during_off(fx):
+    operations_fixture(fx)
+    (fx.state / 'fail-monitoring').touch()
+    expect(fx.deploy().returncode != 0 and not fx.exists('app-blue'), '이전 서버 정리 경계 재현 실패')
+    target = fx.project + '-app-green'
+    (fx.state / 'restart-after-control').touch()
+    result = fx.tool('emergency-stop', target)
+    journal = json.loads((fx.dir / '.press-deploy.json').read_text())
+    expect(result.returncode != 0 and fx.sql('SELECT enabled FROM press_race_control;') == 'f'
+           and journal['phase'] == 'EMERGENCY_OFF_PENDING_CANDIDATE',
+           'DB OFF 중 재시작을 차단 완료로 잘못 판정했다: ' + result.stderr)
+    result = fx.tool('emergency-stop', target)
+    expect(result.returncode == 0 and fx.sql('SELECT enabled FROM press_race_control;') == 'f',
+           '재시작 후 차단 확인 실패: ' + result.stderr)
+
+
+def scenario_emergency_off_v1_candidate(fx):
+    operations_fixture(fx, enabled=False)
+    model = yaml.safe_load((fx.dir / 'compose.yml').read_text())
+    candidate = model['services']['app-green']
+    candidate['labels']['com.pheeeew.press-generation-contract'] = '1'
+    candidate['environment'].pop('PHEEEEW_PRESS_RACE_ADMISSION_FILE')
+    candidate['environment'].pop('PHEEEEW_PRESS_RACE_ADMISSION_REQUIRED')
+    (fx.dir / 'compose.yml').write_text(yaml.safe_dump(model))
+    active, target = fx.project + '-app-blue', fx.project + '-app-green'
+    expect(fx.tool('prepare', active, 'app-green').returncode == 0, 'OFF 후보 준비 실패')
+    result = sh('docker', 'compose', '--env-file', str(fx.dir / '.env'), '--env-file',
+                str(fx.dir / 'press-generations.env'), '-f', str(fx.dir / 'compose.yml'),
+                'up', '-d', '--wait', '--wait-timeout', '60', 'app-green')
+    expect(result.returncode == 0 and fx.tool('record-target', target).returncode == 0, '계약 1 후보 기록 실패')
+    result = fx.tool('emergency-stop', target)
+    expect(result.returncode == 0 and fx.sql('SELECT enabled FROM press_race_control;') == 'f',
+           '기존 OFF·계약 1 후보 경로 실패: ' + result.stderr)
+
+
+def scenario_emergency_both_stopped(fx):
+    operations_fixture(fx)
+    active, target = fx.project + '-app-blue', fx.project + '-app-green'
+    expect(fx.tool('prepare', active, 'app-green').returncode == 0, '후보 준비 실패')
+    result = sh('docker', 'compose', '--env-file', str(fx.dir / '.env'), '--env-file',
+                str(fx.dir / 'press-generations.env'), '-f', str(fx.dir / 'compose.yml'),
+                'up', '-d', '--wait', '--wait-timeout', '60', 'app-green')
+    expect(result.returncode == 0 and fx.tool('record-target', target).returncode == 0, '후보 기록 실패')
+    for action, name in (('handoff', target), ('close-active', active)):
+        expect(fx.tool(action, name).returncode == 0, action + ' 실패')
+    fx.point_at('set $upstream_app app-green;\n')
+    for action in ('verify', 'open-target'):
+        expect(fx.tool(action, target).returncode == 0, action + ' 실패')
+    expect(sh('docker', 'stop', active, target).returncode == 0, '두 서버 중단 실패')
+    path = fx.dir / '.press-deploy.json'
+    original = json.loads(path.read_text())
+    for recorded in (False, True):
+        state = json.loads(json.dumps(original))
+        if recorded:
+            state['removal_intent'] = dict(role='active', phase='REMOVE_ATTEMPTED',
+                container_id=state['active_identity']['id'], identity=state['active_identity'],
+                owner_control=dict(generation=state['target_generation'], enabled=state['enabled'],
+                                   activation_date=state['activation_date']))
+        path.write_text(json.dumps(state))
+        fx.sql('UPDATE press_race_control SET enabled = TRUE;')
+        result = fx.tool('emergency-stop', target)
+        pending = json.loads(path.read_text())
+        expect(result.returncode != 0 and fx.sql('SELECT enabled FROM press_race_control;') == 'f'
+               and pending['phase'] == 'EMERGENCY_OFF_PENDING_CANDIDATE' and not pending.get('active_removed')
+               and fx.exists('app-blue'), '원본 중단·삭제 미확정 시 DB OFF 또는 기록 보존 실패: ' + result.stderr)
+
+
 def scenario_v2_stop_and_activate(fx):
     operations_fixture(fx)
     current = fx.sql("SELECT (clock_timestamp() AT TIME ZONE 'Asia/Seoul')::date;")
@@ -1025,6 +1172,14 @@ def scenario_active_removal_response_lost(fx):
            'Docker 조회 실패를 ID 부재로 추측했다')
     expect(fx.sql('SELECT enabled FROM press_race_control;') == 't', '미확인 정산이 경쟁 상태를 바꿨다')
     (fx.state / 'fail-retirement-query').unlink()
+    expect(sh('docker', 'stop', target).returncode == 0, '응답 유실 뒤 후보 중단 실패')
+    result = fx.tool('emergency-stop', target)
+    pending = json.loads(path.read_text())
+    expect(result.returncode != 0 and pending['active_removed']
+           and pending['phase'] == 'EMERGENCY_OFF_PENDING_CANDIDATE'
+           and fx.sql('SELECT enabled FROM press_race_control;') == 'f',
+           '삭제 응답 유실과 중단 후보의 부분 OFF 정산 실패')
+    expect(sh('docker', 'start', target).returncode == 0, '후보 재시작 실패')
     result = fx.tool('emergency-stop', target)
     expect(result.returncode == 0 and fx.sql('SELECT enabled FROM press_race_control;') == 'f',
            '삭제된 고정 ID 정산 뒤 현재 서버 긴급 중단 실패: ' + result.stdout + result.stderr)
@@ -1508,6 +1663,11 @@ if count_previous_workers; then exit 1; fi
 
 
 ON_SCENARIOS = (
+    ('후보 중단 후 재시작의 긴급 OFF', scenario_emergency_stopped_candidate),
+    ('이전 서버 정리 후 응답 없는 후보 긴급 OFF', scenario_emergency_retired_unavailable),
+    ('DB OFF 중 후보 재시작은 미완료', scenario_emergency_restart_during_off),
+    ('OFF 계약 1 후보의 긴급 중단', scenario_emergency_off_v1_candidate),
+    ('원본과 후보 중단 시 조건부 OFF', scenario_emergency_both_stopped),
     ('경쟁 ON v2 정상 전환', scenario_competition_on_v2),
     ('ON v2 DB 커밋 응답 유실', scenario_v2_lost_db_response),
     ('ON v2 OPEN 응답 유실', scenario_v2_lost_open_response),
