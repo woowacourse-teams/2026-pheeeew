@@ -103,3 +103,18 @@ private fun ActivityReplacementPreview() {
         }
     }
 }
+
+@Preview(name = "활동 인원 0~5명", widthDp = 360, heightDp = 360)
+@Composable
+private fun ActivityAvatarCountPreview() {
+    AppTheme {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(12.dp)) {
+            (0L..5L).forEach { count ->
+                PressActivityFooter(
+                    PressActivityUiState(count, PressActivityStatus.Known),
+                    reducedMotionOverride = true,
+                )
+            }
+        }
+    }
+}

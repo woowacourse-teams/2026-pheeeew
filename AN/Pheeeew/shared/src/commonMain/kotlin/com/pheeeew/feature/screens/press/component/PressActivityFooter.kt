@@ -135,6 +135,7 @@ private fun ActivityPeople(
     modifier: Modifier = Modifier,
 ) {
     val active = state.status == PressActivityStatus.Known && (state.count ?: 0) > 0
+    val overflowCount = state.avatarOverflowCount
     Row(
         modifier.clearAndSetSemantics { contentDescription = activityText },
         verticalAlignment = Alignment.CenterVertically,
@@ -147,7 +148,8 @@ private fun ActivityPeople(
             Box(Modifier.size(6.dp).background(if (active) Color(0xFF2DAB6E) else Color(0xFF8A908A), CircleShape))
         }
         Row(horizontalArrangement = Arrangement.spacedBy((-5).dp), verticalAlignment = Alignment.CenterVertically) {
-            listOf(EmotionKind.Blocked, EmotionKind.Annoyed, EmotionKind.Tired).forEach { kind ->
+            val faces = listOf(EmotionKind.Blocked, EmotionKind.Annoyed, EmotionKind.Tired).take(state.avatarCount)
+            faces.forEach { kind ->
                 Image(
                     painterResource(EmotionFeedbackCatalog.face(kind)),
                     contentDescription = null,
@@ -155,7 +157,7 @@ private fun ActivityPeople(
                     modifier = Modifier.size(20.dp),
                 )
             }
-            if (state.status == PressActivityStatus.Known && state.avatarOverflowCount != null) {
+            if (overflowCount != null) {
                 Box(
                     Modifier
                         .requiredSize(20.dp)
@@ -165,7 +167,7 @@ private fun ActivityPeople(
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        "+${formatCount(state.avatarOverflowCount)}",
+                        "+${formatCount(overflowCount)}",
                         color = Color.White,
                         modifier = Modifier.fillMaxWidth(),
                         style =
