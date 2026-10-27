@@ -136,6 +136,7 @@ internal fun EmotionPadButton(
                 } finally {
                     motion.reset()
                     pointer = null
+                    onMotionChanged()
                 }
             }.onFocusChanged { focusState ->
                 if (!focusState.isFocused) {
@@ -207,7 +208,7 @@ internal fun EmotionPadButton(
                         ((if (faceVisual == null) 115 else PressFaceCatalog.CANVAS_SIZE) * unit).dp,
                     ).graphicsLayer {
                         val transform = motion.sample(frameTime.value)
-                        transformOrigin = TransformOrigin(.5f, .8f)
+                        transformOrigin = if (faceVisual == null) TransformOrigin(.5f, .8f) else TransformOrigin.Center
                         translationY = (transform.y.toFloat() - 4f) * density.density
                         scaleX = transform.scale.toFloat()
                         scaleY = scaleX

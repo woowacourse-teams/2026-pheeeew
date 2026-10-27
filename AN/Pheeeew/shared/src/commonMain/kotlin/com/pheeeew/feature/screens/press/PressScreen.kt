@@ -123,7 +123,7 @@ internal fun PressScreen(
                     .coerceIn(200.dp.coerceAtMost(maxWidth), maxWidth)
             EmotionPad(
                 counts = emotionCounts,
-                faceVisuals = faceVisuals,
+                faceVisuals = EmotionKind.entries.associateWith { faceVisuals[it] ?: EmotionFaceVisual() },
                 optimisticPressCounts = uiState.optimisticPressCounts,
                 countTextOverrides = countTextOverrides,
                 enabled = uiState.isInputEnabled,
