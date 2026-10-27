@@ -193,6 +193,24 @@ class RankChangeNotificationServiceIntegrationTest {
     }
 
     @Test
+    void 앞_순위에_동점이_생기면_경쟁_순위로_5위에서_6위로_밀린_기기에_작업을_만든다() {
+        // given
+        List<Device> 기기들 = 순서대로_누른_기기들(600, 500, 400, 300, 200, 100);
+        비교한다(오전_10시);
+        프레스를_누른다(기기들.get(5), 200);
+
+        // when
+        비교한다(오전_10시_5분);
+
+        // then
+        assertThat(회차의_스냅샷(jdbc, 오전_10시_5분)).containsEntry(기기들.get(3).getId(), 4)
+                .containsEntry(기기들.get(5).getId(), 4)
+                .doesNotContainKey(기기들.get(4).getId());
+        assertThat(순위_작업들(기기들)).extracting(작업::deviceId, 작업::previousRank, 작업::currentRank)
+                .containsExactly(tuple(기기들.get(4).getId(), 5, 6));
+    }
+
+    @Test
     void 공동_5위가_여러_명이면_스냅샷에_모두_저장하고_그_아래는_저장하지_않는다() {
         // given
         List<Device> 기기들 = 순서대로_누른_기기들(600, 500, 400, 300, 200, 200, 200, 100);
