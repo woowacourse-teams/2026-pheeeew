@@ -61,6 +61,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.notification_settings_save_failed
 import pheeeew.shared.generated.resources.settings_app_section
 import pheeeew.shared.generated.resources.settings_app_version
 import pheeeew.shared.generated.resources.settings_help_section
@@ -174,18 +175,39 @@ fun SettingsScreen(
 ) {
     var versionTaps by remember { mutableStateOf(0) }
     var analyticsIdentity by remember { mutableStateOf<String?>(null) }
+    var notificationSettingsVisible by remember { mutableStateOf(false) }
     var selectedLegalDocument by remember { mutableStateOf<LegalDocument?>(null) }
     val telemetry = remember(monitoring) { ProductMonitoring(monitoring, "settings") }
     val legalTelemetry = remember(monitoring) { ProductMonitoring(monitoring, "legaldocument") }
     ProductScreen(telemetry, selectedLegalDocument == null)
     ProductScreen(legalTelemetry, selectedLegalDocument != null)
     val coroutineScope = rememberCoroutineScope()
+    // Keep both edits and their state alive when the notification sub-screen closes.
+    val notificationSettings =
+        remember(notificationPermissionController, notificationPreferencesStore) {
+            if (notificationPermissionController != null && notificationPreferencesStore != null) {
+                NotificationSettingsState(notificationPermissionController, notificationPreferencesStore)
+            } else {
+                null
+            }
+        }
+    val notificationSnackbarHostState = remember { SnackbarHostState() }
+    val notificationSaveFailedMessage = stringResource(Res.string.notification_settings_save_failed)
     val uriHandler = LocalUriHandler.current
     val snackbarHostState = remember { SnackbarHostState() }
     val nicknameViewModel: SettingsViewModel = metroViewModel()
     val nicknameState by nicknameViewModel.uiState.collectAsStateWithLifecycle()
     val nicknameChangedMessage = stringResource(Res.string.settings_nickname_changed)
     val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(notificationSettings, lifecycleOwner, notificationSaveFailedMessage) {
+        val model = notificationSettings ?: return@LaunchedEffect
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            model.state.map { it.saveFailureNoticeId }.filterNotNull().collect { noticeId ->
+                model.acknowledgeSaveFailure(noticeId)
+                notificationSnackbarHostState.showSnackbar(notificationSaveFailedMessage)
+            }
+        }
+    }
     LaunchedEffect(nicknameViewModel, lifecycleOwner, nicknameChangedMessage) {
         val viewModel = nicknameViewModel
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -204,12 +226,11 @@ fun SettingsScreen(
                     SettingsScreen(
                         appVersion = appVersion,
                         notificationPermissionContent = {
-                            notificationPermissionController?.let { controller ->
+                            if (notificationPermissionController != null && notificationPreferencesStore != null) {
                                 SettingsDivider()
-                                NotificationPermissionRow(controller)
-                                if (notificationPreferencesStore != null) {
-                                    SettingsDivider()
-                                    NotificationSettingsRows(controller, notificationPreferencesStore)
+                                NotificationPermissionRow(notificationPermissionController) {
+                                    notificationSettingsVisible =
+                                        true
                                 }
                             }
                         },
@@ -312,6 +333,19 @@ fun SettingsScreen(
                 },
             )
 
+            if (notificationSettingsVisible && notificationSettings != null) {
+                PredictiveBackContent(
+                    onBack = { notificationSettingsVisible = false },
+                    content = {
+                        NotificationSettingsRoute(
+                            model = notificationSettings,
+                            scope = coroutineScope,
+                            onBackClick = { notificationSettingsVisible = false },
+                        )
+                    },
+                )
+            }
+
             selectedLegalDocument?.let { document ->
                 PredictiveBackContent(
                     onBack = { selectedLegalDocument = null },
@@ -337,6 +371,24 @@ fun SettingsScreen(
                     },
                 )
             }
+
+            SnackbarHost(
+                hostState = notificationSnackbarHostState,
+                modifier =
+                    Modifier
+                        .align(Alignment.TopCenter)
+                        .statusBarsPadding()
+                        .padding(top = 64.dp)
+                        .padding(16.dp),
+                snackbar = { data ->
+                    Snackbar(
+                        message = data.visuals.message,
+                        onDismiss = data::dismiss,
+                        isError = true,
+                        presentationKey = data,
+                    )
+                },
+            )
 
             SnackbarHost(
                 hostState = snackbarHostState,

@@ -1,6 +1,5 @@
 package com.pheeeew
 
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.window.ComposeUIViewController
 import com.pheeeew.core.di.iosDeviceBuildConfig

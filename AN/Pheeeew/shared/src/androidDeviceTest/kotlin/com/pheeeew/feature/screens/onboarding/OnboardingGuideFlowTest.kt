@@ -28,7 +28,6 @@ import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 /** The actual onboarding and guide screens, with no API/session/recording dependencies. */
 class OnboardingGuideFlowTest {

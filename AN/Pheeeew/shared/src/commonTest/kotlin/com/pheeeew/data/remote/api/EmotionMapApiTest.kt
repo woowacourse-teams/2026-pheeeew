@@ -10,7 +10,6 @@ import com.pheeeew.data.repository.EmotionMapRepositoryImpl
 import com.pheeeew.domain.model.emotion.EmotionMapBounds
 import com.pheeeew.domain.model.emotion.EmotionMapPageResult
 import com.pheeeew.domain.model.emotion.EmotionSearchFilter
-import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.emotion.MapFilterContent
 import com.pheeeew.domain.model.emotion.MapFilterScope
 import io.ktor.client.engine.mock.MockEngine

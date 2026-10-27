@@ -2,8 +2,6 @@ package com.pheeeew.data.press.race
 
 import com.pheeeew.core.network.AccessToken
 import com.pheeeew.core.network.RecoverableAccessTokenProvider
-import com.pheeeew.core.network.SessionAccessException
-import com.pheeeew.core.network.SessionFailureDetails
 import com.pheeeew.core.session.DeviceSessionManager
 import com.pheeeew.data.press.race.transport.PressRaceClose
 import com.pheeeew.data.press.race.transport.PressRaceConnection

@@ -1,7 +1,6 @@
 package com.pheeeew.core.di
 
 import com.pheeeew.core.monitoring.Monitoring
-import com.pheeeew.core.network.ApiRequestExecutor
 import com.pheeeew.data.repository.BlockRepositoryImpl
 import com.pheeeew.data.repository.EmotionAudioRepositoryImpl
 import com.pheeeew.data.repository.EmotionDetailRepositoryImpl

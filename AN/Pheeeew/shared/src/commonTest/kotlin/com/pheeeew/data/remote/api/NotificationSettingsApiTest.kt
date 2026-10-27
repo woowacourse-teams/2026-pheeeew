@@ -20,7 +20,7 @@ import kotlin.test.assertFailsWith
 
 class NotificationSettingsApiTest {
     @Test
-    fun `컬렉션 변경은 서버의 순위 OFF를 유지하고 저장 후 다시 조회한다`() =
+    fun `컬렉션 변경은 서버의 순위 OFF를 유지하고 저장 성공 뒤 재조회하지 않는다`() =
         runTest {
             val methods = mutableListOf<HttpMethod>()
             val client =
@@ -51,10 +51,13 @@ class NotificationSettingsApiTest {
                     NotificationPreferences(true, false),
                     NotificationSettingsApi(client.requests).update(NotificationKind.COLLECTION, true),
                 )
-                assertEquals(listOf(HttpMethod.Get, HttpMethod.Put, HttpMethod.Get), methods)
+                assertEquals(listOf(HttpMethod.Get, HttpMethod.Put), methods)
                 methods.clear()
-                NotificationSettingsApi(client.requests).replace(NotificationPreferences(true, false))
-                assertEquals(listOf(HttpMethod.Put, HttpMethod.Get), methods)
+                assertEquals(
+                    NotificationPreferences(true, false),
+                    NotificationSettingsApi(client.requests).replace(NotificationPreferences(true, false)),
+                )
+                assertEquals(listOf(HttpMethod.Put), methods)
             } finally {
                 client.close()
             }

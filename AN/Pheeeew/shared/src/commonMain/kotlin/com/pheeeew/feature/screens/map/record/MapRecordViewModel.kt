@@ -12,7 +12,6 @@ import com.pheeeew.domain.model.emotion.EmotionRegistrationResult
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.repository.EmotionRegistrationRepository
 import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
-import com.pheeeew.feature.monitoring.product.resultLabel
 import com.pheeeew.feature.screens.map.EmotionPinUiModel
 import com.pheeeew.feature.screens.map.monitoring.RecordFunnelMonitoring
 import com.pheeeew.feature.screens.map.monitoring.RecordResultReceipt

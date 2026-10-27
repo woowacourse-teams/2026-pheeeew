@@ -22,7 +22,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -35,7 +34,6 @@ import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.domain.model.emotion.ReactionCount
 import org.jetbrains.compose.resources.painterResource
 import pheeeew.shared.generated.resources.Res
-import pheeeew.shared.generated.resources.ic_emotion_exhausted
 import pheeeew.shared.generated.resources.ic_emotion_frustrated
 
 @Composable

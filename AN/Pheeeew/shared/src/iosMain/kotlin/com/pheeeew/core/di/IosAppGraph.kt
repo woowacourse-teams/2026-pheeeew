@@ -33,7 +33,6 @@ import platform.Foundation.NSBundle
 import platform.Foundation.NSUserDefaults
 import kotlin.experimental.ExperimentalNativeApi
 import kotlin.native.Platform
-import kotlin.random.Random
 
 @DependencyGraph(AppScope::class)
 internal interface IosAppGraph :

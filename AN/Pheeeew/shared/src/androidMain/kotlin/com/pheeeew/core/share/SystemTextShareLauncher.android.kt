@@ -1,6 +1,5 @@
 package com.pheeeew.core.share
 
-import android.content.ActivityNotFoundException
 import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember

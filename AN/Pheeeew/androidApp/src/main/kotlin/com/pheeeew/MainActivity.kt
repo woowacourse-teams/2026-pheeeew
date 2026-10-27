@@ -6,8 +6,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.pheeeew.core.di.ActivityRetainedGraphOwner
-import com.pheeeew.core.notification.NotificationClickInbox
-import com.pheeeew.core.notification.NotificationMessageInbox
 import com.pheeeew.core.notification.NotificationPermissionResultListener
 import java.util.UUID
 
