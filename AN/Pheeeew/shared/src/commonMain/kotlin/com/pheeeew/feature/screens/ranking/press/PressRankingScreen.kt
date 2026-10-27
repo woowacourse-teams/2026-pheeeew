@@ -6,15 +6,19 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
@@ -30,10 +34,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.MotionDurationScale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -49,10 +52,13 @@ import com.pheeeew.feature.screens.ranking.press.components.MyRaceRankCard
 import com.pheeeew.feature.screens.ranking.press.components.PressRaceHeader
 import com.pheeeew.feature.screens.ranking.press.components.PressRaceRow
 import com.pheeeew.feature.screens.ranking.press.components.RankingEncouragementBanner
+import com.pheeeew.feature.screens.ranking.press.components.rememberRankingEncouragementMessage
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import dev.zacsweers.metrox.viewmodel.metroViewModel
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.ic_arrow_back
 import pheeeew.shared.generated.resources.press_daily_ranking_back
 import pheeeew.shared.generated.resources.press_daily_ranking_empty
 import pheeeew.shared.generated.resources.press_daily_ranking_people
@@ -120,6 +126,7 @@ internal fun PressRankingScreen(
     rows: List<PressRaceRowModel> = uiState.people.toRaceRows(),
     dailyDate: String? = null,
 ) {
+    val encouragementMessage = rememberRankingEncouragementMessage()
     val scope = rememberCoroutineScope()
     val reducedMotion = rememberTapReducedMotion() || scope.coroutineContext[MotionDurationScale]?.scaleFactor == 0f
     val fontScale = LocalDensity.current.fontScale
@@ -137,29 +144,40 @@ internal fun PressRankingScreen(
             (widestCount.toDp() + 12.dp).coerceIn(40.dp, 140.dp)
         }
     Column(modifier.fillMaxSize().background(Color(0xFFFAFAFA)).statusBarsPadding()) {
-        Box(Modifier.fillMaxWidth().height(64.dp), contentAlignment = Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = 8.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
+                Icon(
+                    painterResource(Res.drawable.ic_arrow_back),
+                    contentDescription = backLabel,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+            Column(
+                Modifier.weight(1f).padding(horizontal = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
                 Text(
                     stringResource(Res.string.press_daily_ranking_title),
                     fontSize = 20.sp,
+                    lineHeight = 28.sp,
                     fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
                 )
-                if (dailyDate != null) Text(dailyDate, fontSize = 12.sp, color = Color(0xFF767D78))
+                if (dailyDate != null) {
+                    Text(
+                        dailyDate,
+                        fontSize = 12.sp,
+                        lineHeight = 18.sp,
+                        color = Color(0xFF767D78),
+                        textAlign = TextAlign.Center,
+                    )
+                }
             }
-            IconButton(
-                onClick = onBack,
-                modifier =
-                    Modifier.align(Alignment.CenterStart).semantics {
-                        contentDescription =
-                            backLabel
-                    },
-            ) {
-                Text("‹", fontSize = 36.sp, modifier = Modifier.padding(bottom = 4.dp))
-            }
+            Spacer(Modifier.size(48.dp))
         }
-        Spacer(Modifier.height(16.dp))
-        RankingEncouragementBanner(Modifier.padding(horizontal = 24.dp))
-        Spacer(Modifier.height(16.dp))
         PullToRefreshBox(
             isRefreshing = uiState.isRefreshing,
             onRefresh = onRefresh,
@@ -167,21 +185,37 @@ internal fun PressRankingScreen(
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(horizontal = 26.dp),
-                contentPadding = PaddingValues(bottom = 24.dp),
+                contentPadding = PaddingValues(top = 16.dp, bottom = 24.dp),
             ) {
                 item {
+                    RankingEncouragementBanner(message = encouragementMessage)
+                    Spacer(Modifier.height(16.dp))
                     MyRaceRankCard(uiState.me, uiState.status, onBack, onRetry)
                     Spacer(Modifier.height(20.dp))
-                    Text(
-                        stringResource(Res.string.press_daily_ranking_people),
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            stringResource(Res.string.press_daily_ranking_people),
+                            modifier = Modifier.weight(1f).padding(end = 12.dp),
+                            fontSize = 16.sp,
+                            lineHeight = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        if (uiState.date != null && dailyDate == null) {
+                            Text(
+                                uiState.date,
+                                modifier = Modifier.weight(0.65f),
+                                fontSize = 12.sp,
+                                lineHeight = 18.sp,
+                                color = Color(0xFF767D78),
+                                textAlign = TextAlign.End,
+                            )
+                        }
+                    }
                     Spacer(Modifier.height(12.dp))
                     PressRaceHeader(rankWidth, countWidth)
-                }
-                if (uiState.date != null && dailyDate == null) {
-                    item { Text(uiState.date, fontSize = 12.sp, color = Color(0xFF767D78)) }
                 }
                 if (uiState.hasRefreshError) {
                     item {

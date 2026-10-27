@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.press_ranking_hint_0
@@ -41,8 +42,13 @@ private object RankingHints {
 }
 
 @Composable
-internal fun RankingEncouragementBanner(modifier: Modifier = Modifier) {
-    val message = remember { RankingHints.next() }
+internal fun rememberRankingEncouragementMessage(): StringResource = remember { RankingHints.next() }
+
+@Composable
+internal fun RankingEncouragementBanner(
+    modifier: Modifier = Modifier,
+    message: StringResource = rememberRankingEncouragementMessage(),
+) {
     val shape = RoundedCornerShape(16.dp)
     Row(
         modifier
@@ -58,6 +64,7 @@ internal fun RankingEncouragementBanner(modifier: Modifier = Modifier) {
             stringResource(message),
             Modifier.weight(1f),
             fontSize = 14.sp,
+            lineHeight = 20.sp,
             fontWeight = FontWeight.Bold,
             color = Color(0xFF202323),
         )
