@@ -117,7 +117,8 @@ internal fun AppBottomNavigationBar(
                 .width(itemWidth - indicatorInset * 2)
                 .height(AppBottomNavigationBarHeight - indicatorInset * 2)
                 .clip(CircleShape)
-                .background(AppColors.Primary),
+                .background(AppColors.Primary, CircleShape)
+                .border(1.5.dp, NavigationInk, CircleShape),
         )
         Row(Modifier.fillMaxWidth()) {
             destinations.forEach { destination ->
