@@ -34,7 +34,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -69,6 +68,7 @@ import com.pheeeew.core.di.AppGraph
 import com.pheeeew.core.di.UiGraph
 import com.pheeeew.core.navigation.CollectionRootDestination
 import com.pheeeew.core.navigation.DoubleBackToExitHandler
+import com.pheeeew.core.navigation.FirstMainPresentationEffect
 import com.pheeeew.core.navigation.FlowBackHandler
 import com.pheeeew.core.navigation.MapRootDestination
 import com.pheeeew.core.navigation.NotificationClickRouter
@@ -78,6 +78,7 @@ import com.pheeeew.core.navigation.RankingRootDestination
 import com.pheeeew.core.notification.NotificationClickInbox
 import com.pheeeew.core.notification.NotificationPermissionController
 import com.pheeeew.core.notification.NotificationPreferencesStore
+import com.pheeeew.data.press.race.PressRaceView
 import com.pheeeew.domain.model.device.DeviceSessionResult
 import com.pheeeew.domain.model.version.AppVersionDecision
 import com.pheeeew.feature.component.AppBottomNavigationBar
@@ -113,6 +114,7 @@ import com.pheeeew.feature.screens.map.symbolImageKey
 import com.pheeeew.feature.screens.onboarding.FeatureGuideScreen
 import com.pheeeew.feature.screens.onboarding.FeatureGuideState
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
+import com.pheeeew.feature.screens.press.PressRaceLifecycleEffect
 import com.pheeeew.feature.screens.press.PressRoute
 import com.pheeeew.feature.screens.ranking.press.PressRankingRoute
 import com.pheeeew.feature.screens.report.ReportRoute
@@ -130,7 +132,6 @@ import dev.zacsweers.metrox.viewmodel.metroViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.stringResource
@@ -612,23 +613,28 @@ private fun AppContent(
             selectedDestination == AppDestination.Map &&
                 (mapUiModel.isEmotionSelectorExpanded || recordUiModel.step != RecordFlowStepUiModel.Closed)
 
+        val pressRaceView =
+            when {
+                currentBackStackEntry?.destination?.hasRoute<PressRootDestination>() == true -> PressRaceView.PRESS
+                currentBackStackEntry?.destination?.hasRoute<RankingRootDestination>() == true -> PressRaceView.ALL
+                else -> null
+            }
+        PressRaceLifecycleEffect(
+            session = apiDependencies.appSession.pressRace,
+            view = pressRaceView,
+            enabled = mainFeaturesReady && !shouldPrepareMapDuringSplash && !isSettingsVisible && reportTarget == null,
+        )
+
         var collectionNotificationDate by remember { mutableStateOf<String?>(null) }
         var collectionRefreshRevision by remember { mutableStateOf(0L) }
 
-        LaunchedEffect(currentBackStackEntry, mainFeaturesReady, startupState.splashDismissed, startupTarget) {
-            val entry = currentBackStackEntry ?: return@LaunchedEffect
-            if (!mainFeaturesReady || !startupState.splashDismissed || firstMainPresented) return@LaunchedEffect
-            val targetReached =
-                when (startupTarget) {
-                    NotificationDestination.Press -> entry.destination.hasRoute<PressRootDestination>()
-                    is NotificationDestination.Collection -> entry.destination.hasRoute<CollectionRootDestination>()
-                    NotificationDestination.Map, null -> entry.destination.hasRoute<MapRootDestination>()
-                }
-            if (!targetReached) return@LaunchedEffect
-            entry.lifecycle.currentStateFlow.first { it == Lifecycle.State.RESUMED }
-            withFrameNanos { }
-            firstMainPresented = true
-        }
+        FirstMainPresentationEffect(
+            backStackEntry = currentBackStackEntry,
+            ready = mainFeaturesReady && startupState.splashDismissed,
+            target = startupTarget,
+            alreadyPresented = firstMainPresented,
+            onPresented = { firstMainPresented = true },
+        )
 
         NotificationClickEffect(
             inbox = notificationClicks,
