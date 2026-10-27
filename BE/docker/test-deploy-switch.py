@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 import base64
+import json
 import signal
 import shutil
 import subprocess
@@ -24,8 +25,15 @@ COLORS = ('app-blue', 'app-green')
 
 def remote_script():
     workflow = yaml.safe_load(WORKFLOW.read_text())
-    step = next(s for s in workflow['jobs']['deploy']['steps'] if s.get('name') == '배포')
-    return step['run'].split("<<'REMOTE'\n", 1)[1].rsplit('\nREMOTE', 1)[0]
+    steps = workflow['jobs']['deploy']['steps']
+    app = next(s for s in steps if s.get('name') == '배포')
+    finish = next(s for s in steps if s.get('name') == '배포 마무리')
+    expect(steps.index(finish) > steps.index(next(s for s in steps if s.get('name') == 'Alloy 임시 환경 파일 삭제')),
+           '마지막 확인이 모니터링 배포/환경 정리보다 먼저 실행된다')
+    expect(finish.get('if', 'success()') == 'success()', '앞 단계 실패 후에도 마지막 확인이 실행된다')
+    remote = lambda step: step['run'].split("<<'REMOTE'\n", 1)[1].rsplit('\nREMOTE', 1)[0]
+    # The monitoring boundary is a controlled external failure; the two real remote scripts run unchanged.
+    return remote(app) + '\n[ ! -f "$SHIM_DIR/fail-monitoring" ] || exit 1\n' + remote(finish)
 
 
 APP = '''
@@ -35,10 +43,30 @@ import json
 import os
 import sys
 import time
+import uuid
+import threading
 
 name = sys.argv[1]
 marker = '/appstate/inflight-' + name
 badapi = '/appstate/badapi-' + name
+gate = os.environ.get('PHEEEEW_PRESS_RACE_ADMISSION_FILE')
+if gate and not os.path.exists(gate):
+    os.makedirs(os.path.dirname(gate), exist_ok=True)
+    with open(gate, 'x') as output:
+        output.write('CLOSED ' + str(uuid.uuid4()) + ' ' + os.environ['PHEEEEW_PRESS_RACE_SERVER_GENERATION'] + '\\n')
+
+def acknowledge_closed():
+    while gate:
+        try:
+            value = open(gate).read()
+            if value.startswith('CLOSED '):
+                with open(gate + '.closed', 'w') as output:
+                    output.write(value)
+        except OSError:
+            pass
+        time.sleep(0.02)
+
+threading.Thread(target=acknowledge_closed, daemon=True).start()
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -75,6 +103,20 @@ for arg in "$@"; do
   [ "$arg" = prune ] && exit 0
 done
 case "$*" in
+  'rm '*)
+    if [ -f "$SHIM_DIR/lose-active-rm-response" ] && [ "$2" = "$("$REAL_DOCKER" inspect -f '{{.Id}}' "$GENERATION_ACTIVE")" ]; then
+      rm -f "$SHIM_DIR/lose-active-rm-response"
+      "$REAL_DOCKER" "$@" || exit $?
+      exit 1
+    fi ;;
+  'container ls '*)
+    [ -f "$SHIM_DIR/fail-retirement-query" ] && exit 1 ;;
+  'stop '*)
+    [ -f "$SHIM_DIR/fail-active-cleanup" ] && [ "$2" = "$("$REAL_DOCKER" inspect -f '{{.Id}}' "$GENERATION_ACTIVE")" ] && exit 1 ;;
+  *' cat /app/press-admission'*)
+    [ -f "$SHIM_DIR/fail-gate-read" ] && exit 1 ;;
+esac
+case "$*" in
   *' curl -q '*)
     # Only the probe transport is stubbed. Identity comes from real Docker inspect;
     # actual RSA signing/upgrade/frame handling is also checked against Spring in Java tests.
@@ -82,7 +124,9 @@ case "$*" in
     exit $? ;;
   'image inspect '*)
     [ -f "$SHIM_DIR/fail-image-inspect" ] && exit 1
-    [ -f "$SHIM_DIR/old-image" ] && echo missing || echo 1
+    if [ -f "$SHIM_DIR/old-image" ]; then echo missing
+    elif [ -f "$SHIM_DIR/v2-image" ]; then echo 2
+    else echo 1; fi
     exit 0 ;;
   *' pull '*)
     [ -f "$SHIM_DIR/fail-image-pull" ] && exit 1 ;;
@@ -130,6 +174,28 @@ case "$*" in
       fi
     fi ;;
 esac
+last=
+for arg in "$@"; do last=$arg; done
+case "$last" in
+  'OPEN '*)
+    if [ -f "$SHIM_DIR/fail-readback-after-open" ]; then
+      rm -f "$SHIM_DIR/fail-readback-after-open"
+      "$REAL_DOCKER" "$@" || exit $?
+      touch "$SHIM_DIR/fail-gate-read"
+      exit 1
+    fi
+    if [ -f "$SHIM_DIR/fail-route-after-open" ] && [ "$2" = "$("$REAL_DOCKER" inspect -f '{{.Id}}' "$GENERATION_TARGET")" ]; then
+      rm -f "$SHIM_DIR/fail-route-after-open"
+      "$REAL_DOCKER" "$@" || exit $?
+      echo 503 > "$SHIM_DIR/code-app-green"
+      exit 0
+    fi
+    if [ -f "$SHIM_DIR/lose-open-response" ]; then
+      rm -f "$SHIM_DIR/lose-open-response"
+      "$REAL_DOCKER" "$@" || exit $?
+      exit 1
+    fi ;;
+esac
 exec "$REAL_DOCKER" "$@"
 '''
 
@@ -166,6 +232,15 @@ fi
 sql=$(cat)
 case "$sql" in
   *'UPDATE press_race_control'*)
+    printf 'update\\n' >> "$SHIM_DIR/control-updates"
+    if [ -f "$SHIM_DIR/fail-before-control-update" ]; then
+      rm -f "$SHIM_DIR/fail-before-control-update"
+      exit 1
+    fi
+    if [ -f "$SHIM_DIR/fail-proof-after-update" ]; then
+      rm -f "$SHIM_DIR/fail-proof-after-update"
+      touch "$SHIM_DIR/fail-runtime-probe"
+    fi
     if [ -f "$SHIM_DIR/lose-handoff-response" ] && [ ! -f "$SHIM_DIR/db-handed-off" ]; then
       printf '%s' "$sql" | "$REAL_DOCKER" exec -i "$GENERATION_DB" psql -U postgres -d postgres "$@" >/dev/null || exit 1
       touch "$SHIM_DIR/db-handed-off"
@@ -198,6 +273,14 @@ esac
 exec /usr/bin/curl "$@"
 '''
 
+HOSTNAME_SHIM = '''#!/bin/sh
+if [ -f "$SHIM_DIR/fail-first-activation" ]; then
+  rm -f "$SHIM_DIR/fail-first-activation"
+  touch "$SHIM_DIR/fail-before-control-update"
+fi
+if [ -f "$SHIM_DIR/hostname" ]; then cat "$SHIM_DIR/hostname"; else exec "$REAL_HOSTNAME" "$@"; fi
+'''
+
 
 def sh(*args, **kwargs):
     return subprocess.run(args, text=True, capture_output=True, **kwargs)
@@ -221,6 +304,7 @@ class Fixture:
         self._shims()
         self._compose()
         shutil.copy(REPO / 'BE/docker/press-generation.py', self.dir / 'press-generation.py')
+        shutil.copy(REPO / 'BE/docker/press-operations.py', self.dir / 'press-operations.py')
         (self.dir / '.env').write_text('')
         self.db = self.project + '-generation-db'
         sh('docker', 'run', '-d', '--name', self.db, '-e', 'POSTGRES_HOST_AUTH_METHOD=trust',
@@ -235,6 +319,7 @@ class Fixture:
         migration = (REPO / 'BE/src/main/resources/db/migration/V20261026_2__create_press_race_storage.sql').read_text()
         self.sql(migration.split('CREATE TABLE press_device_controls')[0])
         self.sql('CREATE TABLE devices (public_id UUID PRIMARY KEY);')
+        self.sql('CREATE TABLE press_device_controls (connection_generation UUID, ready BOOLEAN);')
         shutil.copy(REPO / 'BE/docker/nginx/api-dev.conf', self.confd / 'default.conf')
         self.reset_edge()
 
@@ -247,7 +332,7 @@ class Fixture:
         shutil.copy(self.dir / 'origin.key', self.dir / 'privkey.pem')
 
     def _shims(self):
-        for name, text in (('docker', DOCKER_SHIM), ('curl', CURL_SHIM), ('psql', PSQL_SHIM)):
+        for name, text in (('docker', DOCKER_SHIM), ('curl', CURL_SHIM), ('psql', PSQL_SHIM), ('hostname', HOSTNAME_SHIM)):
             path = self.shim / name
             path.write_text(text)
             path.chmod(0o755)
@@ -437,6 +522,7 @@ class Fixture:
         env = dict(os.environ)
         env['PATH'] = f'{self.shim}:{env["PATH"]}'
         env['REAL_DOCKER'] = shutil.which('docker')
+        env['REAL_HOSTNAME'] = shutil.which('hostname')
         env['SHIM_DIR'] = str(self.state)
         env['SHIM_POINTER'] = str(self.pointer)
         env['APP_IMAGE'] = 'python:3.13-alpine'
@@ -477,6 +563,15 @@ class Fixture:
 
     def deploy(self):
         return self.wait_deploy(self.deploy_async())
+
+    def tool(self, *args):
+        env = dict(os.environ, REAL_DOCKER=shutil.which('docker'), SHIM_DIR=str(self.state),
+                   REAL_HOSTNAME=shutil.which('hostname'),
+                   SHIM_POINTER=str(self.pointer), GENERATION_DB=self.db,
+                   GENERATION_TARGET=self.project + '-app-green', GENERATION_ACTIVE=self.project + '-app-blue',
+                   GENERATION_NGINX=self.project + '-nginx')
+        env['PATH'] = f'{self.shim}:{env["PATH"]}'
+        return sh(sys.executable, 'press-generation.py', *args, cwd=self.dir, env=env)
 
     def diagnose(self):
         names = sh('docker', 'ps', '-a', '--filter', f'name={self.project}',
@@ -615,6 +710,402 @@ def scenario_competition_on(fx):
     result = fx.deploy()
     expect(result.returncode == 1 and not fx.exists('app-green'), '경쟁 ON 상태로 배포했다')
     expect(fx.pointer_color() == 'app-blue', '경쟁 ON에서 프록시를 변경했다')
+
+
+def operations_fixture(fx, enabled=True, active_version='2'):
+    model = yaml.safe_load((fx.dir / 'compose.yml').read_text())
+    for app in model['services'].values():
+        app['labels'] = dict(app['labels'], **{'com.pheeeew.press-generation-contract': '2'})
+        app['environment']['PHEEEEW_PRESS_RACE_ADMISSION_FILE'] = '/app/press-admission'
+        app['environment']['PHEEEEW_PRESS_RACE_ADMISSION_REQUIRED'] = 'true'
+        app['environment']['SPRING_PROFILES_ACTIVE'] = 'dev'
+    if active_version == '1':
+        model['services']['app-blue']['labels']['com.pheeeew.press-generation-contract'] = '1'
+        model['services']['app-blue']['environment'].pop('PHEEEEW_PRESS_RACE_ADMISSION_FILE')
+        model['services']['app-blue']['environment'].pop('PHEEEEW_PRESS_RACE_ADMISSION_REQUIRED')
+    (fx.dir / 'compose.yml').write_text(yaml.safe_dump(model))
+    (fx.state / 'v2-image').touch()
+    fx.start_app('app-blue')
+    if active_version == '2':
+        sh('docker', 'exec', fx.project + '-app-blue', 'sh', '-c',
+           "printf 'OPEN 22222222-2222-2222-2222-222222222222 11111111-1111-1111-1111-111111111111\\n' > /app/press-admission")
+    fx.sql("UPDATE press_race_control SET enabled=" + ('TRUE' if enabled else 'FALSE') +
+           ", activation_date=(clock_timestamp() AT TIME ZONE 'Asia/Seoul')::date;")
+    fx.sql("INSERT INTO press_device_controls VALUES ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', TRUE);")
+
+
+def scenario_competition_on_v2(fx):
+    operations_fixture(fx)
+    result = fx.deploy()
+    expect(result.returncode == 0, '지원하는 ON 전환이 실패했다: ' + result.stdout + result.stderr)
+    expect(fx.sql('SELECT enabled FROM press_race_control;') == 't', '일반 배포가 경쟁 ON 을 바꿨다')
+    expect(fx.pointer_color() == 'app-green', '신규 서버로 라우팅되지 않았다')
+    expect(fx.sql('SELECT COUNT(*) FROM press_device_controls WHERE connection_generation IS NOT NULL OR ready;') == '0',
+           '기존 연결의 저장 자격이 남았다')
+
+
+def scenario_v2_lost_db_response(fx):
+    operations_fixture(fx)
+    (fx.state / 'lose-handoff-response').touch()
+    result = fx.deploy()
+    expect(result.returncode == 0, 'DB 커밋 응답 유실을 재조회로 정산하지 못했다: ' + result.stdout + result.stderr)
+    expect(fx.sql('SELECT enabled FROM press_race_control;') == 't', '정상 전환이 경쟁을 중단했다')
+
+
+def scenario_v2_lost_open_response(fx):
+    operations_fixture(fx)
+    (fx.state / 'lose-open-response').touch()
+    result = fx.deploy()
+    expect(result.returncode == 0, '확인 가능한 OPEN 응답 유실을 정산하지 못했다: ' + result.stdout + result.stderr)
+
+
+def scenario_v2_reload_rollback(fx):
+    operations_fixture(fx)
+    fx.fail_reload()
+    result = fx.deploy()
+    expect(result.returncode == 1, '실패한 전환을 성공으로 보고했다')
+    expect(fx.sql('SELECT enabled FROM press_race_control;') == 't', '검증된 원본 복귀에서 경쟁을 껐다')
+    expect(fx.sql('SELECT active_server_generation FROM press_race_control;') ==
+           '11111111-1111-1111-1111-111111111111', '원본 소유권이 복구되지 않았다')
+    expect(fx.pointer_color() == 'app-blue' and fx.running('app-blue') and not fx.exists('app-green'),
+           '검증된 원본 복귀가 완료되지 않았다: ' + result.stdout + result.stderr)
+    expect(sh('docker', 'exec', fx.project + '-app-blue', 'cat', '/app/press-admission').stdout.startswith('OPEN '),
+           '복귀한 원본 입력이 재개되지 않았다')
+
+
+def failed_open_fixture(fx):
+    operations_fixture(fx)
+    (fx.state / 'fail-route-after-open').touch()
+    result = fx.deploy()
+    expect(result.returncode == 1, '개방 후 검증 실패를 배포 성공으로 보고했다')
+    expect(fx.exists('app-blue') and fx.exists('app-green'), '불확실한 전환에서 서버를 삭제했다')
+    expect(fx.sql('SELECT enabled FROM press_race_control;') == 'f', '개방 후 장애를 OFF로 정리하지 못했다')
+    journal = json.loads((fx.dir / '.press-deploy.json').read_text())
+    expect(journal['open_attempted'] and journal['phase'] == 'EMERGENCY_OFF_CONFIRMED', '개방 시도/중단 기록을 보존하지 않았다')
+    for color in COLORS:
+        expect(sh('docker', 'exec', fx.project + '-' + color, 'cat', '/app/press-admission').stdout.startswith('CLOSED '),
+               '불확실한 전환의 입력이 열려 있다')
+    return journal
+
+
+def scenario_v2_open_then_failure(fx):
+    failed_open_fixture(fx)
+
+
+def replay_gate_command(fx, command):
+    cas = __import__('runpy').run_path(str(fx.dir / 'press-operations.py'))['CAS']
+    return sh('docker', 'exec', command['container_id'], 'sh', '-c', cas, 'sh', '/app/press-admission',
+              command['expected'].rstrip('\n'), command['replacement'].rstrip('\n'))
+
+
+def scenario_v2_delayed_open_and_manual_off_resume(fx):
+    journal = failed_open_fixture(fx)
+    command = next(item for item in journal['gate_commands'] if item['purpose'] == 'open-target')
+    expect(replay_gate_command(fx, command).returncode != 0, '늦은 이전 OPEN 이 새 CLOSED를 덮어썼다')
+    fx.edge('app-green', code='200')
+    result = fx.tool('resume-off', fx.project + '-app-green', '--expected-generation', journal['target_generation'],
+                     '--expected-activation-date', journal['activation_date'])
+    expect(result.returncode == 0, '명시적 OFF 복구 실패: ' + result.stdout + result.stderr)
+    recovered = json.loads((fx.dir / '.press-deploy.json').read_text())
+    expect(recovered['phase'] == 'HTTP_RECOVERED' and fx.sql('SELECT enabled FROM press_race_control;') == 'f',
+           'HTTP 복구가 경쟁을 다시 켰거나 기록을 잃었다')
+    expect(fx.exists('app-blue') and fx.exists('app-green'), '수동 정산 없이 서버를 삭제했다')
+    resume = next(item for item in recovered['gate_commands'] if item['purpose'].startswith('resume-off-open'))
+    result = fx.tool('emergency-stop', fx.project + '-app-green')
+    expect(result.returncode == 0, '복구 후 재중단 실패: ' + result.stdout + result.stderr)
+    expect(replay_gate_command(fx, resume).returncode != 0, '이전 복구 OPEN 이 재중단을 무효화했다')
+
+
+def scenario_v2_restart_blocks_restore(fx):
+    operations_fixture(fx)
+    (fx.state / 'restart-active-on-reload').touch()
+    result = fx.deploy()
+    expect(result.returncode == 1 and fx.exists('app-blue') and fx.exists('app-green'), '재시작 원본에 자동 복귀했다')
+    expect(fx.sql('SELECT active_server_generation FROM press_race_control;') !=
+           '11111111-1111-1111-1111-111111111111', '과거 프로세스 신원으로 자격을 복원했다')
+    expect(sh('docker', 'exec', fx.project + '-app-blue', 'cat', '/app/press-admission').stdout.startswith('CLOSED '),
+           '같은 UUID 재시작으로 차단이 풀렸다')
+
+
+def scenario_v2_stop_and_activate(fx):
+    operations_fixture(fx)
+    current = fx.sql("SELECT (clock_timestamp() AT TIME ZONE 'Asia/Seoul')::date;")
+    (fx.state / 'lose-handoff-response').touch()
+    result = fx.tool('stop', fx.project + '-app-blue', '--expected-generation',
+                     '11111111-1111-1111-1111-111111111111', '--expected-activation-date', current)
+    expect(result.returncode == 0, '긴급 중단 후 호환 HTTP 입력을 재개하지 못했다: ' + result.stdout + result.stderr)
+    expect(fx.sql('SELECT enabled FROM press_race_control;') == 'f', '중단 후 경쟁이 켜졌다')
+    expect(sh('docker', 'exec', fx.project + '-app-blue', 'cat', '/app/press-admission').stdout.startswith('OPEN '),
+           '중단이 기존 HTTP까지 영구 차단했다')
+    (fx.state / 'db-handed-off').unlink(missing_ok=True)
+    result = fx.tool('activate', fx.project + '-app-blue', '--expected-generation',
+                     '11111111-1111-1111-1111-111111111111', '--expected-activation-date', current,
+                     '--activation-date', current)
+    expect(result.returncode == 1 and not (fx.dir / '.press-deploy.json').exists(),
+           '잘못된 활성화 날짜를 수락했거나 작업 기록으로 이후 작업을 막았다')
+    result = fx.tool('activate', fx.project + '-app-blue', '--expected-generation',
+                     '11111111-1111-1111-1111-111111111111', '--expected-activation-date', current)
+    expect(result.returncode == 0, '경쟁 ON을 즉시 사용할 수 없다: ' + result.stdout + result.stderr)
+    expect(fx.sql("SELECT enabled AND activation_date = (clock_timestamp() AT TIME ZONE 'Asia/Seoul')::date FROM press_race_control;") == 't',
+           'ON이 다음 날짜까지 경쟁을 지연했다')
+
+
+def scenario_first_v2_off_manual_recovery(fx):
+    operations_fixture(fx, enabled=False, active_version='1')
+    (fx.state / 'fail-route-after-open').touch()
+    result = fx.deploy()
+    expect(result.returncode == 1, '최초 이행의 개방 후 실패를 성공으로 보고했다')
+    journal = json.loads((fx.dir / '.press-deploy.json').read_text())
+    expect(journal['phase'] == 'EMERGENCY_OFF_CONFIRMED', '최초 이행 실패의 OFF를 확인하지 못했다')
+    fx.edge('app-green', code='200')
+    result = fx.tool('resume-off', fx.project + '-app-green', '--expected-generation', journal['target_generation'],
+                     '--expected-activation-date', journal['activation_date'])
+    expect(result.returncode == 0, '기존 v1 비소유자를 보존하는 최초 v2 OFF 복구 실패: ' + result.stdout + result.stderr)
+    expect(fx.sql('SELECT active_server_generation FROM press_race_control;') == journal['target_generation'],
+           'OFF 복구가 과거 UUID로 소유권을 되돌렸다')
+    expect(fx.sql('SELECT enabled FROM press_race_control;') == 'f', '최초 이행 OFF 복구가 경쟁을 켰다')
+
+
+def scenario_operations_exact_targets(fx):
+    operations_fixture(fx)
+    active, target = fx.project + '-app-blue', fx.project + '-app-green'
+    result = fx.tool('prepare', active, 'app-blue')
+    expect(result.returncode == 1 and not (fx.dir / '.press-deploy.json').exists(), '활성 슬롯을 후보로 허용했다')
+    expect(fx.tool('prepare', active, 'app-green').returncode == 0, '유효한 후보 준비 실패')
+    result = sh('docker', 'compose', '--env-file', str(fx.dir / '.env'), '--env-file',
+                str(fx.dir / 'press-generations.env'), '-f', str(fx.dir / 'compose.yml'),
+                'up', '-d', '--wait', '--wait-timeout', '60', 'app-green')
+    expect(result.returncode == 0 and fx.tool('record-target', target).returncode == 0, '후보 신원 기록 실패')
+    before = sh('docker', 'exec', active, 'cat', '/app/press-admission').stdout
+    expect(fx.tool('emergency-stop', active).returncode == 1, '다른 컨테이너를 지정한 중단을 실행했다')
+    expect(sh('docker', 'exec', active, 'cat', '/app/press-admission').stdout == before
+           and fx.sql('SELECT enabled FROM press_race_control;') == 't', '잘못된 대상의 중단이 상태를 바꿨다')
+    expect(fx.tool('cleanup-target', active).returncode == 1 and fx.exists('app-green'),
+           '다른 대상을 지정했는데 기록된 후보를 삭제했다')
+    expect(fx.tool('cleanup-target', target).returncode == 0 and not fx.exists('app-green'),
+           '검증된 정확한 후보 정리 실패')
+
+
+def first_deployment_fixture(fx):
+    operations_fixture(fx, enabled=False, active_version='1')
+    fx.sql('UPDATE press_race_control SET activation_date = NULL;')
+    (fx.state / 'hostname').write_text('pheeeew-dev\n')
+
+
+def scenario_first_development_deployment(fx):
+    first_deployment_fixture(fx)
+    result = fx.deploy()
+    expect(result.returncode == 0, '최초 개발 배포 마무리 실패: ' + result.stdout + result.stderr)
+    expect(fx.sql('SELECT enabled FROM press_race_control;') == 't', '정상 최초 개발 배포 후 경쟁을 사용할 수 없다')
+    expect(fx.sql("SELECT activation_date = (clock_timestamp() AT TIME ZONE 'Asia/Seoul')::date FROM press_race_control;") == 't',
+           '최초 경쟁을 DB 기준 현재 날짜에 사용할 수 없다')
+    expect(not (fx.dir / '.press-deploy.json').exists() and not fx.backup_exists(), '성공한 마무리 기록이 남았다')
+
+
+def scenario_ordinary_off_stays_off(fx):
+    operations_fixture(fx, enabled=False)
+    fx.sql('UPDATE press_race_control SET activation_date = NULL;')
+    result = fx.deploy()
+    expect(result.returncode == 0, '일반 OFF 개발 배포 실패: ' + result.stdout + result.stderr)
+    expect(fx.sql('SELECT NOT enabled AND activation_date IS NULL FROM press_race_control;') == 't',
+           '일반 OFF 배포가 경쟁을 자동으로 활성화했다')
+
+
+def scenario_first_then_normal_on(fx):
+    scenario_first_development_deployment(fx)
+    day = fx.sql('SELECT activation_date FROM press_race_control;')
+    generation = fx.sql('SELECT active_server_generation FROM press_race_control;')
+    model = yaml.safe_load((fx.dir / 'compose.yml').read_text())
+    next_app = model['services']['app-blue']
+    next_app['labels']['com.pheeeew.press-generation-contract'] = '2'
+    next_app['environment']['PHEEEEW_PRESS_RACE_ADMISSION_FILE'] = '/app/press-admission'
+    next_app['environment']['PHEEEEW_PRESS_RACE_ADMISSION_REQUIRED'] = 'true'
+    (fx.dir / 'compose.yml').write_text(yaml.safe_dump(model))
+    result = fx.deploy()
+    expect(result.returncode == 0, '기존 ON의 후속 정상 배포 실패: ' + result.stdout + result.stderr)
+    expect(fx.sql('SELECT enabled FROM press_race_control;') == 't'
+           and fx.sql('SELECT activation_date FROM press_race_control;') == day,
+           '후속 배포가 기존 ON이나 최초 활성화 날짜를 바꿨다')
+    expect(fx.sql('SELECT active_server_generation FROM press_race_control;') != generation,
+           '후속 배포가 새 서버 세대로 교체되지 않았다')
+    expect(len((fx.state / 'control-updates').read_text().splitlines()) == 3,
+           '후속 정상 배포가 최초 활성화를 다시 실행했다')
+
+
+def scenario_first_deployment_requires_development(fx):
+    first_deployment_fixture(fx)
+    (fx.state / 'hostname').write_text('other-environment\n')
+    result = fx.deploy()
+    expect(result.returncode == 1 and fx.sql('SELECT NOT enabled AND activation_date IS NULL FROM press_race_control;') == 't',
+           '개발 환경을 확인하지 않고 경쟁을 활성화했다')
+    expect((fx.dir / '.press-deploy.json').exists() and fx.backup_exists(), '미확인 마무리 기록을 삭제했다')
+
+
+def scenario_first_monitoring_failure(fx):
+    first_deployment_fixture(fx)
+    (fx.state / 'fail-monitoring').touch()
+    result = fx.deploy()
+    expect(result.returncode == 1 and fx.sql('SELECT NOT enabled AND activation_date IS NULL FROM press_race_control;') == 't',
+           '앞 단계 실패 뒤 최초 경쟁을 활성화했다')
+    expect((fx.dir / '.press-deploy.json').exists() and fx.backup_exists(), '건너뛴 마무리 기록을 삭제했다')
+    owner = fx.sql('SELECT active_server_generation FROM press_race_control;')
+    expect(fx.deploy().returncode == 1 and fx.sql('SELECT active_server_generation FROM press_race_control;') == owner,
+           '미완료 기록이 있는데 다음 배포가 다시 소유권을 바꿨다')
+
+
+def scenario_on_monitoring_failure(fx):
+    operations_fixture(fx)
+    day = fx.sql('SELECT activation_date FROM press_race_control;')
+    (fx.state / 'fail-monitoring').touch()
+    result = fx.deploy()
+    expect(result.returncode == 1 and fx.sql('SELECT enabled FROM press_race_control;') == 't'
+           and fx.sql('SELECT activation_date FROM press_race_control;') == day,
+           '모니터링 실패가 기존 ON이나 날짜를 바꿨다')
+    expect((fx.dir / '.press-deploy.json').exists() and fx.backup_exists(), '미완료 ON 배포 기록을 삭제했다')
+    owner = fx.sql('SELECT active_server_generation FROM press_race_control;')
+    expect(fx.deploy().returncode == 1 and fx.sql('SELECT active_server_generation FROM press_race_control;') == owner,
+           '미완료 ON 배포를 확인하지 않고 다음 배포가 진행됐다')
+    expect(not fx.exists('app-blue') and fx.running('app-green'), '이전 서버 정리 이후의 경계가 아니다')
+    (fx.state / 'db-handed-off').unlink(missing_ok=True)
+    (fx.state / 'lose-handoff-response').touch()
+    target = fx.project + '-app-green'
+    result = fx.tool('emergency-stop', target)
+    expect(result.returncode == 0 and fx.sql('SELECT enabled FROM press_race_control;') == 'f',
+           '원본 제거 이후 현재 서버 긴급 중단 실패: ' + result.stdout + result.stderr)
+    expect(fx.sql('SELECT active_server_generation FROM press_race_control;') == owner
+           and fx.sql('SELECT activation_date FROM press_race_control;') == day,
+           '긴급 중단이 현재 소유권이나 날짜를 변경했다')
+    expect(sh('docker', 'exec', target, 'cat', '/app/press-admission').stdout.startswith('CLOSED '),
+           '긴급 중단 뒤 현재 서버 입력이 열려 있다')
+    result = fx.tool('resume-off', target, '--expected-generation', owner, '--expected-activation-date', day)
+    expect(result.returncode == 0 and fx.sql('SELECT enabled FROM press_race_control;') == 'f',
+           '원본 없이 HTTP/결과 복구만 재개하지 못했다: ' + result.stdout + result.stderr)
+    expect(sh('docker', 'exec', target, 'cat', '/app/press-admission').stdout.startswith('OPEN ')
+           and (fx.dir / '.press-deploy.json').exists(), '확인할 복구 기록을 잃었거나 현재 HTTP 입력이 막혔다')
+
+
+def scenario_first_activation_uncertain_is_preserved(fx):
+    first_deployment_fixture(fx)
+    (fx.state / 'fail-first-activation').touch()
+    result = fx.deploy()
+    expect(result.returncode == 1, '최초 활성화 결과 불확실을 성공으로 처리했다')
+    journal_file = fx.dir / '.press-deploy.json'
+    raw = journal_file.read_bytes()
+    journal = json.loads(raw)
+    expect(journal['phase'] == 'FIRST_ACTIVATION_ATTEMPTED' and journal['active_removed'],
+           '원본 정리 후 최초 활성화 의도를 보존하지 않았다')
+    target = fx.project + '-app-green'
+    admission = sh('docker', 'exec', target, 'cat', '/app/press-admission').stdout
+    updates = (fx.state / 'control-updates').read_text()
+    result = fx.tool('emergency-stop', target)
+    expect(result.returncode == 1 and 'Initial activation is unconfirmed' in result.stderr,
+           '후발 활성화 SQL 가능성을 무시하고 OFF 완료를 주장했다')
+    expect(fx.tool('finalize', target).returncode == 1, '최초 활성화 SQL을 자동 재실행했다')
+    expect(journal_file.read_bytes() == raw and (fx.state / 'control-updates').read_text() == updates
+           and sh('docker', 'exec', target, 'cat', '/app/press-admission').stdout == admission,
+           '미확정 최초 활성화가 기록을 잃었거나 임의로 상태를 변경했다')
+
+
+def scenario_active_removal_response_lost(fx):
+    operations_fixture(fx)
+    day = fx.sql('SELECT activation_date FROM press_race_control;')
+    (fx.state / 'lose-active-rm-response').touch()
+    result = fx.deploy()
+    expect(result.returncode == 1 and not fx.exists('app-blue') and fx.running('app-green'),
+           '이전 서버 삭제 응답 유실이 재현되지 않았다: ' + result.stdout + result.stderr)
+    path = fx.dir / '.press-deploy.json'
+    raw = path.read_bytes()
+    journal = json.loads(raw)
+    expect(not journal.get('active_removed') and journal['removal_intent']['phase'] == 'REMOVE_ATTEMPTED'
+           and journal['removal_intent']['container_id'] == journal['active_identity']['id'],
+           '삭제 전에 고정 ID와 제거 의도를 보존하지 않았다')
+    (fx.state / 'fail-retirement-query').touch()
+    target = fx.project + '-app-green'
+    expect(fx.tool('emergency-stop', target).returncode == 1 and path.read_bytes() == raw,
+           'Docker 조회 실패를 ID 부재로 추측했다')
+    expect(fx.sql('SELECT enabled FROM press_race_control;') == 't', '미확인 정산이 경쟁 상태를 바꿨다')
+    (fx.state / 'fail-retirement-query').unlink()
+    result = fx.tool('emergency-stop', target)
+    expect(result.returncode == 0 and fx.sql('SELECT enabled FROM press_race_control;') == 'f',
+           '삭제된 고정 ID 정산 뒤 현재 서버 긴급 중단 실패: ' + result.stdout + result.stderr)
+    confirmed = json.loads(path.read_text())
+    expect(confirmed['active_removed'] and confirmed['phase'] == 'EMERGENCY_OFF_CONFIRMED'
+           and confirmed['removal_intent']['phase'] == 'REMOVED_CONFIRMED', '제거와 중단 정산을 보존하지 않았다')
+    expect(fx.sql('SELECT active_server_generation FROM press_race_control;') == journal['target_generation']
+           and fx.sql('SELECT activation_date FROM press_race_control;') == day,
+           '정산이 과거 UUID나 다른 날짜로 제어를 바꿨다')
+    expect(sh('docker', 'exec', target, 'cat', '/app/press-admission').stdout.startswith('CLOSED '),
+           '중단 완료 뒤 현재 서버 입력이 열려 있다')
+
+
+def scenario_stop_reconcile_after_open(fx):
+    operations_fixture(fx)
+    current = fx.sql("SELECT (clock_timestamp() AT TIME ZONE 'Asia/Seoul')::date;")
+    active = fx.project + '-app-blue'
+    arguments = ('--expected-generation', '11111111-1111-1111-1111-111111111111',
+                 '--expected-activation-date', current)
+    (fx.state / 'fail-readback-after-open').touch()
+    result = fx.tool('stop', active, *arguments)
+    expect(result.returncode == 1, 'OPEN 응답/재조회 유실을 완료로 보고했다')
+    journal = json.loads((fx.dir / '.press-deploy.json').read_text())
+    expect(journal['kind'] == 'stop' and journal['phase'] == 'HTTP_OPEN_ATTEMPTED', '중단 재개 의도를 보존하지 않았다')
+    expect(fx.sql('SELECT enabled FROM press_race_control;') == 'f', '실패한 확인을 이유로 경쟁을 재활성화했다')
+    (fx.state / 'fail-gate-read').unlink()
+    updates = (fx.state / 'control-updates').read_text()
+    expect(fx.tool('resume-off', active, *arguments).returncode == 1, '배포 복구 명령이 단독 중단 기록을 잘못 처리했다')
+    result = fx.tool('reconcile-control', active, *arguments)
+    expect(result.returncode == 0 and not (fx.dir / '.press-deploy.json').exists(),
+           '중단의 명시적 정산 실패: ' + result.stdout + result.stderr)
+    expect((fx.state / 'control-updates').read_text() == updates, '이미 확정한 중단의 DB 변경을 재실행했다')
+
+
+def activation_arguments(fx):
+    current = fx.sql("SELECT (clock_timestamp() AT TIME ZONE 'Asia/Seoul')::date;")
+    return ('--expected-generation', '11111111-1111-1111-1111-111111111111',
+            '--expected-activation-date', current)
+
+
+def scenario_activation_reconcile_committed(fx):
+    operations_fixture(fx, enabled=False)
+    active, arguments = fx.project + '-app-blue', activation_arguments(fx)
+    (fx.state / 'lose-handoff-response').touch()
+    (fx.state / 'fail-proof-after-update').touch()
+    result = fx.tool('activate', active, *arguments)
+    expect(result.returncode == 1 and fx.sql('SELECT enabled FROM press_race_control;') == 't',
+           '활성화 커밋 뒤 검증 실패가 재현되지 않았다')
+    journal = json.loads((fx.dir / '.press-deploy.json').read_text())
+    expect(journal['desired_control']['activation_date'] == fx.sql("SELECT (clock_timestamp() AT TIME ZONE 'Asia/Seoul')::date;"),
+           '즉시 ON의 내부 날짜를 보존하지 않았다')
+    (fx.state / 'fail-runtime-probe').unlink()
+    expect(fx.tool('activate', active, *arguments).returncode == 1, '남은 의도를 무시하고 새 활성화를 시작했다')
+    updates = (fx.state / 'control-updates').read_text()
+    result = fx.tool('reconcile-control', active, *arguments)
+    expect(result.returncode == 0 and not (fx.dir / '.press-deploy.json').exists(),
+           '커밋된 활성화 정산 실패: ' + result.stdout + result.stderr)
+    expect((fx.state / 'control-updates').read_text() == updates, '활성화 정산이 ON SQL을 재실행했다')
+
+
+def scenario_activation_reconcile_unconfirmed(fx):
+    operations_fixture(fx, enabled=False)
+    active, arguments = fx.project + '-app-blue', activation_arguments(fx)
+    (fx.state / 'fail-before-control-update').touch()
+    result = fx.tool('activate', active, *arguments)
+    expect(result.returncode == 1 and fx.sql('SELECT enabled FROM press_race_control;') == 'f',
+           '미적용 활성화 실패가 재현되지 않았다')
+    journal = (fx.dir / '.press-deploy.json').read_bytes()
+    updates = (fx.state / 'control-updates').read_text()
+    admission = sh('docker', 'exec', active, 'cat', '/app/press-admission').stdout
+    result = fx.tool('reconcile-control', active, *arguments)
+    expect(result.returncode == 1 and 'Activation outcome is unconfirmed' in result.stderr,
+           '변경 전 DB 조회를 활성화 취소 완료로 처리했다: ' + result.stdout + result.stderr)
+    expect((fx.dir / '.press-deploy.json').read_bytes() == journal,
+           '미확정 활성화의 원래 의도 기록을 보존하지 않았다')
+    expect(fx.tool('activate', active, *arguments).returncode == 1,
+           '미확정 의도가 있는데 새 활성화를 시작했다')
+    expect(fx.sql('SELECT enabled FROM press_race_control;') == 'f'
+           and (fx.state / 'control-updates').read_text() == updates
+           and sh('docker', 'exec', active, 'cat', '/app/press-admission').stdout == admission,
+           '미확정 활성화 정산이 DB 또는 입력 허용 상태를 변경했다')
 
 
 def scenario_old_image(fx):
@@ -894,7 +1385,7 @@ def scenario_drain_check_fails(fx):
     expect(not fx.exists('app-blue'), '워커 검사가 실패했는데 app-blue 를 남겼다')
     expect('graceful 하게 내립니다' in result.stdout, 'graceful 종료 안내가 없다')
     expect('한 번도 확인하지 못했습니다' in result.stdout, '미확인 상태를 알리지 않는다')
-    expect('배포 성공' in result.stdout, '전환이 성공했는데 배포를 실패로 끝냈다')
+    expect('개발 배포를 마쳤습니다' in result.stdout, '전환이 성공했는데 배포를 실패로 끝냈다')
 
 
 def scenario_broken_json_body(fx):
@@ -928,7 +1419,7 @@ def scenario_normal_waits_for_inflight(fx):
         expect(fx.running('app-green'), 'app-green 이 떠 있지 않다')
         expect(not fx.exists('app-blue'), '요청이 끝났는데 app-blue 가 남아 있다')
         expect(result.stdout.index('이전 요청이 모두 끝났습니다')
-               < result.stdout.index('배포 성공'), '드레인 확인보다 배포 성공이 먼저다')
+               < result.stdout.index('개발 배포를 마쳤습니다'), '드레인 확인보다 배포 성공이 먼저다')
 
 
 def scenario_rollback_waits_for_inflight(fx):
@@ -1016,7 +1507,31 @@ if count_previous_workers; then exit 1; fi
     expect(result.returncode == 0, f'worker PID 판정 실패: {result.stdout}{result.stderr}')
 
 
-SCENARIOS = (
+ON_SCENARIOS = (
+    ('경쟁 ON v2 정상 전환', scenario_competition_on_v2),
+    ('ON v2 DB 커밋 응답 유실', scenario_v2_lost_db_response),
+    ('ON v2 OPEN 응답 유실', scenario_v2_lost_open_response),
+    ('ON v2 개방 전 실패 자동 복귀', scenario_v2_reload_rollback),
+    ('ON v2 개방 후 실패 안전 중단', scenario_v2_open_then_failure),
+    ('ON v2 늦은 OPEN 차단과 명시적 OFF 복구', scenario_v2_delayed_open_and_manual_off_resume),
+    ('ON v2 원본 재시작은 자동 복귀 차단', scenario_v2_restart_blocks_restore),
+    ('v2 긴급 중단과 즉시 경쟁 사용', scenario_v2_stop_and_activate),
+    ('최초 v1에서 v2 OFF 이행 실패의 명시적 복구', scenario_first_v2_off_manual_recovery),
+    ('v2 관리 명령의 정확한 대상 검증', scenario_operations_exact_targets),
+    ('최초 개발 배포 마무리 후 경쟁 사용', scenario_first_development_deployment),
+    ('일반 OFF 개발 배포는 OFF 유지', scenario_ordinary_off_stays_off),
+    ('최초 개발 배포 이후 정상 ON 재배포', scenario_first_then_normal_on),
+    ('개발 환경 미확인 시 최초 활성화 금지', scenario_first_deployment_requires_development),
+    ('최초 개발 배포의 모니터링 실패는 기록 보존', scenario_first_monitoring_failure),
+    ('정상 ON 배포의 모니터링 실패는 상태 보존', scenario_on_monitoring_failure),
+    ('미확정 최초 활성화는 중단 완료 주장 없이 보존', scenario_first_activation_uncertain_is_preserved),
+    ('이전 서버 삭제 응답 유실의 고정 ID 정산', scenario_active_removal_response_lost),
+    ('v2 중단 OPEN 응답 유실의 명시적 정산', scenario_stop_reconcile_after_open),
+    ('v2 활성화 커밋 뒤 검증 실패 정산', scenario_activation_reconcile_committed),
+    ('v2 미확정 활성화 정산은 기록 보존', scenario_activation_reconcile_unconfirmed),
+)
+
+LEGACY_SCENARIOS = (
     ('정상 전환', scenario_normal),
     ('DB 커밋 응답 유실 복구', scenario_lost_db_response),
     ('DB 복구 실패 시 서버 보존', scenario_db_restore_fails),
@@ -1061,6 +1576,15 @@ SCENARIOS = (
     ('worker PID 캡처와 정확한 종료 판정', scenario_worker_pid_matching),
 )
 
+SCENARIOS = ON_SCENARIOS + LEGACY_SCENARIOS
+CI_ON_SCENARIOS = {
+    '경쟁 ON v2 정상 전환',
+    'ON v2 DB 커밋 응답 유실',
+    'ON v2 개방 전 실패 자동 복귀',
+    '최초 개발 배포 마무리 후 경쟁 사용',
+    '이전 서버 삭제 응답 유실의 고정 ID 정산',
+}
+
 
 def reset(fx):
     fx.compose_apps('--profile', 'blue', '--profile', 'green', 'rm', '-sf')
@@ -1079,6 +1603,10 @@ def reset(fx):
 
 def main():
     only = sys.argv[1:]
+    scenarios = SCENARIOS
+    if only == ['--ci']:
+        scenarios = tuple(item for item in ON_SCENARIOS if item[0] in CI_ON_SCENARIOS) + LEGACY_SCENARIOS
+        only = []
     with tempfile.TemporaryDirectory() as root:
         fx = Fixture(root)
         failures = []
@@ -1086,7 +1614,7 @@ def main():
             fx.point_at('set $upstream_app app-blue;\n')
             fx.start_nginx()
             expect(fx.running('nginx'), 'nginx 가 뜨지 않았다')
-            for name, run_scenario in SCENARIOS:
+            for name, run_scenario in scenarios:
                 if only and name not in only:
                     continue
                 reset(fx)
@@ -1102,7 +1630,7 @@ def main():
         if failures:
             print(f'\n{len(failures)}개 실패: {", ".join(failures)}')
             return 1
-        print('\n전환과 복구 분기 전부 통과')
+        print('\n선택한 전환과 복구 분기 통과')
         return 0
 
 

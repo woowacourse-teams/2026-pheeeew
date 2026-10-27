@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Competition-OFF development deployment fencing; never runs during app startup."""
+"""Explicit development deployment fencing; never runs during app startup."""
 
 import argparse
 import base64
+import fcntl
 from datetime import date
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -12,6 +14,7 @@ import selectors
 import subprocess
 import sys
 import time
+from types import SimpleNamespace
 from urllib.parse import parse_qs, urlsplit
 from uuid import UUID, uuid4
 
@@ -38,7 +41,7 @@ def environment(inspected: dict) -> dict:
 
 def identity(inspected: dict, legacy: bool = False) -> dict:
     result = {'id': inspected['Id'], 'image': inspected['Image']}
-    if legacy:
+    if legacy or (inspected['Config'].get('Labels') or {}).get(CONTRACT_LABEL) == '2':
         result.update(started_at=inspected['State']['StartedAt'], restarts=inspected['RestartCount'])
     return result
 
@@ -47,8 +50,8 @@ def encode(value: bytes) -> str:
     return base64.urlsafe_b64encode(value).rstrip(b'=').decode('ascii')
 
 
-def probe_output(command: list[str], config: bytes) -> bytes:
-    # Older image curl versions cannot bound unknown-length upgraded responses themselves.
+def probe_output(command: list[str], config: bytes, key: str) -> str:
+    # Bound collected evidence, not the lifetime traffic of the upgraded connection.
     process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     try:
         process.stdin.write(config)
@@ -63,14 +66,20 @@ def probe_output(command: list[str], config: bytes) -> bytes:
                     raise ValueError('Runtime generation probe timed out')
                 chunk = os.read(process.stdout.fileno(), min(4096, 65537 - len(output)))
                 if not chunk:
-                    break
+                    if process.wait(timeout=max(0.01, deadline - time.monotonic())) not in (0, 28):
+                        raise ValueError('Runtime generation probe failed')
+                    raise ValueError('Incomplete generation probe response')
                 output.extend(chunk)
                 if len(output) > 65536:
                     raise ValueError('Runtime generation probe exceeded response limit')
-        if process.wait(timeout=max(0.01, deadline - time.monotonic())) not in (0, 28):
-            raise ValueError('Runtime generation probe failed')
-        return bytes(output)
+                generation = probe_response(bytes(output), key)
+                if generation is not None:
+                    if process.poll() not in (None, 0, 28):
+                        raise ValueError('Runtime generation probe failed')
+                    return generation
     finally:
+        # Reap our local client only. docker-exec cancellation does not prove that
+        # remote curl stopped; its unchanged 3-second limit bounds the read-only probe.
         if process.poll() is None:
             process.kill()
         process.wait()
@@ -107,31 +116,46 @@ def probe_generation(env: dict, curl_command: list[str], url: str = 'http://127.
                         'header = "Connection: Upgrade"', 'header = "Upgrade: websocket"',
                         'header = "Sec-WebSocket-Version: 13"', f'header = "Sec-WebSocket-Key: {key}"')) + '\n'
     # -q must be curl's first argument: never load an operator's curlrc or proxy credentials.
-    output = probe_output(curl_command + ['-q', '--noproxy', '*', '--http1.1', '--include',
+    return probe_output(curl_command + ['-q', '--noproxy', '*', '--http1.1', '--include',
                           '--silent', '--no-buffer', '--max-time', '3', '--max-filesize', '65536',
-                          '--config', '-'], config.encode())
+                          '--config', '-'], config.encode(), key)
+
+
+def probe_response(output: bytes, key: str) -> str | None:
+    """None means incomplete transport data; malformed complete evidence fails closed."""
     headers, separator, frames = output.partition(b'\r\n\r\n')
+    if not separator:
+        return None
     lines = headers.split(b'\r\n')
     expected = base64.b64encode(hashlib.sha1((key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').encode()).digest())
     fields = {name.lower(): value.strip() for line in lines[1:] if b':' in line
               for name, value in [line.split(b':', 1)]}
-    if (not separator or not lines[0].startswith(b'HTTP/1.1 101 ')
+    if (not lines[0].startswith(b'HTTP/1.1 101 ')
             or fields.get(b'sec-websocket-accept') != expected
             or fields.get(b'upgrade', b'').lower() != b'websocket'
             or b'upgrade' not in fields.get(b'connection', b'').lower().split(b', ')):
         raise ValueError('Invalid generation probe upgrade')
-    if len(frames) < 2 or frames[0] != 0x81 or frames[1] & 0x80:
+    if len(frames) < 2:
+        return None
+    if frames[0] != 0x81 or frames[1] & 0x80:
         raise ValueError('Invalid generation probe frame')
     length, offset = frames[1], 2
     if length == 126:
         if len(frames) < 4:
-            raise ValueError('Truncated generation probe frame')
+            return None
         length, offset = int.from_bytes(frames[2:4], 'big'), 4
-    if length == 127 or length >= 65536 or len(frames) < offset + length:
-        raise ValueError('Incomplete generation probe frame')
-    response = json.loads(frames[offset:offset + length])
-    if response.get('v') != 1 or response.get('type') != 'protocol.error' or response.get('code') != 'DEVICE_NOT_FOUND':
+    elif length == 127:
+        raise ValueError('Unsupported generation probe frame')
+    if len(headers) + 4 + offset + length > 65536:
+        raise ValueError('Runtime generation probe exceeded response limit')
+    if len(frames) < offset + length:
+        return None
+    response = json.loads(frames[offset:offset + length].decode('utf-8'))
+    if (not isinstance(response, dict) or response.get('v') != 1 or response.get('type') != 'protocol.error'
+            or response.get('code') not in ('DEVICE_NOT_FOUND', 'SERVER_DRAINING')):
         raise ValueError('Unexpected generation probe response')
+    if not isinstance(response.get('serverGeneration'), str):
+        raise ValueError('Invalid generation probe UUID')
     return str(UUID(response['serverGeneration']))
 
 
@@ -154,7 +178,22 @@ def save_state(state: dict) -> None:
     descriptor = os.open(str(STATE_FILE) + '.new', os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(descriptor, 'w') as output:
         json.dump(state, output)
+        output.flush()
+        os.fsync(output.fileno())
     os.replace(str(STATE_FILE) + '.new', STATE_FILE)
+    directory = os.open(str(STATE_FILE.parent), os.O_RDONLY)
+    try:
+        os.fsync(directory)
+    finally:
+        os.close(directory)
+
+
+def operations():
+    sys.dont_write_bytecode = True
+    spec = importlib.util.spec_from_file_location('press_operations', Path(__file__).with_name('press-operations.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.Operations(SimpleNamespace(**globals()))
 
 
 def record_target(target_name: str) -> None:
@@ -165,13 +204,16 @@ def record_target(target_name: str) -> None:
     inspected = container(target_name, require_running=False)
     env = environment(inspected)
     if (env.get(GENERATION_KEY) != state['target_generation']
-            or (inspected['Config'].get('Labels') or {}).get(CONTRACT_LABEL) != '1'
+            or (inspected['Config'].get('Labels') or {}).get(CONTRACT_LABEL) not in ('1', '2')
             or list(db_target(env)) != state['database']):
         raise ValueError('Cannot identify the prepared candidate; preserve it for manual inspection')
     snapshot = identity(inspected)
     if 'target_identity' in state and snapshot != state['target_identity']:
         raise ValueError('Prepared candidate was replaced; preserve both containers')
-    state.update(target_identity=snapshot, target_container=target_name)
+    state.update(target_identity=snapshot, target_process_identity=identity(inspected, True), target_container=target_name)
+    # Even a rejected candidate keeps its immutable identity for explicit safe cleanup.
+    save_state(state)
+    operations().record_target(state, inspected)
     save_state(state)
 
 
@@ -184,8 +226,13 @@ def check_target(state: dict, target_name: str) -> dict:
     return inspected
 
 
-def cleanup(action: str) -> None:
+def cleanup(action: str, container_name: str | None = None) -> None:
     state = json.loads(STATE_FILE.read_text())
+    expected_name = state['target_container'] if action == 'cleanup-target' else state['active_container']
+    if container_name is not None and container_name != expected_name:
+        raise ValueError('Cleanup target does not match the recorded container')
+    if state.get('operations'):
+        return operations().cleanup(action, state)
     retiring_target = action == 'cleanup-target'
     if retiring_target:
         retired = check_target(state, state['target_container'])
@@ -252,16 +299,20 @@ def change(env: dict, expected: str | None, replacement: str | None, activation:
         COMMIT;""")
 
 
-def prepare(active_name: str, target_slot: str, allow_legacy: bool = False) -> None:
+def prepare(active_name: str, target_slot: str, allow_legacy: bool = False, probe_port: int = 443) -> None:
     if target_slot not in ('app-blue', 'app-green'):
         raise ValueError('Invalid deployment slot')
+    if (not active_name.endswith(('-app-blue', '-app-green'))
+            or active_name.endswith('-' + target_slot)):
+        raise ValueError('The candidate must use the opposite slot of the named active container')
     active = container(active_name)
     env = environment(active)
     state = read_state(env)
-    if state['enabled']:
+    version = (active['Config'].get('Labels') or {}).get(CONTRACT_LABEL)
+    if state['enabled'] and version != '2':
         raise ValueError('Competition is ON; this deployment path only supports OFF')
     active_generation = env.get(GENERATION_KEY) or None
-    labeled = (active['Config'].get('Labels') or {}).get(CONTRACT_LABEL) == '1'
+    labeled = version in ('1', '2')
     legacy = state['generation'] is not None and not active_generation and not labeled
     if active_generation:
         UUID(active_generation)
@@ -276,11 +327,21 @@ def prepare(active_name: str, target_slot: str, allow_legacy: bool = False) -> N
         raise ValueError('Control changed while preparing deployment')
     state.update(target_generation=str(uuid4()), database=list(db_target(env)),
                  active_container=active_name, target_slot=target_slot,
-                 legacy=legacy, active_identity=snapshot)
+                 legacy=legacy, active_identity=snapshot, probe_port=probe_port,
+                 active_contract=version, active_process_identity=identity(active, True),
+                 phase='PREPARED', operations=version == '2')
+    operations().prepare(state, active)
     descriptor = os.open(STATE_FILE, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(descriptor, 'w') as output:
         # UUIDs and DB identity only; never credentials. A stale journal requires manual inspection.
         json.dump(state, output)
+        output.flush()
+        os.fsync(output.fileno())
+    directory = os.open(str(STATE_FILE.parent), os.O_RDONLY)
+    try:
+        os.fsync(directory)
+    finally:
+        os.close(directory)
     values = {'PRESS_BLUE_GENERATION': '', 'PRESS_GREEN_GENERATION': ''}
     target_key = 'PRESS_BLUE_GENERATION' if target_slot == 'app-blue' else 'PRESS_GREEN_GENERATION'
     active_key = 'PRESS_GREEN_GENERATION' if target_slot == 'app-blue' else 'PRESS_BLUE_GENERATION'
@@ -294,6 +355,8 @@ def prepare(active_name: str, target_slot: str, allow_legacy: bool = False) -> N
 
 def transition(action: str, target_name: str) -> None:
     state = json.loads(STATE_FILE.read_text())
+    if state.get('operations'):
+        return operations().transition(action, target_name, state)
     legacy = state['legacy']
     old, new = state['generation'], state['target_generation']
     if action in ('handoff', 'restore'):
@@ -308,7 +371,7 @@ def transition(action: str, target_name: str) -> None:
     legacy_restore = action == 'restore' and legacy
     if expected is not None and not legacy_restore and env.get(GENERATION_KEY) != expected:
         raise ValueError('Target generation does not match the prepared instance')
-    if not legacy_restore and (action != 'restore' or expected is not None) and (inspected['Config'].get('Labels') or {}).get(CONTRACT_LABEL) != '1':
+    if not legacy_restore and (action != 'restore' or expected is not None) and (inspected['Config'].get('Labels') or {}).get(CONTRACT_LABEL) not in ('1', '2'):
         raise ValueError('Target image does not support generation fencing')
     if action != 'restore':
         snapshot = identity(inspected)
@@ -343,18 +406,37 @@ def transition(action: str, target_name: str) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=('prepare', 'record-target', 'handoff', 'restore', 'verify', 'cleanup-target', 'cleanup-active'))
+    parser.add_argument('action', choices=('prepare', 'record-target', 'handoff', 'restore', 'verify',
+        'cleanup-target', 'cleanup-active', 'close-active', 'open-target', 'open-active',
+        'emergency-stop', 'status', 'activate', 'stop', 'resume-off', 'reconcile-control', 'finalize'))
     parser.add_argument('container')
     parser.add_argument('target_slot', nargs='?')
     parser.add_argument('--allow-legacy', action='store_true', help='Explicit first migration of the verified running legacy owner')
+    parser.add_argument('--probe-port', type=int, default=443, help='Local HTTPS port, normally 443')
+    parser.add_argument('--expected-generation')
+    parser.add_argument('--expected-activation-date', help='Exact current date or null')
+    parser.add_argument('--activation-date', help=argparse.SUPPRESS)
     args = parser.parse_args()
+    lock = None
     try:
+        if args.action != 'status':
+            lock = open('.press-operations.lock', 'a')
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                raise ValueError('Another press operation is running; inspect before retrying')
+        if not 1 <= args.probe_port <= 65535:
+            raise ValueError('Invalid local HTTPS port')
         if args.action == 'prepare':
-            prepare(args.container, args.target_slot, args.allow_legacy)
+            prepare(args.container, args.target_slot, args.allow_legacy, args.probe_port)
         elif args.action == 'record-target':
             record_target(args.container)
         elif args.action.startswith('cleanup-'):
-            cleanup(args.action)
+            cleanup(args.action, args.container)
+        elif args.action in ('status', 'activate', 'stop', 'resume-off', 'reconcile-control'):
+            operations().control(args)
+        elif args.action in ('close-active', 'open-target', 'open-active', 'emergency-stop', 'finalize'):
+            operations().action(args.action, args.container)
         else:
             transition(args.action, args.container)
         return 0
@@ -364,6 +446,9 @@ def main() -> int:
     except (KeyError, OSError, subprocess.SubprocessError):
         print('Generation operation failed. Keep both containers; check DB and proxy state before retrying.', file=sys.stderr)
         return 1
+    finally:
+        if lock is not None:
+            lock.close()
 
 
 if __name__ == '__main__':

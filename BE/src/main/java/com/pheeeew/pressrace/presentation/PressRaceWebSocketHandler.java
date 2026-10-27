@@ -70,6 +70,7 @@ public class PressRaceWebSocketHandler extends AbstractWebSocketHandler {
     private final Map<UUID, WebSocketSession> currentSessions = new ConcurrentHashMap<>();
     private final Map<UUID, MessageBucket> messageBuckets = new HashMap<>();
     private final Object[] connectionLocks = new Object[128];
+    private final Object admissionMonitor = new Object();
 
     public PressRaceWebSocketHandler(PressRaceService service, PressRankingPublisher rankingPublisher) {
         this.service = service;
@@ -87,6 +88,19 @@ public class PressRaceWebSocketHandler extends AbstractWebSocketHandler {
     }
 
     void maintain(Instant now, long monotonicNow) {
+        if (service.admissionClosed()) {
+            synchronized (admissionMonitor) {
+                if (service.admissionClosed()) {
+                    sessions.values().forEach(session -> terminate(session,
+                            CloseStatus.SERVICE_RESTARTED.withReason("SERVER_DRAINING")));
+                    if (sessions.isEmpty() && connections.isEmpty() && snapshotSenders.isEmpty()
+                            && currentSessions.isEmpty() && closing.isEmpty()) {
+                        service.acknowledgeAdmissionClosed();
+                    }
+                    return;
+                }
+            }
+        }
         sessions.forEach((id, session) -> {
             PressConnection connection = connections.get(id);
             PressSnapshotSender sender = snapshotSenders.get(id);
@@ -108,9 +122,6 @@ public class PressRaceWebSocketHandler extends AbstractWebSocketHandler {
             session.close(CloseStatus.POLICY_VIOLATION);
             return;
         }
-        UUID deviceId = UUID.fromString(authentication.getToken().getSubject());
-        PressConnection connection = PressConnection.of(deviceId, service.serverGeneration(), UUID.randomUUID(),
-                authentication.getToken().getExpiresAt());
         session.setTextMessageSizeLimit(MAX_MESSAGE_BYTES);
         if (session instanceof StandardWebSocketSession standard) {
             jakarta.websocket.Session nativeSession = standard.getNativeSession();
@@ -119,24 +130,52 @@ public class PressRaceWebSocketHandler extends AbstractWebSocketHandler {
             nativeSession.getUserProperties().put("org.apache.tomcat.websocket.SESSION_CLOSE_TIMEOUT", 2000L);
             nativeSession.getUserProperties().put("org.apache.tomcat.websocket.ABNORMAL_SESSION_CLOSE_SEND_TIMEOUT", 50L);
         }
+        String admissionRevision;
+        try {
+            admissionRevision = service.admissionRevision();
+        } catch (PressRaceException exception) {
+            // 세대 조회도 인증 오류 봉투를 사용한다. 등록되지 않은 닫힘 연결에는 DB 쓰기를 하지 않는다.
+            PressConnection rejected = PressConnection.of(UUID.fromString(authentication.getToken().getSubject()),
+                    service.serverGeneration(), UUID.randomUUID(), authentication.getToken().getExpiresAt());
+            rejectUnregistered(session, rejected, exception.code());
+            return;
+        }
+        UUID deviceId = UUID.fromString(authentication.getToken().getSubject());
+        PressConnection connection = PressConnection.of(deviceId, service.serverGeneration(), UUID.randomUUID(),
+                authentication.getToken().getExpiresAt());
         PressSnapshotSender sender = new PressSnapshotSender(session, snapshotExecutor,
                 snapshot -> sendSnapshot(session, connection, snapshot),
                 failure -> terminate(session, CloseStatus.POLICY_VIOLATION.withReason(failureCode(failure))));
         // 거절 연결도 결과/제어 송신과 같은 제한을 사용한다. 현재 기기 연결은 DB 승인 뒤에만 교체한다.
-        connections.put(session.getId(), connection);
-        snapshotSenders.put(session.getId(), sender);
-        sessions.put(session.getId(), session);
+        synchronized (admissionMonitor) {
+            try {
+                service.requireAdmissionRevision(admissionRevision);
+            } catch (PressRaceException exception) {
+                rejectUnregistered(session, connection, exception.code());
+                return;
+            }
+            connections.put(session.getId(), connection);
+            snapshotSenders.put(session.getId(), sender);
+            sessions.put(session.getId(), session);
+        }
         synchronized (connectionLocks[Math.floorMod(deviceId.hashCode(), connectionLocks.length)]) {
             try {
                 requireUnexpired(connection);
-                service.connect(connection);
-                WebSocketSession previous = currentSessions.put(deviceId, session);
-                if (previous != null && previous != session) {
-                    terminate(previous, CloseStatus.POLICY_VIOLATION.withReason("CONNECTION_REPLACED"));
+                if (recoveryOnly(session)) {
+                    service.connectRecovery(connection, admissionRevision);
+                } else {
+                    service.connect(connection, admissionRevision);
                 }
-                // DB 교체가 커밋되는 동안 새 소켓이 종료됐어도 구 소켓 자격을 되살리지 않는다.
-                if (!sessions.containsKey(session.getId())) {
-                    currentSessions.remove(deviceId, session);
+                synchronized (admissionMonitor) {
+                    service.requireAdmissionRevision(admissionRevision);
+                    // DB 교체가 커밋되는 동안 종료된 연결을 다시 등록하지 않는다.
+                    if (!sessions.containsKey(session.getId())) {
+                        return;
+                    }
+                    WebSocketSession previous = currentSessions.put(deviceId, session);
+                    if (previous != null && previous != session) {
+                        terminate(previous, CloseStatus.POLICY_VIOLATION.withReason("CONNECTION_REPLACED"));
+                    }
                 }
             } catch (PressRaceException exception) {
                 rejectConnection(session, connection, exception);
@@ -155,6 +194,25 @@ public class PressRaceWebSocketHandler extends AbstractWebSocketHandler {
             return failure.getMessage();
         }
         return "SNAPSHOT_SEND_FAILED";
+    }
+
+    private void rejectUnregistered(WebSocketSession session, PressConnection connection, String code) {
+        // 등록 잠금·감시 스레드에서 송신/close I/O를 하지 않는다. native 송신·close 상한은 미리 설정한다.
+        snapshotExecutor.execute(() -> {
+            try {
+                if (session.isOpen()) {
+                    session.sendMessage(new TextMessage(json.writeValueAsString(errorPayload(connection, code))));
+                }
+            } catch (IOException ignored) {
+                // 오류 봉투 송신 실패도 아래에서 연결을 종료한다.
+            } finally {
+                try {
+                    session.close(CloseStatus.SERVICE_RESTARTED.withReason(code));
+                } catch (IOException ignored) {
+                    // 등록되지 않은 거절 연결에는 입력 자격이 없다.
+                }
+            }
+        });
     }
 
     private void rejectConnection(WebSocketSession session, PressConnection connection, PressRaceException exception) {
@@ -215,7 +273,11 @@ public class PressRaceWebSocketHandler extends AbstractWebSocketHandler {
             if (!root.path("v").isIntegralNumber() || !root.path("v").canConvertToInt() || root.path("v").intValue() != 1) {
                 throw new InvalidMessage("UNSUPPORTED_VERSION");
             }
-            switch (text(root, "type")) {
+            String type = text(root, "type");
+            if (recoveryOnly(session) && !Set.of("session.init", "press.status").contains(type)) {
+                throw new InvalidMessage("RECOVERY_ONLY");
+            }
+            switch (type) {
                 case "session.init" -> initialize(session, connection, root);
                 case "press.submit" -> submit(session, connection, root);
                 case "press.status" -> status(session, connection, root);
@@ -315,8 +377,13 @@ public class PressRaceWebSocketHandler extends AbstractWebSocketHandler {
             inputs.add(PendingPress.of(requestId, uuid(input, "connectionGeneration"), counts(input)));
         }
         received(session);
-        PressSessionResult result = service.initialize(connection, inputs);
-        Map<String, Object> response = envelope(connection, "session.ready");
+        boolean recoveryOnly = recoveryOnly(session);
+        PressSessionResult result = recoveryOnly ? service.initializeRecovery(connection, inputs)
+                : service.initialize(connection, inputs);
+        Map<String, Object> response = envelope(connection, recoveryOnly ? "session.recovered" : "session.ready");
+        if (recoveryOnly) {
+            response.put("inputEnabled", false);
+        }
         response.put("counts", result.counts());
         response.put("results", result.results().stream().map(this::resultPayload).toList());
         response.put("date", result.date().toString());
@@ -326,6 +393,10 @@ public class PressRaceWebSocketHandler extends AbstractWebSocketHandler {
             return;
         }
         TextMessage ready = new TextMessage(json.writeValueAsString(response));
+        if (recoveryOnly) {
+            sender.offerResult(() -> write(session, connection, ready), ready.getPayload().getBytes(StandardCharsets.UTF_8).length);
+            return;
+        }
         sender.offerReady(() -> write(session, connection, ready), ready.getPayload().getBytes(StandardCharsets.UTF_8).length);
         // 종료와 등록이 경합해도 종료된 소켓의 구독을 남기지 않는다.
         if (!sessions.containsKey(session.getId())) {
@@ -336,6 +407,16 @@ public class PressRaceWebSocketHandler extends AbstractWebSocketHandler {
         if (!sessions.containsKey(session.getId())) {
             rankingPublisher.unsubscribe(session.getId());
         }
+    }
+
+    private boolean recoveryOnly(WebSocketSession session) {
+        return session.getUri() != null && "/api/v1/press-race/recovery".equals(session.getUri().getPath());
+    }
+
+    private Map<String, Object> errorPayload(PressConnection connection, String code) {
+        Map<String, Object> response = envelope(connection, "protocol.error");
+        response.put("code", code);
+        return response;
     }
 
     private void changeView(WebSocketSession session, JsonNode root) {
