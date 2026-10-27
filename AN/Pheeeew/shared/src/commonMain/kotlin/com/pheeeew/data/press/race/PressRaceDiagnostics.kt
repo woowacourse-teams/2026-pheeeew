@@ -11,6 +11,11 @@ internal enum class PressRaceDiagnostic {
     RetryScheduled,
     RecoveryOnlySettled,
     Inactive,
+    ViewHidden,
+    FeatureDisabled,
+    LifecyclePaused,
+    LifecycleStopped,
+    BindingDisposed,
 }
 
 internal fun interface PressRaceDiagnostics {

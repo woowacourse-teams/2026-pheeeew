@@ -187,6 +187,9 @@ internal class PressRaceSession(
         }
     }
 
+    /** Visibility reasons are fixed metadata; recording cannot change session ownership. */
+    fun noteVisibility(event: PressRaceDiagnostic) = trace(event)
+
     /** null means inactive. Repeated requests for an active view are idempotent; failures retry only explicitly. */
     fun setView(view: PressRaceView?) {
         if (!closed.value) events.trySend(Event.Target(view))
