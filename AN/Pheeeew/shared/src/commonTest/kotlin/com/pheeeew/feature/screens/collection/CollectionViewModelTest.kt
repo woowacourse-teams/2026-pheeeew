@@ -42,10 +42,12 @@ class CollectionViewModelTest {
                 viewModel.onSessionChanged(1L, "오늘도히유")
                 runCurrent()
                 assertTrue(viewModel.uiState.value.isRefreshRequestActive)
+                val scrollRequestId = viewModel.uiState.value.scrollToTopRequestId
 
                 viewModel.claim(EmotionType.EXHAUSTED)
                 runCurrent()
 
+                assertEquals(scrollRequestId + 1, viewModel.uiState.value.scrollToTopRequestId)
                 assertEquals(1, repository.claimRequests)
                 assertEquals(2, repository.historyRequests)
                 assertEquals(
@@ -94,8 +96,42 @@ class CollectionViewModelTest {
             }
         }
 
+    @Test
+    fun `claim resets scroll only after the new history is applied`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            val store = ViewModelStore()
+            try {
+                val newHistory = CompletableDeferred<CollectionResult<CollectionHistory>>()
+                val repository = FakeCollectionRepository(secondHistory = newHistory)
+                val viewModel = CollectionViewModel(repository)
+                store.put("collection", viewModel)
+                viewModel.onSessionChanged(1L, "오늘도히유")
+                runCurrent()
+                val scrollRequestId = viewModel.uiState.value.scrollToTopRequestId
+
+                viewModel.claim(EmotionType.EXHAUSTED)
+                runCurrent()
+                assertEquals(scrollRequestId, viewModel.uiState.value.scrollToTopRequestId)
+
+                newHistory.complete(CollectionResult.Success(repository.history("new-card")))
+                runCurrent()
+                assertEquals(
+                    listOf("new-card"),
+                    viewModel.uiState.value.cards
+                        .map { it.id },
+                )
+                assertEquals(scrollRequestId + 1, viewModel.uiState.value.scrollToTopRequestId)
+            } finally {
+                store.clear()
+                runCurrent()
+                Dispatchers.resetMain()
+            }
+        }
+
     private class FakeCollectionRepository(
         private val firstHistory: CompletableDeferred<CollectionResult<CollectionHistory>>? = null,
+        private val secondHistory: CompletableDeferred<CollectionResult<CollectionHistory>>? = null,
     ) : CollectionRepository {
         var historyRequests = 0
             private set
@@ -115,6 +151,7 @@ class CollectionViewModelTest {
         override suspend fun findHistory(query: CollectionHistoryQuery): CollectionResult<CollectionHistory> {
             historyRequests++
             if (historyRequests == 1 && firstHistory != null) return firstHistory.await()
+            if (historyRequests == 2 && secondHistory != null) return secondHistory.await()
             return CollectionResult.Success(history("claimed-card"))
         }
 
