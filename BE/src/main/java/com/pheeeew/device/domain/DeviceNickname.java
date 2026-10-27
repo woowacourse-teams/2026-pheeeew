@@ -10,7 +10,7 @@ public record DeviceNickname(String value) {
     // korean-nickname-generator 0.1.1 기본 사전: 수식어 6자 + 공백 1자 + 캐릭터 3자.
     public static final int MAX_LENGTH = 10;
 
-    private static final Pattern ALLOWED_CHARACTERS = Pattern.compile("[가-힣ㄱ-ㅎㅏ-ㅣA-Za-z ]+");
+    private static final Pattern ALLOWED_CHARACTERS = Pattern.compile("[가-힣ㄱ-ㅎㅏ-ㅣA-Za-z0-9 ]+");
 
     public DeviceNickname {
         if (value == null || !ALLOWED_CHARACTERS.matcher(value).matches()) {

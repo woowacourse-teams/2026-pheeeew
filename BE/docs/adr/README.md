@@ -125,6 +125,7 @@ Accepted (YYYY-MM-DD)
 | [0039](0039-use-national-region-map-summaries.md) | v2 시도·시군구 전국 요약 | bbox 검증과 요청 계약을 유지하며 SIDO·SIGUNGU는 전국 집계, EMD는 기존 공간 조회로 처리해요 |
 | [0040](0040-cache-default-emotion-map-queries.md) | 기본 지도 캐시와 쓰기·재집계 직렬화 | DB 커밋 후 기여분을 반영하고 쓰기·재집계를 직렬화해요. 기본 요약·경량 핀을 재사용하며 실패 시 SQL로 대체해요 |
 | [0041](0041-use-stable-ties-and-device-parallel-press-storage.md) | 실시간 프레스의 안정적 동점 표시와 기기별 병렬 저장 | 도달 우선 표시·전역 번호를 제거하고 공통 공유 잠금과 기기별 배타 잠금, 전체 재조회로 정합성을 지켜요 |
+| [0042](0042-fence-press-admission-during-deployment.md) | 배포 입력 차단과 경쟁 공개 분리 | 재시작에 유지되는 차단과 DB 울타리로 전환하고, 제한된 ON 유지 복귀와 OFF 복구 전용 정산을 구분해요 |
 
 ## AI 사용
 

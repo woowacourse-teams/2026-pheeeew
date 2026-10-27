@@ -196,6 +196,7 @@ jobs:
           ssh -F ~/.ssh/config target 'set -eu; cd /opt/pheeeew; if [ -f compose.yml ]; then cp compose.yml compose.yml.prev; fi'
           scp -F ~/.ssh/config BE/docker/compose.dev.yml target:/opt/pheeeew/compose.yml
           scp -F ~/.ssh/config BE/docker/press-generation.py target:/opt/pheeeew/press-generation.py
+          scp -F ~/.ssh/config BE/docker/press-operations.py target:/opt/pheeeew/press-operations.py
           scp -F ~/.ssh/config BE/docker/compose.nginx.dev.yml target:/opt/pheeeew/compose.nginx.yml
           scp -F ~/.ssh/config BE/docker/compose.postgres.dev.yml target:/opt/pheeeew/compose.postgres.yml
           scp -F ~/.ssh/config BE/docker/nginx/api-dev.conf target:/opt/pheeeew/nginx/api-dev.conf
@@ -443,6 +444,10 @@ jobs:
               report_mismatch
               return 1
             fi
+            if ! python3 press-generation.py open-active "pheeeew-dev-$ACTIVE"; then
+              report_mismatch
+              return 1
+            fi
             echo "$ACTIVE 로 복구했고 정상 응답을 확인했습니다."
             if wait_drained; then
               echo "$TARGET 으로 향하던 요청이 모두 끝났습니다."
@@ -472,7 +477,7 @@ jobs:
             echo "미완료 전환 기록이 있습니다. DB와 프록시를 수동 확인하기 전에는 재배포하지 않습니다."
             exit 1
           fi
-          # OFF-only: booting a candidate never changes DB ownership or competition activation.
+          # Booting a candidate never changes DB ownership or competition activation.
           wait_served "$ACTIVE" || { echo "현재 트래픽과 전환 파일이 다릅니다. 배포하지 않습니다."; exit 1; }
           if [ "${ALLOW_LEGACY_GENERATION:-false}" = true ]; then
             python3 press-generation.py prepare "pheeeew-dev-$ACTIVE" "$TARGET" --allow-legacy
@@ -487,7 +492,7 @@ jobs:
             exit 1
           fi
           contract=$(docker image inspect "$APP_IMAGE" --format '{{index .Config.Labels "com.pheeeew.press-generation-contract"}}') || contract=
-          if [ "$contract" != 1 ]; then
+          if [ "$contract" != 1 ] && [ "$contract" != 2 ]; then
             echo "서버 세대 계약을 지원하지 않는 이미지입니다. 별도의 구버전 복귀 절차가 필요합니다."
             rm -f .press-deploy.json
             exit 1
@@ -531,6 +536,11 @@ jobs:
             rollback || true
             exit 1
           fi
+          if ! python3 press-generation.py close-active "pheeeew-dev-$ACTIVE"; then
+            echo "기존 WS 연결 정리를 확인하지 못했습니다. 검증된 원본 복귀만 시도합니다."
+            rollback || true
+            exit 1
+          fi
           printf 'set $upstream_app %s;\n' "$TARGET" > "$POINTER"
 
           if ! $NGINX exec -T nginx nginx -t </dev/null; then
@@ -559,6 +569,15 @@ jobs:
             exit 1
           fi
 
+          if ! python3 press-generation.py open-target "pheeeew-dev-$TARGET"; then
+            echo "입력 개방을 확인하지 못했습니다. 개방 시도 전인 경우에만 원본 복귀를 허용합니다."
+            if ! rollback; then
+              python3 press-generation.py emergency-stop "pheeeew-dev-$TARGET" || true
+              report_mismatch
+            fi
+            exit 1
+          fi
+
           if wait_drained; then
             echo "이전 요청이 모두 끝났습니다."
           else
@@ -566,9 +585,7 @@ jobs:
             echo "   종료 유예 30초 안에서 앱이 남은 요청을 스스로 마무리합니다."
           fi
           python3 press-generation.py cleanup-active "pheeeew-dev-$ACTIVE" || { report_mismatch; exit 1; }
-          rm -f .press-deploy.json "$BACKUP"
-
-          echo "배포 성공: $APP_IMAGE ($TARGET)"
+          echo "앱 전환 완료: $APP_IMAGE ($TARGET). 모니터링 배포 후 마지막 확인을 기다립니다."
           docker image prune -f
           REMOTE
 
@@ -588,3 +605,19 @@ jobs:
       - name: Alloy 임시 환경 파일 삭제
         if: always()
         run: rm -f "$RUNNER_TEMP/pheeeew-alloy.env"
+
+      - name: 배포 마무리
+        run: |
+          set -eu
+          ssh -F ~/.ssh/config target 'bash -s' <<'REMOTE'
+          set -eu
+          cd /opt/pheeeew
+          TARGET_CONTAINER=$(python3 -c 'import json; print(json.load(open(".press-deploy.json"))["target_container"])')
+          if ! python3 press-generation.py finalize "$TARGET_CONTAINER"; then
+            echo "배포 마무리를 확인하지 못했습니다. 전환 기록과 현재 서버를 보존합니다."
+            echo "확인 없이 배포나 활성화를 재실행하지 마세요."
+            exit 1
+          fi
+          rm -f .press-deploy.json nginx/upstream/active.conf.bak
+          echo "개발 배포를 마쳤습니다."
+          REMOTE

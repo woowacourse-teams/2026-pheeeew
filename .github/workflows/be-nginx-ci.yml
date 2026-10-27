@@ -9,6 +9,8 @@ on:
       - 'BE/docker/compose.dev.yml'
       - 'BE/docker/test-deploy-switch.py'
       - 'BE/docker/press-generation.py'
+      - 'BE/docker/test-press-generation.py'
+      - 'BE/docker/press-operations.py'
       - 'BE/docker/Dockerfile'
       - '.github/workflows/be-dev-deploy.yml'
       - '.github/workflows/be-nginx-ci.yml'
@@ -42,4 +44,39 @@ jobs:
       - name: 전환과 롤백 분기 검증
         run: |
           pip install --quiet pyyaml
-          python3 BE/docker/test-deploy-switch.py
+          python3 BE/docker/test-press-generation.py
+          python3 BE/docker/test-deploy-switch.py --ci
+
+  press-proxy:
+    name: 실제 Spring 프레스 운영 전환 검사
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: 로컬 검증용 앱 이미지 빌드
+        run: docker build -t pheeeew-press-operations-test -f BE/docker/Dockerfile BE
+
+      - name: 인증 WS와 PostgreSQL·nginx 전환 검증
+        working-directory: BE
+        env:
+          PHEEEEW_PRESS_OPERATIONS_IMAGE: pheeeew-press-operations-test
+        # 재시작 후 HTTP timeout을 포함한 별도 시나리오는 보류 중이다.
+        run: ./gradlew :test --tests '*PressOperationsProxyIntegrationTest.정상_ON_배포는*' --no-daemon
+
+      - name: 프레스 운영 전환 테스트 리포트
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: press-proxy-results
+          path: BE/build/reports/tests/test
+          retention-days: 7

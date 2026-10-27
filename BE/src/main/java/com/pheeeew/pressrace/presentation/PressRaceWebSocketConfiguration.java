@@ -25,7 +25,7 @@ public class PressRaceWebSocketConfiguration implements WebSocketConfigurer {
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        registry.addHandler(handler, "/api/v1/press-race").setAllowedOrigins(allowedOrigins);
+        registry.addHandler(handler, "/api/v1/press-race", "/api/v1/press-race/recovery").setAllowedOrigins(allowedOrigins);
     }
 
     @Bean
