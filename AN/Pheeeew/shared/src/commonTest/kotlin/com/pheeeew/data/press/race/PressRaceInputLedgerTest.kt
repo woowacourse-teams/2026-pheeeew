@@ -77,6 +77,13 @@ class PressRaceInputLedgerTest {
         assertEquals(1, ledger.batches.size)
     }
 
+    @Test fun completeCommandAllowsExactlySixteenKiB() {
+        val emptySize = batch("a").bytes
+        val exact = batch("a".repeat(16 * 1024 - emptySize + 1))
+        assertEquals(16 * 1024, exact.bytes)
+        assertFailsWith<IllegalArgumentException> { batch(exact.input.requestId + "a") }
+    }
+
     @Test fun protocolAllowsOneHundredOfOneEmotionButRejectsEmptyAndOversize() {
         assertTrue(batch().text.contains("100"))
         assertFailsWith<IllegalArgumentException> { batch(count = 101) }

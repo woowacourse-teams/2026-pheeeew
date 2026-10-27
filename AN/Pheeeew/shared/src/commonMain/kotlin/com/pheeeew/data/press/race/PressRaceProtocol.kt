@@ -132,11 +132,19 @@ internal object PressRaceProtocol {
         pending: List<PressRacePendingInput> = emptyList(),
     ): String {
         require(pending.size <= 20)
-        return json.encodeToString(Init(view, pending = pending))
+        return bounded(json.encodeToString(Init(view, pending = pending)))
     }
 
     fun submit(input: PressRacePendingInput): String {
         require(input.requestId.isNotBlank() && input.connectionGeneration.isNotBlank())
+        require(
+            input.counts.keys.all { key ->
+                com.pheeeew.domain.model.emotion.EmotionState.entries.any {
+                    it.name ==
+                        key
+                }
+            },
+        )
         require(input.counts.isNotEmpty() && input.counts.values.all { it > 0 })
         require(input.counts.values.sumOf { it.toLong() } in 1L..100L)
         return bounded(json.encodeToString(Submit(input.requestId, input.connectionGeneration, input.counts)))
