@@ -5,6 +5,7 @@ import com.pheeeew.core.network.AccessTokenProvider
 import com.pheeeew.core.network.RecoverableAccessTokenProvider
 import com.pheeeew.data.press.race.transport.PressRaceClose
 import com.pheeeew.data.press.race.transport.PressRaceConnection
+import com.pheeeew.data.press.race.transport.PressRaceEndpoint
 import com.pheeeew.data.press.race.transport.PressRaceTransport
 import com.pheeeew.data.press.race.transport.PressRaceUpgradeException
 import kotlinx.coroutines.CompletableDeferred
@@ -612,7 +613,10 @@ private class FakeTransport(
     var token: AccessToken? = null
     val connections = mutableListOf<FakeConnection>()
 
-    override suspend fun connect(accessToken: AccessToken): PressRaceConnection {
+    override suspend fun connect(
+        accessToken: AccessToken,
+        endpoint: PressRaceEndpoint,
+    ): PressRaceConnection {
         attempts++
         token = accessToken
         failure?.let { throw it }

@@ -234,6 +234,10 @@ internal class PressRaceSession(
     private suspend fun message(text: String) {
         try {
             when (val message = PressRaceProtocol.decode(text)) {
+                is PressRaceMessage.Recovered -> {
+                    error("Recovery-only connection is not active")
+                }
+
                 is PressRaceMessage.Ready -> {
                     val ready = message.value
                     require(ready.serverGeneration.isNotBlank() && ready.connectionGeneration.isNotBlank())

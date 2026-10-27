@@ -35,7 +35,7 @@ internal class KtorPressRaceTransport(
     private val engine: HttpClientEngine,
     config: ApiConfig,
 ) : PressRaceTransport {
-    private val endpoint = pressRaceUrl(config)
+    private val endpoints = PressRaceEndpoint.entries.associateWith { pressRaceUrl(config, it) }
     private val connectTimeoutMillis = config.timeouts.connectMillis
     private val client =
         HttpClient(engine) {
@@ -52,14 +52,17 @@ internal class KtorPressRaceTransport(
     private val work = SupervisorJob(client.coroutineContext[Job])
     private val scope = CoroutineScope(client.coroutineContext + work)
 
-    override suspend fun connect(accessToken: AccessToken): PressRaceConnection {
+    override suspend fun connect(
+        accessToken: AccessToken,
+        endpoint: PressRaceEndpoint,
+    ): PressRaceConnection {
         check(work.isActive) { "Press race transport is closed" }
         val lifetime = Job(work)
         val opened = CompletableDeferred<PressRaceConnection>(lifetime)
         CoroutineScope(scope.coroutineContext + lifetime).launch {
             try {
                 client.webSocket(request = {
-                    url.takeFrom(endpoint)
+                    url.takeFrom(endpoints.getValue(endpoint))
                     header(HttpHeaders.Authorization, "Bearer ${accessToken.value}")
                 }) {
                     opened.complete(KtorPressRaceConnection(this, lifetime))
