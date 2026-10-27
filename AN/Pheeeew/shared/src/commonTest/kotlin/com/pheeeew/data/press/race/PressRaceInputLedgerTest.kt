@@ -77,6 +77,17 @@ class PressRaceInputLedgerTest {
         assertEquals(1, ledger.batches.size)
     }
 
+    @Test fun totalOverflowDoesNotPartiallyCommitSettlement() {
+        val ledger = PressRaceInputLedger()
+        ledger.ready(ready().copy(counts = mapOf("EXHAUSTED" to Long.MAX_VALUE)))
+        ledger.add(batch(count = 1))
+        assertFailsWith<IllegalArgumentException> {
+            ledger.settle(PressRaceInputResult("id", "APPLIED", "2026-10-27", mapOf("ANGRY" to 1L)))
+        }
+        assertEquals(mapOf("EXHAUSTED" to Long.MAX_VALUE), ledger.confirmed)
+        assertEquals(1, ledger.batches.size)
+    }
+
     @Test fun completeCommandAllowsExactlySixteenKiB() {
         val emptySize = batch("a").bytes
         val exact = batch("a".repeat(16 * 1024 - emptySize + 1))

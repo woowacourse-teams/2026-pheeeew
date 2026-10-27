@@ -79,7 +79,7 @@ internal class PressRaceInputLedger {
         validateResult(result)
         if (result.status != "APPLIED" && result.status != "REJECTED") return false
         if (result.status == "APPLIED" && !includedInBaseline && result.appliedDate == date) {
-            confirmed =
+            val updated =
                 confirmed.toMutableMap().apply {
                     batch.input.counts.forEach { (emotion, count) ->
                         val previous = get(emotion) ?: 0L
@@ -87,6 +87,8 @@ internal class PressRaceInputLedger {
                         put(emotion, previous + count)
                     }
                 }
+            validateCounts(updated)
+            confirmed = updated.toMap()
         }
         entries.remove(result.requestId)
         return true
