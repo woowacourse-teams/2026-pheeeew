@@ -1,5 +1,6 @@
 package com.pheeeew.feature.screens.press
 
+import com.pheeeew.data.press.race.PressRaceFrameKey
 import com.pheeeew.domain.model.press.AllDailyPressSnapshot
 import com.pheeeew.domain.model.press.MyDailyPressSnapshot
 import com.pheeeew.feature.emotion.model.EmotionKind
@@ -11,6 +12,7 @@ internal data class PressUiState(
     val allToday: AllDailyPressSnapshot? = null,
     val isLoadingMy: Boolean = true,
     val isLoadingAll: Boolean = true,
+    val frameKey: PressRaceFrameKey? = null,
     val isSending: Boolean = false,
     val isInputEnabled: Boolean = true,
     val isOutcomeUnknown: Boolean = false,

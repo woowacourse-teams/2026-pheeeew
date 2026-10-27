@@ -15,6 +15,7 @@ import com.pheeeew.data.local.device.DeviceCredentialStorage
 import com.pheeeew.data.local.mapfilter.InMemoryMapFilterSettingsRepository
 import com.pheeeew.data.press.race.PressRaceDiagnostics
 import com.pheeeew.data.press.race.PressRaceInputCoordinator
+import com.pheeeew.data.press.race.PressRaceMeasurements
 import com.pheeeew.data.press.race.PressRaceRankingStore
 import com.pheeeew.data.press.race.PressRaceRankings
 import com.pheeeew.data.press.race.PressRaceSession
@@ -211,9 +212,10 @@ internal interface ApiBindings {
         connectivity: ConnectivityObserver,
         build: DeviceSessionBuildConfig,
         race: PressRaceSession,
+        measurements: PressRaceMeasurements,
     ): PressRepository =
         if (build.pressInputMode == PressInputMode.WEBSOCKET_DEVELOPMENT) {
-            PressRaceInputCoordinator(race, scope)
+            PressRaceInputCoordinator(race, scope, measurements = measurements)
         } else {
             PressRepositoryImpl(
                 statistics,
@@ -226,6 +228,19 @@ internal interface ApiBindings {
 
     @Provides
     @SingleIn(AppScope::class)
+    fun providePressRaceMeasurements(build: DeviceSessionBuildConfig): PressRaceMeasurements =
+        PressRaceMeasurements(
+            build.isDebug && build.pressInputMode == PressInputMode.WEBSOCKET_DEVELOPMENT,
+            sink = { sample ->
+                println(
+                    "[PressRaceMeasure] kind=${sample.kind} sample=${sample.sample} " +
+                        "ms=${sample.millis} presses=${sample.presses} outcome=${sample.outcome}",
+                )
+            },
+        )
+
+    @Provides
+    @SingleIn(AppScope::class)
     fun providePressRaceTransport(config: ApiConfig): PressRaceTransport = createPlatformPressRaceTransport(config)
 
     @Provides
@@ -235,11 +250,13 @@ internal interface ApiBindings {
         session: DeviceSessionManager,
         @SessionWork scope: CoroutineScope,
         build: DeviceSessionBuildConfig,
+        measurements: PressRaceMeasurements,
     ): PressRaceSession =
         PressRaceSession(
             transport,
             session,
             scope,
+            measurements = measurements,
             diagnostics =
                 PressRaceDiagnostics { event, connection ->
                     if (build.isDebug && build.pressInputMode == PressInputMode.WEBSOCKET_DEVELOPMENT) {

@@ -31,7 +31,115 @@ class PressRaceRecoverySessionTest {
     private fun TestScope.session(
         transport: RecoveryTransport,
         tokens: RecoveryTokens = RecoveryTokens(),
-    ) = PressRaceSession(transport, tokens, backgroundScope, PressRaceReconnectPolicy({ 0.0 }))
+    ) = PressRaceSession(
+        transport,
+        tokens,
+        backgroundScope,
+        PressRaceReconnectPolicy({ 0.0 }),
+        noticeClock = { testScheduler.currentTime },
+    )
+
+    @Test
+    fun failureBlocksInputAndNoticeBeforeSlowSocketCloseFinishes() =
+        runTest {
+            val transport = RecoveryTransport().apply { closeGate = CompletableDeferred() }
+            val session = session(transport)
+            session.setView(PressRaceView.PRESS)
+            runCurrent()
+            val socket = transport.sockets.single()
+            socket.incoming.send(baseline(results = "[]"))
+            socket.incoming.send(rank())
+            socket.incoming.send(rank(version = "2", baseline = false).replace("\"passed\":0", "\"passed\":1"))
+            runCurrent()
+            assertTrue(session.state.value.notice != null)
+            socket.finish(null)
+            runCurrent()
+            assertTrue(socket.closed)
+            assertEquals(PressRacePhase.Failed, session.state.value.phase)
+            assertEquals(null, session.state.value.ready)
+            assertEquals(null, session.state.value.notice)
+            assertTrue(session.state.value.isRecovering)
+            transport.closeGate!!.complete(Unit)
+            runCurrent()
+            session.close()
+        }
+
+    @Test
+    fun latestPositiveSurvivesZeroConflationAndOldExpiryCannotClearReplacement() =
+        runTest {
+            val transport = RecoveryTransport()
+            val session = session(transport)
+            session.setView(PressRaceView.PRESS)
+            runCurrent()
+            val socket = transport.sockets.single()
+            socket.incoming.send(baseline(results = "[]"))
+            socket.incoming.send(rank())
+            runCurrent()
+
+            fun crossing(version: String) =
+                rank(version = version, baseline = false)
+                    .replace("\"passed\":0,\"passedBy\":0", "\"passed\":2,\"passedBy\":3")
+            socket.incoming.send(crossing("2"))
+            socket.incoming.send(rank(version = "3", baseline = false))
+            runCurrent()
+            val first = session.state.value.notice!!
+            assertEquals(2L, first.passed)
+            assertEquals(3L, first.passedBy)
+            assertEquals(
+                "3",
+                session.state.value.snapshot
+                    ?.snapshotVersion,
+            )
+            advanceTimeBy(1_999)
+            runCurrent()
+            assertEquals(first, session.state.value.notice)
+            socket.incoming.send(crossing("4"))
+            runCurrent()
+            val second = session.state.value.notice!!
+            assertTrue(second.id > first.id)
+            advanceTimeBy(1)
+            runCurrent()
+            assertEquals(second, session.state.value.notice)
+            advanceTimeBy(1_999)
+            runCurrent()
+            assertEquals(null, session.state.value.notice)
+            session.close()
+        }
+
+    @Test
+    fun alertClearsOnViewRefreshAndBackgroundAndDoesNotSurviveReconnection() =
+        runTest {
+            val transport = RecoveryTransport()
+            val session = session(transport)
+            session.setView(PressRaceView.PRESS)
+            runCurrent()
+            val socket = transport.sockets.single()
+            socket.incoming.send(baseline(results = "[]"))
+            socket.incoming.send(rank())
+            socket.incoming.send(rank(version = "2", baseline = false).replace("\"passed\":0", "\"passed\":1"))
+            runCurrent()
+            assertTrue(session.state.value.notice != null)
+            session.refresh(PressRaceView.PRESS)
+            runCurrent()
+            assertEquals(null, session.state.value.notice)
+            socket.incoming.send(rank(version = "3"))
+            socket.incoming.send(rank(version = "4", baseline = false).replace("\"passed\":0", "\"passed\":1"))
+            runCurrent()
+            assertTrue(session.state.value.notice != null)
+            session.setView(PressRaceView.ALL)
+            runCurrent()
+            assertEquals(null, session.state.value.notice)
+            session.setView(null)
+            runCurrent()
+            session.setView(PressRaceView.PRESS)
+            runCurrent()
+            val current = transport.sockets.last()
+            current.incoming.send(baseline(results = "[]"))
+            current.incoming.send(rank())
+            runCurrent()
+            assertEquals(null, session.state.value.notice)
+            session.close()
+        }
 
     @Test
     fun lostAckReconnectionSettlesOriginalInputWithoutRepeatingTheOptimisticCount() =
@@ -428,6 +536,7 @@ private class RecoveryTokens : RecoverableAccessTokenProvider {
 }
 
 private class RecoveryTransport : PressRaceTransport {
+    var closeGate: CompletableDeferred<Unit>? = null
     var failure: Exception? = null
     val sockets = mutableListOf<RecoverySocket>()
     val endpoints = mutableListOf<PressRaceEndpoint>()
@@ -440,7 +549,7 @@ private class RecoveryTransport : PressRaceTransport {
         endpoints += endpoint
         tokens += accessToken
         failure?.let { throw it }
-        return RecoverySocket().also { sockets += it }
+        return RecoverySocket(closeGate).also { sockets += it }
     }
 
     override fun close() {
@@ -448,7 +557,9 @@ private class RecoveryTransport : PressRaceTransport {
     }
 }
 
-private class RecoverySocket : PressRaceConnection {
+private class RecoverySocket(
+    private val closeGate: CompletableDeferred<Unit>? = null,
+) : PressRaceConnection {
     val incoming = Channel<String>(Channel.UNLIMITED)
     val sent = mutableListOf<String>()
     private val reason = CompletableDeferred<PressRaceClose?>()
@@ -464,6 +575,7 @@ private class RecoverySocket : PressRaceConnection {
 
     override suspend fun close() {
         closed = true
+        closeGate?.await()
         finish(null)
     }
 

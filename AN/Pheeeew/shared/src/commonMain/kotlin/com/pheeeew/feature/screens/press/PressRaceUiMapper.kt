@@ -45,7 +45,14 @@ internal fun PressRaceRankingState.toActivity(): PressActivityUiState {
         }
 
         isFresh(PressRaceView.PRESS) -> {
-            PressActivityUiState(count = requireNotNull(snapshot).activeCount, status = PressActivityStatus.Known)
+            PressActivityUiState(
+                count = requireNotNull(snapshot).activeCount,
+                status = PressActivityStatus.Known,
+                notice =
+                    session.notice?.let {
+                        PressRaceNotice(it.id, it.entered, it.passed, it.passedBy)
+                    },
+            )
         }
 
         snapshot != null && session.phase != PressRacePhase.Failed && session.phase != PressRacePhase.Closed -> {
