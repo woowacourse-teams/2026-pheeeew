@@ -15,11 +15,31 @@ import kotlin.test.assertTrue
 
 class PressRaceUiMapperTest {
     @Test
+    fun participantKeySurvivesCrossingsAndNicknameChangesButNotDateChanges() {
+        val before = PressNearbyRankRow(10, "same", 10, true, "me")
+        val after = before.copy(rank = 9, nickname = "renamed", count = 13)
+        assertEquals(
+            nearbyRankingItemKey("2026-10-27", before, 1),
+            nearbyRankingItemKey("2026-10-27", after, 0),
+        )
+        kotlin.test.assertNotEquals(
+            nearbyRankingItemKey("2026-10-27", before, 1),
+            nearbyRankingItemKey("2026-10-28", before, 1),
+        )
+        kotlin.test.assertNotEquals(
+            nearbyRankingItemKey("2026-10-27", before, 1),
+            nearbyRankingItemKey("2026-10-27", before.copy(publicId = "other"), 1),
+        )
+    }
+
+    @Test
     fun duplicateNicknamesUsePublicIdAndZeroActivityRemainsKnown() {
         val me = PressRaceParticipant("me", "same", 10, 2, true)
         val other = me.copy(publicId = "other")
         val state = state(me, listOf(other, me))
         assertEquals(listOf(false, true), state.toNearbyRanking().rows.map { it.isMe })
+        assertEquals(listOf("other", "me"), state.toNearbyRanking().rows.map { it.publicId })
+        assertEquals("2026-10-27", state.toNearbyRanking().date)
         assertNull(state.toNearbyRanking().progress)
         assertEquals(PressActivityStatus.Known, state.toActivity().status)
         assertEquals(0L, state.toActivity().count)

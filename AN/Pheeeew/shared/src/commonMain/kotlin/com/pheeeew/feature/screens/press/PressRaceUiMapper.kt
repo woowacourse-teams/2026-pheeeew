@@ -17,6 +17,7 @@ internal fun PressRaceRankingState.toNearbyRanking(): PressNearbyRankingUiState 
     return PressNearbyRankingUiState(
         rows =
             snapshot?.nearby.orEmpty().mapNotNull { person ->
+                val publicId = person.publicId ?: return@mapNotNull null
                 val rank = person.rank?.takeIf { it > 0 } ?: return@mapNotNull null
                 if (!person.participating || person.score < 0) return@mapNotNull null
                 PressNearbyRankRow(
@@ -24,11 +25,13 @@ internal fun PressRaceRankingState.toNearbyRanking(): PressNearbyRankingUiState 
                     person.nickname.orEmpty(),
                     person.score,
                     isMe = snapshot?.me?.publicId?.let { it == person.publicId } == true,
+                    publicId = publicId,
                 )
             },
         status = status,
         participationPending = snapshot?.me?.participating == false,
         progress = null,
+        date = snapshot?.date,
     )
 }
 
