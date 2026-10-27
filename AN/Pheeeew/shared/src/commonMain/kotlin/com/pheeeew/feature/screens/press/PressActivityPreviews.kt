@@ -103,3 +103,39 @@ private fun ActivityReplacementPreview() {
         }
     }
 }
+
+@Preview(name = "활동 인원 0~5명", widthDp = 360, heightDp = 360)
+@Composable
+private fun ActivityAvatarCountPreview() {
+    AppTheme {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(12.dp)) {
+            (0L..5L).forEach { count ->
+                PressActivityFooter(
+                    PressActivityUiState(count, PressActivityStatus.Known),
+                    reducedMotionOverride = true,
+                )
+            }
+        }
+    }
+}
+
+@Preview(name = "양방향·진입 동시·글씨 2배", widthDp = 320, heightDp = 240)
+@Composable
+private fun ActivityBothDirectionsMaximumTextPreview() {
+    AppTheme {
+        val density = LocalDensity.current
+        CompositionLocalProvider(LocalDensity provides Density(density.density, 2f)) {
+            Column {
+                PressActivityFooter(
+                    PressActivityUiState(
+                        13,
+                        PressActivityStatus.Known,
+                        PressRaceNotice(1, true, Long.MAX_VALUE, Long.MAX_VALUE),
+                    ),
+                    reducedMotionOverride = true,
+                )
+                PressActivityFooter(PressActivityUiState(13, PressActivityStatus.Known), reducedMotionOverride = true)
+            }
+        }
+    }
+}

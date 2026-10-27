@@ -4,6 +4,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -59,7 +60,25 @@ internal data class PressRaceSnapshot(
     val overtakes: PressRaceOvertakes,
 )
 
+@Serializable
+internal data class PressRacePendingInput(
+    val requestId: String,
+    val connectionGeneration: String,
+    val counts: Map<String, Int>,
+)
+
 internal sealed interface PressRaceMessage {
+    /** Same accounting baseline as ready, but never permits inputs or rank subscriptions. */
+    data class Recovered(
+        val value: PressRaceReady,
+    ) : PressRaceMessage
+
+    data class InputResult(
+        val value: PressRaceInputResult,
+        val server: String,
+        val connection: String,
+    ) : PressRaceMessage
+
     data class Ready(
         val value: PressRaceReady,
     ) : PressRaceMessage
@@ -92,10 +111,19 @@ internal object PressRaceProtocol {
     )
 
     @Serializable
-    private data class PressRacePendingInput(
+    private data class Submit(
         val requestId: String,
         val connectionGeneration: String,
         val counts: Map<String, Int>,
+        val v: Int = 1,
+        val type: String = "press.submit",
+    )
+
+    @Serializable
+    private data class Status(
+        val requestIds: List<String>,
+        val v: Int = 1,
+        val type: String = "press.status",
     )
 
     @Serializable
@@ -105,7 +133,38 @@ internal object PressRaceProtocol {
         val type: String = "view.change",
     )
 
-    fun initialize(view: PressRaceView): String = json.encodeToString(Init(view))
+    fun initialize(
+        view: PressRaceView,
+        pending: List<PressRacePendingInput> = emptyList(),
+    ): String {
+        require(pending.size <= 20)
+        return bounded(json.encodeToString(Init(view, pending = pending)))
+    }
+
+    fun submit(input: PressRacePendingInput): String {
+        require(input.requestId.isNotBlank() && input.connectionGeneration.isNotBlank())
+        require(
+            input.counts.keys.all { key ->
+                com.pheeeew.domain.model.emotion.EmotionState.entries.any {
+                    it.name ==
+                        key
+                }
+            },
+        )
+        require(input.counts.isNotEmpty() && input.counts.values.all { it > 0 })
+        require(input.counts.values.sumOf { it.toLong() } in 1L..100L)
+        return bounded(json.encodeToString(Submit(input.requestId, input.connectionGeneration, input.counts)))
+    }
+
+    fun status(ids: List<String>): String {
+        require(ids.size in 1..20 && ids.distinct().size == ids.size)
+        return bounded(json.encodeToString(Status(ids)))
+    }
+
+    private fun bounded(text: String): String {
+        require(text.encodeToByteArray().size <= 16 * 1024)
+        return text
+    }
 
     fun changeView(view: PressRaceView): String = json.encodeToString(Change(view))
 
@@ -114,8 +173,22 @@ internal object PressRaceProtocol {
         val version = root["v"]?.jsonPrimitive
         require(version != null && !version.isString && version.intOrNull == 1)
         return when (root["type"]?.jsonPrimitive?.content) {
+            "session.recovered" -> {
+                val enabled = root["inputEnabled"]?.jsonPrimitive
+                require(enabled != null && !enabled.isString && enabled.booleanOrNull == false)
+                PressRaceMessage.Recovered(json.decodeFromJsonElement(PressRaceReady.serializer(), root))
+            }
+
             "session.ready" -> {
                 PressRaceMessage.Ready(json.decodeFromJsonElement(PressRaceReady.serializer(), root))
+            }
+
+            "input.result" -> {
+                PressRaceMessage.InputResult(
+                    json.decodeFromJsonElement(PressRaceInputResult.serializer(), root),
+                    root.getValue("serverGeneration").jsonPrimitive.content,
+                    root.getValue("connectionGeneration").jsonPrimitive.content,
+                )
             }
 
             "state.snapshot" -> {

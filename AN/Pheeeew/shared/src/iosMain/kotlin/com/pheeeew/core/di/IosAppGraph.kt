@@ -5,6 +5,7 @@ import com.pheeeew.core.audio.IosAudioPlayback
 import com.pheeeew.core.audio.IosAudioPlayer
 import com.pheeeew.core.audio.IosVoiceRecorder
 import com.pheeeew.core.di.device.DeviceSessionBuildConfig
+import com.pheeeew.core.di.device.PressInputMode
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.ConnectivityObserver
@@ -61,6 +62,7 @@ internal interface IosAppGraph :
             setting("API_BASE_URL"),
             setting("DEVICE_ATTESTATION_MODE"),
             "${setting("CFBundleShortVersionString")}+${setting("CFBundleVersion")}",
+            PressInputMode.fromBuildValue(setting("PRESS_INPUT_MODE")),
         )
     }
 

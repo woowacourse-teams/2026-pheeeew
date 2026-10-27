@@ -5,6 +5,7 @@ import com.pheeeew.core.network.AccessTokenProvider
 import com.pheeeew.core.network.RecoverableAccessTokenProvider
 import com.pheeeew.data.press.race.transport.PressRaceClose
 import com.pheeeew.data.press.race.transport.PressRaceConnection
+import com.pheeeew.data.press.race.transport.PressRaceEndpoint
 import com.pheeeew.data.press.race.transport.PressRaceTransport
 import com.pheeeew.data.press.race.transport.PressRaceUpgradeException
 import kotlinx.coroutines.CompletableDeferred
@@ -12,6 +13,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -29,6 +31,49 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class PressRaceSessionTest {
     @Test
+    fun explicitRefreshOnlyUsesTheActiveSocketAndWaitsForNewBaseline() =
+        runTest {
+            val transport = FakeTransport()
+            val session = session(transport, backgroundScope)
+            try {
+                session.refresh(PressRaceView.ALL)
+                runCurrent()
+                assertTrue(transport.connections.isEmpty())
+                session.setView(PressRaceView.ALL)
+                runCurrent()
+                val socket = transport.connections.single()
+                session.refresh(PressRaceView.ALL)
+                runCurrent()
+                assertEquals(1, socket.sent.size)
+                socket.incoming.send(ready())
+                socket.incoming.send(snapshot("1", PressRaceView.ALL))
+                runCurrent()
+                session.refresh(PressRaceView.PRESS)
+                runCurrent()
+                assertEquals(1, socket.sent.size)
+                session.refresh(PressRaceView.ALL)
+                runCurrent()
+                assertEquals(1, transport.connections.size)
+                assertEquals("view.change", socket.command(1)["type"]?.jsonPrimitive?.content)
+                assertTrue(session.state.value.isAwaitingSnapshot)
+                assertNull(session.state.value.currentSnapshot)
+                session.refresh(PressRaceView.ALL)
+                runCurrent()
+                assertEquals(2, socket.sent.size)
+                socket.incoming.send(snapshot("2", PressRaceView.ALL))
+                runCurrent()
+                assertFalse(session.state.value.isAwaitingSnapshot)
+                session.setView(null)
+                runCurrent()
+                session.refresh(PressRaceView.ALL)
+                runCurrent()
+                assertEquals(1, transport.connections.size)
+            } finally {
+                session.close()
+            }
+        }
+
+    @Test
     fun opensOnlyOnDemandAndBorrowsExistingTokenOnceForBothViews() =
         runTest {
             val transport = FakeTransport()
@@ -40,7 +85,7 @@ class PressRaceSessionTest {
                     AccessTokenProvider {
                         tokenCalls++
                         token
-                    },
+                    }.recoverable(),
                     backgroundScope,
                 )
             try {
@@ -198,7 +243,7 @@ class PressRaceSessionTest {
     fun missingTokenFailsWithoutOpeningTransport() =
         runTest {
             val transport = FakeTransport()
-            val session = PressRaceSession(transport, AccessTokenProvider { null }, backgroundScope)
+            val session = PressRaceSession(transport, AccessTokenProvider { null }.recoverable(), backgroundScope)
             try {
                 session.setView(PressRaceView.PRESS)
                 runCurrent()
@@ -260,10 +305,10 @@ class PressRaceSessionTest {
                 runCurrent()
                 val socket = transport.connections.single()
                 socket.incoming.send(ready())
-                socket.incoming.send(snapshot("9223372036854775808", PressRaceView.PRESS, date = "2026-10-27"))
+                socket.incoming.send(snapshot("9223372036854775808", PressRaceView.PRESS, date = "2026-10-26"))
                 socket.incoming.send(snapshot("9223372036854775807", PressRaceView.PRESS))
                 socket.incoming.send(snapshot("9223372036854775809", PressRaceView.PRESS, server = "old-server"))
-                socket.incoming.send(snapshot("9223372036854775810", PressRaceView.PRESS, date = "2026-10-26"))
+                socket.incoming.send(snapshot("9223372036854775810", PressRaceView.PRESS, date = "2026-10-25"))
                 runCurrent()
                 assertEquals(
                     "9223372036854775808",
@@ -271,7 +316,7 @@ class PressRaceSessionTest {
                         ?.snapshotVersion,
                 )
                 assertEquals(
-                    "2026-10-27",
+                    "2026-10-26",
                     session.state.value.snapshot
                         ?.date,
                 )
@@ -467,10 +512,100 @@ class PressRaceSessionTest {
             }
         }
 
+    @Test
+    fun inputUsesSameWriterAndFiltersOldEnvelopeWithoutDroppingCurrentResult() =
+        runTest {
+            val transport = FakeTransport()
+            val session = session(transport, backgroundScope)
+            val results = mutableListOf<PressRaceInputResult>()
+            val pending = PressRacePendingInput("original-id", "old-generation", mapOf("ANGRY" to 2))
+            session.observeInputs(
+                object : PressRaceInputObserver {
+                    override suspend fun pending() = listOf(pending)
+
+                    override suspend fun ready(value: PressRaceReady) = Unit
+
+                    override suspend fun result(value: PressRaceInputResult) {
+                        results += value
+                    }
+                },
+            )
+            session.setView(PressRaceView.PRESS)
+            runCurrent()
+            val socket = transport.connections.single()
+            assertTrue(socket.sent.single().contains("old-generation"))
+            socket.incoming.send(
+                ready().replace(
+                    "\"results\":[]",
+                    "\"results\":[{\"requestId\":\"original-id\",\"status\":\"REJECTED\"}]",
+                ),
+            )
+            runCurrent()
+            var attempts = 0
+            backgroundScope.launch {
+                session.sendInput(PressRaceProtocol.submit(pending), "c1") {
+                    attempts++
+                    true
+                }
+            }
+            runCurrent()
+            assertEquals(1, attempts)
+            assertEquals(2, socket.sent.size)
+            assertTrue(socket.sent.last().contains("old-generation"))
+            for (generation in listOf("old", "c1")) {
+                socket.incoming.send(
+                    """{"v":1,"type":"input.result","serverGeneration":"s1",
+                "connectionGeneration":"$generation","requestId":"original-id","status":"PENDING"}""",
+                )
+            }
+            runCurrent()
+            assertEquals(1, results.size)
+            session.close()
+        }
+
+    @Test
+    fun cancelledQueueDoesNotMarkNeverSentInputAsAttempted() =
+        runTest {
+            val gate = CompletableDeferred<Unit>()
+            val transport = FakeTransport(sendGate = gate)
+            val session = session(transport, backgroundScope)
+            session.setView(PressRaceView.PRESS)
+            runCurrent()
+            transport.connections
+                .single()
+                .incoming
+                .send(ready())
+            runCurrent()
+            var attempts = 0
+            val completion = CompletableDeferred<Boolean>()
+            backgroundScope.launch {
+                completion.complete(
+                    session.sendInput("input", "c1") {
+                        attempts++
+                        true
+                    },
+                )
+            }
+            runCurrent()
+            session.setView(null)
+            runCurrent()
+            assertEquals(0, attempts)
+            assertFalse(completion.await())
+            gate.complete(Unit)
+            runCurrent()
+            assertTrue(
+                transport.connections
+                    .single()
+                    .sent
+                    .isEmpty(),
+            )
+            session.close()
+        }
+
     private fun session(
         transport: FakeTransport,
         scope: CoroutineScope,
-    ) = PressRaceSession(transport, AccessTokenProvider { AccessToken("existing-token") }, scope)
+    ) = PressRaceSession(transport, AccessTokenProvider { AccessToken("existing-token") }.recoverable(), scope)
 }
 
 private class FakeTransport(
@@ -483,7 +618,10 @@ private class FakeTransport(
     var token: AccessToken? = null
     val connections = mutableListOf<FakeConnection>()
 
-    override suspend fun connect(accessToken: AccessToken): PressRaceConnection {
+    override suspend fun connect(
+        accessToken: AccessToken,
+        endpoint: PressRaceEndpoint,
+    ): PressRaceConnection {
         attempts++
         token = accessToken
         failure?.let { throw it }
@@ -560,4 +698,13 @@ private fun snapshot(
         Json.encodeToJsonElement(PressRaceSnapshot.serializer(), data).jsonObject +
             mapOf("v" to JsonPrimitive(1), "type" to JsonPrimitive("state.snapshot")),
     ).toString()
+}
+
+private fun AccessTokenProvider.recoverable(): RecoverableAccessTokenProvider {
+    val source = this
+    return object : RecoverableAccessTokenProvider {
+        override suspend fun accessToken() = source.accessToken()
+
+        override suspend fun recover(rejected: AccessToken): AccessToken = error("No recovery configured")
+    }
 }

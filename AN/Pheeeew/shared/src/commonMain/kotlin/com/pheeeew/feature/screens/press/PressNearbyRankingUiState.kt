@@ -6,6 +6,7 @@ internal data class PressNearbyRankingUiState(
     val status: PressNearbyRankingStatus = PressNearbyRankingStatus.Ready,
     val participationPending: Boolean = false,
     val progress: Float? = null,
+    val date: String? = null,
 ) {
     init {
         require(rows.size <= 3)
@@ -19,12 +20,20 @@ internal data class PressNearbyRankRow(
     val nickname: String,
     val count: Long,
     val isMe: Boolean = false,
+    val publicId: String? = null,
 ) {
     init {
         require(rank > 0 && count >= 0)
     }
 }
 
-internal enum class PressNearbyRankingStatus { Loading, Ready, Reconnecting, Unavailable }
+internal enum class PressNearbyRankingStatus { Loading, Ready, Cached, Reconnecting, Unavailable }
 
 internal fun normalizedNearbyProgress(value: Float?): Float? = value?.takeIf { it.isFinite() }?.coerceIn(0f, 1f)
+
+/** Rank and nickname may change; the server public ID is stable within its date. */
+internal fun nearbyRankingItemKey(
+    date: String?,
+    row: PressNearbyRankRow,
+    previewIndex: Int,
+): String = "$date:${row.publicId ?: "preview-$previewIndex"}"

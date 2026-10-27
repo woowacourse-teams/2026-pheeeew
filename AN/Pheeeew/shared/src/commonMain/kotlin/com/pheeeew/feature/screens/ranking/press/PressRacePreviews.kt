@@ -21,7 +21,7 @@ private val raceSample =
         "차분한 여우",
     ).mapIndexed { index, name ->
         val counts = listOf(12L, 10L, 9L, 8L, 7L, 6L, 5L, 4L, 3L, 3L, 2L, 1L, 1L)
-        PressRaceRowModel(index + 1, name, counts[index], raceProgress(counts[index], 12L), index == 1, index % 3)
+        PressRaceRowModel(index + 1L, name, counts[index], raceProgress(counts[index], 12L), index == 1, index % 3)
     }
 
 @Preview(name = "전체 순위 SVG", widthDp = 402, heightDp = 874)
@@ -75,7 +75,7 @@ private fun PressRaceBoundaryPreview() {
 private fun PressRaceLongListPreview() {
     val rows =
         List(100) { index ->
-            PressRaceRowModel(index + 1, "참여자 ${index + 1}", (100 - index).toLong(), (100 - index) / 100f)
+            PressRaceRowModel(index + 1L, "참여자 ${index + 1}", (100 - index).toLong(), (100 - index) / 100f)
         }
     AppTheme {
         PressRankingScreen({}, PressRankingUiState(status = PressRankingStatus.Ready), {}, {}, rows = rows)
@@ -136,6 +136,26 @@ private fun MyRaceLargeRankPreview() {
             ),
             {
             },
+            {},
+            rows = raceSample,
+        )
+    }
+}
+
+@Preview(name = "일일 순위 연결 끊김과 캐시", widthDp = 320, heightDp = 720, fontScale = 1.5f)
+@Composable
+private fun PressRaceDisconnectedPreview() {
+    AppTheme {
+        PressRankingScreen(
+            {},
+            PressRankingUiState(
+                date = "2026-10-27",
+                me = PressPersonRank(101, "나", Long.MAX_VALUE),
+                status = PressRankingStatus.Ready,
+                isStale = true,
+                hasRefreshError = true,
+            ),
+            {},
             {},
             rows = raceSample,
         )

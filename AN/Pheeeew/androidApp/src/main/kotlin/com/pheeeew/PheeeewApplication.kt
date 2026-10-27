@@ -9,6 +9,7 @@ import com.pheeeew.core.di.AndroidAppConfig
 import com.pheeeew.core.di.AppGraph
 import com.pheeeew.core.di.appCollectionMetadata
 import com.pheeeew.core.di.device.DeviceSessionBuildConfig
+import com.pheeeew.core.di.device.PressInputMode
 import com.pheeeew.core.di.monitoringActiveDay
 import com.pheeeew.core.monitoring.MonitoringConfig
 
@@ -51,6 +52,7 @@ class PheeeewApplication :
                         BuildConfig.API_BASE_URL,
                         BuildConfig.DEVICE_ATTESTATION_MODE,
                         "${BuildConfig.VERSION_NAME}+${BuildConfig.VERSION_CODE}",
+                        PressInputMode.fromBuildValue(BuildConfig.PRESS_INPUT_MODE),
                     ),
                     BuildConfig.APPLICATION_ID,
                     BuildConfig.DEVICE_CLOUD_PROJECT_NUMBER,

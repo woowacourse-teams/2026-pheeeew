@@ -6,6 +6,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.pheeeew.feature.screens.press.measurement.pressRaceDrawMeasurement
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 
 @Composable
@@ -25,10 +26,9 @@ internal fun PressRoute(
             accepted
         },
         onOpenRanking = onOpenRanking,
-        modifier = modifier,
-        // Replace this state source with ViewModel state when the ranking API is connected.
-        nearbyRanking = temporaryNearbyRanking,
-        activity = temporaryPressActivity,
+        modifier = modifier.pressRaceDrawMeasurement(uiState.frameKey, viewModel::onFrameDrawn),
+        nearbyRanking = uiState.nearbyRanking,
+        activity = uiState.activity,
         faceVisuals = faceDemo.visuals,
     )
 }

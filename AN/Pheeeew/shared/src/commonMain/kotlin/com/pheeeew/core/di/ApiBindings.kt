@@ -1,6 +1,7 @@
 package com.pheeeew.core.di
 
 import com.pheeeew.core.di.device.DeviceSessionBuildConfig
+import com.pheeeew.core.di.device.PressInputMode
 import com.pheeeew.core.monitoring.DefinedEvent
 import com.pheeeew.core.monitoring.EventValue
 import com.pheeeew.core.monitoring.Monitoring
@@ -12,6 +13,11 @@ import com.pheeeew.core.network.ConnectivityObserver
 import com.pheeeew.core.session.DeviceSessionManager
 import com.pheeeew.data.local.device.DeviceCredentialStorage
 import com.pheeeew.data.local.mapfilter.InMemoryMapFilterSettingsRepository
+import com.pheeeew.data.press.race.PressRaceDiagnostics
+import com.pheeeew.data.press.race.PressRaceInputCoordinator
+import com.pheeeew.data.press.race.PressRaceMeasurements
+import com.pheeeew.data.press.race.PressRaceRankingStore
+import com.pheeeew.data.press.race.PressRaceRankings
 import com.pheeeew.data.press.race.PressRaceSession
 import com.pheeeew.data.press.race.transport.PressRaceTransport
 import com.pheeeew.data.press.race.transport.createPlatformPressRaceTransport
@@ -204,13 +210,33 @@ internal interface ApiBindings {
         monitoring: Monitoring,
         @PressWork scope: CoroutineScope,
         connectivity: ConnectivityObserver,
+        build: DeviceSessionBuildConfig,
+        race: PressRaceSession,
+        measurements: PressRaceMeasurements,
     ): PressRepository =
-        PressRepositoryImpl(
-            statistics,
-            sender,
-            scope,
-            connectivity = connectivity.isConnected,
-            monitoring = monitoring,
+        if (build.pressInputMode == PressInputMode.WEBSOCKET_DEVELOPMENT) {
+            PressRaceInputCoordinator(race, scope, measurements = measurements)
+        } else {
+            PressRepositoryImpl(
+                statistics,
+                sender,
+                scope,
+                connectivity = connectivity.isConnected,
+                monitoring = monitoring,
+            )
+        }
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun providePressRaceMeasurements(build: DeviceSessionBuildConfig): PressRaceMeasurements =
+        PressRaceMeasurements(
+            build.isDebug && build.pressInputMode == PressInputMode.WEBSOCKET_DEVELOPMENT,
+            sink = { sample ->
+                println(
+                    "[PressRaceMeasure] kind=${sample.kind} sample=${sample.sample} " +
+                        "ms=${sample.millis} presses=${sample.presses} outcome=${sample.outcome}",
+                )
+            },
         )
 
     @Provides
@@ -223,7 +249,28 @@ internal interface ApiBindings {
         transport: PressRaceTransport,
         session: DeviceSessionManager,
         @SessionWork scope: CoroutineScope,
-    ): PressRaceSession = PressRaceSession(transport, session, scope)
+        build: DeviceSessionBuildConfig,
+        measurements: PressRaceMeasurements,
+    ): PressRaceSession =
+        PressRaceSession(
+            transport,
+            session,
+            scope,
+            measurements = measurements,
+            diagnostics =
+                PressRaceDiagnostics { event, connection ->
+                    if (build.isDebug && build.pressInputMode == PressInputMode.WEBSOCKET_DEVELOPMENT) {
+                        println("[PressRaceDebug] event=${event.name} localConnection=$connection")
+                    }
+                },
+        )
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun providePressRaceRankings(
+        race: PressRaceSession,
+        @SessionWork scope: CoroutineScope,
+    ): PressRaceRankings = PressRaceRankingStore(race.state, race::refresh, scope)
 
     @Provides
     @SingleIn(AppScope::class)

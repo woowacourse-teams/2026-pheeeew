@@ -195,7 +195,7 @@ internal fun MyRaceRankCard(
                 Column(Modifier.weight(0.55f), horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(Modifier.fillMaxWidth().height(80.dp), contentAlignment = Alignment.Center) {
                         Image(painterResource(Res.drawable.press_blocked_stage_0), null, Modifier.requiredSize(140.dp))
-                        if (me.rank == 1) {
+                        if (me.rank == 1L) {
                             Text(
                                 "✦",
                                 fontSize = 27.sp,
@@ -207,8 +207,8 @@ internal fun MyRaceRankCard(
                     Spacer(Modifier.height(10.dp))
                     Text(
                         when (me.rank) {
-                            1 -> stringResource(Res.string.press_my_rank_first)
-                            2, 3 -> stringResource(Res.string.press_my_rank_top_three)
+                            1L -> stringResource(Res.string.press_my_rank_first)
+                            2L, 3L -> stringResource(Res.string.press_my_rank_top_three)
                             else -> stringResource(Res.string.press_my_rank_running)
                         },
                         modifier =

@@ -9,9 +9,9 @@ internal val temporaryNearbyRanking =
     PressNearbyRankingUiState(
         rows =
             listOf(
-                PressNearbyRankRow(rank = 9, nickname = "예민한 고양이", count = 12),
-                PressNearbyRankRow(rank = 10, nickname = "나", count = 10, isMe = true),
-                PressNearbyRankRow(rank = 11, nickname = "조용한 오리", count = 9),
+                PressNearbyRankRow(rank = 9, nickname = "예민한 고양이", count = 12, publicId = "sample-cat"),
+                PressNearbyRankRow(rank = 10, nickname = "나", count = 10, isMe = true, publicId = "sample-me"),
+                PressNearbyRankRow(rank = 11, nickname = "조용한 오리", count = 9, publicId = "sample-owl"),
             ),
         progress = 0.22f,
     )

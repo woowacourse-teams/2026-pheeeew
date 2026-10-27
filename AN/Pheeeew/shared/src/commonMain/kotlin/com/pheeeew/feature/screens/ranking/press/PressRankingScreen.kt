@@ -1,5 +1,7 @@
 package com.pheeeew.feature.screens.ranking.press
 
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,7 +14,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
@@ -21,9 +23,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.MotionDurationScale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
@@ -38,7 +42,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.component.LoadErrorContent
 import com.pheeeew.core.designsystem.component.RefreshErrorBanner
+import com.pheeeew.feature.emotion.component.rememberTapReducedMotion
 import com.pheeeew.feature.monitoring.product.ProductScreen
+import com.pheeeew.feature.screens.press.measurement.pressRaceDrawMeasurement
 import com.pheeeew.feature.screens.ranking.press.components.MyRaceRankCard
 import com.pheeeew.feature.screens.ranking.press.components.PressRaceHeader
 import com.pheeeew.feature.screens.ranking.press.components.PressRaceRow
@@ -72,7 +78,7 @@ fun PressRankingRoute(
         uiState = uiState,
         onRetry = viewModel::onRetry,
         onRefresh = viewModel::onRefresh,
-        modifier = modifier,
+        modifier = modifier.pressRaceDrawMeasurement(uiState.frameKey, viewModel::onFrameDrawn),
     )
 }
 
@@ -92,7 +98,7 @@ internal fun DailyPressRankingRoute(
     LaunchedEffect(viewModel, refreshRevision) {
         if (refreshRevision > 0L) viewModel.onNotificationReceived()
     }
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onRefresh() }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onResumed() }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     PressRankingScreen(
         onBack = onBack,
@@ -114,8 +120,10 @@ internal fun PressRankingScreen(
     rows: List<PressRaceRowModel> = uiState.people.toRaceRows(),
     dailyDate: String? = null,
 ) {
+    val scope = rememberCoroutineScope()
+    val reducedMotion = rememberTapReducedMotion() || scope.coroutineContext[MotionDurationScale]?.scaleFactor == 0f
     val fontScale = LocalDensity.current.fontScale
-    val rankWidth = ((rows.maxOfOrNull { it.rank.toString().length } ?: 1) * 8f * fontScale).coerceAtLeast(28f).dp
+    val rankWidth = ((rows.maxOfOrNull { it.rank.toString().length } ?: 1) * 8f * fontScale).coerceIn(28f, 80f).dp
     val textMeasurer = rememberTextMeasurer()
     val countStyle = LocalTextStyle.current.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold)
     val countLabels = rows.map { raceCountText(it.count) }
@@ -172,6 +180,9 @@ internal fun PressRankingScreen(
                     Spacer(Modifier.height(12.dp))
                     PressRaceHeader(rankWidth, countWidth)
                 }
+                if (uiState.date != null && dailyDate == null) {
+                    item { Text(uiState.date, fontSize = 12.sp, color = Color(0xFF767D78)) }
+                }
                 if (uiState.hasRefreshError) {
                     item {
                         RefreshErrorBanner(stringResource(Res.string.press_daily_ranking_refresh_error), onRefresh)
@@ -201,7 +212,28 @@ internal fun PressRankingScreen(
                                 )
                             }
                         }
-                        items(rows) { row -> PressRaceRow(row, rankWidth, countWidth) }
+                        itemsIndexed(rows, key = { index, row ->
+                            "${uiState.date}:${row.publicId ?: "preview-$index"}"
+                        }) { _, row ->
+                            PressRaceRow(
+                                row,
+                                rankWidth,
+                                countWidth,
+                                Modifier.animateItem(
+                                    fadeInSpec = if (reducedMotion) null else tween(150),
+                                    placementSpec =
+                                        if (reducedMotion) {
+                                            null
+                                        } else {
+                                            tween(
+                                                300,
+                                                easing = CubicBezierEasing(0.22f, 0.7f, 0.25f, 1f),
+                                            )
+                                        },
+                                    fadeOutSpec = if (reducedMotion) null else tween(150),
+                                ),
+                            )
+                        }
                     }
                 }
                 item { Spacer(Modifier.navigationBarsPadding()) }

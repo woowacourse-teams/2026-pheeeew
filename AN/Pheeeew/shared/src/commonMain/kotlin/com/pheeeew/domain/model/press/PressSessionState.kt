@@ -15,6 +15,7 @@ data class PressSessionState(
     val optimisticAllPressCount: Long = 0L,
     val pendingPressCount: Long = 0L,
     val isSending: Boolean = false,
+    val isInputEnabled: Boolean = true,
     val isOutcomeUnknown: Boolean = false,
     val notice: PressSessionNotice? = null,
 )
@@ -28,6 +29,7 @@ enum class PressSessionNotice {
 }
 
 enum class PressAcceptance {
+    Unavailable,
     Accepted,
     NumericLimit,
 }
