@@ -1,5 +1,6 @@
 package com.pheeeew.data.remote.mapper
 
+import com.pheeeew.data.remote.dto.DailyPressRankingResponseDto
 import com.pheeeew.data.remote.dto.PressRankingItemResponseDto
 import com.pheeeew.data.remote.dto.PressRankingResponseDto
 import kotlin.test.Test
@@ -10,6 +11,41 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class PressRankingMapperTest {
+    @Test
+    fun `일별 응답은 빈 목록 null me와 100위 밖 me를 보존한다`() {
+        val ranking =
+            PressRankingMapper.toDailyDomain(
+                DailyPressRankingResponseDto(
+                    date = "2026-10-21",
+                    startAt = "2026-10-20T15:00:00Z",
+                    endAt = "2026-10-21T15:00:00Z",
+                    items = emptyList(),
+                    me = PressRankingItemResponseDto(150, "익명", 31),
+                ),
+            )
+        assertEquals("2026-10-21", ranking.date)
+        assertTrue(ranking.items.isEmpty())
+        assertEquals(150, ranking.me?.rank)
+    }
+
+    @Test
+    fun `일별 응답의 날짜와 집계 구간 계약을 확인한다`() {
+        val response =
+            DailyPressRankingResponseDto(
+                date = "2026-10-21",
+                startAt = "2026-10-20T15:00:00Z",
+                endAt = "2026-10-21T15:00:00Z",
+                items = emptyList(),
+                me = null,
+            )
+        assertFailsWith<PressRankingContractException> {
+            PressRankingMapper.toDailyDomain(response.copy(date = "not-a-date"))
+        }
+        assertFailsWith<PressRankingContractException> {
+            PressRankingMapper.toDailyDomain(response.copy(endAt = response.startAt))
+        }
+    }
+
     @Test
     fun `공동 순위와 Long 프레스 수와 100위 밖 내 순위를 보존한다`() {
         val ranking =
