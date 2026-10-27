@@ -148,6 +148,23 @@ class NotificationSettingServiceIntegrationTest {
     }
 
     @Test
+    void 설정을_다시_바꾸면_마지막에_바꾼_값이_남는다() {
+        // given
+        Device device = 기기를_만든다();
+        notificationSettingService.updateSettings(device.getPublicId(), false, true);
+
+        // when
+        notificationSettingService.updateSettings(device.getPublicId(), true, false);
+
+        // then
+        assertThat(notificationSettingService.findSettings(device.getPublicId())).isEqualTo(NotificationSettings.of(true, false));
+        assertThat(jdbcClient.sql("SELECT count(*) FROM device_notification_settings WHERE device_id = :deviceId")
+                .param("deviceId", device.getId())
+                .query(Integer.class)
+                .single()).isOne();
+    }
+
+    @Test
     void 등록_값을_바꾸거나_해제해도_바꾼_설정은_유지된다() {
         // given
         Device device = 기기를_만든다();
