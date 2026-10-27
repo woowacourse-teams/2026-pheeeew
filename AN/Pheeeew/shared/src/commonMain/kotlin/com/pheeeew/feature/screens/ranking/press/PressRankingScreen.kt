@@ -1,5 +1,7 @@
 package com.pheeeew.feature.screens.ranking.press
 
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,9 +22,11 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.MotionDurationScale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
@@ -35,6 +39,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.component.LoadErrorContent
 import com.pheeeew.core.designsystem.component.RefreshErrorBanner
+import com.pheeeew.feature.emotion.component.rememberTapReducedMotion
 import com.pheeeew.feature.monitoring.product.ProductScreen
 import com.pheeeew.feature.screens.ranking.press.components.MyRaceRankCard
 import com.pheeeew.feature.screens.ranking.press.components.PressRaceHeader
@@ -81,6 +86,8 @@ internal fun PressRankingScreen(
     modifier: Modifier = Modifier,
     rows: List<PressRaceRowModel> = uiState.people.toRaceRows(),
 ) {
+    val scope = rememberCoroutineScope()
+    val reducedMotion = rememberTapReducedMotion() || scope.coroutineContext[MotionDurationScale]?.scaleFactor == 0f
     val fontScale = LocalDensity.current.fontScale
     val rankWidth = ((rows.maxOfOrNull { it.rank.toString().length } ?: 1) * 8f * fontScale).coerceIn(28f, 80f).dp
     val textMeasurer = rememberTextMeasurer()
@@ -166,7 +173,26 @@ internal fun PressRankingScreen(
                         }
                         itemsIndexed(rows, key = { index, row ->
                             "${uiState.date}:${row.publicId ?: "preview-$index"}"
-                        }) { _, row -> PressRaceRow(row, rankWidth, countWidth) }
+                        }) { _, row ->
+                            PressRaceRow(
+                                row,
+                                rankWidth,
+                                countWidth,
+                                Modifier.animateItem(
+                                    fadeInSpec = if (reducedMotion) null else tween(150),
+                                    placementSpec =
+                                        if (reducedMotion) {
+                                            null
+                                        } else {
+                                            tween(
+                                                300,
+                                                easing = CubicBezierEasing(0.22f, 0.7f, 0.25f, 1f),
+                                            )
+                                        },
+                                    fadeOutSpec = if (reducedMotion) null else tween(150),
+                                ),
+                            )
+                        }
                     }
                 }
                 item { Spacer(Modifier.navigationBarsPadding()) }

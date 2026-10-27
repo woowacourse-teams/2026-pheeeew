@@ -414,4 +414,6 @@
     <string name="guide_collection_stats_accent">프레스·스탬프 기록</string>
     <string name="onboarding_guide_swipe_hint">옆으로 넘겨보세요 →</string>
     <string name="collection_notification_outdated">알림의 날짜가 오늘과 달라요. 오늘의 진행도를 보여드릴게요.</string>
+    <string name="press_nearby_my_place">내 자리</string>
+    <string name="press_nearby_start_hint">한 번 누르면 시작!</string>
 </resources>
