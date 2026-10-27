@@ -49,6 +49,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.io.TempDir;
+import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
@@ -160,7 +161,77 @@ class PressOperationsProxyIntegrationTest {
         assertThat(work.resolve(".press-deploy.json")).doesNotExist();
     }
 
-    /** 보류 중인 CLOSED 재시작 후 HTTP timeout을 포함한다. 정상 ON 경계 통과와 구분한다. */
+    @Test
+    void 후보_재시작_뒤에도_긴급_OFF와_입력_차단을_확인한다() throws Exception {
+        prepareCandidate();
+        operator("handoff", greenName());
+        operator("close-active", blueName());
+        pointAt("app-green");
+        operator("verify", greenName());
+        operator("open-target", greenName());
+        SocketListener connected = connect(NORMAL_WS);
+        initialize(connected, List.of(), "session.ready");
+        String recorded = json.readTree(Files.readString(work.resolve(".press-deploy.json")))
+                .path("target_identity").toString();
+
+        command(List.of("docker", "restart", green.getContainerId()), fixture, Map.of());
+        await(() -> appHealthy(green), "후보 재시작 완료");
+        assertThat(connected.closed.poll(8, TimeUnit.SECONDS)).as("재시작으로 기존 연결 종료").isNotNull();
+        SocketListener restarted = connect(NORMAL_WS);
+        initialize(restarted, List.of(), "session.ready");
+        long beforeStop = total();
+        operator("emergency-stop", greenName());
+
+        assertThat(scalar("SELECT enabled::text FROM press_race_control")).isEqualTo("false");
+        assertThat(gateMode(green)).isEqualTo("CLOSED");
+        assertThat(restarted.closed.poll(8, TimeUnit.SECONDS)).as("긴급 OFF로 재시작 후 연결 종료").isNotNull();
+        assertThat(press().statusCode()).isEqualTo(503);
+        SocketListener rejected = connect(NORMAL_WS);
+        assertThat(rejected.receive("protocol.error").path("code").stringValue()).isEqualTo("SERVER_DRAINING");
+        assertTotals(beforeStop);
+        JsonNode journal = json.readTree(Files.readString(work.resolve(".press-deploy.json")));
+        assertThat(journal.path("phase").stringValue()).isEqualTo("EMERGENCY_OFF_CONFIRMED");
+        assertThat(journal.path("target_identity").toString()).isEqualTo(recorded);
+    }
+
+    /** 재시작 전 IP가 캐시에 남은 경우의 연결 실패와 새 IP 복구를 검증한다. */
+    @Test
+    void 후보_재시작으로_nginx가_이전_IP를_사용해도_빠르게_실패하고_새_IP로_복구한다() throws Exception {
+        // 오래된 DNS 캐시를 재현하기 위해 이 시험에서만 캐시 유효기간을 늘린다.
+        Path config = fixture.resolve("api-dev.conf");
+        String normalConfig = Files.readString(config);
+        Files.writeString(config, normalConfig.replace("valid=1s", "valid=60s"));
+
+        RecoveryInputs inputs = prepareRecoveryInputs();
+        prepareCandidate();
+        operator("handoff", greenName());
+        operator("close-active", blueName());
+        pointAt("app-green");
+        operator("verify", greenName());
+        operator("open-target", greenName());
+        assertCandidateRecovery(inputs, 4);
+        operator("cleanup-active", blueName());
+        clearJournal();
+        blue = null;
+        fixtureGate(green, "CLOSED");
+        String oldIp = containerIp(green);
+        command(List.of("docker", "restart", green.getContainerId()), fixture, Map.of());
+        await(() -> appHealthy(green), "후보 재시작 완료");
+        assertThat(containerIp(green)).isNotEqualTo(oldIp);
+
+        long start = System.nanoTime();
+        assertThat(press().statusCode()).isEqualTo(504);
+        assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(6));
+        assertThat(nginx.getLogs()).contains("upstream: \"http://" + oldIp + ":8080/");
+        assertTotals(5);
+
+        // Docker Desktop의 파일 bind mount가 길이 변경을 늦게 반영하지 않도록 길이를 유지한다.
+        Files.writeString(config, normalConfig.replace("valid=1s", "valid=01s"));
+        pointAt("app-green");
+        assertThat(press().statusCode()).isEqualTo(503);
+        assertTotals(5);
+    }
+
     @Test
     void 실제_nginx와_Spring_배포_복귀_정산_중단_재시작에서도_프레스가_중복_가산되지_않는다() throws Exception {
         RecoveryInputs inputs = prepareRecoveryInputs();
@@ -288,16 +359,20 @@ class PressOperationsProxyIntegrationTest {
         SocketListener disabled = connect(NORMAL_WS);
         assertThat(disabled.receive("protocol.error").path("code").stringValue()).isEqualTo("RACE_DISABLED");
 
-        // then: 최초/재활성화 예약은 명시한 다음 KST 날짜 전의 경쟁 쓰기를 열지 않는다.
-        LocalDate next = LocalDate.parse(scalar("SELECT ((clock_timestamp() AT TIME ZONE 'Asia/Seoul')::date + 1)::text"));
+        // then: 재활성화는 현재 날짜부터 경쟁 입력을 다시 허용한다.
+        String beforeActivationDay = scalar("SELECT (clock_timestamp() AT TIME ZONE 'Asia/Seoul')::date::text");
         operator("activate", greenName(), "--expected-generation", greenGeneration().toString(),
-                "--expected-activation-date", activationDate.toString(), "--activation-date", next.toString(),
-                "--probe-port", proxyPort());
-        assertThat(scalar("SELECT activation_date::text FROM press_race_control")).isEqualTo(next.toString());
-        SocketListener early = connect(NORMAL_WS);
-        assertThat(early.receive("protocol.error").path("code").stringValue()).isEqualTo("RACE_DISABLED");
+                "--expected-activation-date", activationDate.toString(), "--probe-port", proxyPort());
+        String afterActivationDay = scalar("SELECT (clock_timestamp() AT TIME ZONE 'Asia/Seoul')::date::text");
+        assertThat(scalar("SELECT enabled::text FROM press_race_control")).isEqualTo("true");
+        assertThat(scalar("SELECT activation_date::text FROM press_race_control"))
+                .isIn(beforeActivationDay, afterActivationDay);
+        SocketListener active = connect(NORMAL_WS);
+        JsonNode activeReady = initialize(active, List.of(), "session.ready");
+        active.send(submit(UUID.randomUUID(), activeReady, 1));
+        assertThat(active.receive("input.result").path("status").stringValue()).isEqualTo("APPLIED");
         assertThat(recovery.receivedTypes).doesNotContain("session.ready", "state.snapshot");
-        assertTotals(7);
+        assertTotals(8);
         assertProxyTransportTermination();
     }
 
@@ -387,7 +462,7 @@ class PressOperationsProxyIntegrationTest {
             String slow = stalled.termination();
             assertThat(slow).as("느린 nginx 경유 연결도 종료됨").isNotBlank();
             assertThat(press().statusCode()).as("상대 연결 종료 뒤 정상 HTTP 저장 진행").isEqualTo(200);
-            assertTotals(8);
+            assertTotals(9);
             System.out.println("nginx transport fixture: no-Pong=" + heartbeat + ", stalled-reader=" + slow);
         } catch (Exception | AssertionError failure) {
             List<String> diagnostic = nginx.getLogs().lines()
@@ -615,7 +690,8 @@ class PressOperationsProxyIntegrationTest {
 
     private void pointAt(String slot) throws Exception {
         Files.writeString(work.resolve("nginx/upstream/active.conf"), "set $upstream_app " + slot + ";\n");
-        assertThat(nginx.execInContainer("nginx", "-t").getExitCode()).isZero();
+        var configurationCheck = nginx.execInContainer("nginx", "-t");
+        assertThat(configurationCheck.getExitCode()).as(configurationCheck.getStderr()).isZero();
         assertThat(nginx.execInContainer("nginx", "-s", "reload").getExitCode()).isZero();
         await(() -> {
             try {
@@ -821,6 +897,11 @@ class PressOperationsProxyIntegrationTest {
             Thread.sleep(50);
         }
         assertThat(condition.getAsBoolean()).as(description).isTrue();
+    }
+
+    private String containerIp(GenericContainer<?> container) {
+        return DockerClientFactory.instance().client().inspectContainerCmd(container.getContainerId()).exec()
+                .getNetworkSettings().getNetworks().values().iterator().next().getIpAddress();
     }
 
     private void command(List<String> command, Path directory, Map<String, String> environment) throws Exception {

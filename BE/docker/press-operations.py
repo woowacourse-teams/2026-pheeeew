@@ -293,6 +293,80 @@ class Operations:
         state['phase'] = 'TARGET_OPEN' if target_action else 'ORIGINAL_OPEN'
         self.c.save_state(state)
 
+    def emergency_candidate(self, state):
+        target = self.c.container(state['target_container'], require_running=False)
+        recorded = state['target_identity']
+        if target['Id'] != recorded['id'] or target['Image'] != recorded['image']:
+            raise ValueError('Emergency candidate was replaced; preserve the journal')
+        env = self.c.environment(target)
+        if (env.get(self.c.GENERATION_KEY) != state['target_generation']
+                or list(self.c.db_target(env)) != state['database']):
+            raise ValueError('Emergency candidate generation or database changed')
+        if self.version(target) == '1':
+            if state['enabled']:
+                raise ValueError('Competition ON requires a contract-2 candidate')
+            if not target['State']['Running']:
+                return target, False
+            try:
+                return self.c.check_instance(state['target_container'], recorded, state['target_generation']), True
+            except (OSError, ValueError, subprocess.SubprocessError):
+                return target, False
+        self.validate_gate_container(target)
+        if not target['State']['Running']:
+            return target, False
+        snapshot = self.c.identity(target)
+        try:
+            generation = self.c.runtime_generation(target)
+        except (OSError, ValueError, subprocess.SubprocessError):
+            return target, False
+        if generation != state['target_generation']:
+            raise ValueError('Emergency candidate runtime generation changed')
+        try:
+            current = self.c.container(state['target_container'])
+        except (OSError, ValueError, subprocess.SubprocessError):
+            return target, False
+        if current['Id'] != recorded['id'] or current['Image'] != recorded['image']:
+            raise ValueError('Emergency candidate was replaced; preserve the journal')
+        if self.c.identity(current) != snapshot:
+            return target, False
+        try:
+            self.gate(current)
+        except (OSError, ValueError, subprocess.SubprocessError):
+            return target, False
+        return current, True
+
+    def emergency_incomplete(self, state, env, current, off):
+        self.emergency_candidate(state)
+        self.change(env, current, off)
+        self.emergency_pending(state)
+
+    def emergency_pending(self, state):
+        state['phase'] = 'EMERGENCY_OFF_PENDING_CANDIDATE'
+        self.c.save_state(state)
+        raise ValueError('Competition OFF confirmed; admission and WS closure remain unconfirmed')
+
+    def emergency_stopped_active(self, state):
+        if (state.get('first_activation') and state.get('phase') != 'FINALIZED'
+                and 'retired_control' not in state):
+            raise ValueError('Initial activation is unconfirmed; preserve its journal because the original SQL may still commit')
+        active = self.c.container(state['active_container'], require_running=False)
+        recorded = state['active_identity']
+        active_env = self.c.environment(active)
+        if (active['Id'] != recorded['id'] or active['Image'] != recorded['image']
+                or active['State']['Running']
+                or (active_env.get(self.c.GENERATION_KEY) is not None
+                    and active_env[self.c.GENERATION_KEY] != state['generation'])
+                or list(self.c.db_target(active_env)) != state['database']):
+            raise ValueError('Stopped original cannot be verified; preserve the journal')
+        target, _ = self.emergency_candidate(state)
+        env = self.c.environment(target)
+        expected = self.expected(state, state['target_generation'])
+        off = dict(expected, enabled=False)
+        current = self.c.read_state(env)
+        if current not in (expected, off):
+            raise ValueError('Current candidate ownership changed; preserve the journal')
+        return self.emergency_incomplete(state, env, current, off)
+
     def emergency(self, state):
         if not state.get('active_removed') and state.get('removal_intent', {}).get('role') == 'active':
             self.reconcile_removed_active(state)
@@ -304,21 +378,45 @@ class Operations:
             state['phase'] = 'EMERGENCY_STOPPING'
             self.c.save_state(state)
         round_id = state['emergency_round']
-        active, target = self.check(state), self.check(state, True)
-        for role, inspected in (('active', active), ('target', target)):
+        try:
+            active = self.check(state)
+        except (OSError, ValueError, subprocess.SubprocessError):
+            return self.emergency_stopped_active(state)
+        target, ready = self.emergency_candidate(state)
+        processes = [('active', active)]
+        if ready:
+            processes.append(('target', target))
+        closed_all = ready
+        closed_tokens = []
+        for role, inspected in processes:
             if self.version(inspected) == '2':
-                closed = self.set_gate(state, inspected, 'CLOSED', 'emergency-close-' + role + '-' + round_id)
-                self.wait_closed(inspected, closed)
+                try:
+                    closed = self.set_gate(state, inspected, 'CLOSED', 'emergency-close-' + role + '-' + round_id)
+                    self.wait_closed(inspected, closed)
+                    closed_tokens.append((role, inspected, closed))
+                except (OSError, ValueError, subprocess.SubprocessError):
+                    closed_all = False
         env = self.c.environment(active)
         current = self.c.read_state(env)
         if (current['generation'] not in (state['generation'], state['target_generation'])
                 or current['activation_date'] != state['activation_date']):
             raise ValueError('Emergency control owner changed; do not guess a replacement')
         replacement = dict(current, enabled=False)
+        if not closed_all:
+            return self.emergency_incomplete(state, env, current, replacement)
         self.change(env, current, replacement)
+        try:
+            for role, inspected in processes:
+                current_process = self.c.container(state[role + '_container'])
+                if self.c.identity(current_process, True) != self.c.identity(inspected, True):
+                    raise ValueError('Emergency process changed after DB OFF')
+            for _, inspected, closed in closed_tokens:
+                self.wait_closed(inspected, closed)
+        except (OSError, ValueError, subprocess.SubprocessError):
+            return self.emergency_pending(state)
         state['phase'] = 'EMERGENCY_OFF_CONFIRMED'
         self.c.save_state(state)
-        print('Competition OFF confirmed; both admissions stay CLOSED. Preserve both servers and reconcile before resume.')
+        print('Competition OFF confirmed; contract-2 admissions stay CLOSED. Preserve both servers and reconcile before resume.')
 
     def reconcile_removed_active(self, state):
         intent = state['removal_intent']
@@ -329,16 +427,16 @@ class Operations:
                 or fixed_id != state['active_identity']['id']
                 or intent.get('owner_control') != self.expected(state, state['target_generation'])):
             raise ValueError('The recorded removal intent cannot identify the previous container')
-        owner = self.check(state, True)
-        if self.c.read_state(self.c.environment(owner)) != intent['owner_control']:
+        owner, _ = self.emergency_candidate(state)
+        current = self.c.read_state(self.c.environment(owner))
+        if current not in (intent['owner_control'], dict(intent['owner_control'], enabled=False)):
             raise ValueError('Storage ownership changed while reconciling the removal')
-        self.route(state['target_slot'], state['probe_port'])
         # Only a successful Docker API list response proves absence. inspect errors do not.
         observed = subprocess.run(['docker', 'container', 'ls', '--all', '--no-trunc',
             '--filter', 'id=' + fixed_id, '--format', '{{.ID}}'],
             text=True, capture_output=True, check=True, timeout=8)
         if observed.stdout.strip():
-            raise ValueError('The recorded previous container is still present; preserve the removal intent')
+            return self.emergency_stopped_active(state)
         state['active_removed'] = True
         state['phase'] = 'REMOVAL_CONFIRMED'
         intent['phase'] = 'REMOVED_CONFIRMED'
@@ -348,11 +446,10 @@ class Operations:
         if (state.get('first_activation') and state.get('phase') != 'FINALIZED'
                 and 'retired_control' not in state):
             raise ValueError('Initial activation is unconfirmed; preserve its journal because the original SQL may still commit')
-        target = self.check(state, True)
+        target, ready = self.emergency_candidate(state)
         if self.version(target) != '2':
             raise ValueError('The remaining server does not support safe admission control')
         env = self.c.environment(target)
-        self.route(state['target_slot'], state['probe_port'])
         original = state.get('retired_control')
         if original is None:
             original = (state['first_activation']['desired_control'] if state.get('first_activation')
@@ -366,9 +463,21 @@ class Operations:
             state['emergency_round'] = str(uuid4())
             state['phase'] = 'EMERGENCY_STOPPING'
             self.c.save_state(state)
-        closed = self.set_gate(state, target, 'CLOSED', 'emergency-close-target-' + state['emergency_round'])
-        self.wait_closed(target, closed)
+        if not ready:
+            return self.emergency_incomplete(state, env, current, off)
+        try:
+            closed = self.set_gate(state, target, 'CLOSED', 'emergency-close-target-' + state['emergency_round'])
+            self.wait_closed(target, closed)
+        except (OSError, ValueError, subprocess.SubprocessError):
+            return self.emergency_incomplete(state, env, current, off)
         self.change(env, current, off)
+        try:
+            current_process = self.c.container(state['target_container'])
+            if self.c.identity(current_process) != self.c.identity(target):
+                raise ValueError('Emergency process changed after DB OFF')
+            self.wait_closed(target, closed)
+        except (OSError, ValueError, subprocess.SubprocessError):
+            return self.emergency_pending(state)
         state['phase'] = 'EMERGENCY_OFF_CONFIRMED'
         self.c.save_state(state)
         print('Competition OFF and current admission CLOSED confirmed. The previous server is retired; preserve the current server and journal.')
