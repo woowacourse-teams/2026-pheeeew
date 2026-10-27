@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
-/** App-scoped owner; route visibility will call setView at the composition root in the next step. */
+/** App-scoped connection owner; visibility is delivered once from the composition root. */
 internal class PressRaceSession(
     private val transport: PressRaceTransport,
     private val tokens: AccessTokenProvider,
@@ -39,7 +39,7 @@ internal class PressRaceSession(
     private var receiver: Job? = null
     private var writer: Job? = null
     private var outgoing: Channel<String>? = null
-    private var version: String? = null
+    private val snapshots = PressRaceSnapshotGate()
     private var initializedView: PressRaceView? = null
 
     init {
@@ -108,7 +108,7 @@ internal class PressRaceSession(
 
     private fun startConnection() {
         val attempt = ++epoch
-        version = null
+        snapshots.reset()
         publish { it.copy(phase = PressRacePhase.Connecting, ready = null, failure = null, isAwaitingSnapshot = true) }
         opening =
             scope.launch {
@@ -194,25 +194,7 @@ internal class PressRaceSession(
 
                 is PressRaceMessage.Snapshot -> {
                     val snapshot = message.value
-                    val ready = state.value.ready ?: error("Snapshot before ready")
-                    if (snapshot.serverGeneration != ready.serverGeneration ||
-                        snapshot.connectionGeneration != ready.connectionGeneration
-                    ) {
-                        return
-                    }
-                    if (snapshot.view != state.value.view) return
-                    if (state.value.isAwaitingSnapshot && !snapshot.baseline) return
-                    require(snapshot.activeCount >= 0L)
-                    if (version?.let { compareSnapshotVersions(snapshot.snapshotVersion, it) <= 0 } == true) return
-                    compareSnapshotVersions(snapshot.snapshotVersion, "0")
-                    val previousDate =
-                        state.value.snapshot
-                            ?.takeIf {
-                                it.serverGeneration == ready.serverGeneration &&
-                                    it.connectionGeneration == ready.connectionGeneration
-                            }?.date ?: ready.date
-                    if (snapshot.date < previousDate) return
-                    version = snapshot.snapshotVersion
+                    if (!snapshots.accept(snapshot, state.value)) return
                     publish { it.copy(snapshot = snapshot, isAwaitingSnapshot = false) }
                 }
 
@@ -285,7 +267,7 @@ internal class PressRaceSession(
         val previous = connection
         connection = null
         if (previous != null) dispose(previous)
-        version = null
+        snapshots.reset()
         initializedView = null
     }
 
