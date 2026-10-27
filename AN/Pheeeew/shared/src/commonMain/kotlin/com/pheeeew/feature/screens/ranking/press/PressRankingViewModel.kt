@@ -35,16 +35,32 @@ internal class PressRankingViewModel(
     val telemetry = ProductMonitoring(monitoring, "ranking")
     private val mutableUiState = MutableStateFlow(rankings.state.value.toRankingUiState())
     val uiState = mutableUiState.asStateFlow()
+    private var userRefreshPending = false
 
     init {
         viewModelScope.launch {
-            rankings.state.collect { mutableUiState.value = it.toRankingUiState() }
+            rankings.state.collect { state ->
+                if (state.isFresh(PressRaceView.ALL) || state.session.phase == PressRacePhase.Failed ||
+                    state.session.view != PressRaceView.ALL
+                ) {
+                    userRefreshPending = false
+                }
+                mutableUiState.value = state.toRankingUiState().copy(isRefreshing = userRefreshPending)
+            }
         }
     }
 
-    fun onRetry() = rankings.refresh(PressRaceView.ALL)
+    fun onRetry() = onRefresh()
 
-    fun onRefresh() = rankings.refresh(PressRaceView.ALL)
+    fun onRefresh() {
+        val state = rankings.state.value
+        if (state.session.view != PressRaceView.ALL) return
+        if (state.session.phase != PressRacePhase.Failed && !state.isFresh(PressRaceView.ALL)) return
+        if (userRefreshPending) return
+        userRefreshPending = state.all != null
+        mutableUiState.value = mutableUiState.value.copy(isRefreshing = userRefreshPending)
+        rankings.refresh(PressRaceView.ALL)
+    }
 }
 
 internal fun PressRaceRankingState.toRankingUiState(): PressRankingUiState {
@@ -61,9 +77,6 @@ internal fun PressRaceRankingState.toRankingUiState(): PressRankingUiState {
                 failed -> PressRankingStatus.Failed
                 else -> PressRankingStatus.Loading
             },
-        isRefreshing =
-            snapshot != null && !fresh && session.view == PressRaceView.ALL &&
-                session.phase in setOf(PressRacePhase.Ready, PressRacePhase.Connecting, PressRacePhase.Initializing),
         isStale = snapshot != null && !fresh,
         hasRefreshError = snapshot != null && failed,
     )

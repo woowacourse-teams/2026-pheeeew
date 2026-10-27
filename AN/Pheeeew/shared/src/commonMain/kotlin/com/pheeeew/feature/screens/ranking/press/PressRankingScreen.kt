@@ -47,7 +47,6 @@ import pheeeew.shared.generated.resources.press_daily_ranking_back
 import pheeeew.shared.generated.resources.press_daily_ranking_empty
 import pheeeew.shared.generated.resources.press_daily_ranking_people
 import pheeeew.shared.generated.resources.press_daily_ranking_refresh_error
-import pheeeew.shared.generated.resources.press_daily_ranking_syncing
 import pheeeew.shared.generated.resources.press_daily_ranking_title
 
 @Composable
@@ -136,18 +135,9 @@ internal fun PressRankingScreen(
                 if (uiState.date != null) {
                     item { Text(uiState.date, fontSize = 12.sp, color = Color(0xFF767D78)) }
                 }
-                if (uiState.isStale) {
+                if (uiState.hasRefreshError) {
                     item {
-                        RefreshErrorBanner(
-                            stringResource(
-                                if (uiState.hasRefreshError) {
-                                    Res.string.press_daily_ranking_refresh_error
-                                } else {
-                                    Res.string.press_daily_ranking_syncing
-                                },
-                            ),
-                            onRefresh,
-                        )
+                        RefreshErrorBanner(stringResource(Res.string.press_daily_ranking_refresh_error), onRefresh)
                     }
                 }
                 when (uiState.status) {

@@ -51,8 +51,41 @@ class PressRankingViewModelTest {
                 )
                 vm.onRefresh()
                 vm.onRetry()
-                assertEquals(listOf(PressRaceView.ALL, PressRaceView.ALL), source.refreshed)
+                assertEquals(listOf(PressRaceView.ALL), source.refreshed)
                 assertEquals(0L, testScheduler.currentTime)
+            } finally {
+                store.clear()
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun onlyUserRefreshShowsIndicatorAndFreshBaselineClearsIt() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            val store = ViewModelStore()
+            try {
+                val source = FakePressRaceRankings()
+                val loaded = rankingState()
+                source.state.value = loaded.copy(session = loaded.session.copy(isAwaitingSnapshot = true))
+                val vm = PressRankingViewModel(source)
+                store.put("refresh", vm)
+                runCurrent()
+                assertFalse(vm.uiState.value.isRefreshing)
+                source.state.value = loaded
+                runCurrent()
+                vm.onRefresh()
+                assertTrue(vm.uiState.value.isRefreshing)
+                source.state.value = loaded.copy(session = loaded.session.copy(isAwaitingSnapshot = true))
+                runCurrent()
+                assertTrue(vm.uiState.value.isRefreshing)
+                source.state.value = loaded
+                runCurrent()
+                assertFalse(vm.uiState.value.isRefreshing)
+                source.state.value = loaded.copy(session = loaded.session.copy(view = null))
+                runCurrent()
+                vm.onRefresh()
+                assertEquals(1, source.refreshed.size)
             } finally {
                 store.clear()
                 Dispatchers.resetMain()
@@ -109,7 +142,7 @@ class PressRankingViewModelTest {
         assertTrue(ui.hasRefreshError)
         assertFalse(ui.isRefreshing)
         val refreshing = state.copy(session = state.session.copy(isAwaitingSnapshot = true)).toRankingUiState()
-        assertTrue(refreshing.isRefreshing)
+        assertFalse(refreshing.isRefreshing)
         assertTrue(refreshing.isStale)
         val noRank = state.all!!.copy(me = state.all.me.copy(rank = null))
         assertNull(state.copy(all = noRank).toRankingUiState().me)
