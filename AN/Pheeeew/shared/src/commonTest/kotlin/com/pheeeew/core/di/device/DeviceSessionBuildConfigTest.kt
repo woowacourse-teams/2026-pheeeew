@@ -11,6 +11,13 @@ import kotlin.test.assertIs
 
 class DeviceSessionBuildConfigTest {
     @Test
+    fun explicitBuildModesRejectMisspellingsInsteadOfSilentlyChangingInputPath() {
+        assertEquals(PressInputMode.HTTP, PressInputMode.fromBuildValue("http"))
+        assertEquals(PressInputMode.WEBSOCKET_DEVELOPMENT, PressInputMode.fromBuildValue("ws"))
+        kotlin.test.assertFails { PressInputMode.fromBuildValue("websocket") }
+    }
+
+    @Test
     fun inputDefaultsToHttpAndReleaseCannotEnableExperimentalWebSocket() {
         val debug = DeviceSessionBuildConfig(true, "dev", DeviceSessionBuildConfig.DEV_URL, "platform_only", "1")
         assertEquals(PressInputMode.HTTP, debug.pressInputMode)

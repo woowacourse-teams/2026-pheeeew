@@ -13,6 +13,8 @@
 	<key>SENTRY_DSN</key>
 	<string>$(SENTRY_DSN)</string>
 
+	<key>PRESS_INPUT_MODE</key>
+	<string>$(PRESS_INPUT_MODE)</string>
 	<key>DEVICE_BUILD_CONFIGURATION</key>
 	<string>$(DEVICE_BUILD_CONFIGURATION)</string>
 	<key>DEVICE_ENVIRONMENT</key>

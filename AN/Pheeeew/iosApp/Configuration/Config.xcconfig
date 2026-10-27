@@ -3,3 +3,6 @@ PRODUCT_BUNDLE_IDENTIFIER=com.itda.pheeeew
 
 CURRENT_PROJECT_VERSION=12
 MARKETING_VERSION=2.4.0
+
+// Development WS verification is opt-in via an explicit build setting.
+PRESS_INPUT_MODE = http

@@ -88,6 +88,7 @@ fun quotedConfig(value: String): String =
             .replace("\n", "\\n") + "\""
 
 // Only Debug may opt into proof testing. Release always generates required/prod settings.
+val debugPressInputMode = providers.gradleProperty("pressDebugInputMode").orElse("http")
 val debugDeviceAttestationMode = providers.gradleProperty("deviceDebugAttestationMode").orElse("platform_only")
 val deviceCloudProjectNumber = providers.gradleProperty("deviceCloudProjectNumber").orElse("87715710427")
 val cloudProjectNumberLiteral = "${deviceCloudProjectNumber.get().toLongOrNull() ?: 0L}L"
@@ -128,6 +129,8 @@ android {
     }
     buildTypes {
         debug {
+            require(debugPressInputMode.get() in setOf("http", "ws")) { "Unknown Debug press input mode" }
+            buildConfigField("String", "PRESS_INPUT_MODE", quotedConfig(debugPressInputMode.get()))
             buildConfigField("String", "DEVICE_ENVIRONMENT", "\"dev\"")
             buildConfigField("String", "DEVICE_ATTESTATION_MODE", quotedConfig(debugDeviceAttestationMode.get()))
             buildConfigField("String", "MONITORING_ENVIRONMENT", "\"dev\"")
@@ -139,6 +142,7 @@ android {
             buildConfigField("long", "DEVICE_CLOUD_PROJECT_NUMBER", cloudProjectNumberLiteral)
         }
         release {
+            buildConfigField("String", "PRESS_INPUT_MODE", "\"http\"")
             buildConfigField("String", "DEVICE_ENVIRONMENT", "\"prod\"")
             buildConfigField("String", "DEVICE_ATTESTATION_MODE", "\"required\"")
             buildConfigField("String", "MONITORING_ENVIRONMENT", "\"prod\"")
