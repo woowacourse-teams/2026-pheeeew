@@ -26,9 +26,8 @@ internal fun PressRoute(
         },
         onOpenRanking = onOpenRanking,
         modifier = modifier,
-        // Replace this state source with ViewModel state when the ranking API is connected.
-        nearbyRanking = temporaryNearbyRanking,
-        activity = temporaryPressActivity,
+        nearbyRanking = uiState.nearbyRanking,
+        activity = uiState.activity,
         faceVisuals = faceDemo.visuals,
     )
 }

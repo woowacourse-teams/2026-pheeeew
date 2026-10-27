@@ -1,5 +1,7 @@
 package com.pheeeew.feature.screens.press.component
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -42,9 +44,7 @@ import pheeeew.shared.generated.resources.press_nearby_count
 import pheeeew.shared.generated.resources.press_nearby_empty
 import pheeeew.shared.generated.resources.press_nearby_loading
 import pheeeew.shared.generated.resources.press_nearby_me
-import pheeeew.shared.generated.resources.press_nearby_participate
 import pheeeew.shared.generated.resources.press_nearby_progress
-import pheeeew.shared.generated.resources.press_nearby_progress_unknown
 import pheeeew.shared.generated.resources.press_nearby_reconnecting
 import pheeeew.shared.generated.resources.press_nearby_row_description
 import pheeeew.shared.generated.resources.press_nearby_unavailable
@@ -68,15 +68,7 @@ internal fun PressNearbyRankingCard(
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            state.rows.forEach { NearbyRankRow(it) }
-            if (state.participationPending) {
-                Text(
-                    stringResource(Res.string.press_nearby_participate),
-                    color = RankingInk,
-                    fontSize = 12.sp,
-                    modifier = Modifier.fillMaxWidth().padding(10.dp),
-                )
-            }
+            PressNearbyRankingRows(state)
             val message =
                 when {
                     state.status == PressNearbyRankingStatus.Unavailable -> {
@@ -106,33 +98,24 @@ internal fun PressNearbyRankingCard(
             ) {
                 Text(message, color = RankingMuted, fontSize = 12.sp, modifier = Modifier.padding(10.dp))
             }
-            Spacer(Modifier.height(8.dp))
             val progress = normalizedNearbyProgress(state.progress)
-            val label =
-                stringResource(
-                    if (progress ==
-                        null
-                    ) {
-                        Res.string.press_nearby_progress_unknown
-                    } else {
-                        Res.string.press_nearby_progress
-                    },
-                )
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(5.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFFEFF0EB))
-                    .clearAndSetSemantics {
-                        contentDescription = label
-                        if (progress != null) progressBarRangeInfo = ProgressBarRangeInfo(progress, 0f..1f)
-                    },
-            ) {
-                if (progress != null &&
-                    progress > 0f
+            if (progress != null) {
+                Spacer(Modifier.height(8.dp))
+                val label = stringResource(Res.string.press_nearby_progress)
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(5.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFEFF0EB))
+                        .clearAndSetSemantics {
+                            contentDescription = label
+                            progressBarRangeInfo = ProgressBarRangeInfo(progress, 0f..1f)
+                        },
                 ) {
-                    Box(Modifier.fillMaxWidth(progress).height(5.dp).background(RankingInk, CircleShape))
+                    if (progress > 0f) {
+                        Box(Modifier.fillMaxWidth(progress).height(5.dp).background(RankingInk, CircleShape))
+                    }
                 }
             }
         }
@@ -141,14 +124,18 @@ internal fun PressNearbyRankingCard(
 }
 
 @Composable
-private fun NearbyRankRow(row: PressNearbyRankRow) {
+internal fun NearbyRankRow(
+    row: PressNearbyRankRow,
+    modifier: Modifier = Modifier,
+    reducedMotion: Boolean = false,
+) {
     val shape = RoundedCornerShape(12.dp)
     val name = if (row.isMe) stringResource(Res.string.press_nearby_me) else row.nickname
     val count = stringResource(Res.string.press_nearby_count, formatCount(row.count))
     val description =
         stringResource(Res.string.press_nearby_row_description, row.rank.toString(), name, formatCount(row.count))
     Row(
-        Modifier
+        modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = 38.dp)
             .clip(shape)
@@ -172,14 +159,16 @@ private fun NearbyRankRow(row: PressNearbyRankRow) {
             ) {
                 Box(Modifier.size(24.dp).background(medal, CircleShape).border(1.dp, RankingInk, CircleShape))
             }
-            Text(
-                row.rank.toString(),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                color = if (row.isMe || medal != null) RankingInk else RankingMuted,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-            )
+            Crossfade(row.rank, animationSpec = tween(if (reducedMotion) 0 else 120), label = "nearby rank") { rank ->
+                Text(
+                    rank.toString(),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = if (row.isMe || medal != null) RankingInk else RankingMuted,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
         }
         Text(
             name,
@@ -191,15 +180,17 @@ private fun NearbyRankRow(row: PressNearbyRankRow) {
             fontWeight = if (row.isMe) FontWeight.Bold else FontWeight.Medium,
         )
         Box(Modifier.widthIn(max = 120.dp)) {
-            Text(
-                count,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.End,
-                color = RankingInk,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-            )
+            Crossfade(count, animationSpec = tween(if (reducedMotion) 0 else 140), label = "nearby count") { label ->
+                Text(
+                    label,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.End,
+                    color = RankingInk,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
         }
     }
 }

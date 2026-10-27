@@ -329,7 +329,7 @@
     <string name="press_nearby_reconnecting">연결 확인 중 · 마지막 순위</string>
     <string name="press_nearby_progress">순위판 진행률</string>
     <string name="press_nearby_progress_unknown">순위판 진행률 알 수 없음</string>
-    <string name="press_nearby_unavailable">아직 순위 정보를 제공하지 않아요</string>
+    <string name="press_nearby_unavailable">순위에 연결하지 못했어요</string>
     <string name="press_activity_count">%1$s명이 함께 누르는 중</string>
     <string name="press_activity_loading">활동 확인 중…</string>
     <string name="press_activity_unknown">활동 인원 알 수 없음</string>
@@ -341,7 +341,7 @@
     <string name="press_daily_ranking_title">일일 랭킹</string>
     <string name="press_daily_ranking_back">뒤로 가기</string>
     <string name="press_daily_ranking_people">함께 달리는 사람들</string>
-    <string name="press_daily_ranking_refresh_error">랭킹을 새로고침하지 못했어요.</string>
+    <string name="press_daily_ranking_refresh_error">연결이 끊겼어요. 마지막 일일 순위를 표시하고 있어요.</string>
     <string name="press_daily_ranking_empty">아직 참여자가 없어요.</string>
     <string name="press_my_rank_loading">내 순위를 확인하고 있어요</string>
     <string name="press_my_rank_failed">내 순위를 불러오지 못했어요</string>
@@ -414,4 +414,6 @@
     <string name="guide_collection_stats_accent">프레스·스탬프 기록</string>
     <string name="onboarding_guide_swipe_hint">옆으로 넘겨보세요 →</string>
     <string name="collection_notification_outdated">알림의 날짜가 오늘과 달라요. 오늘의 진행도를 보여드릴게요.</string>
+    <string name="press_nearby_my_place">내 자리</string>
+    <string name="press_nearby_start_hint">한 번 누르면 시작!</string>
 </resources>

@@ -29,6 +29,49 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class PressRaceSessionTest {
     @Test
+    fun explicitRefreshOnlyUsesTheActiveSocketAndWaitsForNewBaseline() =
+        runTest {
+            val transport = FakeTransport()
+            val session = session(transport, backgroundScope)
+            try {
+                session.refresh(PressRaceView.ALL)
+                runCurrent()
+                assertTrue(transport.connections.isEmpty())
+                session.setView(PressRaceView.ALL)
+                runCurrent()
+                val socket = transport.connections.single()
+                session.refresh(PressRaceView.ALL)
+                runCurrent()
+                assertEquals(1, socket.sent.size)
+                socket.incoming.send(ready())
+                socket.incoming.send(snapshot("1", PressRaceView.ALL))
+                runCurrent()
+                session.refresh(PressRaceView.PRESS)
+                runCurrent()
+                assertEquals(1, socket.sent.size)
+                session.refresh(PressRaceView.ALL)
+                runCurrent()
+                assertEquals(1, transport.connections.size)
+                assertEquals("view.change", socket.command(1)["type"]?.jsonPrimitive?.content)
+                assertTrue(session.state.value.isAwaitingSnapshot)
+                assertNull(session.state.value.currentSnapshot)
+                session.refresh(PressRaceView.ALL)
+                runCurrent()
+                assertEquals(2, socket.sent.size)
+                socket.incoming.send(snapshot("2", PressRaceView.ALL))
+                runCurrent()
+                assertFalse(session.state.value.isAwaitingSnapshot)
+                session.setView(null)
+                runCurrent()
+                session.refresh(PressRaceView.ALL)
+                runCurrent()
+                assertEquals(1, transport.connections.size)
+            } finally {
+                session.close()
+            }
+        }
+
+    @Test
     fun opensOnlyOnDemandAndBorrowsExistingTokenOnceForBothViews() =
         runTest {
             val transport = FakeTransport()

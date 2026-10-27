@@ -32,7 +32,7 @@ internal class DailyPressRankingViewModel(
     private val mutableUiState =
         MutableStateFlow(
             PressRankingUiState(
-                weekLabel = date,
+                date = date,
                 status = if (sessionGeneration == null) PressRankingStatus.Failed else PressRankingStatus.Loading,
             ),
         )
@@ -55,13 +55,18 @@ internal class DailyPressRankingViewModel(
         previous?.cancel()
         mutableUiState.value =
             PressRankingUiState(
-                weekLabel = date,
+                date = date,
                 status = if (generation == null) PressRankingStatus.Failed else PressRankingStatus.Loading,
             )
         if (generation != null) refresh()
     }
 
     fun onRefresh() {
+        if (requestJob?.isActive == true) return
+        refresh(showIndicator = true)
+    }
+
+    fun onResumed() {
         if (requestJob?.isActive == true) return
         refresh()
     }
@@ -78,7 +83,7 @@ internal class DailyPressRankingViewModel(
         if (mutableUiState.value.status == PressRankingStatus.Failed) refresh()
     }
 
-    private fun refresh() {
+    private fun refresh(showIndicator: Boolean = false) {
         val generation = sessionGeneration ?: return
         val request = ++requestId
         val previous = requestJob
@@ -87,9 +92,9 @@ internal class DailyPressRankingViewModel(
         val hasContent = mutableUiState.value.status == PressRankingStatus.Ready
         mutableUiState.value =
             if (hasContent) {
-                mutableUiState.value.copy(isRefreshing = true, hasRefreshError = false)
+                mutableUiState.value.copy(isRefreshing = showIndicator, hasRefreshError = false)
             } else {
-                PressRankingUiState(weekLabel = date)
+                PressRankingUiState(date = date)
             }
         requestJob =
             viewModelScope.launch {
@@ -100,10 +105,23 @@ internal class DailyPressRankingViewModel(
                             val ranking = result.ranking
                             mutableUiState.value =
                                 PressRankingUiState(
-                                    weekLabel = ranking.date,
-                                    hasPrevious = false,
-                                    people = ranking.items.map { PressPersonRank(it.rank, it.nickname, it.pressCount) },
-                                    me = ranking.me?.let { PressPersonRank(it.rank, it.nickname, it.pressCount) },
+                                    date = ranking.date,
+                                    people =
+                                        ranking.items.map {
+                                            PressPersonRank(
+                                                it.rank.toLong(),
+                                                it.nickname,
+                                                it.pressCount,
+                                            )
+                                        },
+                                    me =
+                                        ranking.me?.let {
+                                            PressPersonRank(
+                                                it.rank.toLong(),
+                                                it.nickname,
+                                                it.pressCount,
+                                            )
+                                        },
                                     status = PressRankingStatus.Ready,
                                 )
                         }
@@ -133,7 +151,7 @@ internal class DailyPressRankingViewModel(
             if (hasContent) {
                 mutableUiState.value.copy(isRefreshing = false, hasRefreshError = true)
             } else {
-                PressRankingUiState(weekLabel = date, status = PressRankingStatus.Failed)
+                PressRankingUiState(date = date, status = PressRankingStatus.Failed)
             }
     }
 }

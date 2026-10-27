@@ -12,6 +12,8 @@ import com.pheeeew.core.network.ConnectivityObserver
 import com.pheeeew.core.session.DeviceSessionManager
 import com.pheeeew.data.local.device.DeviceCredentialStorage
 import com.pheeeew.data.local.mapfilter.InMemoryMapFilterSettingsRepository
+import com.pheeeew.data.press.race.PressRaceRankingStore
+import com.pheeeew.data.press.race.PressRaceRankings
 import com.pheeeew.data.press.race.PressRaceSession
 import com.pheeeew.data.press.race.transport.PressRaceTransport
 import com.pheeeew.data.press.race.transport.createPlatformPressRaceTransport
@@ -224,6 +226,13 @@ internal interface ApiBindings {
         session: DeviceSessionManager,
         @SessionWork scope: CoroutineScope,
     ): PressRaceSession = PressRaceSession(transport, session, scope)
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun providePressRaceRankings(
+        race: PressRaceSession,
+        @SessionWork scope: CoroutineScope,
+    ): PressRaceRankings = PressRaceRankingStore(race.state, race::refresh, scope)
 
     @Provides
     @SingleIn(AppScope::class)

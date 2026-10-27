@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
@@ -20,6 +21,7 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pheeeew.feature.emotion.component.EmotionFeedbackCatalog
 import com.pheeeew.feature.emotion.component.formatCount
 import com.pheeeew.feature.emotion.component.rememberTapReducedMotion
@@ -72,6 +75,8 @@ internal fun PressActivityFooter(
     reducedMotionOverride: Boolean? = null,
 ) {
     val focused = LocalInspectionMode.current || LocalWindowInfo.current.isWindowFocused
+    val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateFlow
+        .collectAsState()
     var suppressedId by remember { mutableStateOf<Long?>(null) }
     var motionDisabled by remember { mutableStateOf(false) }
     val reduced = reducedMotionOverride ?: rememberTapReducedMotion()
@@ -85,7 +90,7 @@ internal fun PressActivityFooter(
     val notice = state.notice?.takeUnless { it.isEmpty || it.displayId == suppressedId || !focused }
     val activityText =
         when (state.status) {
-            PressActivityStatus.Known -> {
+            PressActivityStatus.Known, PressActivityStatus.Cached -> {
                 stringResource(
                     Res.string.press_activity_count,
                     formatCount(requireNotNull(state.count)),
@@ -105,11 +110,21 @@ internal fun PressActivityFooter(
             }
         }
     Row(
-        modifier.fillMaxWidth().background(Color(0xFFF0F1EB)).padding(horizontal = 10.dp, vertical = 10.dp),
+        modifier
+            .fillMaxWidth()
+            .heightIn(
+                min = 40.dp,
+            ).background(Color(0xFFF0F1EB))
+            .padding(horizontal = 10.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ActivityPeople(state, activityText, Modifier.weight(1f))
+        ActivityPeople(
+            state,
+            activityText,
+            Modifier.weight(1f),
+            pulseEnabled = focused && lifecycleState.isAtLeast(Lifecycle.State.RESUMED) && !reduced && !motionDisabled,
+        )
         NoticeTransition(notice, reduced || motionDisabled)
     }
 }
@@ -133,21 +148,19 @@ private fun ActivityPeople(
     state: PressActivityUiState,
     activityText: String,
     modifier: Modifier = Modifier,
+    pulseEnabled: Boolean,
 ) {
     val active = state.status == PressActivityStatus.Known && (state.count ?: 0) > 0
+    val overflowCount = state.avatarOverflowCount
     Row(
         modifier.clearAndSetSemantics { contentDescription = activityText },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Box(
-            Modifier.size(12.dp).background(if (active) Color(0xFFCEE5D5) else Color(0xFFDFE2DC), CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Box(Modifier.size(6.dp).background(if (active) Color(0xFF2DAB6E) else Color(0xFF8A908A), CircleShape))
-        }
+        PressActivityLiveIndicator(active, pulseEnabled)
         Row(horizontalArrangement = Arrangement.spacedBy((-5).dp), verticalAlignment = Alignment.CenterVertically) {
-            listOf(EmotionKind.Blocked, EmotionKind.Annoyed, EmotionKind.Tired).forEach { kind ->
+            val faces = listOf(EmotionKind.Blocked, EmotionKind.Annoyed, EmotionKind.Tired).take(state.avatarCount)
+            faces.forEach { kind ->
                 Image(
                     painterResource(EmotionFeedbackCatalog.face(kind)),
                     contentDescription = null,
@@ -155,7 +168,7 @@ private fun ActivityPeople(
                     modifier = Modifier.size(20.dp),
                 )
             }
-            if (state.status == PressActivityStatus.Known && state.avatarOverflowCount != null) {
+            if (overflowCount != null) {
                 Box(
                     Modifier
                         .requiredSize(20.dp)
@@ -165,7 +178,7 @@ private fun ActivityPeople(
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        "+${formatCount(state.avatarOverflowCount)}",
+                        "+${formatCount(overflowCount)}",
                         color = Color.White,
                         modifier = Modifier.fillMaxWidth(),
                         style =

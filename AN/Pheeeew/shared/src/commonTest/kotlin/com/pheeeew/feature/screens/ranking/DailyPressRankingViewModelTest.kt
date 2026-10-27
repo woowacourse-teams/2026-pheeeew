@@ -26,6 +26,43 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class DailyPressRankingViewModelTest {
     @Test
+    fun `자동 복귀 조회는 표시 없이 갱신하고 수동 조회만 표시한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                var pending: CompletableDeferred<DailyPressRankingLoadResult>? = null
+                val result =
+                    DailyPressRankingLoadResult.Loaded(
+                        DailyPressRanking(
+                            "2026-10-21",
+                            "2026-10-20T15:00:00Z",
+                            "2026-10-21T15:00:00Z",
+                            emptyList(),
+                            null,
+                        ),
+                    )
+                val repository = RankingRepository { _, _ -> pending?.await() ?: result }
+                val vm = DailyPressRankingViewModel(repository, "2026-10-21", 7)
+                runCurrent()
+                pending = CompletableDeferred()
+                vm.onResumed()
+                runCurrent()
+                kotlin.test.assertFalse(vm.uiState.value.isRefreshing)
+                pending.complete(result)
+                runCurrent()
+                pending = CompletableDeferred()
+                vm.onRefresh()
+                runCurrent()
+                assertTrue(vm.uiState.value.isRefreshing)
+                pending.complete(result)
+                runCurrent()
+                kotlin.test.assertFalse(vm.uiState.value.isRefreshing)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
     fun `즉시 취소되는 세션 제거는 대기 알림 조회를 시작하지 않는다`() =
         runTest {
             Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
@@ -100,13 +137,13 @@ class DailyPressRankingViewModelTest {
                 advanceUntilIdle()
 
                 assertEquals(PressRankingStatus.Ready, viewModel.uiState.value.status)
-                assertEquals("2026-10-21", viewModel.uiState.value.weekLabel)
+                assertEquals("2026-10-21", viewModel.uiState.value.date)
                 assertTrue(
                     viewModel.uiState.value.people
                         .isEmpty(),
                 )
                 assertEquals(
-                    150,
+                    150L,
                     viewModel.uiState.value.me
                         ?.rank,
                 )

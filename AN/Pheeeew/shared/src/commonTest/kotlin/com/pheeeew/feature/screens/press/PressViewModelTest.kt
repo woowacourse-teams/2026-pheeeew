@@ -46,7 +46,12 @@ class PressViewModelTest {
                     PressRepositoryImpl(statistics, sender, backgroundScope, nowMillis = {
                         PressMonotonicMillis(testScheduler.currentTime)
                     }, retryPolicy = PressRetryPolicy(jitter = { 1.0 }))
-                val viewModel = PressViewModel(repository)
+                val viewModel =
+                    PressViewModel(
+                        repository,
+                        com.pheeeew.data.press.race
+                            .FakePressRaceRankings(),
+                    )
                 store.put("press", viewModel)
                 viewModel.onScreenResumed()
                 runCurrent()
@@ -117,7 +122,12 @@ class PressViewModelTest {
                     PressRepositoryImpl(statistics, sender, backgroundScope, nowMillis = {
                         PressMonotonicMillis(testScheduler.currentTime)
                     }, retryPolicy = PressRetryPolicy(jitter = { 1.0 }))
-                val viewModel = PressViewModel(repository)
+                val viewModel =
+                    PressViewModel(
+                        repository,
+                        com.pheeeew.data.press.race
+                            .FakePressRaceRankings(),
+                    )
                 store.put("press", viewModel)
                 viewModel.onScreenResumed()
                 runCurrent()
@@ -153,7 +163,12 @@ class PressViewModelTest {
                         nowMillis = { PressMonotonicMillis(testScheduler.currentTime) },
                         flushDelayMillis = PressDelayMillis.Zero,
                     )
-                val viewModel = PressViewModel(repository)
+                val viewModel =
+                    PressViewModel(
+                        repository,
+                        com.pheeeew.data.press.race
+                            .FakePressRaceRankings(),
+                    )
                 store.put("press", viewModel)
 
                 assertTrue(viewModel.onEmotionTap(EmotionKind.Angry))
@@ -184,7 +199,12 @@ class PressViewModelTest {
                         backgroundScope,
                         nowMillis = { PressMonotonicMillis(testScheduler.currentTime) },
                     )
-                val viewModel = PressViewModel(repository)
+                val viewModel =
+                    PressViewModel(
+                        repository,
+                        com.pheeeew.data.press.race
+                            .FakePressRaceRankings(),
+                    )
                 store.put("press", viewModel)
                 viewModel.onScreenResumed()
                 runCurrent()
@@ -232,7 +252,12 @@ class PressViewModelTest {
                     PressRepositoryImpl(statistics, sender, backgroundScope, nowMillis = {
                         PressMonotonicMillis(testScheduler.currentTime)
                     }, retryPolicy = PressRetryPolicy(jitter = { 1.0 }))
-                val viewModel = PressViewModel(repository)
+                val viewModel =
+                    PressViewModel(
+                        repository,
+                        com.pheeeew.data.press.race
+                            .FakePressRaceRankings(),
+                    )
                 store.put("press", viewModel)
                 viewModel.onScreenResumed()
                 runCurrent()
@@ -287,7 +312,12 @@ class PressViewModelTest {
                         nowMillis = { PressMonotonicMillis(testScheduler.currentTime) },
                         flushDelayMillis = PressDelayMillis.Zero,
                     )
-                val viewModel = PressViewModel(repository)
+                val viewModel =
+                    PressViewModel(
+                        repository,
+                        com.pheeeew.data.press.race
+                            .FakePressRaceRankings(),
+                    )
                 store.put("press", viewModel)
                 viewModel.onScreenResumed()
                 runCurrent()
@@ -334,7 +364,12 @@ class PressViewModelTest {
                         nowMillis = { PressMonotonicMillis(testScheduler.currentTime) },
                         retryPolicy = PressRetryPolicy(jitter = { 1.0 }),
                     )
-                val viewModel = PressViewModel(repository)
+                val viewModel =
+                    PressViewModel(
+                        repository,
+                        com.pheeeew.data.press.race
+                            .FakePressRaceRankings(),
+                    )
                 store.put("press", viewModel)
                 viewModel.onScreenResumed()
                 runCurrent()
@@ -384,7 +419,12 @@ class PressViewModelTest {
                         nowMillis = { PressMonotonicMillis(testScheduler.currentTime) },
                         flushDelayMillis = PressDelayMillis.Zero,
                     )
-                val viewModel = PressViewModel(repository)
+                val viewModel =
+                    PressViewModel(
+                        repository,
+                        com.pheeeew.data.press.race
+                            .FakePressRaceRankings(),
+                    )
                 store.put("press", viewModel)
                 viewModel.onScreenResumed()
                 runCurrent()
@@ -425,7 +465,12 @@ class PressViewModelTest {
                         flushDelayMillis = PressDelayMillis.Zero,
                         nowMillis = { PressMonotonicMillis(testScheduler.currentTime) },
                     )
-                val viewModel = PressViewModel(repository)
+                val viewModel =
+                    PressViewModel(
+                        repository,
+                        com.pheeeew.data.press.race
+                            .FakePressRaceRankings(),
+                    )
                 store.put("press", viewModel)
                 viewModel.onScreenResumed()
                 runCurrent()
@@ -479,7 +524,12 @@ class PressViewModelTest {
                         flushDelayMillis = PressDelayMillis.Zero,
                         nowMillis = { PressMonotonicMillis(testScheduler.currentTime) },
                     )
-                val viewModel = PressViewModel(repository)
+                val viewModel =
+                    PressViewModel(
+                        repository,
+                        com.pheeeew.data.press.race
+                            .FakePressRaceRankings(),
+                    )
                 store.put("press", viewModel)
                 viewModel.onScreenResumed()
                 runCurrent()
@@ -535,7 +585,12 @@ class PressViewModelTest {
                     )
 
                 val firstScreenStore = ViewModelStore()
-                val firstScreen = PressViewModel(appScopedRepository)
+                val firstScreen =
+                    PressViewModel(
+                        appScopedRepository,
+                        com.pheeeew.data.press.race
+                            .FakePressRaceRankings(),
+                    )
                 firstScreenStore.put("press", firstScreen)
                 repeat(10_000) { assertTrue(firstScreen.onEmotionTap(EmotionKind.Blocked)) }
                 runCurrent()
@@ -544,7 +599,12 @@ class PressViewModelTest {
                 firstScreenStore.clear()
 
                 val recreatedScreenStore = ViewModelStore()
-                val recreatedScreen = PressViewModel(appScopedRepository)
+                val recreatedScreen =
+                    PressViewModel(
+                        appScopedRepository,
+                        com.pheeeew.data.press.race
+                            .FakePressRaceRankings(),
+                    )
                 recreatedScreenStore.put("press", recreatedScreen)
                 assertEquals(appScopedRepository.state.value.myToday, recreatedScreen.uiState.value.myToday)
                 assertEquals(10_000L, recreatedScreen.uiState.value.optimisticMyTotalCount)

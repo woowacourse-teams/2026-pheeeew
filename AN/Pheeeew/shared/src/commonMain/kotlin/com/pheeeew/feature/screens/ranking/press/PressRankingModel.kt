@@ -14,9 +14,11 @@ internal enum class PressEmotion(
 }
 
 internal data class PressPersonRank(
-    val rank: Int,
+    val rank: Long,
     val nickname: String,
     val count: Long,
+    val publicId: String? = null,
+    val isMe: Boolean = false,
 )
 
 internal val samplePressPersonRanks =

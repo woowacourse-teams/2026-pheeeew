@@ -1,12 +1,13 @@
 package com.pheeeew.feature.screens.ranking.press
 
 internal data class PressRaceRowModel(
-    val rank: Int,
+    val rank: Long,
     val nickname: String,
     val count: Long,
     val progress: Float,
     val isMe: Boolean = false,
     val markerIndex: Int = 0,
+    val publicId: String? = null,
 )
 
 internal fun List<PressPersonRank>.toRaceRows(): List<PressRaceRowModel> {
@@ -17,6 +18,8 @@ internal fun List<PressPersonRank>.toRaceRows(): List<PressRaceRowModel> {
             person.nickname,
             person.count,
             raceProgress(person.count, maximum),
+            isMe = person.isMe,
+            publicId = person.publicId,
             markerIndex =
                 index % 3,
         )
