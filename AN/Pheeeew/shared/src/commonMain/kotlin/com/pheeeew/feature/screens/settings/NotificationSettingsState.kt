@@ -38,7 +38,7 @@ internal class NotificationSettingsState(
             var preferences = store.read()
             val pending = pendingEnable
             if (pending != null && authorization.allowsNotifications()) {
-                preferences = enableOnly(pending)
+                preferences = store.update(pending, true)
             }
             pendingEnable = null
             mutableState.value = NotificationSettingsUiState(preferences, authorization, busy = false)
@@ -53,7 +53,7 @@ internal class NotificationSettingsState(
         val preferences = store.read()
         mutableState.value = state.value.copy(authorization = authorization, preferences = preferences)
         if (enabled && !authorization.allowsNotifications()) {
-            enableWithSystemPermission(kind, authorization)
+            enableWithSystemPermission(kind, permissions.canRequestAuthorization(), authorization)
         } else {
             val saved = store.update(kind, enabled)
             mutableState.value = NotificationSettingsUiState(saved, authorization, busy = false)
@@ -62,12 +62,13 @@ internal class NotificationSettingsState(
 
     private suspend fun enableWithSystemPermission(
         kind: NotificationKind,
+        canRequestAuthorization: Boolean,
         authorization: NotificationAuthorization,
     ) {
-        if (authorization == NotificationAuthorization.NOT_DETERMINED) {
+        if (canRequestAuthorization) {
             permissions.requestAuthorization()
             val updated = permissions.authorization()
-            val saved = if (updated.allowsNotifications()) enableOnly(kind) else store.read()
+            val saved = if (updated.allowsNotifications()) store.update(kind, true) else store.read()
             mutableState.value = NotificationSettingsUiState(saved, updated, busy = false)
         } else {
             pendingEnable = kind
@@ -77,17 +78,6 @@ internal class NotificationSettingsState(
             }
             mutableState.value = state.value.copy(authorization = authorization, busy = false)
         }
-    }
-
-    private suspend fun enableOnly(kind: NotificationKind): NotificationPreferences {
-        // While system permission was blocked, every toggle appeared OFF. Respect that
-        // visible state when enabling one item rather than restoring hidden ON defaults.
-        return store.replace(
-            NotificationPreferences(
-                collectionEnabled = kind == NotificationKind.COLLECTION,
-                rankDropEnabled = kind == NotificationKind.RANK_DROP,
-            ),
-        )
     }
 
     private suspend fun runOperation(block: suspend () -> Unit) {

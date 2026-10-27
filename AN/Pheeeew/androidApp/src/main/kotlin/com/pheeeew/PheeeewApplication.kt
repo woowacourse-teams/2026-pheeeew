@@ -19,11 +19,14 @@ class PheeeewApplication :
         private set
     private val owner get() = appGraph.monitoringOwner
     val monitoring get() = owner.runtime
+    internal lateinit var notificationRuntime: AndroidNotificationRuntime
+        private set
 
     suspend fun compatibilityMonitoring() = owner.compatibility()
 
     override fun onCreate() {
         super<Application>.onCreate()
+        AndroidNotificationChannels.create(this)
         val config =
             MonitoringConfig(
                 environment = BuildConfig.MONITORING_ENVIRONMENT,
@@ -56,14 +59,17 @@ class PheeeewApplication :
                 ),
             )
         appGraph.monitoringOwner
+        notificationRuntime = AndroidNotificationRuntime(this, appGraph.apiDependencies)
         ProcessLifecycleOwner.get().lifecycle.addObserver(this)
     }
 
     override fun onStart(owner: LifecycleOwner) {
         this.owner.foreground()
+        notificationRuntime.foreground()
     }
 
     override fun onStop(owner: LifecycleOwner) {
         this.owner.background()
+        notificationRuntime.background()
     }
 }

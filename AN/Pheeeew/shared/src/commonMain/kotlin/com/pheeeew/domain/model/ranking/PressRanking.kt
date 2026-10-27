@@ -14,3 +14,11 @@ data class PressRankingItem(
     val nickname: String,
     val pressCount: Long,
 )
+
+data class DailyPressRanking(
+    val date: String,
+    val startAt: String,
+    val endAt: String,
+    val items: List<PressRankingItem>,
+    val me: PressRankingItem?,
+)

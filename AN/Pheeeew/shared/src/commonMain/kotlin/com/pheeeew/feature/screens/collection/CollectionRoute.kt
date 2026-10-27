@@ -47,7 +47,7 @@ internal fun CollectionRoute(
     }
     LaunchedEffect(viewModel, sessionGeneration, currentNickname, refreshRevision) {
         viewModel.onSessionChanged(sessionGeneration, currentNickname)
-        if (refreshRevision > 0L) viewModel.refresh()
+        if (refreshRevision > 0L) viewModel.refreshFromNotification()
     }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onScreenResumed() }
 

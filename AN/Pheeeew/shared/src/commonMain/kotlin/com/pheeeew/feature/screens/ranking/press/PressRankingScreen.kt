@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
@@ -31,6 +32,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.component.LoadErrorContent
@@ -40,6 +43,7 @@ import com.pheeeew.feature.screens.ranking.press.components.MyRaceRankCard
 import com.pheeeew.feature.screens.ranking.press.components.PressRaceHeader
 import com.pheeeew.feature.screens.ranking.press.components.PressRaceRow
 import com.pheeeew.feature.screens.ranking.press.components.RankingEncouragementBanner
+import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
@@ -73,6 +77,34 @@ fun PressRankingRoute(
 }
 
 @Composable
+internal fun DailyPressRankingRoute(
+    date: String,
+    sessionGeneration: Long?,
+    refreshRevision: Long,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val viewModel: DailyPressRankingViewModel =
+        assistedMetroViewModel<DailyPressRankingViewModel, DailyPressRankingViewModel.Factory> {
+            create(date, sessionGeneration)
+        }
+    LaunchedEffect(viewModel, sessionGeneration) { viewModel.onSessionChanged(sessionGeneration) }
+    LaunchedEffect(viewModel, refreshRevision) {
+        if (refreshRevision > 0L) viewModel.onNotificationReceived()
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onRefresh() }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    PressRankingScreen(
+        onBack = onBack,
+        uiState = uiState,
+        onRetry = viewModel::onRetry,
+        onRefresh = viewModel::onRefresh,
+        modifier = modifier,
+        dailyDate = date,
+    )
+}
+
+@Composable
 internal fun PressRankingScreen(
     onBack: () -> Unit,
     uiState: PressRankingUiState,
@@ -80,6 +112,7 @@ internal fun PressRankingScreen(
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
     rows: List<PressRaceRowModel> = uiState.people.toRaceRows(),
+    dailyDate: String? = null,
 ) {
     val fontScale = LocalDensity.current.fontScale
     val rankWidth = ((rows.maxOfOrNull { it.rank.toString().length } ?: 1) * 8f * fontScale).coerceAtLeast(28f).dp
@@ -97,7 +130,14 @@ internal fun PressRankingScreen(
         }
     Column(modifier.fillMaxSize().background(Color(0xFFFAFAFA)).statusBarsPadding()) {
         Box(Modifier.fillMaxWidth().height(64.dp), contentAlignment = Alignment.Center) {
-            Text(stringResource(Res.string.press_daily_ranking_title), fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    stringResource(Res.string.press_daily_ranking_title),
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                if (dailyDate != null) Text(dailyDate, fontSize = 12.sp, color = Color(0xFF767D78))
+            }
             IconButton(
                 onClick = onBack,
                 modifier =

@@ -110,6 +110,52 @@ class NotificationClickTest {
         assertEquals(click("latest"), inbox.queuedClick.value)
     }
 
+    @Test
+    fun `복원 시 완료한 클릭만 중복을 막고 대기 중 클릭은 다시 처리한다`() {
+        val saved = ClickStore()
+        val original = NotificationClickInbox(saved)
+        original.setReady(true)
+        original.receive(click("done"))
+        original.acknowledge("done")
+        original.receive(click("waiting"))
+
+        val restored = NotificationClickInbox(saved)
+        assertEquals(click("waiting"), restored.queuedClick.value)
+        assertNull(restored.pendingClick.value)
+        restored.setReady(true)
+        assertEquals(click("waiting"), restored.pendingClick.value)
+        restored.receive(click("done"))
+        assertEquals(click("waiting"), restored.pendingClick.value)
+        restored.acknowledge("waiting")
+        val completed = NotificationClickInbox(saved)
+        assertNull(completed.queuedClick.value)
+        completed.setReady(true)
+        completed.receive(click("waiting"))
+        assertNull(completed.pendingClick.value)
+    }
+
+    @Test
+    fun `이전 launch Intent가 복원한 최신 대기 클릭을 덮어쓰지 않는다`() {
+        val saved = ClickStore()
+        val original = NotificationClickInbox(saved)
+        original.receive(click("launch"))
+        original.receive(click("new-intent"))
+        val restored = NotificationClickInbox(saved)
+        restored.receive(click("launch"))
+        restored.setReady(true)
+        assertEquals(click("new-intent"), restored.pendingClick.value)
+    }
+
+    private class ClickStore : NotificationClickStore {
+        var snapshot = NotificationClickSnapshot()
+
+        override fun read() = snapshot
+
+        override fun write(snapshot: NotificationClickSnapshot) {
+            this.snapshot = snapshot
+        }
+    }
+
     private fun click(id: String) = NotificationClick(id, NotificationClickTarget.OpenApp)
 
     private fun rankingData() =

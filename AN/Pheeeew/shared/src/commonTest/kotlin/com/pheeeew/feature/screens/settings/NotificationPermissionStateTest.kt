@@ -16,6 +16,22 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class NotificationPermissionStateTest {
     @Test
+    fun `요청 가능 여부 조회 실패를 화면 오류로 처리하고 재시도한다`() =
+        runTest {
+            val controller = FakeController().apply { current = NotificationAuthorization.NOT_DETERMINED }
+            val state = NotificationPermissionState(controller)
+            state.refresh()
+            controller.failCapability = true
+            state.requestPermission()
+            assertTrue(state.state.value.failed)
+            assertFalse(state.state.value.loading)
+            assertEquals(0, controller.requests)
+            controller.failCapability = false
+            state.requestPermission()
+            assertEquals(NotificationAuthorization.AUTHORIZED, state.state.value.authorization)
+        }
+
+    @Test
     fun `설정 복귀 시 다시 조회해 거부에서 허용으로 변경된 상태를 반영한다`() =
         runTest {
             val controller = FakeController()
@@ -36,6 +52,17 @@ class NotificationPermissionStateTest {
             state.requestPermission()
             assertEquals(0, controller.requests)
             assertTrue(state.openSettings())
+        }
+
+    @Test
+    fun `플랫폼이 재요청을 허용하면 거부 상태에서도 시스템 요청을 실행한다`() =
+        runTest {
+            val controller = FakeController().apply { requestableAfterDenial = true }
+            val state = NotificationPermissionState(controller)
+            state.refresh()
+            state.requestPermission()
+            assertEquals(1, controller.requests)
+            assertEquals(NotificationAuthorization.AUTHORIZED, state.state.value.authorization)
         }
 
     @Test
@@ -84,6 +111,8 @@ class NotificationPermissionStateTest {
         var current = NotificationAuthorization.DENIED
         var requests = 0
         var fail = false
+        var failCapability = false
+        var requestableAfterDenial = false
         var nextRead: CompletableDeferred<NotificationAuthorization>? = null
 
         override suspend fun authorization(): NotificationAuthorization {
@@ -96,6 +125,11 @@ class NotificationPermissionStateTest {
         override suspend fun requestAuthorization() {
             requests++
             current = NotificationAuthorization.AUTHORIZED
+        }
+
+        override suspend fun canRequestAuthorization(): Boolean {
+            if (failCapability) error("capability unavailable")
+            return requestableAfterDenial || authorization() == NotificationAuthorization.NOT_DETERMINED
         }
 
         override suspend fun openSettings(): Boolean = true
