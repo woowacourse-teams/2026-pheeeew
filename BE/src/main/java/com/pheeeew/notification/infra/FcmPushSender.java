@@ -13,6 +13,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 
 public class FcmPushSender implements PushSender {
@@ -40,20 +42,20 @@ public class FcmPushSender implements PushSender {
 
     @Override
     public PushSendResult send(String token, PushMessage message) {
+        String accessToken = accessTokenProvider.accessToken();
         try {
             fcmRestClient.post()
                     .uri(URI.create(SEND_URI_TEMPLATE.formatted(fcmProperties.projectId())))
-                    .header(HttpHeaders.AUTHORIZATION, BEARER_PREFIX + accessTokenProvider.accessToken())
+                    .header(HttpHeaders.AUTHORIZATION, BEARER_PREFIX + accessToken)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(requestBody(token, message))
                     .retrieve()
                     .toBodilessEntity();
             return PushSendResult.SENT;
         } catch (HttpClientErrorException exception) {
-            if (isUnregistered(exception)) {
-                return PushSendResult.UNREGISTERED;
-            }
-            throw exception;
+            return classify(exception);
+        } catch (HttpServerErrorException | ResourceAccessException exception) {
+            return PushSendResult.RETRYABLE;
         }
     }
 
@@ -63,6 +65,16 @@ public class FcmPushSender implements PushSender {
                 "notification", Map.of("title", message.title(), "body", message.body()),
                 "data", message.data()
         ));
+    }
+
+    private PushSendResult classify(HttpClientErrorException exception) {
+        if (isUnregistered(exception)) {
+            return PushSendResult.UNREGISTERED;
+        }
+        if (exception.getStatusCode().isSameCodeAs(HttpStatus.TOO_MANY_REQUESTS)) {
+            return PushSendResult.RETRYABLE;
+        }
+        return PushSendResult.REJECTED;
     }
 
     private boolean isUnregistered(HttpClientErrorException exception) {

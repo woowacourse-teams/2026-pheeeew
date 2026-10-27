@@ -7,10 +7,13 @@ import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
@@ -18,14 +21,17 @@ import org.springframework.web.client.RestClient;
 public final class FakeGoogleApiServer implements AutoCloseable {
 
     private static final String TOKEN_PATH = "/token";
+    private static final long 응답_보류_상한_초 = 5;
 
     private final HttpServer server;
     private final List<받은_요청> 받은_요청들 = new CopyOnWriteArrayList<>();
     private final Deque<가짜_응답> 토큰_응답들 = new ArrayDeque<>();
     private final Deque<가짜_응답> 복호화_응답들 = new ArrayDeque<>();
+    private final CountDownLatch 보류_해제 = new CountDownLatch(1);
 
     private 가짜_응답 마지막_토큰_응답;
     private 가짜_응답 마지막_복호화_응답;
+    private volatile boolean 복호화_응답_보류;
 
     private FakeGoogleApiServer(HttpServer server) {
         this.server = server;
@@ -52,7 +58,16 @@ public final class FakeGoogleApiServer implements AutoCloseable {
     }
 
     public RestClient 이_서버를_향하는_클라이언트() {
+        return 이_서버를_향하는_클라이언트(new JdkClientHttpRequestFactory());
+    }
+
+    public RestClient 이_서버를_향하는_클라이언트(Duration 읽기_제한) {
         JdkClientHttpRequestFactory delegate = new JdkClientHttpRequestFactory();
+        delegate.setReadTimeout(읽기_제한);
+        return 이_서버를_향하는_클라이언트(delegate);
+    }
+
+    private RestClient 이_서버를_향하는_클라이언트(JdkClientHttpRequestFactory delegate) {
         String baseUrl = 기준_주소();
         ClientHttpRequestFactory rewriting = (uri, method) -> delegate.createRequest(
                 URI.create(baseUrl + uri.getRawPath() + (uri.getRawQuery() == null ? "" : "?" + uri.getRawQuery())),
@@ -70,6 +85,10 @@ public final class FakeGoogleApiServer implements AutoCloseable {
 
     public void 복호화_응답을_넣는다(int status, String body) {
         복호화_응답들.add(new 가짜_응답(status, body));
+    }
+
+    public void 복호화_응답을_보내지_않는다() {
+        복호화_응답_보류 = true;
     }
 
     public List<받은_요청> 받은_요청들() {
@@ -93,6 +112,7 @@ public final class FakeGoogleApiServer implements AutoCloseable {
 
     @Override
     public void close() {
+        보류_해제.countDown();
         server.stop(0);
     }
 
@@ -102,12 +122,23 @@ public final class FakeGoogleApiServer implements AutoCloseable {
         String authorization = exchange.getRequestHeaders().getFirst("Authorization");
         받은_요청들.add(new 받은_요청(exchange.getRequestMethod(), path, authorization, body));
 
+        if (!path.equals(TOKEN_PATH) && 복호화_응답_보류) {
+            응답을_보류한다();
+        }
         가짜_응답 응답 = path.equals(TOKEN_PATH) ? 다음_토큰_응답() : 다음_복호화_응답();
         byte[] payload = 응답.body().getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().add("Content-Type", "application/json");
         exchange.sendResponseHeaders(응답.status(), payload.length);
         exchange.getResponseBody().write(payload);
         exchange.close();
+    }
+
+    private void 응답을_보류한다() {
+        try {
+            보류_해제.await(응답_보류_상한_초, TimeUnit.SECONDS);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     private String readBody(HttpExchange exchange) throws IOException {
