@@ -4,6 +4,7 @@ import static com.pheeeew.notification.domain.NotificationOutboxType.COLLECTION_
 
 import com.pheeeew.collection.domain.repository.CollectionCardRepository;
 import com.pheeeew.notification.domain.NotificationOutbox;
+import com.pheeeew.notification.domain.NotificationOutboxStatus;
 import com.pheeeew.notification.domain.PushRecipient;
 import com.pheeeew.notification.domain.PushSendResult;
 import com.pheeeew.notification.domain.PushTarget;
@@ -50,7 +51,7 @@ public class NotificationDispatcher {
         if (!pushSender.isAvailable()) {
             return;
         }
-        notificationOutboxRepository.expire(clock.instant());
+        notificationOutboxRepository.expire(NotificationOutboxStatus.CANCELED, EXPIRED, clock.instant());
 
         Map<String, Integer> outcomes = new TreeMap<>();
         for (int count = 0; count < MAX_DISPATCH_COUNT; count++) {
@@ -101,8 +102,12 @@ public class NotificationDispatcher {
     }
 
     private String fail(NotificationOutbox outbox, String resultCode) {
-        boolean recorded = notificationOutboxRepository.fail(
-                outbox.type(), outbox.id(), outbox.claimToken(), resultCode, clock.instant());
+        return finish(outbox, NotificationOutboxStatus.FAILED, resultCode);
+    }
+
+    private String finish(NotificationOutbox outbox, NotificationOutboxStatus status, String resultCode) {
+        boolean recorded = notificationOutboxRepository.finish(
+                outbox.type(), outbox.id(), outbox.claimToken(), status, resultCode, clock.instant());
         warnIfClaimLost(recorded, outbox);
         return resultCode;
     }
@@ -119,10 +124,7 @@ public class NotificationDispatcher {
     }
 
     private String cancel(NotificationOutbox outbox, String resultCode) {
-        boolean recorded = notificationOutboxRepository.cancel(
-                outbox.type(), outbox.id(), outbox.claimToken(), resultCode, clock.instant());
-        warnIfClaimLost(recorded, outbox);
-        return resultCode;
+        return finish(outbox, NotificationOutboxStatus.CANCELED, resultCode);
     }
 
     private boolean isCardClaimed(NotificationOutbox outbox) {
@@ -142,8 +144,7 @@ public class NotificationDispatcher {
 
     private void record(NotificationOutbox outbox, PushTarget target, PushSendResult result) {
         switch (result) {
-            case SENT -> warnIfClaimLost(notificationOutboxRepository.markSent(
-                    outbox.type(), outbox.id(), outbox.claimToken(), clock.instant()), outbox);
+            case SENT -> finish(outbox, NotificationOutboxStatus.SENT, null);
             case UNREGISTERED -> {
                 devicePushTokenRepository.deleteByDeviceIdAndToken(target.deviceId(), target.token());
                 fail(outbox, UNREGISTERED);
@@ -162,8 +163,8 @@ public class NotificationDispatcher {
             fail(outbox, RETRY_EXHAUSTED);
             return;
         }
-        boolean recorded = notificationOutboxRepository.retry(
-                outbox.type(), outbox.id(), outbox.claimToken(), nextAvailableAt.get(), failedAt);
+        boolean recorded = notificationOutboxRepository.retry(outbox.type(), outbox.id(), outbox.claimToken(),
+                PushSendResult.RETRYABLE.name(), nextAvailableAt.get(), failedAt);
         warnIfClaimLost(recorded, outbox);
     }
 

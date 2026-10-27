@@ -17,12 +17,7 @@ CREATE TABLE notification_collection_outbox
     CONSTRAINT fk_notification_collection_outbox_device FOREIGN KEY (device_id) REFERENCES devices (id),
     CONSTRAINT ck_notification_collection_outbox_type
         CHECK (type IN ('COLLECTION_CLAIMABLE', 'COLLECTION_CLAIM_REMINDER')),
-    CONSTRAINT ck_notification_collection_outbox_status CHECK (status IN ('PENDING', 'SENT', 'CANCELED', 'FAILED')),
     CONSTRAINT ck_notification_collection_outbox_claim CHECK ((claim_token IS NULL) = (claim_expires_at IS NULL)),
-    CONSTRAINT ck_notification_collection_outbox_finished CHECK (
-        (status = 'PENDING' AND finished_at IS NULL)
-        OR (status <> 'PENDING' AND finished_at IS NOT NULL AND claim_token IS NULL)
-    ),
     CONSTRAINT ck_notification_collection_outbox_attempt_count CHECK (attempt_count >= 0)
 );
 
@@ -51,12 +46,7 @@ CREATE TABLE notification_rank_outbox
     finished_at      TIMESTAMPTZ,
     updated_at       TIMESTAMPTZ NOT NULL,
     CONSTRAINT fk_notification_rank_outbox_device FOREIGN KEY (device_id) REFERENCES devices (id),
-    CONSTRAINT ck_notification_rank_outbox_status CHECK (status IN ('PENDING', 'SENT', 'CANCELED', 'FAILED')),
     CONSTRAINT ck_notification_rank_outbox_claim CHECK ((claim_token IS NULL) = (claim_expires_at IS NULL)),
-    CONSTRAINT ck_notification_rank_outbox_finished CHECK (
-        (status = 'PENDING' AND finished_at IS NULL)
-        OR (status <> 'PENDING' AND finished_at IS NOT NULL AND claim_token IS NULL)
-    ),
     CONSTRAINT ck_notification_rank_outbox_attempt_count CHECK (attempt_count >= 0)
 );
 
