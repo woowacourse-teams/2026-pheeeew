@@ -285,6 +285,41 @@ class CollectionNotificationServiceIntegrationTest {
     }
 
     @Test
+    void 리마인더_생성을_놓친_날에는_23시_전에_발견한_기기도_발급_가능이_SUPERSEDED로_닫혀_알림을_받지_못한다() {
+        // given
+        Device device = 토큰이_있는_기기(기본_등록_값);
+        발급_가능하게_만든다(device, EmotionState.ANGRY);
+        탐색한다(한국_시각("2026-10-26T22:10:00"));
+
+        // when
+        탐색하고_발송한다(한국_시각("2026-10-26T23:20:00"));
+        탐색하고_발송한다(한국_시각("2026-10-26T23:59:59"));
+
+        // then
+        verify(pushSender, never()).send(anyString(), any());
+        assertThat(기기의_작업들(jdbc, device.getId())).extracting(작업::type, 작업::status, 작업::resultCode)
+                .containsExactly(tuple("COLLECTION_CLAIMABLE", "CANCELED", "SUPERSEDED"));
+    }
+
+    @Test
+    void 오후_11시_이후_처음_발급_가능해진_기기는_그날_어떤_알림도_받지_못하고_자정에_만료된다() {
+        // given
+        Device device = 토큰이_있는_기기(기본_등록_값);
+        리마인더를_만들고_발송한다(한국_시각("2026-10-26T23:00:00"));
+        발급_가능하게_만든다(device, EmotionState.ANGRY);
+
+        // when
+        탐색하고_발송한다(한국_시각("2026-10-26T23:10:00"));
+        탐색하고_발송한다(한국_시각("2026-10-26T23:59:59.999"));
+        발송한다(한국_시각("2026-10-27T00:00:10"));
+
+        // then
+        verify(pushSender, never()).send(anyString(), any());
+        assertThat(기기의_작업들(jdbc, device.getId())).extracting(작업::type, 작업::status, 작업::resultCode)
+                .containsExactly(tuple("COLLECTION_CLAIMABLE", "CANCELED", "EXPIRED"));
+    }
+
+    @Test
     void 리마인더는_합산_조건을_채우고_오늘_카드가_없는_기기에만_보낸다() {
         // given
         Device 받지_않은_기기 = 토큰이_있는_기기(기본_등록_값);
