@@ -97,6 +97,7 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.collection_album
+import pheeeew.shared.generated.resources.collection_card_action_hint
 import pheeeew.shared.generated.resources.collection_card_count
 import pheeeew.shared.generated.resources.collection_cover_flow
 import pheeeew.shared.generated.resources.collection_empty
@@ -790,6 +791,19 @@ private fun CollectionCoverFlow(
                         )
                     }
                 }
+            }
+        }
+        Box(
+            modifier = Modifier.fillMaxWidth().height(64.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (items.getOrNull(pagerState.currentPage)?.card != null) {
+                Text(
+                    text = stringResource(Res.string.collection_card_action_hint),
+                    color = AppColors.TextSecondary,
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center,
+                )
             }
         }
     }
