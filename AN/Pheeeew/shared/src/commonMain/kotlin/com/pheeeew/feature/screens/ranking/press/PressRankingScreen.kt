@@ -97,7 +97,7 @@ internal fun DailyPressRankingRoute(
     LaunchedEffect(viewModel, refreshRevision) {
         if (refreshRevision > 0L) viewModel.onNotificationReceived()
     }
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onRefresh() }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onResumed() }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     PressRankingScreen(
         onBack = onBack,
@@ -179,7 +179,7 @@ internal fun PressRankingScreen(
                     Spacer(Modifier.height(12.dp))
                     PressRaceHeader(rankWidth, countWidth)
                 }
-                if (uiState.date != null) {
+                if (uiState.date != null && dailyDate == null) {
                     item { Text(uiState.date, fontSize = 12.sp, color = Color(0xFF767D78)) }
                 }
                 if (uiState.hasRefreshError) {
