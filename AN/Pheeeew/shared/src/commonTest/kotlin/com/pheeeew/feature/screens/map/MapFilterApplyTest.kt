@@ -48,6 +48,37 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class MapFilterApplyTest {
     @Test
+    fun `필터 표시는 편집이 아니라 적용 성공과 초기화 적용을 따른다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val vm = viewModel(SettingsRepository(), ListRefresher(visible = false))
+                runCurrent()
+                vm.onViewportChanged(EmotionMapViewport(BOUNDS, 15.0))
+                advanceUntilIdle()
+                assertFalse(vm.uiModel.value.isFilterApplied)
+                vm.openFilter()
+                vm.selectFilterScope(FilterScope.Mine)
+                assertFalse(vm.uiModel.value.isFilterApplied)
+                vm.dismissFilter()
+                assertFalse(vm.uiModel.value.isFilterApplied)
+                vm.openFilter()
+                vm.selectFilterScope(FilterScope.Mine)
+                vm.applyFilter()
+                advanceUntilIdle()
+                assertTrue(vm.uiModel.value.isFilterApplied)
+                vm.openFilter()
+                vm.resetFilter()
+                assertTrue(vm.uiModel.value.isFilterApplied)
+                vm.applyFilter()
+                advanceUntilIdle()
+                assertFalse(vm.uiModel.value.isFilterApplied)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
     fun `집계가 성공해도 열린 목록이 실패하면 기존 필터와 집계를 유지한다`() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
@@ -74,6 +105,7 @@ class MapFilterApplyTest {
                 advanceUntilIdle()
                 assertEquals(null, settings.saved)
                 assertFalse(list.committed)
+                assertFalse(vm.uiModel.value.isFilterApplied)
                 assertEquals(
                     listOf("original"),
                     vm.uiModel.value.regionClusters

@@ -70,8 +70,10 @@ import com.pheeeew.core.di.UiGraph
 import com.pheeeew.core.navigation.CollectionRootDestination
 import com.pheeeew.core.navigation.DailyPressRankingRootDestination
 import com.pheeeew.core.navigation.DoubleBackToExitHandler
+import com.pheeeew.core.navigation.FirstMainPresentationEffect
 import com.pheeeew.core.navigation.FlowBackHandler
 import com.pheeeew.core.navigation.MapRootDestination
+import com.pheeeew.core.navigation.NotificationClickRouter
 import com.pheeeew.core.navigation.NotificationDestination
 import com.pheeeew.core.navigation.PressRootDestination
 import com.pheeeew.core.navigation.RankingRootDestination
@@ -80,6 +82,7 @@ import com.pheeeew.core.notification.NotificationClickInbox
 import com.pheeeew.core.notification.NotificationMessageInbox
 import com.pheeeew.core.notification.NotificationPermissionController
 import com.pheeeew.core.notification.NotificationPreferencesStore
+import com.pheeeew.data.press.race.PressRaceView
 import com.pheeeew.domain.model.device.DeviceSessionResult
 import com.pheeeew.domain.model.version.AppVersionDecision
 import com.pheeeew.feature.component.AppBottomNavigationBar
@@ -115,6 +118,7 @@ import com.pheeeew.feature.screens.map.symbolImageKey
 import com.pheeeew.feature.screens.onboarding.FeatureGuideScreen
 import com.pheeeew.feature.screens.onboarding.FeatureGuideState
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
+import com.pheeeew.feature.screens.press.PressRaceLifecycleEffect
 import com.pheeeew.feature.screens.press.PressRoute
 import com.pheeeew.feature.screens.ranking.press.DailyPressRankingRoute
 import com.pheeeew.feature.screens.ranking.press.PressRankingRoute
@@ -133,7 +137,6 @@ import dev.zacsweers.metrox.viewmodel.metroViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.stringResource
@@ -265,6 +268,16 @@ private fun AppContent(
     val connectivityObserver = apiDependencies.connectivityObserver
     val startupViewModel: AppStartupViewModel = metroViewModel()
     val startupState by startupViewModel.state.collectAsStateWithLifecycle()
+    val queuedClick = notificationClicks?.queuedClick?.collectAsStateWithLifecycle()?.value
+    var firstMainPresented by remember { mutableStateOf(false) }
+    var startupNotificationDestination by remember { mutableStateOf<NotificationDestination?>(null) }
+    val queuedDestination = queuedClick?.let { NotificationClickRouter.destinationFor(it.target) }
+    val startupTarget = startupNotificationDestination ?: queuedDestination.takeUnless { firstMainPresented }
+    LaunchedEffect(queuedClick, firstMainPresented) {
+        if (!firstMainPresented && queuedDestination != null) {
+            startupNotificationDestination = queuedDestination
+        }
+    }
     val initialVersionCheckComplete = startupState.checked
     val versionDecision = startupState.decision
     val checkedForResume by rememberUpdatedState(initialVersionCheckComplete)
@@ -370,9 +383,11 @@ private fun AppContent(
         return
     }
 
-    val shouldPrepareMapDuringSplash = !startupState.splashDismissed
     val entryViewModel = requireNotNull(appEntryViewModel)
     val mainFeaturesReady = initialVersionCheckComplete && requiredUpdate == null && entryReady
+    val coldNotificationEntry = !firstMainPresented && startupTarget != null
+    val shouldPrepareMapDuringSplash =
+        !startupState.splashDismissed || (mainFeaturesReady && coldNotificationEntry)
 
     if (mainFeaturesReady) {
         LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { apiDependencies.appSession.onForeground() }
@@ -619,6 +634,18 @@ private fun AppContent(
             selectedDestination == AppDestination.Map &&
                 (mapUiModel.isEmotionSelectorExpanded || recordUiModel.step != RecordFlowStepUiModel.Closed)
 
+        val pressRaceView =
+            when {
+                currentBackStackEntry?.destination?.hasRoute<PressRootDestination>() == true -> PressRaceView.PRESS
+                currentBackStackEntry?.destination?.hasRoute<RankingRootDestination>() == true -> PressRaceView.ALL
+                else -> null
+            }
+        PressRaceLifecycleEffect(
+            session = apiDependencies.appSession.pressRace,
+            view = pressRaceView,
+            enabled = mainFeaturesReady && !shouldPrepareMapDuringSplash && !isSettingsVisible && reportTarget == null,
+        )
+
         var collectionNotificationDate by remember { mutableStateOf<String?>(null) }
         var collectionRefreshRevision by remember { mutableStateOf(0L) }
         var dailyRankingRefreshRevision by remember { mutableStateOf(0L) }
@@ -647,7 +674,20 @@ private fun AppContent(
             } == true
 
         val navigateFromNotification: (NotificationDestination) -> Unit = { destination ->
+            if (!firstMainPresented) startupNotificationDestination = destination
             when (destination) {
+                NotificationDestination.Press -> {
+                    isSettingsVisible = false
+                    reportTarget = null
+                    nearbyViewModel.dismiss()
+                    detailViewModel.dismiss()
+                    mapViewModel.dismissFilter()
+                    navController.navigate(PressRootDestination) {
+                        popUpTo<MapRootDestination>()
+                        launchSingleTop = true
+                    }
+                }
+
                 is NotificationDestination.Collection -> {
                     isSettingsVisible = false
                     reportTarget = null
@@ -698,10 +738,18 @@ private fun AppContent(
             notificationMessages.acknowledge(message.id)
         }
 
+        FirstMainPresentationEffect(
+            backStackEntry = currentBackStackEntry,
+            ready = mainFeaturesReady && startupState.splashDismissed,
+            target = startupTarget,
+            alreadyPresented = firstMainPresented,
+            onPresented = { firstMainPresented = true },
+        )
+
         NotificationClickEffect(
             inbox = notificationClicks,
             ready =
-                mainFeaturesReady && !shouldPrepareMapDuringSplash &&
+                mainFeaturesReady && (!shouldPrepareMapDuringSplash || coldNotificationEntry) &&
                     currentBackStackEntry != null && !isEmotionRecordFlowActive,
             onNavigate = navigateFromNotification,
         )
@@ -729,10 +777,46 @@ private fun AppContent(
                 modifier = Modifier.fillMaxSize(),
             ) {
                 composable<MapRootDestination>(
-                    enterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
-                    exitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
-                    popEnterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
-                    popExitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
+                    enterTransition = {
+                        if (coldNotificationEntry) {
+                            EnterTransition.None
+                        } else {
+                            rootTabEnterTransition(
+                                initialState.destination,
+                                targetState.destination,
+                            )
+                        }
+                    },
+                    exitTransition = {
+                        if (coldNotificationEntry) {
+                            ExitTransition.None
+                        } else {
+                            rootTabExitTransition(
+                                initialState.destination,
+                                targetState.destination,
+                            )
+                        }
+                    },
+                    popEnterTransition = {
+                        if (coldNotificationEntry) {
+                            EnterTransition.None
+                        } else {
+                            rootTabEnterTransition(
+                                initialState.destination,
+                                targetState.destination,
+                            )
+                        }
+                    },
+                    popExitTransition = {
+                        if (coldNotificationEntry) {
+                            ExitTransition.None
+                        } else {
+                            rootTabExitTransition(
+                                initialState.destination,
+                                targetState.destination,
+                            )
+                        }
+                    },
                 ) {
                     // Keep the persistent native map in step with its Compose overlay.
                     val pageOffset by transition.animateFloat(
@@ -830,10 +914,46 @@ private fun AppContent(
                 }
 
                 composable<PressRootDestination>(
-                    enterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
-                    exitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
-                    popEnterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
-                    popExitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
+                    enterTransition = {
+                        if (coldNotificationEntry) {
+                            EnterTransition.None
+                        } else {
+                            rootTabEnterTransition(
+                                initialState.destination,
+                                targetState.destination,
+                            )
+                        }
+                    },
+                    exitTransition = {
+                        if (coldNotificationEntry) {
+                            ExitTransition.None
+                        } else {
+                            rootTabExitTransition(
+                                initialState.destination,
+                                targetState.destination,
+                            )
+                        }
+                    },
+                    popEnterTransition = {
+                        if (coldNotificationEntry) {
+                            EnterTransition.None
+                        } else {
+                            rootTabEnterTransition(
+                                initialState.destination,
+                                targetState.destination,
+                            )
+                        }
+                    },
+                    popExitTransition = {
+                        if (coldNotificationEntry) {
+                            ExitTransition.None
+                        } else {
+                            rootTabExitTransition(
+                                initialState.destination,
+                                targetState.destination,
+                            )
+                        }
+                    },
                 ) {
                     if (!mainFeaturesReady) return@composable
                     PressRoute(
@@ -953,10 +1073,16 @@ private fun AppContent(
                                 }
                             }
                         } else {
-                            navController.navigate(route) {
-                                popUpTo<MapRootDestination> { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
+                            if (destination == AppDestination.Map) {
+                                if (!navController.popBackStack<MapRootDestination>(inclusive = false)) {
+                                    navController.navigate(MapRootDestination) { launchSingleTop = true }
+                                }
+                            } else {
+                                navController.navigate(route) {
+                                    popUpTo<MapRootDestination> { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
                             }
                         }
                     },

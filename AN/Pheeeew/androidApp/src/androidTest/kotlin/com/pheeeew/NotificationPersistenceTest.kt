@@ -22,7 +22,7 @@ class NotificationPersistenceTest {
         try {
             val original = NotificationClickInbox(AndroidNotificationClickStore(context, environment))
             val first = NotificationClick("launch", NotificationClickTarget.Revisit)
-            val latest = NotificationClick("new-intent", NotificationClickTarget.Ranking("2026-10-21", 5, 6))
+            val latest = NotificationClick("new-intent", NotificationClickTarget.DailyPressRanking("2026-10-21", 5, 6))
             original.receive(first)
             original.receive(latest)
             val restored = NotificationClickInbox(AndroidNotificationClickStore(context, environment))
@@ -49,7 +49,7 @@ class NotificationPersistenceTest {
                     NotificationClickTarget.Revisit,
                     NotificationClickTarget.Collection("123"),
                     NotificationClickTarget.CollectionClaimable("2026-10-21"),
-                    NotificationClickTarget.Ranking("2026-10-21", 5, 6),
+                    NotificationClickTarget.DailyPressRanking("2026-10-21", 5, 6),
                 )
             targets.forEachIndexed { index, target ->
                 val id = "event-$index"

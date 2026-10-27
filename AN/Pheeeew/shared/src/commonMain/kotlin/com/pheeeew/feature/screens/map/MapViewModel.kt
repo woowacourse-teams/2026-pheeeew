@@ -102,6 +102,7 @@ class MapViewModel(
                         MapFilterSettings.DEFAULT
                     }
                 appliedFilterSettings = settings
+                _uiModel.value = _uiModel.value.copy(isFilterApplied = settings.hasActiveFilters())
                 filterListRefresher?.setAppliedSettings(settings)
                 _filterUiModel.value = settings.toUiModel(_filterUiModel.value)
                 filterSettingsLoaded = true
@@ -274,6 +275,7 @@ class MapViewModel(
                     filterSettingsRepository?.save(candidate)
                     currentCoroutineContext().ensureActive()
                     appliedFilterSettings = candidate
+                    _uiModel.value = _uiModel.value.copy(isFilterApplied = candidate.hasActiveFilters())
                     val viewportChanged = hasViewportChangedForQuery(regionLevel, viewport, pinViewport)
                     needsFreshEmotionPins = false
                     displayedBounds = bounds
@@ -1466,3 +1468,8 @@ private data class EmotionPinSnapshot(
     val origin: String,
     val observation: ContentLoad?,
 )
+
+private fun MapFilterSettings.hasActiveFilters(): Boolean =
+    period != MapFilterSettings.DEFAULT.period ||
+        content != MapFilterSettings.DEFAULT.content ||
+        scope != MapFilterSettings.DEFAULT.scope

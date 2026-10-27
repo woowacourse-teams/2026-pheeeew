@@ -76,7 +76,7 @@ internal class AndroidNotificationClickStore(
                     )
                 }
 
-                is NotificationClickTarget.Ranking -> {
+                is NotificationClickTarget.DailyPressRanking -> {
                     mapOf(
                         "type" to "RANK_DROPPED",
                         "date" to target.date,

@@ -34,7 +34,7 @@ class CollectionNotificationTest {
                 ).target,
             )
         }
-        assertTrue(isCollectionNotificationDate("2028-02-29"))
-        assertFalse(isCollectionNotificationDate("1900-02-29"))
+        assertTrue(isNotificationDate("2028-02-29"))
+        assertFalse(isNotificationDate("1900-02-29"))
     }
 }

@@ -1,6 +1,6 @@
 package com.pheeeew.core.notification
 
-/** Parse fields emitted by the server notification contract. */
+/** Parse the server notification contract; screen-specific routing belongs to each feature. */
 fun parseNotificationClick(
     data: Map<String, String>,
     requestId: String,
@@ -20,7 +20,7 @@ fun parseNotificationClick(
                 "COLLECTION_CLAIMABLE", "COLLECTION_CLAIM_REMINDER" -> {
                     field(
                         "date",
-                    )?.takeIf(::isCollectionNotificationDate)?.let(NotificationClickTarget::CollectionClaimable)
+                    )?.takeIf(::isNotificationDate)?.let(NotificationClickTarget::CollectionClaimable)
                         ?: NotificationClickTarget.OpenApp
                 }
 
@@ -30,15 +30,11 @@ fun parseNotificationClick(
                 }
 
                 "RANK_DROPPED" -> {
-                    val date = field("date")?.takeIf(::isCollectionNotificationDate)
+                    val date = field("date")?.takeIf(::isNotificationDate)
                     val previousRank = field("previousRank")?.toIntOrNull()?.takeIf { it > 0 }
                     val currentRank = field("currentRank")?.toIntOrNull()?.takeIf { it > 0 }
                     if (date != null && previousRank != null && currentRank != null) {
-                        NotificationClickTarget.Ranking(
-                            date = date,
-                            previousRank = previousRank,
-                            currentRank = currentRank,
-                        )
+                        NotificationClickTarget.DailyPressRanking(date, previousRank, currentRank)
                     } else {
                         NotificationClickTarget.OpenApp
                     }
@@ -52,7 +48,7 @@ fun parseNotificationClick(
     return NotificationClick(notificationId, target)
 }
 
-internal fun isCollectionNotificationDate(value: String): Boolean {
+internal fun isNotificationDate(value: String): Boolean {
     if (!Regex("[0-9]{4}-[0-9]{2}-[0-9]{2}").matches(value)) return false
     val year = value.substring(0, 4).toInt()
     val month = value.substring(5, 7).toInt()

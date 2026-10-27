@@ -25,11 +25,15 @@ class NotificationClickTest {
     }
 
     @Test
-    fun `일별 랭킹은 서버 날짜와 순위를 보존한다`() {
+    fun `일별 프레스 랭킹은 서버 날짜와 이전 현재 순위를 보존한다`() {
         val data = rankingData()
         assertEquals(
-            NotificationClickTarget.Ranking("2026-10-21", 5, 6),
+            NotificationClickTarget.DailyPressRanking("2026-10-26", 5, 6),
             parseNotificationClick(data, "request-1").target,
+        )
+        assertEquals(
+            NotificationClickTarget.DailyPressRanking("2026-10-26", 5, 6),
+            parseNotificationClick(data + ("unused" to "ignored"), "request-1").target,
         )
     }
 
@@ -51,6 +55,16 @@ class NotificationClickTest {
     }
 
     @Test
+    fun `순위 알림의 누락 날짜와 잘못된 날짜는 기본 화면으로 처리한다`() {
+        for (date in listOf("", "2026-02-29", "2026-13-01", "2026-04-31", "2026-1-1")) {
+            assertEquals(
+                NotificationClickTarget.OpenApp,
+                parseNotificationClick(rankingData() + ("date" to date), "r").target,
+            )
+        }
+    }
+
+    @Test
     fun `미지원 타입과 버전은 앱 열기로 처리한다`() {
         assertEquals(NotificationClickTarget.OpenApp, parseNotificationClick(mapOf("type" to "UNKNOWN"), "r").target)
         assertEquals(
@@ -65,6 +79,7 @@ class NotificationClickTest {
         inbox.receive(click("first"))
         inbox.receive(click("latest"))
         assertNull(inbox.pendingClick.value)
+        assertEquals(click("latest"), inbox.queuedClick.value)
         inbox.setReady(true)
         assertEquals(click("latest"), inbox.pendingClick.value)
         inbox.setReady(false)
@@ -81,6 +96,7 @@ class NotificationClickTest {
         inbox.acknowledge("same")
         inbox.receive(click("same"))
         assertNull(inbox.pendingClick.value)
+        assertNull(inbox.queuedClick.value)
     }
 
     @Test
@@ -91,6 +107,7 @@ class NotificationClickTest {
         inbox.receive(click("latest"))
         inbox.acknowledge("first")
         assertEquals(click("latest"), inbox.pendingClick.value)
+        assertEquals(click("latest"), inbox.queuedClick.value)
     }
 
     @Test
@@ -103,12 +120,15 @@ class NotificationClickTest {
         original.receive(click("waiting"))
 
         val restored = NotificationClickInbox(saved)
+        assertEquals(click("waiting"), restored.queuedClick.value)
+        assertNull(restored.pendingClick.value)
         restored.setReady(true)
         assertEquals(click("waiting"), restored.pendingClick.value)
         restored.receive(click("done"))
         assertEquals(click("waiting"), restored.pendingClick.value)
         restored.acknowledge("waiting")
         val completed = NotificationClickInbox(saved)
+        assertNull(completed.queuedClick.value)
         completed.setReady(true)
         completed.receive(click("waiting"))
         assertNull(completed.pendingClick.value)
@@ -141,7 +161,7 @@ class NotificationClickTest {
     private fun rankingData() =
         mapOf(
             "type" to "RANK_DROPPED",
-            "date" to "2026-10-21",
+            "date" to "2026-10-26",
             "previousRank" to "5",
             "currentRank" to "6",
         )

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -95,62 +96,66 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .background(AppColors.Background)
                 .statusBarsPadding()
-                .navigationBarsPadding()
-                .verticalScroll(rememberScrollState()),
+                .navigationBarsPadding(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         SettingsHeader(onBackClick = onBackClick)
-        Spacer(Modifier.height(32.dp))
+        Column(
+            modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Spacer(Modifier.height(32.dp))
 
-        SettingsSectionTitle(stringResource(Res.string.settings_profile_section))
-        SettingsCard {
-            SettingsActionRow(
-                title = profileNickname ?: stringResource(Res.string.settings_nickname_default),
-                icon = SettingsIcon.Person,
-                trailingText = stringResource(Res.string.settings_nickname_change),
-                onClick = onNicknameClick,
-            )
+            SettingsSectionTitle(stringResource(Res.string.settings_profile_section))
+            SettingsCard {
+                SettingsActionRow(
+                    title = profileNickname ?: stringResource(Res.string.settings_nickname_default),
+                    icon = SettingsIcon.Person,
+                    trailingText = stringResource(Res.string.settings_nickname_change),
+                    onClick = onNicknameClick,
+                )
+            }
+            Spacer(Modifier.height(32.dp))
+
+            SettingsSectionTitle(stringResource(Res.string.settings_app_section))
+            SettingsCard {
+                SettingsActionRow(
+                    title = stringResource(Res.string.settings_permissions),
+                    icon = SettingsIcon.Tune,
+                    highlighted = true,
+                    onClick = onPermissionClick,
+                )
+                notificationPermissionContent()
+            }
+
+            Spacer(Modifier.height(32.dp))
+            SettingsSectionTitle(stringResource(Res.string.settings_help_section))
+            SettingsCard {
+                SettingsActionRow(
+                    stringResource(Res.string.settings_legal_privacy),
+                    SettingsIcon.Shield,
+                    onClick = onPrivacyPolicyClick,
+                )
+                SettingsDivider()
+                SettingsActionRow(
+                    stringResource(Res.string.settings_legal_open_source),
+                    SettingsIcon.Document,
+                    onClick = onOpenSourceLicenseClick,
+                )
+                SettingsDivider()
+                SettingsActionRow(
+                    stringResource(Res.string.settings_app_version),
+                    SettingsIcon.Info,
+                    trailingText = appVersion,
+                    onClick = onVersionClick,
+                )
+            }
+
+            settingsContent()
+
+            Spacer(Modifier.height(32.dp))
+            ContactCard(onClick = onContactClick)
         }
-        Spacer(Modifier.height(32.dp))
-
-        SettingsSectionTitle(stringResource(Res.string.settings_app_section))
-        SettingsCard {
-            SettingsActionRow(
-                title = stringResource(Res.string.settings_permissions),
-                icon = SettingsIcon.Tune,
-                highlighted = true,
-                onClick = onPermissionClick,
-            )
-            notificationPermissionContent()
-        }
-
-        Spacer(Modifier.height(32.dp))
-        SettingsSectionTitle(stringResource(Res.string.settings_help_section))
-        SettingsCard {
-            SettingsActionRow(
-                stringResource(Res.string.settings_legal_privacy),
-                SettingsIcon.Shield,
-                onClick = onPrivacyPolicyClick,
-            )
-            SettingsDivider()
-            SettingsActionRow(
-                stringResource(Res.string.settings_legal_open_source),
-                SettingsIcon.Document,
-                onClick = onOpenSourceLicenseClick,
-            )
-            SettingsDivider()
-            SettingsActionRow(
-                stringResource(Res.string.settings_app_version),
-                SettingsIcon.Info,
-                trailingText = appVersion,
-                onClick = onVersionClick,
-            )
-        }
-
-        settingsContent()
-
-        Spacer(Modifier.height(32.dp))
-        ContactCard(onClick = onContactClick)
     }
 
     nicknameDialog?.invoke()

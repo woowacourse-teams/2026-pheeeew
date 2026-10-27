@@ -616,6 +616,7 @@ internal fun MapScreenContent(
                 onListClick = onListClick,
                 onSettingClick = onSettingClick,
                 onFilterClick = onFilterClick,
+                isFilterApplied = uiModel.isFilterApplied,
                 nearbyMapControlHeight = nearbyMapControlHeight,
                 isMapCameraMoving = isMapCameraMoving,
                 isEmotionSelectorExpanded = uiModel.isEmotionSelectorExpanded,

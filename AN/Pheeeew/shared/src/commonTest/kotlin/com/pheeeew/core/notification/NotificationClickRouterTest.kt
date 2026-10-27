@@ -7,24 +7,24 @@ import kotlin.test.assertEquals
 
 class NotificationClickRouterTest {
     @Test
-    fun `순위 알림은 날짜별 순위로 이동하고 나머지는 기존 목적지를 사용한다`() {
+    fun `기본 알림과 기존 컬렉션 타입은 지도 이동 정책을 사용한다`() {
         val targets =
             listOf(
                 NotificationClickTarget.OpenApp,
                 NotificationClickTarget.Revisit,
                 NotificationClickTarget.Collection("collection-1"),
-                NotificationClickTarget.Ranking("2026-10-21", 5, 6),
             )
         targets.forEach { target ->
-            if (target is NotificationClickTarget.Ranking) {
-                assertEquals(
-                    NotificationDestination.DailyRanking("2026-10-21"),
-                    NotificationClickRouter.destinationFor(target),
-                )
-            } else {
-                assertEquals(NotificationDestination.Map, NotificationClickRouter.destinationFor(target))
-            }
+            assertEquals(NotificationDestination.Map, NotificationClickRouter.destinationFor(target))
         }
+    }
+
+    @Test
+    fun `순위 하락 알림은 해당 날짜의 일별 순위 화면에 연결한다`() {
+        assertEquals(
+            NotificationDestination.DailyRanking("2026-10-26"),
+            NotificationClickRouter.destinationFor(NotificationClickTarget.DailyPressRanking("2026-10-26", 5, 6)),
+        )
     }
 
     @Test

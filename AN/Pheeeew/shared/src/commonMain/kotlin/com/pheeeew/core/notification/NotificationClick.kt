@@ -13,7 +13,7 @@ sealed interface NotificationClickTarget {
         val collectionId: String,
     ) : NotificationClickTarget
 
-    data class Ranking(
+    data class DailyPressRanking(
         val date: String,
         val previousRank: Int,
         val currentRank: Int,

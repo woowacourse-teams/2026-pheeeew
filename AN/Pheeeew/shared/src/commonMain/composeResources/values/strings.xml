@@ -41,6 +41,8 @@
     <string name="map_nearby_emotions">감정 목록</string>
     <string name="map_refresh">지도 새로고침</string>
     <string name="map_filter">지도 필터</string>
+    <string name="map_filter_applied">필터 적용됨</string>
+    <string name="map_filter_default">기본 필터</string>
     <string name="map_current_location">내 위치로 이동</string>
     <string name="map_settings">설정 버튼</string>
     <string name="map_refresh_nearby">감정 목록 새로고침</string>
