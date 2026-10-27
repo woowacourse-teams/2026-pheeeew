@@ -125,7 +125,7 @@ private fun CollectionCardHeader(
     ) {
         Row(
             Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.spacedBy(6.dp * scale),
         ) {
             Image(
@@ -147,7 +147,7 @@ private fun CollectionCardHeader(
                 fontFamily = gaeguFontFamily(),
                 fontSize = (10 * scale).sp,
                 lineHeight = (13 * scale).sp,
-                color = AppColors.TextPrimary,
+                color = AppColors.TextSecondary,
                 maxLines = 1,
             )
         }
@@ -357,8 +357,9 @@ private fun CollectionCardStat(
         Text(
             text = label,
             fontFamily = gaeguFontFamily(),
-            fontSize = (11 * scale).sp,
-            lineHeight = (15 * scale).sp,
+            fontWeight = FontWeight.Bold,
+            fontSize = (13 * scale).sp,
+            lineHeight = (17 * scale).sp,
             color = AppColors.TextPrimary,
             maxLines = 1,
         )
