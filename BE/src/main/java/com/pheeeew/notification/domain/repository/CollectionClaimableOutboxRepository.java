@@ -4,11 +4,9 @@ import com.pheeeew.notification.domain.outbox.CollectionClaimableOutbox;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.transaction.annotation.Transactional;
 
 public interface CollectionClaimableOutboxRepository extends NotificationOutboxRepository<CollectionClaimableOutbox> {
 
-    @Transactional
     @Modifying
     @Query(value = """
             INSERT INTO collection_claimable_outbox

@@ -8,11 +8,9 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.transaction.annotation.Transactional;
 
 public interface DeviceNotificationSettingRepository extends JpaRepository<DeviceNotificationSetting, Long> {
 
-    @Transactional
     @Modifying
     @Query(value = """
             INSERT INTO device_notification_settings

@@ -40,6 +40,7 @@ public class NotificationSettingService {
         }
     }
 
+    @Transactional
     public void deletePushToken(UUID devicePublicId) {
         devicePushTokenRepository.deleteByDeviceId(findDeviceId(devicePublicId));
     }

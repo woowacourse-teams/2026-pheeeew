@@ -8,11 +8,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.transaction.annotation.Transactional;
 
 public interface NotificationRankRoundRepository extends JpaRepository<NotificationRankRound, Instant> {
 
-    @Transactional
     @Modifying
     @Query(value = """
             INSERT INTO notification_rank_rounds (round_at, target_date, created_at, updated_at)

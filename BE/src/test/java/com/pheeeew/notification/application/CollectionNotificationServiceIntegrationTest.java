@@ -218,7 +218,7 @@ class CollectionNotificationServiceIntegrationTest {
         Device device = 토큰이_있는_기기(기본_등록_값);
         발급_가능하게_만든다(device, EmotionState.ANGRY);
         탐색한다(오전_10시);
-        pushTokens.deleteByDeviceId(device.getId());
+        notificationSettingService.deletePushToken(device.getPublicId());
         탐색하고_발송한다(오전_10시.plus(한_시간));
 
         // when

@@ -45,6 +45,7 @@ public class NotificationDispatcher {
     private static final String RETRY_EXHAUSTED = "RETRY_EXHAUSTED";
 
     private final NotificationOutboxService notificationOutboxService;
+    private final DevicePushTokenRegistrationService devicePushTokenRegistrationService;
     private final DevicePushTokenRepository devicePushTokenRepository;
     private final DeviceNotificationSettingRepository deviceNotificationSettingRepository;
     private final CollectionCardRepository collectionCardRepository;
@@ -159,7 +160,7 @@ public class NotificationDispatcher {
         switch (result) {
             case SENT -> markSent(outbox);
             case UNREGISTERED -> {
-                devicePushTokenRepository.deleteByDeviceIdAndToken(target.deviceId(), target.token());
+                devicePushTokenRegistrationService.deleteByDeviceIdAndToken(target.deviceId(), target.token());
                 fail(outbox, UNREGISTERED);
             }
             case REJECTED -> fail(outbox, REJECTED);

@@ -53,7 +53,7 @@ import org.springframework.transaction.annotation.Transactional;
 @PostgisDataJpaTest
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @Import({RankChangeNotificationService.class, NotificationDispatcher.class, NotificationOutboxService.class,
-        DailyPressCountRepository.class})
+        DevicePushTokenRegistrationService.class, DailyPressCountRepository.class})
 class RankChangeNotificationServiceIntegrationTest {
 
     private static final ZoneId 서울 = ZoneId.of("Asia/Seoul");

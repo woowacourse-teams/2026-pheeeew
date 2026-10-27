@@ -4,11 +4,9 @@ import com.pheeeew.notification.domain.outbox.CollectionReminderOutbox;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.transaction.annotation.Transactional;
 
 public interface CollectionReminderOutboxRepository extends NotificationOutboxRepository<CollectionReminderOutbox> {
 
-    @Transactional
     @Modifying
     @Query(value = """
             INSERT INTO collection_reminder_outbox

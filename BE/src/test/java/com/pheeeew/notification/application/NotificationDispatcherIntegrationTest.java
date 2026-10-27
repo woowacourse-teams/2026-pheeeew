@@ -685,7 +685,7 @@ class NotificationDispatcherIntegrationTest {
         Device device = 토큰이_있는_기기(기본_등록_값);
         for (int 며칠_전 = 7; 며칠_전 <= 8; 며칠_전++) {
             Instant 그날 = 한국_시각("2026-10-26T23:00:00").minus(Duration.ofDays(며칠_전));
-            reminderOutboxes.saveIfAbsent(리마인더_작업(device.getId(), TODAY.minusDays(며칠_전), 그날,
+            reminderOutboxes.save(리마인더_작업(device.getId(), TODAY.minusDays(며칠_전), 그날,
                     오늘_자정.minus(Duration.ofDays(며칠_전))));
         }
         when(clock.instant()).thenReturn(한국_시각("2026-10-26T04:00:00"));
@@ -706,12 +706,12 @@ class NotificationDispatcherIntegrationTest {
     }
 
     private void 발급_가능_작업을_만든다(Device device, Instant 발견) {
-        claimableOutboxes.saveIfAbsent(발급_가능_작업(device.getId(), TODAY, 발견, 발견.plus(Duration.ofHours(1)),
+        claimableOutboxes.save(발급_가능_작업(device.getId(), TODAY, 발견, 발견.plus(Duration.ofHours(1)),
                 오늘_자정));
     }
 
     private void 리마인더_작업을_만든다(Device device, Instant 생성) {
-        reminderOutboxes.saveIfAbsent(리마인더_작업(device.getId(), TODAY, 생성, 오늘_자정));
+        reminderOutboxes.save(리마인더_작업(device.getId(), TODAY, 생성, 오늘_자정));
     }
 
     private void 순위_작업을_만든다(Device device, Instant 회차, int 이전_순위, int 현재_순위) {

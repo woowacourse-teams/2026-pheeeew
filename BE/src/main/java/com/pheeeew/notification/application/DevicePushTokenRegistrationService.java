@@ -26,4 +26,9 @@ public class DevicePushTokenRegistrationService {
         devicePushTokenRepository.findByDeviceIdForUpdate(deviceId)
                 .ifPresent(registered -> registered.changeToken(token));
     }
+
+    @Transactional
+    public void deleteByDeviceIdAndToken(Long deviceId, String token) {
+        devicePushTokenRepository.deleteByDeviceIdAndToken(deviceId, token);
+    }
 }

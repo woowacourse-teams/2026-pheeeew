@@ -88,7 +88,8 @@ import org.springframework.transaction.annotation.Transactional;
 @PostgisDataJpaTest
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @Import({RankChangeNotificationService.class, CollectionNotificationService.class, NotificationDispatcher.class,
-        NotificationOutboxService.class, DailyPressCountRepository.class, CollectionProgressRepository.class})
+        NotificationOutboxService.class, DevicePushTokenRegistrationService.class, DailyPressCountRepository.class,
+        CollectionProgressRepository.class})
 class NotificationConcurrencyIntegrationTest {
 
     private static final ZoneId 서울 = ZoneId.of("Asia/Seoul");
@@ -224,9 +225,9 @@ class NotificationConcurrencyIntegrationTest {
         int 유형별_작업_수 = 20;
         Instant 지금 = 한국_시각("2026-11-02T22:00:00");
         for (int index = 0; index < 유형별_작업_수; index++) {
-            claimableOutboxes.saveIfAbsent(발급_가능_작업(토큰이_있는_기기("claimable-" + index).getId(), DAY,
+            claimableOutboxes.save(발급_가능_작업(토큰이_있는_기기("claimable-" + index).getId(), DAY,
                     지금.minus(Duration.ofHours(1)), 지금, 다음_날_자정()));
-            reminderOutboxes.saveIfAbsent(리마인더_작업(토큰이_있는_기기("reminder-" + index).getId(), DAY,
+            reminderOutboxes.save(리마인더_작업(토큰이_있는_기기("reminder-" + index).getId(), DAY,
                     지금, 다음_날_자정()));
             rankOutboxes.save(순위_작업(토큰이_있는_기기("rank-" + index).getId(), DAY, 지금, 2, 3, 지금,
                     지금.plus(Duration.ofMinutes(5))));
@@ -314,9 +315,9 @@ class NotificationConcurrencyIntegrationTest {
                 COLLECTION_CLAIMABLE, 토큰이_있는_기기(COLLECTION_CLAIMABLE.name()),
                 COLLECTION_CLAIM_REMINDER, 토큰이_있는_기기(COLLECTION_CLAIM_REMINDER.name()),
                 RANK_DROPPED, 토큰이_있는_기기(RANK_DROPPED.name()));
-        claimableOutboxes.saveIfAbsent(발급_가능_작업(유형별_기기.get(COLLECTION_CLAIMABLE).getId(), DAY,
+        claimableOutboxes.save(발급_가능_작업(유형별_기기.get(COLLECTION_CLAIMABLE).getId(), DAY,
                 지금.minus(Duration.ofHours(1)), 지금, 다음_날_자정()));
-        reminderOutboxes.saveIfAbsent(리마인더_작업(유형별_기기.get(COLLECTION_CLAIM_REMINDER).getId(), DAY,
+        reminderOutboxes.save(리마인더_작업(유형별_기기.get(COLLECTION_CLAIM_REMINDER).getId(), DAY,
                 지금, 다음_날_자정()));
         rankOutboxes.save(순위_작업(유형별_기기.get(RANK_DROPPED).getId(), DAY, 지금, 2, 3, 지금,
                 지금.plus(Duration.ofMinutes(5))));
@@ -396,7 +397,7 @@ class NotificationConcurrencyIntegrationTest {
         // given
         Device device = 토큰이_있는_기기("reminder");
         Instant 처음_선점 = 한국_시각("2026-11-02T22:00:00");
-        reminderOutboxes.saveIfAbsent(리마인더_작업(device.getId(), DAY, 처음_선점, 다음_날_자정()));
+        reminderOutboxes.save(리마인더_작업(device.getId(), DAY, 처음_선점, 다음_날_자정()));
         NotificationOutbox 늦은_작업 = outboxService.claim(
                 COLLECTION_CLAIM_REMINDER, UUID.randomUUID(), 처음_선점.plus(일분), 처음_선점).orElseThrow();
         Instant 다시_선점 = 처음_선점.plus(일분);
