@@ -47,6 +47,25 @@ internal class PressRaceSession(
             for (event in events) {
                 if (closed.value) break
                 when (event) {
+                    is Event.Refresh -> {
+                        if (state.value.view == event.view) {
+                            when (state.value.phase) {
+                                PressRacePhase.Ready -> {
+                                    publish { it.copy(isAwaitingSnapshot = true) }
+                                    send(PressRaceProtocol.changeView(event.view))
+                                }
+
+                                PressRacePhase.Failed -> {
+                                    target(event.view)
+                                }
+
+                                else -> {
+                                    Unit
+                                }
+                            }
+                        }
+                    }
+
                     is Event.Target -> {
                         target(event.view)
                     }
@@ -79,6 +98,11 @@ internal class PressRaceSession(
     /** null means inactive. Repeated requests for an active view are idempotent; failures retry only explicitly. */
     fun setView(view: PressRaceView?) {
         if (!closed.value) events.trySend(Event.Target(view))
+    }
+
+    /** Explicit user refresh; ignored outside the active view and while initialization is in flight. */
+    fun refresh(view: PressRaceView) {
+        if (!closed.value) events.trySend(Event.Refresh(view))
     }
 
     private suspend fun target(view: PressRaceView?) {
@@ -319,6 +343,10 @@ internal class PressRaceSession(
         )
 
     private sealed interface Event {
+        data class Refresh(
+            val view: PressRaceView,
+        ) : Event
+
         data class Target(
             val view: PressRaceView?,
         ) : Event
