@@ -459,6 +459,76 @@ class NotificationDispatcherIntegrationTest {
     }
 
     @Test
+    void 한_유형에_한도보다_많은_작업이_쌓여도_한_실행은_50건만_보내고_다른_유형은_각자_실행에서_보낸다() {
+        // given
+        Instant 지금 = 한국_시각("2026-10-26T10:00:00");
+        List<Device> 발급_가능_기기들 = new ArrayList<>();
+        for (int index = 0; index < 51; index++) {
+            Device device = 토큰이_있는_기기("claimable-" + index);
+            발급_가능_작업을_만든다(device, 지금.minus(Duration.ofHours(1)));
+            발급_가능_기기들.add(device);
+        }
+        리마인더_작업을_만든다(토큰이_있는_기기("reminder"), 지금);
+        순위_작업을_만든다(토큰이_있는_기기("rank"), 지금, 2, 3);
+        when(clock.instant()).thenReturn(지금);
+
+        // when
+        dispatcher.dispatch(COLLECTION_CLAIMABLE);
+        long 첫_실행_발송_수 = 보낸_횟수();
+        List<String> 첫_실행_뒤_상태들 = 발급_가능_기기들.stream()
+                .map(device -> 기기의_작업(jdbc, device.getId(), COLLECTION_CLAIMABLE.name()).status())
+                .toList();
+        dispatcher.dispatch(RANK_DROPPED);
+        dispatcher.dispatch(COLLECTION_CLAIM_REMINDER);
+        long 다른_유형_실행_뒤_발송_수 = 보낸_횟수();
+        dispatcher.dispatch(COLLECTION_CLAIMABLE);
+
+        // then
+        assertThat(첫_실행_발송_수).isEqualTo(50L);
+        assertThat(첫_실행_뒤_상태들).filteredOn("PENDING"::equals).hasSize(1);
+        assertThat(다른_유형_실행_뒤_발송_수).isEqualTo(52L);
+        verify(pushSender).send(eq("reminder"), any());
+        verify(pushSender).send(eq("rank"), any());
+        assertThat(보낸_횟수()).isEqualTo(53L);
+        assertThat(발급_가능_기기들).allSatisfy(device -> assertThat(
+                기기의_작업(jdbc, device.getId(), COLLECTION_CLAIMABLE.name()).status()).isEqualTo("SENT"));
+    }
+
+    @Test
+    void 순위_발송이_일시_실패해_순위_실행이_멈춰도_컬렉션_유형은_같은_주기에_보낸다() {
+        // given
+        Device 실패할_순위_기기 = 토큰이_있는_기기("rank-failing");
+        Device 기다릴_순위_기기 = 토큰이_있는_기기("rank-waiting");
+        Device 발급_가능_기기 = 토큰이_있는_기기("claimable");
+        Device 리마인더_기기 = 토큰이_있는_기기("reminder");
+        Instant 지금 = 한국_시각("2026-10-26T22:00:00");
+        순위_작업을_만든다(실패할_순위_기기, 지금.minusSeconds(10), 2, 3);
+        순위_작업을_만든다(기다릴_순위_기기, 지금, 3, 4);
+        발급_가능_작업을_만든다(발급_가능_기기, 지금.minus(Duration.ofHours(1)));
+        리마인더_작업을_만든다(리마인더_기기, 지금);
+        when(pushSender.send(eq("rank-failing"), any())).thenReturn(PushSendResult.RETRYABLE);
+        when(clock.instant()).thenReturn(지금);
+
+        // when
+        dispatcher.dispatch(RANK_DROPPED);
+        dispatcher.dispatch(COLLECTION_CLAIMABLE);
+        dispatcher.dispatch(COLLECTION_CLAIM_REMINDER);
+
+        // then
+        verify(pushSender, never()).send(eq("rank-waiting"), any());
+        verify(pushSender).send(eq("claimable"), any());
+        verify(pushSender).send(eq("reminder"), any());
+        작업 retrying = 기기의_작업(jdbc, 실패할_순위_기기.getId(), RANK_DROPPED.name());
+        assertThat(retrying.status()).isEqualTo("PENDING");
+        assertThat(retrying.resultCode()).isEqualTo("RETRYABLE");
+        assertThat(retrying.availableAt()).isEqualTo(지금.plus(일분));
+        assertThat(기기의_작업(jdbc, 기다릴_순위_기기.getId(), RANK_DROPPED.name()).attemptCount()).isZero();
+        assertThat(기기의_작업(jdbc, 발급_가능_기기.getId(), COLLECTION_CLAIMABLE.name()).status()).isEqualTo("SENT");
+        assertThat(기기의_작업(jdbc, 리마인더_기기.getId(), COLLECTION_CLAIM_REMINDER.name()).status())
+                .isEqualTo("SENT");
+    }
+
+    @Test
     void 순위_작업은_회차_5분이_지나면_보내지_않고_EXPIRED로_닫는다() {
         // given
         Device device = 토큰이_있는_기기(기본_등록_값);

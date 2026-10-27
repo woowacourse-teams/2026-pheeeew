@@ -5,6 +5,7 @@ import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static com.pheeeew.emotion.fixture.DeviceDailyPressFixture.개인_프레스를_저장한다;
 import static com.pheeeew.notification.domain.NotificationOutboxType.COLLECTION_CLAIMABLE;
 import static com.pheeeew.notification.domain.NotificationOutboxType.COLLECTION_CLAIM_REMINDER;
+import static com.pheeeew.notification.domain.NotificationOutboxType.RANK_DROPPED;
 import static com.pheeeew.notification.fixture.NotificationOutboxFixture.기기의_작업들;
 import static com.pheeeew.notification.fixture.NotificationOutboxFixture.날짜의_회차들;
 import static com.pheeeew.notification.fixture.NotificationOutboxFixture.알림_데이터를_지운다;
@@ -58,6 +59,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -274,6 +277,59 @@ class NotificationConcurrencyIntegrationTest {
                 .containsExactly(tuple(NotificationOutboxType.COLLECTION_CLAIMABLE.name(), 오전_10시));
     }
 
+    @ParameterizedTest
+    @EnumSource(NotificationOutboxType.class)
+    void 실행기에서_한_유형의_발송이_FCM_응답을_기다리는_동안에도_다른_두_유형은_각자_스레드에서_보낸다(
+            NotificationOutboxType 멈춘_유형
+    ) throws Exception {
+        // given
+        Instant 지금 = 한국_시각("2026-11-02T22:00:00");
+        Map<NotificationOutboxType, Device> 유형별_기기 = Map.of(
+                COLLECTION_CLAIMABLE, 토큰이_있는_기기(COLLECTION_CLAIMABLE.name()),
+                COLLECTION_CLAIM_REMINDER, 토큰이_있는_기기(COLLECTION_CLAIM_REMINDER.name()),
+                RANK_DROPPED, 토큰이_있는_기기(RANK_DROPPED.name()));
+        outboxes.saveCollection(COLLECTION_CLAIMABLE, 유형별_기기.get(COLLECTION_CLAIMABLE).getId(), DAY,
+                지금.minus(Duration.ofHours(1)), 지금, 다음_날_자정());
+        outboxes.saveCollection(COLLECTION_CLAIM_REMINDER, 유형별_기기.get(COLLECTION_CLAIM_REMINDER).getId(), DAY,
+                지금, 지금, 다음_날_자정());
+        outboxes.saveRank(유형별_기기.get(RANK_DROPPED).getId(), DAY, 지금, 2, 3, 지금, 지금.plus(Duration.ofMinutes(5)));
+        when(clock.instant()).thenReturn(지금);
+        CountDownLatch 멈춘_발송_시작 = new CountDownLatch(1);
+        CountDownLatch 멈춘_발송_응답 = new CountDownLatch(1);
+        doAnswer(invocation -> {
+            멈춘_발송_시작.countDown();
+            멈춘_발송_응답.await(대기_상한.toSeconds(), TimeUnit.SECONDS);
+            return PushSendResult.SENT;
+        }).when(pushSender).send(eq(멈춘_유형.name()), any());
+        List<Device> 다른_유형_기기들 = 유형별_기기.entrySet().stream()
+                .filter(entry -> entry.getKey() != 멈춘_유형)
+                .map(Map.Entry::getValue)
+                .toList();
+        Device 멈춘_기기 = 유형별_기기.get(멈춘_유형);
+        NotificationDispatchScheduler scheduler = new NotificationDispatchScheduler(dispatcher, false);
+
+        // when
+        boolean 멈춘_동안_다른_유형_발송;
+        String 멈춘_작업_상태;
+        boolean 응답_뒤_멈춘_유형_발송;
+        scheduler.start();
+        try {
+            assertThat(멈춘_발송_시작.await(대기_상한.toSeconds(), TimeUnit.SECONDS)).isTrue();
+            멈춘_동안_다른_유형_발송 = 모두_SENT가_될_때까지_기다린다(다른_유형_기기들);
+            멈춘_작업_상태 = 기기의_작업들(jdbc, 멈춘_기기.getId()).getFirst().status();
+            멈춘_발송_응답.countDown();
+            응답_뒤_멈춘_유형_발송 = 모두_SENT가_될_때까지_기다린다(List.of(멈춘_기기));
+        } finally {
+            멈춘_발송_응답.countDown();
+            scheduler.stop();
+        }
+
+        // then
+        assertThat(멈춘_동안_다른_유형_발송).isTrue();
+        assertThat(멈춘_작업_상태).isEqualTo("PENDING");
+        assertThat(응답_뒤_멈춘_유형_발송).isTrue();
+    }
+
     private Device 토큰이_있는_기기(String token) {
         Device device = devices.saveAndFlush(기본_기기_빌더().build());
         만든_기기들.add(device.getId());
@@ -298,6 +354,20 @@ class NotificationConcurrencyIntegrationTest {
 
     private Instant 다음_날_자정() {
         return DAY.plusDays(1).atStartOfDay(서울).toInstant();
+    }
+
+    private boolean 모두_SENT가_될_때까지_기다린다(List<Device> 기기들) throws InterruptedException {
+        Instant 기한 = Instant.now().plus(대기_상한);
+        while (Instant.now().isBefore(기한)) {
+            boolean 모두_보냄 = 기기들.stream()
+                    .flatMap(device -> 기기의_작업들(jdbc, device.getId()).stream())
+                    .allMatch(job -> job.status().equals("SENT"));
+            if (모두_보냄) {
+                return true;
+            }
+            Thread.sleep(10);
+        }
+        return false;
     }
 
     private void 잠금을_기다리는_세션이_생길_때까지_기다린다(String 문장) throws InterruptedException {
