@@ -9,6 +9,8 @@ services:
       dockerfile: docker/Dockerfile
     environment:
       SPRING_PROFILES_ACTIVE: local
+      PHEEEEW_PRESS_RACE_ADMISSION_FILE: ""
+      PHEEEEW_PRESS_RACE_ADMISSION_REQUIRED: "false"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/pheeeew
       SPRING_DATASOURCE_USERNAME: pheeeew
       SPRING_DATASOURCE_PASSWORD: pheeeew
