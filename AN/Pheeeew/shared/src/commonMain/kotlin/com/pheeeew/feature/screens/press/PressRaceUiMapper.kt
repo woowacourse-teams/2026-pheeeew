@@ -7,12 +7,13 @@ import com.pheeeew.data.press.race.PressRaceView
 internal fun PressRaceRankingState.toNearbyRanking(): PressNearbyRankingUiState {
     val snapshot = cached(PressRaceView.PRESS)
     val fresh = isFresh(PressRaceView.PRESS)
+    val recovering = session.isRecovering || session.phase == PressRacePhase.Failed
     val status =
         when {
             fresh -> PressNearbyRankingStatus.Ready
-            snapshot != null && session.phase == PressRacePhase.Failed -> PressNearbyRankingStatus.Reconnecting
+            snapshot != null && recovering -> PressNearbyRankingStatus.Reconnecting
             snapshot != null -> PressNearbyRankingStatus.Cached
-            session.phase == PressRacePhase.Failed -> PressNearbyRankingStatus.Unavailable
+            recovering -> PressNearbyRankingStatus.Unavailable
             else -> PressNearbyRankingStatus.Loading
         }
     return PressNearbyRankingUiState(
@@ -39,6 +40,10 @@ internal fun PressRaceRankingState.toNearbyRanking(): PressNearbyRankingUiState 
 internal fun PressRaceRankingState.toActivity(): PressActivityUiState {
     val snapshot = cached(PressRaceView.PRESS)
     return when {
+        session.isRecovering -> {
+            PressActivityUiState(status = PressActivityStatus.Unknown)
+        }
+
         isFresh(PressRaceView.PRESS) -> {
             PressActivityUiState(count = requireNotNull(snapshot).activeCount, status = PressActivityStatus.Known)
         }

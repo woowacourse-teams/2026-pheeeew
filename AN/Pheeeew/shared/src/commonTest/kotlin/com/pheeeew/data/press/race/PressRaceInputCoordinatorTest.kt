@@ -16,6 +16,57 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PressRaceInputCoordinatorTest {
+    @Test
+    fun nextDaySyncHidesPreviousCountsAndSettlesOldAckWithoutAddingToToday() =
+        runTest {
+            val port = InputPort()
+            val input = input(port)
+            repeat(100) { input.accept(EmotionState.ANGRY) }
+            runCurrent()
+            port.state.value =
+                port.state.value.copy(
+                    phase = PressRacePhase.Connecting,
+                    ready = null,
+                    isRecovering = true,
+                    dateFloor = "2026-10-28",
+                )
+            runCurrent()
+            assertEquals(null, input.state.value.myToday)
+            assertEquals(
+                0L,
+                input.state.value.optimisticCounts.values
+                    .sum(),
+            )
+            assertEquals(100L, input.state.value.pendingPressCount)
+            assertEquals(PressAcceptance.Unavailable, input.accept(EmotionState.ANGRY))
+            port.observer.result(PressRaceInputResult("id-1", "APPLIED", "2026-10-27", mapOf("ANGRY" to 100)))
+            assertEquals(null, input.state.value.myToday)
+            port.observer.ready(port.ready.copy(date = "2026-10-28", counts = mapOf("ANGRY" to 3)))
+            port.state.value =
+                port.state.value.copy(
+                    phase = PressRacePhase.Ready,
+                    ready = port.ready.copy(date = "2026-10-28"),
+                    isAwaitingSnapshot = true,
+                )
+            runCurrent()
+            assertEquals(
+                "2026-10-28",
+                input.state.value.myToday
+                    ?.pressDate,
+            )
+            assertEquals(
+                3L,
+                input.state.value.myToday
+                    ?.total,
+            )
+            port.observer.result(PressRaceInputResult("id-1", "APPLIED", "2026-10-27", mapOf("ANGRY" to 100)))
+            assertEquals(
+                3L,
+                input.state.value.myToday
+                    ?.total,
+            )
+        }
+
     private suspend fun TestScope.input(port: InputPort): PressRaceInputCoordinator {
         port.clock = { testScheduler.currentTime }
         var id = 0
