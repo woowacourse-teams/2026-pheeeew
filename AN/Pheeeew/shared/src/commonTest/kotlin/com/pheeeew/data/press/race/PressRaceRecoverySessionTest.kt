@@ -40,6 +40,31 @@ class PressRaceRecoverySessionTest {
     )
 
     @Test
+    fun failureBlocksInputAndNoticeBeforeSlowSocketCloseFinishes() =
+        runTest {
+            val transport = RecoveryTransport().apply { closeGate = CompletableDeferred() }
+            val session = session(transport)
+            session.setView(PressRaceView.PRESS)
+            runCurrent()
+            val socket = transport.sockets.single()
+            socket.incoming.send(baseline(results = "[]"))
+            socket.incoming.send(rank())
+            socket.incoming.send(rank(version = "2", baseline = false).replace("\"passed\":0", "\"passed\":1"))
+            runCurrent()
+            assertTrue(session.state.value.notice != null)
+            socket.finish(null)
+            runCurrent()
+            assertTrue(socket.closed)
+            assertEquals(PressRacePhase.Failed, session.state.value.phase)
+            assertEquals(null, session.state.value.ready)
+            assertEquals(null, session.state.value.notice)
+            assertTrue(session.state.value.isRecovering)
+            transport.closeGate!!.complete(Unit)
+            runCurrent()
+            session.close()
+        }
+
+    @Test
     fun latestPositiveSurvivesZeroConflationAndOldExpiryCannotClearReplacement() =
         runTest {
             val transport = RecoveryTransport()
@@ -511,6 +536,7 @@ private class RecoveryTokens : RecoverableAccessTokenProvider {
 }
 
 private class RecoveryTransport : PressRaceTransport {
+    var closeGate: CompletableDeferred<Unit>? = null
     var failure: Exception? = null
     val sockets = mutableListOf<RecoverySocket>()
     val endpoints = mutableListOf<PressRaceEndpoint>()
@@ -523,7 +549,7 @@ private class RecoveryTransport : PressRaceTransport {
         endpoints += endpoint
         tokens += accessToken
         failure?.let { throw it }
-        return RecoverySocket().also { sockets += it }
+        return RecoverySocket(closeGate).also { sockets += it }
     }
 
     override fun close() {
@@ -531,7 +557,9 @@ private class RecoveryTransport : PressRaceTransport {
     }
 }
 
-private class RecoverySocket : PressRaceConnection {
+private class RecoverySocket(
+    private val closeGate: CompletableDeferred<Unit>? = null,
+) : PressRaceConnection {
     val incoming = Channel<String>(Channel.UNLIMITED)
     val sent = mutableListOf<String>()
     private val reason = CompletableDeferred<PressRaceClose?>()
@@ -547,6 +575,7 @@ private class RecoverySocket : PressRaceConnection {
 
     override suspend fun close() {
         closed = true
+        closeGate?.await()
         finish(null)
     }
 

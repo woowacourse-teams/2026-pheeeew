@@ -94,6 +94,7 @@ internal class PressRaceSession(
             noticeExpiry?.cancel()
             noticeExpiry = null
             if (next != null) {
+                trace(PressRaceDiagnostic.NoticePublished)
                 val attempt = epoch
                 noticeExpiry =
                     scope.launch {
@@ -139,6 +140,7 @@ internal class PressRaceSession(
                     is Event.ExpireNotice -> {
                         if (event.epoch == epoch && notices.expire(event.id, noticeClock())) {
                             noticeExpiry = null
+                            trace(PressRaceDiagnostic.NoticeExpired)
                             publish { it.copy(notice = null) }
                         }
                     }
@@ -569,7 +571,7 @@ internal class PressRaceSession(
         val rejected = usedToken
         if (failure.code == "SESSION_CHANGED") identityInvalid = true
         val mode = endpoint
-        stopConnection()
+        // Stop acceptance/display before close I/O, which may take up to one second.
         publish {
             it.copy(
                 phase = PressRacePhase.Failed,
@@ -577,8 +579,10 @@ internal class PressRaceSession(
                 failure = failure,
                 isAwaitingSnapshot = false,
                 isRecovering = true,
+                notice = null,
             )
         }
+        stopConnection()
         if (state.value.view == null || closed.value) return
         var refresh: AccessToken? = null
         val expired = failure.httpStatus == 401 || failure.code == "AUTH_EXPIRED"

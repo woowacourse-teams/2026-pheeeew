@@ -11,6 +11,8 @@ internal enum class PressRaceDiagnostic {
     RetryScheduled,
     RecoveryOnlySettled,
     Inactive,
+    NoticePublished,
+    NoticeExpired,
     ViewHidden,
     FeatureDisabled,
     LifecyclePaused,
