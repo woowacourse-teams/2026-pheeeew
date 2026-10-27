@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "481488887110",
+    "project_id": "pheeeew-8bf12",
+    "storage_bucket": "pheeeew-8bf12.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:481488887110:android:e7151d01ee93dfec70d947",
+        "android_client_info": {
+          "package_name": "com.pheeeew"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAdioPKL7YJgbj5WOBD1XBruxc7e-teVcE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
