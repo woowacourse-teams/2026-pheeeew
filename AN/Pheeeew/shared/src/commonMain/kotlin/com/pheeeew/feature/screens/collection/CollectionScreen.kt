@@ -149,7 +149,6 @@ fun CollectionScreen(
     val coverFlowDragState = rememberScrollableState { 0f }
     val hapticFeedback = LocalHapticFeedback.current
     val pullDistance = with(LocalDensity.current) { 56.dp.toPx() }
-    val unavailableState =
     val scope = rememberCoroutineScope()
     val latestRefresh by rememberUpdatedState(onRefresh)
     val isPullEnabled by rememberUpdatedState(!uiModel.isRefreshRequestActive)
@@ -160,6 +159,7 @@ fun CollectionScreen(
                 latestRefresh()
             }
         }
+    val unavailableState =
         collectionUnavailableState(
             hasContent = uiModel.cards.isNotEmpty() || uiModel.pendingProgress != null,
             isLoading = uiModel.isLoadingCards || uiModel.todayLoading || uiModel.isRefreshRequestActive,
@@ -210,7 +210,6 @@ fun CollectionScreen(
                         }
                     },
         ) {
-            Box(Modifier.fillMaxSize()) {
             if (pullState.offset >= pullDistance * 0.3f && !uiModel.isRefreshRequestActive) {
                 Text(
                     text = "당겨서 새로고침",
@@ -219,6 +218,7 @@ fun CollectionScreen(
                     modifier = Modifier.align(Alignment.TopCenter).padding(top = 2.dp),
                 )
             }
+            Box(Modifier.fillMaxSize()) {
                 Column(
                     Modifier
                         .fillMaxSize()
