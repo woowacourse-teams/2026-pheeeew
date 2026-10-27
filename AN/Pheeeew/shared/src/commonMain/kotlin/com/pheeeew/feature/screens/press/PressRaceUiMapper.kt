@@ -10,7 +10,8 @@ internal fun PressRaceRankingState.toNearbyRanking(): PressNearbyRankingUiState 
     val status =
         when {
             fresh -> PressNearbyRankingStatus.Ready
-            snapshot != null -> PressNearbyRankingStatus.Reconnecting
+            snapshot != null && session.phase == PressRacePhase.Failed -> PressNearbyRankingStatus.Reconnecting
+            snapshot != null -> PressNearbyRankingStatus.Cached
             session.phase == PressRacePhase.Failed -> PressNearbyRankingStatus.Unavailable
             else -> PressNearbyRankingStatus.Loading
         }
@@ -35,16 +36,23 @@ internal fun PressRaceRankingState.toNearbyRanking(): PressNearbyRankingUiState 
     )
 }
 
-internal fun PressRaceRankingState.toActivity(): PressActivityUiState =
-    if (isFresh(PressRaceView.PRESS)) {
-        PressActivityUiState(count = requireNotNull(press).activeCount, status = PressActivityStatus.Known)
-    } else {
-        PressActivityUiState(
-            status =
-                if (session.phase == PressRacePhase.Connecting || session.phase == PressRacePhase.Initializing) {
-                    PressActivityStatus.Loading
-                } else {
-                    PressActivityStatus.Unknown
-                },
-        )
+internal fun PressRaceRankingState.toActivity(): PressActivityUiState {
+    val snapshot = cached(PressRaceView.PRESS)
+    return when {
+        isFresh(PressRaceView.PRESS) -> {
+            PressActivityUiState(count = requireNotNull(snapshot).activeCount, status = PressActivityStatus.Known)
+        }
+
+        snapshot != null && session.phase != PressRacePhase.Failed && session.phase != PressRacePhase.Closed -> {
+            PressActivityUiState(count = snapshot.activeCount, status = PressActivityStatus.Cached)
+        }
+
+        session.phase == PressRacePhase.Connecting || session.phase == PressRacePhase.Initializing -> {
+            PressActivityUiState(status = PressActivityStatus.Loading)
+        }
+
+        else -> {
+            PressActivityUiState(status = PressActivityStatus.Unknown)
+        }
     }
+}

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
@@ -89,7 +90,7 @@ internal fun PressActivityFooter(
     val notice = state.notice?.takeUnless { it.isEmpty || it.displayId == suppressedId || !focused }
     val activityText =
         when (state.status) {
-            PressActivityStatus.Known -> {
+            PressActivityStatus.Known, PressActivityStatus.Cached -> {
                 stringResource(
                     Res.string.press_activity_count,
                     formatCount(requireNotNull(state.count)),
@@ -109,7 +110,12 @@ internal fun PressActivityFooter(
             }
         }
     Row(
-        modifier.fillMaxWidth().background(Color(0xFFF0F1EB)).padding(horizontal = 10.dp, vertical = 10.dp),
+        modifier
+            .fillMaxWidth()
+            .heightIn(
+                min = 40.dp,
+            ).background(Color(0xFFF0F1EB))
+            .padding(horizontal = 10.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

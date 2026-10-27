@@ -50,6 +50,35 @@ class PressRaceUiMapperTest {
     }
 
     @Test
+    fun returningScreenKeepsActivityAndRowsUntilFreshBaselineArrives() {
+        val me = PressRaceParticipant("me", "same", 10, 2, true)
+        val initial = state(me, listOf(me))
+        val snapshot = initial.press!!.copy(activeCount = 4)
+        val loaded = initial.update(initial.session.copy(snapshot = snapshot))
+        for (phase in listOf(
+            PressRacePhase.Disconnected,
+            PressRacePhase.Connecting,
+            PressRacePhase.Initializing,
+            PressRacePhase.Ready,
+        )) {
+            val awaiting = loaded.copy(session = loaded.session.copy(phase = phase, isAwaitingSnapshot = true))
+            assertEquals(4L, awaiting.toActivity().count)
+            assertEquals(PressActivityStatus.Cached, awaiting.toActivity().status)
+            assertEquals(3, awaiting.toActivity().avatarCount)
+            assertEquals(1L, awaiting.toActivity().avatarOverflowCount)
+            assertEquals(PressNearbyRankingStatus.Cached, awaiting.toNearbyRanking().status)
+            assertEquals(loaded.toNearbyRanking().rows, awaiting.toNearbyRanking().rows)
+        }
+        val fresh = loaded.update(loaded.session.copy(snapshot = snapshot.copy(activeCount = 1, snapshotVersion = "2")))
+        assertEquals(PressActivityStatus.Known, fresh.toActivity().status)
+        assertEquals(1L, fresh.toActivity().count)
+        val failed = loaded.copy(session = loaded.session.copy(phase = PressRacePhase.Failed))
+        assertNull(failed.toActivity().count)
+        assertEquals(PressActivityStatus.Unknown, failed.toActivity().status)
+        assertEquals(PressNearbyRankingStatus.Reconnecting, failed.toNearbyRanking().status)
+    }
+
+    @Test
     fun nonparticipantDoesNotAcquireFakeRankOrIdentity() {
         val me = PressRaceParticipant(null, null, 0, null, false)
         val state = state(me, emptyList())

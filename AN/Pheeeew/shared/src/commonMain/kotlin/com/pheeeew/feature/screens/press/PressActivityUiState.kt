@@ -8,17 +8,31 @@ internal data class PressActivityUiState(
 ) {
     init {
         require(count == null || count >= 0)
-        require(status != PressActivityStatus.Known || count != null)
+        require(status !in setOf(PressActivityStatus.Known, PressActivityStatus.Cached) || count != null)
     }
 
     val avatarCount: Int
-        get() = if (status == PressActivityStatus.Known) requireNotNull(count).coerceAtMost(3).toInt() else 0
+        get() =
+            if (status == PressActivityStatus.Known ||
+                status == PressActivityStatus.Cached
+            ) {
+                requireNotNull(count).coerceAtMost(3).toInt()
+            } else {
+                0
+            }
 
     val avatarOverflowCount: Long?
-        get() = if (status == PressActivityStatus.Known) (requireNotNull(count) - 3).takeIf { it > 0 } else null
+        get() =
+            if (status == PressActivityStatus.Known ||
+                status == PressActivityStatus.Cached
+            ) {
+                (requireNotNull(count) - 3).takeIf { it > 0 }
+            } else {
+                null
+            }
 }
 
-internal enum class PressActivityStatus { Known, Loading, Unknown, Reconnecting }
+internal enum class PressActivityStatus { Known, Cached, Loading, Unknown, Reconnecting }
 
 /** A new displayId distinguishes a new occurrence even when the text is unchanged. */
 internal data class PressRaceNotice(
