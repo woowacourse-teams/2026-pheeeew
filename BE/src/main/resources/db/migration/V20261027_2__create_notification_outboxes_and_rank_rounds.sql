@@ -81,6 +81,5 @@ CREATE TABLE notification_rank_snapshots
     CONSTRAINT pk_notification_rank_snapshots PRIMARY KEY (round_at, device_id),
     CONSTRAINT fk_notification_rank_snapshots_round
         FOREIGN KEY (round_at) REFERENCES notification_rank_rounds (round_at) ON DELETE CASCADE,
-    CONSTRAINT fk_notification_rank_snapshots_device FOREIGN KEY (device_id) REFERENCES devices (id),
-    CONSTRAINT ck_notification_rank_snapshots_rank CHECK (rank BETWEEN 1 AND 5)
+    CONSTRAINT fk_notification_rank_snapshots_device FOREIGN KEY (device_id) REFERENCES devices (id)
 );
