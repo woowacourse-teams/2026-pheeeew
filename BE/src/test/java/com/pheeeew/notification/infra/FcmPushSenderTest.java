@@ -8,17 +8,20 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 
 import com.nimbusds.jwt.SignedJWT;
 import com.pheeeew.device.fixture.FakeGoogleApiServer;
+import com.pheeeew.device.infra.attestation.PlayIntegrityUnavailableException;
 import com.pheeeew.notification.domain.PushMessage;
 import com.pheeeew.notification.domain.PushSendResult;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.boot.json.JsonParserFactory;
-import org.springframework.web.client.HttpClientErrorException;
 
 class FcmPushSenderTest {
 
@@ -92,19 +95,57 @@ class FcmPushSenderTest {
         assertThat(result).isEqualTo(PushSendResult.UNREGISTERED);
     }
 
-    @Test
-    void 무효_등록_값이_아닌_오류는_무효로_보지_않고_예외를_던진다() {
+    @ParameterizedTest
+    @CsvSource({
+            "400, INVALID_ARGUMENT, REJECTED",
+            "401, UNAUTHENTICATED, REJECTED",
+            "403, SENDER_ID_MISMATCH, REJECTED",
+            "404, NOT_FOUND, REJECTED",
+            "429, QUOTA_EXCEEDED, RETRYABLE",
+            "500, INTERNAL, RETRYABLE",
+            "503, UNAVAILABLE, RETRYABLE"
+    })
+    void 무효_등록_값이_아닌_오류는_일시_오류와_영구_거절로_나눈다(int status, String errorCode, PushSendResult expected) {
         // given
-        가짜_구글.복호화_응답을_넣는다(404, "{\"error\":{\"code\":404,\"status\":\"NOT_FOUND\"}}");
-        가짜_구글.복호화_응답을_넣는다(400, 오류_응답(400, "INVALID_ARGUMENT", "INVALID_ARGUMENT"));
+        가짜_구글.복호화_응답을_넣는다(status, 오류_응답(status, errorCode, errorCode));
 
         // when
-        Throwable 프로젝트_없음 = catchThrowable(() -> sender.send(기본_등록_값, 메시지));
-        Throwable 잘못된_요청 = catchThrowable(() -> sender.send(기본_등록_값, 메시지));
+        PushSendResult result = sender.send(기본_등록_값, 메시지);
 
         // then
-        assertThat(프로젝트_없음).isInstanceOf(HttpClientErrorException.class);
-        assertThat(잘못된_요청).isInstanceOf(HttpClientErrorException.class);
+        assertThat(result).isEqualTo(expected);
+    }
+
+    @Test
+    void 응답이_읽기_제한_시간_안에_오지_않으면_일시_오류로_알린다() {
+        // given
+        FcmPushSender 짧게_기다리는_발송기 = new FcmPushSender(가짜_구글.이_서버를_향하는_클라이언트(Duration.ofMillis(300)),
+                new FcmProperties(프로젝트_ID, 서비스_계정_설정(가짜_구글.토큰_엔드포인트())));
+        가짜_구글.복호화_응답을_보내지_않는다();
+
+        // when
+        PushSendResult result = 짧게_기다리는_발송기.send(기본_등록_값, 메시지);
+
+        // then
+        assertThat(result).isEqualTo(PushSendResult.RETRYABLE);
+        assertThat(가짜_구글.복호화_요청_수()).isOne();
+    }
+
+    @Test
+    void 액세스_토큰을_받지_못하면_발송하지_않고_예외를_던진다() {
+        // given
+        FakeGoogleApiServer 토큰을_주지_않는_구글 = FakeGoogleApiServer.시작한다();
+        토큰을_주지_않는_구글.토큰_응답을_넣는다(503, "{\"error\":\"unavailable\"}");
+        FcmPushSender 토큰_없는_발송기 = new FcmPushSender(토큰을_주지_않는_구글.이_서버를_향하는_클라이언트(),
+                new FcmProperties(프로젝트_ID, 서비스_계정_설정(토큰을_주지_않는_구글.토큰_엔드포인트())));
+
+        // when
+        Throwable thrown = catchThrowable(() -> 토큰_없는_발송기.send(기본_등록_값, 메시지));
+
+        // then
+        토큰을_주지_않는_구글.close();
+        assertThat(thrown).isInstanceOf(PlayIntegrityUnavailableException.class);
+        assertThat(토큰을_주지_않는_구글.복호화_요청_수()).isZero();
     }
 
     @Test
