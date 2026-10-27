@@ -51,6 +51,7 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_map_filter
+import pheeeew.shared.generated.resources.ic_map_filter_active
 import pheeeew.shared.generated.resources.ic_menu
 import pheeeew.shared.generated.resources.ic_my_location
 import pheeeew.shared.generated.resources.ic_refresh
@@ -82,6 +83,7 @@ fun MapOverlay(
     showNavigationButtons: Boolean = true,
     nearbyMapControlHeight: Dp = 0.dp,
     isMapCameraMoving: Boolean = false,
+    isFilterApplied: Boolean = false,
 ) {
     val scope = rememberCoroutineScope()
     val promptVisibility = remember(scope) { MapPromptVisibilityState(scope) }
@@ -204,7 +206,7 @@ fun MapOverlay(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     MapControlButton(
-                        icon = Res.drawable.ic_map_filter,
+                        icon = if (isFilterApplied) Res.drawable.ic_map_filter_active else Res.drawable.ic_map_filter,
                         contentDescription = stringResource(Res.string.map_filter),
                         onClick = onFilterClick,
                         tint = Color.Unspecified,
