@@ -1,6 +1,7 @@
 package com.pheeeew.core.di
 
 import com.pheeeew.core.di.device.DeviceSessionBuildConfig
+import com.pheeeew.core.di.device.PressInputMode
 import com.pheeeew.core.monitoring.DefinedEvent
 import com.pheeeew.core.monitoring.EventValue
 import com.pheeeew.core.monitoring.Monitoring
@@ -12,6 +13,7 @@ import com.pheeeew.core.network.ConnectivityObserver
 import com.pheeeew.core.session.DeviceSessionManager
 import com.pheeeew.data.local.device.DeviceCredentialStorage
 import com.pheeeew.data.local.mapfilter.InMemoryMapFilterSettingsRepository
+import com.pheeeew.data.press.race.PressRaceInputCoordinator
 import com.pheeeew.data.press.race.PressRaceRankingStore
 import com.pheeeew.data.press.race.PressRaceRankings
 import com.pheeeew.data.press.race.PressRaceSession
@@ -206,14 +208,20 @@ internal interface ApiBindings {
         monitoring: Monitoring,
         @PressWork scope: CoroutineScope,
         connectivity: ConnectivityObserver,
+        build: DeviceSessionBuildConfig,
+        race: PressRaceSession,
     ): PressRepository =
-        PressRepositoryImpl(
-            statistics,
-            sender,
-            scope,
-            connectivity = connectivity.isConnected,
-            monitoring = monitoring,
-        )
+        if (build.pressInputMode == PressInputMode.WEBSOCKET_DEVELOPMENT) {
+            PressRaceInputCoordinator(race, scope)
+        } else {
+            PressRepositoryImpl(
+                statistics,
+                sender,
+                scope,
+                connectivity = connectivity.isConnected,
+                monitoring = monitoring,
+            )
+        }
 
     @Provides
     @SingleIn(AppScope::class)

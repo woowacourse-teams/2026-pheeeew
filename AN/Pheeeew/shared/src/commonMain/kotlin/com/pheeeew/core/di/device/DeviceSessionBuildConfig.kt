@@ -11,8 +11,12 @@ data class DeviceSessionBuildConfig(
     val baseUrl: String,
     val attestationMode: String,
     val version: String,
+    val pressInputMode: PressInputMode = PressInputMode.HTTP,
 ) {
     init {
+        require(
+            isDebug || pressInputMode == PressInputMode.HTTP,
+        ) { "WS input is development-only until recovery is verified" }
         require(environment == if (isDebug) "dev" else "prod") { "Device environment does not match build type" }
         require(baseUrl == if (isDebug) DEV_URL else PROD_URL) { "Device API URL does not match build type" }
         require(attestationMode in setOf("platform_only", "required")) { "Unknown device attestation mode" }
@@ -41,3 +45,6 @@ data class DeviceSessionBuildConfig(
         const val PROD_URL = "https://api.pheeeew.com"
     }
 }
+
+/** Selected once when the app graph is created; there is no runtime fallback. */
+enum class PressInputMode { HTTP, WEBSOCKET_DEVELOPMENT }
