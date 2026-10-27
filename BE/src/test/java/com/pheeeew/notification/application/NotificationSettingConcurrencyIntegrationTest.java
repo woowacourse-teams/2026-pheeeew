@@ -1,6 +1,7 @@
 package com.pheeeew.notification.application;
 
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
+import static com.pheeeew.notification.fixture.NotificationSettingFixture.기기_수신_설정;
 import static com.pheeeew.notification.fixture.PushTokenFixture.기기_등록_값;
 import static com.pheeeew.notification.fixture.PushTokenFixture.기본_등록_값;
 import static com.pheeeew.notification.fixture.PushTokenFixture.새_등록_값;
@@ -176,6 +177,82 @@ class NotificationSettingConcurrencyIntegrationTest {
                 .single()).isOne();
     }
 
+    @Test
+    void 설정을_바꾸는_요청이_커밋하기_전에_원래_값으로_되돌리는_요청이_오면_나중_요청의_값이_남는다() throws Exception {
+        // given
+        Device device = 기기를_만든다();
+        deviceNotificationSettingRepository.save(기기_수신_설정(device.getId(), NotificationSettings.of(true, true)));
+        CountDownLatch 먼저_온_요청이_읽고_멈춤 = new CountDownLatch(1);
+        CountDownLatch 커밋_허용 = new CountDownLatch(1);
+        AtomicBoolean 처음 = new AtomicBoolean(true);
+        Answer<?> 실제_조회 = 실제_동작(deviceNotificationSettingRepository);
+        doAnswer(invocation -> {
+            Object found = 실제_조회.answer(invocation);
+            if (처음.compareAndSet(true, false)) {
+                먼저_온_요청이_읽고_멈춤.countDown();
+                커밋_허용.await(대기_상한.toSeconds(), TimeUnit.SECONDS);
+            }
+            return found;
+        }).when(deviceNotificationSettingRepository).findByDeviceIdForUpdate(device.getId());
+
+        // when
+        try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
+            Future<?> 먼저 = executor.submit(() ->
+                    notificationSettingService.updateSettings(device.getPublicId(), false, false));
+            assertThat(먼저_온_요청이_읽고_멈춤.await(대기_상한.toSeconds(), TimeUnit.SECONDS)).isTrue();
+
+            Future<?> 나중 = executor.submit(() ->
+                    notificationSettingService.updateSettings(device.getPublicId(), true, true));
+            잠금에서_기다리거나_끝날_때까지_기다린다(나중, "from device_notification_settings");
+            커밋_허용.countDown();
+
+            먼저.get(대기_상한.toSeconds(), TimeUnit.SECONDS);
+            나중.get(대기_상한.toSeconds(), TimeUnit.SECONDS);
+        }
+
+        // then
+        assertThat(notificationSettingService.findSettings(device.getPublicId()))
+                .isEqualTo(NotificationSettings.of(true, true));
+    }
+
+    @Test
+    void 토큰을_바꾸는_요청이_커밋하기_전에_원래_토큰으로_되돌리는_요청이_오면_나중_요청의_토큰이_남는다() throws Exception {
+        // given
+        Device device = 기기를_만든다();
+        devicePushTokenRepository.save(기기_등록_값(device.getId(), 기본_등록_값));
+        CountDownLatch 먼저_온_요청이_읽고_멈춤 = new CountDownLatch(1);
+        CountDownLatch 커밋_허용 = new CountDownLatch(1);
+        AtomicBoolean 처음 = new AtomicBoolean(true);
+        Answer<?> 실제_조회 = 실제_동작(devicePushTokenRepository);
+        doAnswer(invocation -> {
+            Object found = 실제_조회.answer(invocation);
+            if (처음.compareAndSet(true, false)) {
+                먼저_온_요청이_읽고_멈춤.countDown();
+                커밋_허용.await(대기_상한.toSeconds(), TimeUnit.SECONDS);
+            }
+            return found;
+        }).when(devicePushTokenRepository).findByDeviceIdForUpdate(device.getId());
+
+        // when
+        try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
+            Future<?> 먼저 = executor.submit(() ->
+                    notificationSettingService.updatePushToken(device.getPublicId(), 새_등록_값));
+            assertThat(먼저_온_요청이_읽고_멈춤.await(대기_상한.toSeconds(), TimeUnit.SECONDS)).isTrue();
+
+            Future<?> 나중 = executor.submit(() ->
+                    notificationSettingService.updatePushToken(device.getPublicId(), 기본_등록_값));
+            잠금에서_기다리거나_끝날_때까지_기다린다(나중, "from device_push_tokens");
+            커밋_허용.countDown();
+
+            먼저.get(대기_상한.toSeconds(), TimeUnit.SECONDS);
+            나중.get(대기_상한.toSeconds(), TimeUnit.SECONDS);
+        }
+
+        // then
+        assertThat(소유_기기들(기본_등록_값)).containsExactly(device.getId());
+        assertThat(소유_기기들(새_등록_값)).isEmpty();
+    }
+
     private Device 기기를_만든다() {
         Device device = deviceRepository.saveAndFlush(기본_기기_빌더().build());
         만든_기기들.add(device.getId());
@@ -225,5 +302,26 @@ class NotificationSettingConcurrencyIntegrationTest {
             Thread.sleep(10);
         }
         throw new AssertionError("나중 요청의 문장이 잠금에서 기다리지 않았다: " + 문장);
+    }
+
+    private void 잠금에서_기다리거나_끝날_때까지_기다린다(Future<?> 요청, String 문장) throws InterruptedException {
+        Instant 기한 = Instant.now().plus(대기_상한);
+        while (Instant.now().isBefore(기한)) {
+            if (요청.isDone()) {
+                return;
+            }
+            Integer 기다리는_세션_수 = jdbcClient.sql("""
+                    SELECT count(*)
+                      FROM pg_stat_activity
+                     WHERE datname = current_database()
+                       AND wait_event_type = 'Lock'
+                       AND query ILIKE :pattern
+                    """).param("pattern", "%" + 문장 + "%").query(Integer.class).single();
+            if (기다리는_세션_수 > 0) {
+                return;
+            }
+            Thread.sleep(10);
+        }
+        throw new AssertionError("나중 요청이 잠금에서 기다리지도 끝나지도 않았다: " + 문장);
     }
 }
