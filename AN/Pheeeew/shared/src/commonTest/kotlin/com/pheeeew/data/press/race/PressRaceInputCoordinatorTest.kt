@@ -80,11 +80,13 @@ class PressRaceInputCoordinatorTest {
                     }.map { it.first },
             )
             assertTrue(input.state.value.isOutcomeUnknown)
+            assertEquals(listOf("connection"), port.recoveryRequests)
             assertEquals(PressAcceptance.Unavailable, input.accept(EmotionState.ANGRY))
             val before = port.sent.size
             advanceTimeBy(5_000)
             runCurrent()
             assertEquals(before, port.sent.size)
+            assertEquals(1, port.recoveryRequests.size)
             assertEquals(100L, input.state.value.pendingPressCount)
         }
 
@@ -185,6 +187,12 @@ private class InputPort : PressRaceInputPort {
     val sent = mutableListOf<Pair<Long, String>>()
     var gate: CompletableDeferred<Unit>? = null
     var clock: () -> Long = { 0L }
+
+    val recoveryRequests = mutableListOf<String>()
+
+    override fun requestRecovery(generation: String) {
+        recoveryRequests += generation
+    }
 
     override fun observeInputs(observer: PressRaceInputObserver) {
         this.observer = observer

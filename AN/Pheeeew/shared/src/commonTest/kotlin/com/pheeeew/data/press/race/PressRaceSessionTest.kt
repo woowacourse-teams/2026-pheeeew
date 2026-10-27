@@ -85,7 +85,7 @@ class PressRaceSessionTest {
                     AccessTokenProvider {
                         tokenCalls++
                         token
-                    },
+                    }.recoverable(),
                     backgroundScope,
                 )
             try {
@@ -243,7 +243,7 @@ class PressRaceSessionTest {
     fun missingTokenFailsWithoutOpeningTransport() =
         runTest {
             val transport = FakeTransport()
-            val session = PressRaceSession(transport, AccessTokenProvider { null }, backgroundScope)
+            val session = PressRaceSession(transport, AccessTokenProvider { null }.recoverable(), backgroundScope)
             try {
                 session.setView(PressRaceView.PRESS)
                 runCurrent()
@@ -305,10 +305,10 @@ class PressRaceSessionTest {
                 runCurrent()
                 val socket = transport.connections.single()
                 socket.incoming.send(ready())
-                socket.incoming.send(snapshot("9223372036854775808", PressRaceView.PRESS, date = "2026-10-27"))
+                socket.incoming.send(snapshot("9223372036854775808", PressRaceView.PRESS, date = "2026-10-26"))
                 socket.incoming.send(snapshot("9223372036854775807", PressRaceView.PRESS))
                 socket.incoming.send(snapshot("9223372036854775809", PressRaceView.PRESS, server = "old-server"))
-                socket.incoming.send(snapshot("9223372036854775810", PressRaceView.PRESS, date = "2026-10-26"))
+                socket.incoming.send(snapshot("9223372036854775810", PressRaceView.PRESS, date = "2026-10-25"))
                 runCurrent()
                 assertEquals(
                     "9223372036854775808",
@@ -316,7 +316,7 @@ class PressRaceSessionTest {
                         ?.snapshotVersion,
                 )
                 assertEquals(
-                    "2026-10-27",
+                    "2026-10-26",
                     session.state.value.snapshot
                         ?.date,
                 )
@@ -534,7 +534,12 @@ class PressRaceSessionTest {
             runCurrent()
             val socket = transport.connections.single()
             assertTrue(socket.sent.single().contains("old-generation"))
-            socket.incoming.send(ready())
+            socket.incoming.send(
+                ready().replace(
+                    "\"results\":[]",
+                    "\"results\":[{\"requestId\":\"original-id\",\"status\":\"REJECTED\"}]",
+                ),
+            )
             runCurrent()
             var attempts = 0
             backgroundScope.launch {
@@ -600,7 +605,7 @@ class PressRaceSessionTest {
     private fun session(
         transport: FakeTransport,
         scope: CoroutineScope,
-    ) = PressRaceSession(transport, AccessTokenProvider { AccessToken("existing-token") }, scope)
+    ) = PressRaceSession(transport, AccessTokenProvider { AccessToken("existing-token") }.recoverable(), scope)
 }
 
 private class FakeTransport(
@@ -693,4 +698,13 @@ private fun snapshot(
         Json.encodeToJsonElement(PressRaceSnapshot.serializer(), data).jsonObject +
             mapOf("v" to JsonPrimitive(1), "type" to JsonPrimitive("state.snapshot")),
     ).toString()
+}
+
+private fun AccessTokenProvider.recoverable(): RecoverableAccessTokenProvider {
+    val source = this
+    return object : RecoverableAccessTokenProvider {
+        override suspend fun accessToken() = source.accessToken()
+
+        override suspend fun recover(rejected: AccessToken): AccessToken = error("No recovery configured")
+    }
 }

@@ -37,6 +37,7 @@ internal class PressRaceInputCoordinator(
     private val queued = mutableSetOf<String>()
     private var statusQueued = false
     private var rejected = false
+    private var requestedRecovery: String? = null
 
     init {
         port.observeInputs(this)
@@ -98,6 +99,7 @@ internal class PressRaceInputCoordinator(
             discardUnsent()
             baselineGeneration = value.connectionGeneration
             lastStatus = null
+            requestedRecovery = null
             publish()
             wake.trySend(Unit)
             Unit
@@ -155,6 +157,13 @@ internal class PressRaceInputCoordinator(
         if (!active() || ledger.expired(time)) {
             if (ledger.expired(time)) {
                 discardUnsent()
+                val generation =
+                    port.state.value.ready
+                        ?.connectionGeneration
+                if (active() && generation != null && generation != requestedRecovery) {
+                    requestedRecovery = generation
+                    port.requestRecovery(generation)
+                }
                 publish()
             }
             return
@@ -264,8 +273,12 @@ internal class PressRaceInputCoordinator(
     private fun publish() {
         val counts = outstanding()
         val unknown = ledger.expired(now())
+        val dateIsCurrent =
+            port.state.value.dateFloor
+                ?.let { floor -> ledger.date?.let { it >= floor } == true } != false
+        val visibleCounts = if (dateIsCurrent) counts else emptyMap()
         val snapshot =
-            ledger.date?.let { date ->
+            ledger.date?.takeIf { dateIsCurrent }?.let { date ->
                 val confirmed = EmotionState.entries.associateWith { ledger.confirmed[it.name] ?: 0L }
                 MyDailyPressSnapshot(date, confirmed, confirmed.values.sum())
             }
@@ -274,7 +287,7 @@ internal class PressRaceInputCoordinator(
                 myToday = snapshot,
                 isLoadingMy = snapshot == null,
                 isLoadingAll = false,
-                optimisticCounts = EmotionState.entries.associateWith { counts[it.name] ?: 0L },
+                optimisticCounts = EmotionState.entries.associateWith { visibleCounts[it.name] ?: 0L },
                 pendingPressCount = counts.values.sum(),
                 isSending = active() && ledger.batches.isNotEmpty(),
                 isOutcomeUnknown = unknown,
