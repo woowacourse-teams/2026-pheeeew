@@ -1,178 +1,144 @@
 package com.pheeeew.feature.screens.ranking
 
-import com.pheeeew.feature.screens.ranking.press.PressEmotion
-import com.pheeeew.feature.screens.ranking.press.PressPersonRank
-import com.pheeeew.feature.screens.ranking.press.PressRankingLoadResult
-import com.pheeeew.feature.screens.ranking.press.PressRankingSource
+import androidx.lifecycle.ViewModelStore
+import com.pheeeew.data.press.race.FakePressRaceRankings
+import com.pheeeew.data.press.race.PressRaceOvertakes
+import com.pheeeew.data.press.race.PressRaceParticipant
+import com.pheeeew.data.press.race.PressRacePhase
+import com.pheeeew.data.press.race.PressRaceRankingState
+import com.pheeeew.data.press.race.PressRaceReady
+import com.pheeeew.data.press.race.PressRaceSessionState
+import com.pheeeew.data.press.race.PressRaceSnapshot
+import com.pheeeew.data.press.race.PressRaceView
 import com.pheeeew.feature.screens.ranking.press.PressRankingStatus
 import com.pheeeew.feature.screens.ranking.press.PressRankingViewModel
-import kotlinx.coroutines.CompletableDeferred
+import com.pheeeew.feature.screens.ranking.press.toRaceRows
+import com.pheeeew.feature.screens.ranking.press.toRankingUiState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import kotlinx.coroutines.withContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PressRankingViewModelTest {
     @Test
-    fun `선택한 감정과 주로 다시 요청하고 새로고침 실패 시 기존 목록을 유지한다`() =
+    fun snapshotStreamUpdatesWithoutPollingAndRefreshBorrowsOwner() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            val store = ViewModelStore()
             try {
-                val calls = mutableListOf<Pair<PressEmotion, Int>>()
-                var shouldFail = false
-                val people =
-                    listOf(PressPersonRank(1, "히유 클럽", 42))
-                val source =
-                    object : PressRankingSource {
-                        override suspend fun load(
-                            emotion: PressEmotion,
-                            weeksAgo: Int,
-                        ): PressRankingLoadResult {
-                            calls += emotion to weeksAgo
-                            if (shouldFail) return PressRankingLoadResult.Unavailable
-                            return PressRankingLoadResult.Loaded(
-                                startAt = "2026-09-21T00:00:00Z",
-                                endAt = "2026-09-28T00:00:00Z",
-                                hasPrevious = true,
-                                people = people,
-                                me = people.single(),
-                            )
-                        }
-                    }
-                val viewModel = PressRankingViewModel(source)
+                val source = FakePressRaceRankings()
+                val vm = PressRankingViewModel(source)
+                store.put("ranking", vm)
                 runCurrent()
-                advanceUntilIdle()
-                assertEquals(PressRankingStatus.Ready, viewModel.uiState.value.status)
-
-                viewModel.onEmotionSelected(PressEmotion.Angry)
-                advanceUntilIdle()
-                viewModel.onPreviousWeek()
-                advanceUntilIdle()
-                assertEquals(listOf(PressEmotion.All to 0, PressEmotion.Angry to 0, PressEmotion.Angry to 1), calls)
-                assertEquals(PressEmotion.Angry, viewModel.uiState.value.selectedEmotion)
-                assertEquals(1, viewModel.uiState.value.weeksAgo)
-                assertEquals("2026.09.21 ~ 2026.09.28", viewModel.uiState.value.weekLabel)
-
-                shouldFail = true
-                viewModel.onRefresh()
-                advanceUntilIdle()
-                assertTrue(viewModel.uiState.value.hasRefreshError)
-                assertEquals(people, viewModel.uiState.value.people)
-                assertEquals(people.single(), viewModel.uiState.value.me)
-                assertFalse(viewModel.uiState.value.isRefreshing)
+                assertEquals(PressRankingStatus.Loading, vm.uiState.value.status)
+                source.state.value = rankingState()
+                runCurrent()
+                assertEquals(PressRankingStatus.Ready, vm.uiState.value.status)
+                assertEquals("2026-10-27", vm.uiState.value.date)
+                assertEquals(
+                    10L,
+                    vm.uiState.value.me
+                        ?.count,
+                )
+                vm.onRefresh()
+                vm.onRetry()
+                assertEquals(listOf(PressRaceView.ALL, PressRaceView.ALL), source.refreshed)
+                assertEquals(0L, testScheduler.currentTime)
             } finally {
+                store.clear()
                 Dispatchers.resetMain()
             }
         }
 
     @Test
-    fun `빈 랭킹은 준비 완료 상태로 노출되고 초기 실패는 다시 시도할 수 있다`() =
-        runTest {
-            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
-            try {
-                var unavailable = true
-                val source =
-                    object : PressRankingSource {
-                        override suspend fun load(
-                            emotion: PressEmotion,
-                            weeksAgo: Int,
-                        ): PressRankingLoadResult =
-                            if (unavailable) {
-                                PressRankingLoadResult.Unavailable
-                            } else {
-                                PressRankingLoadResult.Loaded(
-                                    startAt = "2026-09-28T00:00:00Z",
-                                    endAt = "2026-10-05T00:00:00Z",
-                                    hasPrevious = false,
-                                    people = emptyList(),
-                                )
-                            }
-                    }
-                val viewModel = PressRankingViewModel(source)
-                runCurrent()
-                advanceUntilIdle()
-                assertEquals(PressRankingStatus.Failed, viewModel.uiState.value.status)
-
-                unavailable = false
-                viewModel.onRetry()
-                advanceUntilIdle()
-                assertEquals(PressRankingStatus.Ready, viewModel.uiState.value.status)
-                assertTrue(
-                    viewModel.uiState.value.people
-                        .isEmpty(),
-                )
-            } finally {
-                Dispatchers.resetMain()
-            }
-        }
+    fun duplicateNamesAndTiedRanksRetainIdentityAndOrder() {
+        val state = rankingState()
+        val ui = state.toRankingUiState()
+        assertEquals(listOf(2L, 2L), ui.people.map { it.rank })
+        assertEquals(listOf(false, true), ui.people.toRaceRows().map { it.isMe })
+        assertEquals(listOf("other", "me"), ui.people.toRaceRows().map { it.publicId })
+    }
 
     @Test
-    fun `늦게 도착한 이전 필터 응답은 현재 선택 결과를 덮지 않는다`() =
-        runTest {
-            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
-            try {
-                val staleResponse = CompletableDeferred<PressRankingLoadResult>()
-                val source =
-                    object : PressRankingSource {
-                        override suspend fun load(
-                            emotion: PressEmotion,
-                            weeksAgo: Int,
-                        ): PressRankingLoadResult =
-                            if (emotion == PressEmotion.All) {
-                                withContext(NonCancellable) { staleResponse.await() }
-                            } else {
-                                PressRankingLoadResult.Loaded(
-                                    startAt = "2026-09-28T00:00:00Z",
-                                    endAt = "2026-10-05T00:00:00Z",
-                                    hasPrevious = false,
-                                    people =
-                                        listOf(
-                                            PressPersonRank(1, "현재 결과", 20),
-                                        ),
-                                )
-                            }
-                    }
-                val viewModel = PressRankingViewModel(source)
-                runCurrent()
+    fun top100DoesNotLimitMyCardAndLongRankIsPreserved() {
+        val state = rankingState()
+        val snapshot = state.all!!.copy(me = state.all.me.copy(rank = Long.MAX_VALUE))
+        val ui = state.copy(all = snapshot).toRankingUiState()
+        assertEquals(Long.MAX_VALUE, ui.me?.rank)
+        assertEquals(2, ui.people.size)
+    }
 
-                viewModel.onEmotionSelected(PressEmotion.Angry)
-                advanceUntilIdle()
-                assertEquals(
-                    "현재 결과",
-                    viewModel.uiState.value.people
-                        .single()
-                        .nickname,
-                )
-
-                staleResponse.complete(
-                    PressRankingLoadResult.Loaded(
-                        startAt = "2026-09-21T00:00:00Z",
-                        endAt = "2026-09-28T00:00:00Z",
-                        hasPrevious = true,
-                        people = listOf(PressPersonRank(1, "늦은 결과", 99)),
-                    ),
-                )
-                advanceUntilIdle()
-                assertEquals(PressEmotion.Angry, viewModel.uiState.value.selectedEmotion)
-                assertEquals(
-                    "현재 결과",
-                    viewModel.uiState.value.people
-                        .single()
-                        .nickname,
-                )
-            } finally {
-                Dispatchers.resetMain()
-            }
+    @Test
+    fun zeroThroughThreeParticipantsAndNonparticipationNeverInventZeroRank() {
+        for (size in 0..3) {
+            val state = rankingState()
+            val me = PressRaceParticipant(null, null, 0, null, false)
+            val member = state.all!!.top100.first()
+            val ui =
+                state
+                    .copy(
+                        all =
+                            state.all.copy(
+                                me = me,
+                                top100 = List(size) { member.copy(publicId = "id-$it") },
+                            ),
+                    ).toRankingUiState()
+            assertEquals(size, ui.people.size)
+            assertNull(ui.me)
+            assertTrue(ui.people.none { it.isMe })
         }
+    }
+
+    @Test
+    fun staleCacheSurvivesFailureAndReadyAloneDoesNotFinishRefresh() {
+        val state = rankingState()
+        val failed = state.copy(session = state.session.copy(phase = PressRacePhase.Failed))
+        val ui = failed.toRankingUiState()
+        assertEquals(PressRankingStatus.Ready, ui.status)
+        assertEquals(2, ui.people.size)
+        assertTrue(ui.isStale)
+        assertTrue(ui.hasRefreshError)
+        assertFalse(ui.isRefreshing)
+        val refreshing = state.copy(session = state.session.copy(isAwaitingSnapshot = true)).toRankingUiState()
+        assertTrue(refreshing.isRefreshing)
+        assertTrue(refreshing.isStale)
+        val noRank = state.all!!.copy(me = state.all.me.copy(rank = null))
+        assertNull(state.copy(all = noRank).toRankingUiState().me)
+    }
+
+    private fun rankingState(): PressRaceRankingState {
+        val me = PressRaceParticipant("me", "same", 10, 2, true)
+        val snapshot =
+            PressRaceSnapshot(
+                "s",
+                "c",
+                "2026-10-27",
+                "1",
+                "2026-10-27T00:00:00Z",
+                PressRaceView.ALL,
+                0,
+                me,
+                listOf(me),
+                listOf(me.copy(publicId = "other"), me),
+                true,
+                PressRaceOvertakes(0, 0),
+            )
+        return PressRaceRankingState().update(
+            PressRaceSessionState(
+                PressRacePhase.Ready,
+                PressRaceView.ALL,
+                PressRaceReady("s", "c", snapshot.date, emptyMap(), emptyList()),
+                snapshot,
+            ),
+        )
+    }
 }

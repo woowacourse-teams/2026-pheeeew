@@ -32,7 +32,7 @@ class PressRaceRowModelTest {
                 PressPersonRank(1, "첫째", 12),
             )
         val rows = people.toRaceRows()
-        assertEquals(listOf(2, 2, 1), rows.map { it.rank })
+        assertEquals(listOf(2L, 2L, 1L), rows.map { it.rank })
         assertEquals(listOf(0.75f, 0.75f, 1f), rows.map { it.progress })
         assertFalse(rows.any { it.isMe })
         assertEquals(people.map { it.count }, rows.map { it.count })

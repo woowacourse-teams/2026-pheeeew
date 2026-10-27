@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
@@ -47,6 +47,7 @@ import pheeeew.shared.generated.resources.press_daily_ranking_back
 import pheeeew.shared.generated.resources.press_daily_ranking_empty
 import pheeeew.shared.generated.resources.press_daily_ranking_people
 import pheeeew.shared.generated.resources.press_daily_ranking_refresh_error
+import pheeeew.shared.generated.resources.press_daily_ranking_syncing
 import pheeeew.shared.generated.resources.press_daily_ranking_title
 
 @Composable
@@ -132,9 +133,21 @@ internal fun PressRankingScreen(
                     Spacer(Modifier.height(12.dp))
                     PressRaceHeader(rankWidth, countWidth)
                 }
-                if (uiState.hasRefreshError) {
+                if (uiState.date != null) {
+                    item { Text(uiState.date, fontSize = 12.sp, color = Color(0xFF767D78)) }
+                }
+                if (uiState.isStale) {
                     item {
-                        RefreshErrorBanner(stringResource(Res.string.press_daily_ranking_refresh_error), onRefresh)
+                        RefreshErrorBanner(
+                            stringResource(
+                                if (uiState.hasRefreshError) {
+                                    Res.string.press_daily_ranking_refresh_error
+                                } else {
+                                    Res.string.press_daily_ranking_syncing
+                                },
+                            ),
+                            onRefresh,
+                        )
                     }
                 }
                 when (uiState.status) {
@@ -161,7 +174,9 @@ internal fun PressRankingScreen(
                                 )
                             }
                         }
-                        items(rows) { row -> PressRaceRow(row, rankWidth, countWidth) }
+                        itemsIndexed(rows, key = { index, row ->
+                            "${uiState.date}:${row.publicId ?: "preview-$index"}"
+                        }) { _, row -> PressRaceRow(row, rankWidth, countWidth) }
                     }
                 }
                 item { Spacer(Modifier.navigationBarsPadding()) }

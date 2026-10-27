@@ -106,7 +106,7 @@ internal fun PressRaceRow(
     val background =
         when {
             row.isMe -> Color(0xFFFFE76A)
-            row.rank in 1..3 -> Color(0xFFF4F4F0)
+            row.rank in 1L..3L -> Color(0xFFF4F4F0)
             else -> Color.Transparent
         }
     Row(
@@ -122,12 +122,12 @@ internal fun PressRaceRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.width(rankWidth).padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
-            if (row.rank in 1..3) {
+            if (row.rank in 1L..3L) {
                 Canvas(Modifier.size(21.dp)) {
                     val color =
                         when (row.rank) {
-                            1 -> Color(0xFFFFD851)
-                            2 -> Color(0xFFC8CDCC)
+                            1L -> Color(0xFFFFD851)
+                            2L -> Color(0xFFC8CDCC)
                             else -> Color(0xFFDCA46C)
                         }
                     drawCircle(color)
@@ -140,7 +140,7 @@ internal fun PressRaceRow(
                 fontWeight = FontWeight.Bold,
                 color =
                     if (row.rank in
-                        1..3
+                        1L..3L
                     ) {
                         ink
                     } else {
