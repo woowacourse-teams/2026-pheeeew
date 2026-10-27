@@ -75,6 +75,7 @@ import com.pheeeew.core.navigation.MapRootDestination
 import com.pheeeew.core.navigation.NotificationDestination
 import com.pheeeew.core.navigation.PressRootDestination
 import com.pheeeew.core.navigation.RankingRootDestination
+import com.pheeeew.core.notification.InitialNotificationPermissionRequest
 import com.pheeeew.core.notification.NotificationClickInbox
 import com.pheeeew.core.notification.NotificationMessageInbox
 import com.pheeeew.core.notification.NotificationPermissionController
@@ -256,6 +257,9 @@ private fun AppContent(
     val appVersion = appGraph.appVersion
     val appSettingsLauncher = appGraph.appSettingsLauncher
     val onboardingStore = appGraph.onboardingStore
+    // Initialize before onboarding completes, including migration of existing installs.
+    val initialNotificationPermission =
+        remember(onboardingStore) { InitialNotificationPermissionRequest(onboardingStore) }
     val uriHandler = LocalUriHandler.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val connectivityObserver = apiDependencies.connectivityObserver
@@ -384,13 +388,23 @@ private fun AppContent(
         mapViewModel.setMapRendererActive(mapRendererActive)
         onDispose { mapViewModel.setMapRendererActive(false) }
     }
-    LaunchedEffect(mapViewModel, mainFeaturesReady, sessionGeneration, shouldPrepareMapDuringSplash) {
+    LaunchedEffect(
+        mapViewModel,
+        mainFeaturesReady,
+        sessionGeneration,
+        shouldPrepareMapDuringSplash,
+        notificationPermissionController,
+    ) {
         mapViewModel.updateReadiness(
             ready = mainFeaturesReady,
             generation = sessionGeneration,
             startInitialLocationRequest = !shouldPrepareMapDuringSplash,
         )
         if (mainFeaturesReady && shouldPrepareMapDuringSplash) mapViewModel.prepareCurrentLocation()
+        if (mainFeaturesReady && !shouldPrepareMapDuringSplash && notificationPermissionController != null) {
+            mapViewModel.awaitInitialLocationRequest()
+            initialNotificationPermission.requestIfNeeded(notificationPermissionController)
+        }
     }
     LaunchedEffect(mapViewModel, mainFeaturesReady, sessionGeneration) {
         if (mainFeaturesReady) mapViewModel.onMapRendererAttached()

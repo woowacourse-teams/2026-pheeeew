@@ -491,6 +491,12 @@ class MapViewModel(
             }
     }
 
+    /** Wait for initial location handling so another OS permission dialog cannot overlap it. */
+    suspend fun awaitInitialLocationRequest() {
+        initialLocationStartJob?.join()
+        locationRequestJob?.join()
+    }
+
     /** Never opens an OS permission dialog underneath splash. */
     fun prepareCurrentLocation() {
         if (!dataLoadingEnabled || hasPreloadedLocation || hasStarted) return

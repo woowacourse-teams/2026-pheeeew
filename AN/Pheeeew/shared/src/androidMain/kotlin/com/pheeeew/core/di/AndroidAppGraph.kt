@@ -261,6 +261,18 @@ private class AndroidOnboardingStore(
             .apply()
     }
 
+    override fun isInitialNotificationPermissionHandled(): Boolean {
+        if (!preferences.contains("initial_notification_permission_handled")) {
+            // Existing installs must not receive a new automatic prompt after updating.
+            preferences.edit().putBoolean("initial_notification_permission_handled", isCompleted()).apply()
+        }
+        return preferences.getBoolean("initial_notification_permission_handled", false)
+    }
+
+    override fun completeInitialNotificationPermission() {
+        preferences.edit().putBoolean("initial_notification_permission_handled", true).apply()
+    }
+
     override fun isUsageGuideCompleted(): Boolean = preferences.getBoolean("usage_guide_completed", isCompleted())
 
     override fun completeUsageGuide() {

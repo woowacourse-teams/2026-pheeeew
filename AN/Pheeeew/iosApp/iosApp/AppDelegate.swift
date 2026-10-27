@@ -18,23 +18,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate {
 
         let notificationCenter = UNUserNotificationCenter.current()
         notificationCenter.delegate = self
-        notificationCenter.requestAuthorization(
-            options: [.alert, .badge, .sound]
-        ) { granted, error in
-            print("알림 권한 허용:", granted)
-
-            if let error {
-                print("알림 권한 요청 실패:", error.localizedDescription)
-            }
-            DispatchQueue.main.async {
-#if DEBUG
-                if RevisitNotificationDiagnostics.inspectionOnly { return }
-#endif
-                IosRevisitNotifications.shared.refresh()
-                PushTokenLifecycle.permissionChanged()
-            }
-        }
-
         application.registerForRemoteNotifications()
         return true
     }
