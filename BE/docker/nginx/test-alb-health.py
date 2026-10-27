@@ -16,6 +16,8 @@ def run(*args, **kwargs):
 APP = """
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
+import base64
+import hashlib
 import json
 import sys
 
@@ -24,6 +26,28 @@ status = Path('/fixtures/status-' + target)
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
+        if self.path == '/api/v1/press-race':
+            if self.headers.get('Authorization') != 'Bearer fixture-token':
+                self.send_response(401)
+                self.end_headers()
+                return
+            if (self.headers.get('Upgrade', '').lower() != 'websocket'
+                    or self.headers.get('Connection', '').lower() != 'upgrade'):
+                self.send_response(400)
+                self.end_headers()
+                return
+            accept = base64.b64encode(hashlib.sha1(
+                (self.headers['Sec-WebSocket-Key'] + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').encode()
+            ).digest()).decode()
+            self.protocol_version = 'HTTP/1.1'
+            self.send_response(101, 'Switching Protocols')
+            self.send_header('Upgrade', 'websocket')
+            self.send_header('Connection', 'Upgrade')
+            self.send_header('Sec-WebSocket-Accept', accept)
+            self.end_headers()
+            self.wfile.write(b'\\x81\\x02ok')
+            self.wfile.flush()
+            return
         code = int(status.read_text())
         self.send_response(code)
         self.end_headers()
@@ -38,6 +62,7 @@ HTTPServer(('0.0.0.0', 8080), Handler).serve_forever()
 PROBE_HELPERS = """
 import http.client
 import json
+import socket
 import ssl
 
 context = ssl.create_default_context(cafile='/fixtures/origin.pem')
@@ -140,6 +165,50 @@ forwarded = json.loads(body)['headers']
 assert forwarded['X-Forwarded-For'] == '10.0.12.3', forwarded
 assert forwarded['X-Real-IP'] == '10.0.12.3', forwarded
 assert forwarded['X-Forwarded-Proto'] == 'https', forwarded
+
+# 인증 헤더와 Upgrade가 실제로 전달되고 101 이후 프레임도 프록시된다.
+def websocket(source, secure, authorized=True):
+    target = source.rsplit('.', 1)[0] + '.2'
+    raw = socket.socket()
+    raw.settimeout(8)
+    raw.bind((source, 0))
+    raw.connect((target, 443 if secure else 80))
+    connection = context.wrap_socket(raw, server_hostname=target) if secure else raw
+    auth = 'Authorization: Bearer fixture-token\\r\\n' if authorized else ''
+    request = ('GET /api/v1/press-race HTTP/1.1\\r\\n'
+               'Host: api-dev.pheeeew.com\\r\\n'
+               'X-Forwarded-Proto: https\\r\\n'
+               'Connection: Upgrade\\r\\nUpgrade: websocket\\r\\n'
+               'Sec-WebSocket-Version: 13\\r\\n'
+               'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\\r\\n'
+               + auth + '\\r\\n')
+    try:
+        connection.sendall(request.encode())
+        data = b''
+        while b'\\r\\n\\r\\n' not in data:
+            chunk = connection.recv(4096)
+            assert chunk, data
+            data += chunk
+        headers, frame = data.split(b'\\r\\n\\r\\n', 1)
+        if not authorized:
+            assert headers.startswith(b'HTTP/1.1 401 '), headers
+            return
+        assert headers.startswith(b'HTTP/1.1 101 '), headers
+        fields = {name.lower(): value.strip() for line in headers.split(b'\\r\\n')[1:] if b':' in line
+                  for name, value in [line.split(b':', 1)]}
+        assert fields.get(b'sec-websocket-accept') == b's3pPLMBiTxaQ9kYGzzhZRbK+xOo=', headers
+        while len(frame) < 4:
+            chunk = connection.recv(4 - len(frame))
+            assert chunk, frame
+            frame += chunk
+        assert frame[:4] == b'\\x81\\x02ok', frame
+    finally:
+        connection.close()
+
+websocket('10.0.10.3', secure=False)
+websocket('10.0.12.3', secure=True)
+websocket('10.0.12.3', secure=True, authorized=False)
+print('PASS: authenticated WS upgrade and frame over ALB HTTP and direct HTTPS; missing token rejected')
 
 # XFF 앞부분을 매번 바꿔도 같은 클라이언트의 제한은 LB 노드 사이에서 유지된다.
 for n in range(11):
