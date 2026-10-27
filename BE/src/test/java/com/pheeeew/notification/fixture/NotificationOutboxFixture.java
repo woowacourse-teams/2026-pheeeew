@@ -15,18 +15,30 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 public final class NotificationOutboxFixture {
 
+    private static final String 모든_작업 = """
+            SELECT id, type, device_id, target_date, NULL::timestamptz AS round_at, NULL::integer AS previous_rank,
+                   NULL::integer AS current_rank, status, result_code, attempt_count, discovered_at, available_at,
+                   expires_at, claim_token, claim_expires_at, finished_at
+              FROM notification_collection_outbox
+            UNION ALL
+            SELECT id, 'RANK_DROPPED', device_id, target_date, round_at, previous_rank, current_rank, status,
+                   result_code, attempt_count, discovered_at, available_at, expires_at, claim_token,
+                   claim_expires_at, finished_at
+              FROM notification_rank_outbox
+            """;
+
     private NotificationOutboxFixture() {
     }
 
     public static List<작업> 기기의_작업들(JdbcClient jdbc, Long deviceId) {
-        return jdbc.sql("SELECT * FROM notification_outbox WHERE device_id = :deviceId ORDER BY id")
+        return jdbc.sql("SELECT * FROM (" + 모든_작업 + ") jobs WHERE device_id = :deviceId ORDER BY discovered_at, id")
                 .param("deviceId", deviceId)
                 .query((row, index) -> 작업으로(row))
                 .list();
     }
 
     public static 작업 기기의_작업(JdbcClient jdbc, Long deviceId, String type) {
-        return jdbc.sql("SELECT * FROM notification_outbox WHERE device_id = :deviceId AND type = :type")
+        return jdbc.sql("SELECT * FROM (" + 모든_작업 + ") jobs WHERE device_id = :deviceId AND type = :type")
                 .param("deviceId", deviceId)
                 .param("type", type)
                 .query((row, index) -> 작업으로(row))
@@ -56,7 +68,7 @@ public final class NotificationOutboxFixture {
         if (deviceIds.isEmpty()) {
             return;
         }
-        for (String table : List.of("notification_outbox", "notification_rank_snapshots", "device_push_tokens",
+        for (String table : List.of("notification_collection_outbox", "notification_rank_outbox", "notification_rank_snapshots", "device_push_tokens",
                 "device_notification_settings", "collection_cards", "device_daily_stamps", "device_daily_presses")) {
             jdbc.sql("DELETE FROM " + table + " WHERE device_id IN (:deviceIds)")
                     .param("deviceIds", deviceIds)

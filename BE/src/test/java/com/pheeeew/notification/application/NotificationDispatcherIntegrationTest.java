@@ -127,7 +127,8 @@ class NotificationDispatcherIntegrationTest {
 
         // when
         발송한다(선점_시각.plus(일분));
-        boolean 늦은_기록 = outboxes.markSent(멈춘_서버의_작업.id(), 멈춘_서버의_선점, 선점_시각.plus(Duration.ofMinutes(2)));
+        boolean 늦은_기록 = outboxes.markSent(
+                멈춘_서버의_작업.type(), 멈춘_서버의_작업.id(), 멈춘_서버의_선점, 선점_시각.plus(Duration.ofMinutes(2)));
 
         // then
         verify(pushSender, times(1)).send(eq(기본_등록_값), any());
@@ -151,11 +152,12 @@ class NotificationDispatcherIntegrationTest {
         outboxes.claim(다시_선점, 새_선점, 다시_선점.plus(일분)).orElseThrow();
 
         // when
-        boolean 옛_실패_기록 = outboxes.fail(옛_작업.id(), 옛_선점, "REJECTED", 다시_선점.plusSeconds(1));
-        boolean 옛_재예약 = outboxes.retry(옛_작업.id(), 옛_선점, 다시_선점.plusSeconds(30), 다시_선점.plusSeconds(1));
-        boolean 옛_취소 = outboxes.cancel(옛_작업.id(), 옛_선점, "NO_TARGET", 다시_선점.plusSeconds(1));
+        boolean 옛_실패_기록 = outboxes.fail(옛_작업.type(), 옛_작업.id(), 옛_선점, "REJECTED", 다시_선점.plusSeconds(1));
+        boolean 옛_재예약 = outboxes.retry(
+                옛_작업.type(), 옛_작업.id(), 옛_선점, 다시_선점.plusSeconds(30), 다시_선점.plusSeconds(1));
+        boolean 옛_취소 = outboxes.cancel(옛_작업.type(), 옛_작업.id(), 옛_선점, "NO_TARGET", 다시_선점.plusSeconds(1));
         작업 진행_중 = 기기의_작업(jdbc, device.getId(), COLLECTION_CLAIM_REMINDER.name());
-        boolean 새_발송_기록 = outboxes.markSent(옛_작업.id(), 새_선점, 다시_선점.plusSeconds(2));
+        boolean 새_발송_기록 = outboxes.markSent(옛_작업.type(), 옛_작업.id(), 새_선점, 다시_선점.plusSeconds(2));
 
         // then
         assertThat(List.of(옛_실패_기록, 옛_재예약, 옛_취소)).containsOnly(false);
@@ -481,7 +483,7 @@ class NotificationDispatcherIntegrationTest {
 
         // when
         발송한다(오늘_자정.plusSeconds(10));
-        boolean 기록 = outboxes.markSent(발송_중.id(), 선점, 오늘_자정.plusSeconds(10));
+        boolean 기록 = outboxes.markSent(발송_중.type(), 발송_중.id(), 선점, 오늘_자정.plusSeconds(10));
 
         // then
         verify(pushSender, never()).send(anyString(), any());

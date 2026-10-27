@@ -259,7 +259,7 @@ class NotificationConcurrencyIntegrationTest {
             assertThat(먼저_온_서버가_작업을_넣고_멈춤.await(대기_상한.toSeconds(), TimeUnit.SECONDS)).isTrue();
             when(clock.instant()).thenReturn(오전_10시.plusSeconds(4));
             Future<?> 나중 = executor.submit(collectionService::saveClaimableOutbox);
-            잠금을_기다리는_세션이_생길_때까지_기다린다("INSERT INTO notification_outbox");
+            잠금을_기다리는_세션이_생길_때까지_기다린다("INSERT INTO notification_collection_outbox");
             커밋_허용.countDown();
             먼저.get(대기_상한.toSeconds(), TimeUnit.SECONDS);
             나중.get(대기_상한.toSeconds(), TimeUnit.SECONDS);

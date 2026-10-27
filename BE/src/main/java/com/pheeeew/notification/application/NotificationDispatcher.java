@@ -97,7 +97,7 @@ public class NotificationDispatcher {
 
     private String fail(NotificationOutbox outbox, String resultCode) {
         boolean recorded = notificationOutboxRepository.fail(
-                outbox.id(), outbox.claimToken(), resultCode, clock.instant());
+                outbox.type(), outbox.id(), outbox.claimToken(), resultCode, clock.instant());
         warnIfClaimLost(recorded, outbox);
         return resultCode;
     }
@@ -115,7 +115,7 @@ public class NotificationDispatcher {
 
     private String cancel(NotificationOutbox outbox, String resultCode) {
         boolean recorded = notificationOutboxRepository.cancel(
-                outbox.id(), outbox.claimToken(), resultCode, clock.instant());
+                outbox.type(), outbox.id(), outbox.claimToken(), resultCode, clock.instant());
         warnIfClaimLost(recorded, outbox);
         return resultCode;
     }
@@ -145,8 +145,8 @@ public class NotificationDispatcher {
 
     private void record(NotificationOutbox outbox, PushTarget target, PushSendResult result) {
         switch (result) {
-            case SENT -> warnIfClaimLost(
-                    notificationOutboxRepository.markSent(outbox.id(), outbox.claimToken(), clock.instant()), outbox);
+            case SENT -> warnIfClaimLost(notificationOutboxRepository.markSent(
+                    outbox.type(), outbox.id(), outbox.claimToken(), clock.instant()), outbox);
             case UNREGISTERED -> {
                 devicePushTokenRepository.deleteByDeviceIdAndToken(target.deviceId(), target.token());
                 fail(outbox, UNREGISTERED);
@@ -166,7 +166,7 @@ public class NotificationDispatcher {
             return;
         }
         boolean recorded = notificationOutboxRepository.retry(
-                outbox.id(), outbox.claimToken(), nextAvailableAt.get(), failedAt);
+                outbox.type(), outbox.id(), outbox.claimToken(), nextAvailableAt.get(), failedAt);
         warnIfClaimLost(recorded, outbox);
     }
 
