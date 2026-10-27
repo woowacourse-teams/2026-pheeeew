@@ -112,6 +112,10 @@ class PushTokenSyncCoordinator(
 
     fun tokenReceived(token: String) {
         if (token.isBlank()) return
+        if (latestToken == token) {
+            receivedSdkToken = true
+            return
+        }
         latestToken = token
         receivedSdkToken = true
         backgroundSyncRequested = true
@@ -147,8 +151,14 @@ class PushTokenSyncCoordinator(
     suspend fun synchronizeInBackground(): PushTokenBackgroundSyncResult =
         awaitSynchronization(requestSynchronization())
 
-    /** Start a fresh attempt, even after a previous attempt exhausted its retries. Main thread only. */
-    fun requestSynchronization(): Long {
+    /** Join foreground work when requested; otherwise start a fresh attempt. Main thread only. */
+    fun requestSynchronization(joinForegroundAttempt: Boolean = false): Long {
+        val canJoin =
+            completions.value.revision < revision ||
+                mutableState.value == PushTokenSyncState.SYNCING ||
+                mutableState.value == PushTokenSyncState.RETRYING ||
+                mutableState.value == PushTokenSyncState.SYNCED
+        if (joinForegroundAttempt && foreground && canJoin) return revision
         backgroundSyncRequested = true
         return wake()
     }

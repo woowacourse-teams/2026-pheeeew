@@ -19,6 +19,96 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class PushTokenSyncCoordinatorTest {
     @Test
+    fun `같은 SDK 토큰과 foreground Worker는 진행 중 등록을 함께 기다린다`() =
+        runTest {
+            val f = fixture(saved = "same")
+            val gate = CompletableDeferred<Unit>()
+            f.api.gate = gate
+            f.activate()
+            runCurrent()
+            f.sync.tokenReceived("same")
+            val request = f.sync.requestSynchronization(joinForegroundAttempt = true)
+            val result = async { f.sync.awaitSynchronization(request) }
+            runCurrent()
+            assertFalse(result.isCompleted)
+            assertEquals(listOf("PUT:same"), f.api.operations)
+            gate.complete(Unit)
+            runCurrent()
+            assertEquals(PushTokenBackgroundSyncResult.SYNCHRONIZED, result.await())
+            assertEquals(listOf("PUT:same"), f.api.operations)
+        }
+
+    @Test
+    fun `등록 후 같은 토큰 콜백과 foreground Worker는 추가 PUT을 보내지 않는다`() =
+        runTest {
+            val f = fixture(saved = "same")
+            f.activate()
+            runCurrent()
+            f.sync.tokenReceived("same")
+            val request = f.sync.requestSynchronization(joinForegroundAttempt = true)
+            assertEquals(PushTokenBackgroundSyncResult.SYNCHRONIZED, f.sync.awaitSynchronization(request))
+            runCurrent()
+            assertEquals(listOf("PUT:same"), f.api.operations)
+        }
+
+    @Test
+    fun `foreground Worker는 새 토큰의 완료를 기다리고 이전 성공을 재사용하지 않는다`() =
+        runTest {
+            val f = fixture(saved = "old")
+            f.activate()
+            runCurrent()
+            val gate = CompletableDeferred<Unit>()
+            f.api.gate = gate
+            f.sync.tokenReceived("new")
+            val request = f.sync.requestSynchronization(joinForegroundAttempt = true)
+            val result = async { f.sync.awaitSynchronization(request) }
+            runCurrent()
+            assertFalse(result.isCompleted)
+            assertEquals(listOf("PUT:old", "PUT:new"), f.api.operations)
+            gate.complete(Unit)
+            runCurrent()
+            assertEquals(PushTokenBackgroundSyncResult.SYNCHRONIZED, result.await())
+            assertEquals(listOf("PUT:old", "PUT:new"), f.api.operations)
+        }
+
+    @Test
+    fun `foreground Worker는 진행 중 재시도의 지연과 완료를 유지한다`() =
+        runTest {
+            val f = fixture(saved = "token")
+            f.api.result = failure(503)
+            f.activate()
+            runCurrent()
+            val request = f.sync.requestSynchronization(joinForegroundAttempt = true)
+            val result = async { f.sync.awaitSynchronization(request) }
+            runCurrent()
+            assertFalse(result.isCompleted)
+            assertEquals(1, f.api.operations.size)
+            f.api.result = ApiResult.Success(Unit)
+            advanceTimeBy(100)
+            runCurrent()
+            assertEquals(PushTokenBackgroundSyncResult.SYNCHRONIZED, result.await())
+            assertEquals(2, f.api.operations.size)
+        }
+
+    @Test
+    fun `foreground 재시도가 소진되면 Worker는 새 등록을 시도한다`() =
+        runTest {
+            val f = fixture(saved = "token")
+            f.api.result = failure(503)
+            f.activate()
+            runCurrent()
+            advanceTimeBy(1_000)
+            runCurrent()
+            assertEquals(PushTokenSyncState.FAILED, f.sync.state.value)
+            f.api.result = ApiResult.Success(Unit)
+            val request = f.sync.requestSynchronization(joinForegroundAttempt = true)
+            val result = async { f.sync.awaitSynchronization(request) }
+            runCurrent()
+            assertEquals(PushTokenBackgroundSyncResult.SYNCHRONIZED, result.await())
+            assertEquals(4, f.api.operations.size)
+        }
+
+    @Test
     fun `foreground Worker 재시도는 소진된 이전 결과 대신 새 전송을 시작한다`() =
         runTest {
             val f = fixture(saved = "token")

@@ -234,7 +234,7 @@ internal class AndroidNotificationRuntime(
                     val state = dependencies.session.state.value
                     val current = state as? DeviceSessionResult.Ready ?: return@withContext null
                     coordinator.sessionChanged(current.access.generation)
-                    version to coordinator.requestSynchronization()
+                    version to coordinator.requestSynchronization(joinForegroundAttempt = true)
                 }
             } ?: return PushTokenBackgroundSyncResult.DEFERRED
         val (version, request) = snapshot
@@ -282,6 +282,7 @@ internal class AndroidPushTokenStore(
         withContext(Dispatchers.IO) {
             synchronized(lock) {
                 latestReceived = token
+                if (preferences.getString(TOKEN_KEY, null) == token) return@synchronized
                 val nextVersion = preferences.getLong(VERSION_KEY, 0L) + 1
                 check(
                     preferences

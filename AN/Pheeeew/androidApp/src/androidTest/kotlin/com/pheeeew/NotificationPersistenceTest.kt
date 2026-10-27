@@ -17,6 +17,26 @@ class NotificationPersistenceTest {
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
 
     @Test
+    fun sameTokenReceiptPreservesVersionAndCompletedSynchronization() =
+        runBlocking {
+            val environment = "test-${UUID.randomUUID()}"
+            try {
+                val store = AndroidPushTokenStore(context, environment)
+                store.recordReceived("same")
+                val version = store.version()
+                store.recordReceived("same")
+                assertEquals(version, store.version())
+                assertTrue(store.isPending())
+                store.acknowledge(version)
+                AndroidPushTokenStore(context, environment).recordReceived("same")
+                assertEquals(version, store.version())
+                assertFalse(store.isPending())
+            } finally {
+                context.deleteSharedPreferences("push-token-$environment")
+            }
+        }
+
+    @Test
     fun latestPendingClickSurvivesStoreRecreationAndOldLaunchIntent() {
         val environment = "test-${UUID.randomUUID()}"
         try {
