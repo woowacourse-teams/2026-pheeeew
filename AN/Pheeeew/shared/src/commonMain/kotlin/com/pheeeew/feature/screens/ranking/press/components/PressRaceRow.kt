@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.feature.emotion.component.EmotionFeedbackCatalog
+import com.pheeeew.feature.emotion.model.EmotionKind
 import com.pheeeew.feature.screens.ranking.press.PressRaceRowModel
 import com.pheeeew.feature.screens.ranking.press.raceCountText
 import com.pheeeew.feature.screens.ranking.press.raceTrackPosition
@@ -51,6 +52,9 @@ import pheeeew.shared.generated.resources.press_race_row_description
 import pheeeew.shared.generated.resources.press_ranking_medal_1
 import pheeeew.shared.generated.resources.press_ranking_medal_2
 import pheeeew.shared.generated.resources.press_ranking_medal_3
+
+// Decorative markers until product enables representative emotion display.
+private val raceFaces = listOf(EmotionKind.Blocked, EmotionKind.Annoyed, EmotionKind.Tired)
 
 private val ink = Color(0xFF202323)
 private val muted = Color(0xFF767D78)
@@ -203,15 +207,11 @@ internal fun PressRaceRow(
                         }
                     },
             ) {
-                val emotion = row.emotion
-                if (emotion != null) {
-                    Image(painterResource(EmotionFeedbackCatalog.face(emotion)), null, Modifier.fillMaxSize())
-                } else {
-                    // Missing server emotion is unknown, never a guessed emotion based on row order.
-                    Canvas(Modifier.fillMaxSize()) {
-                        drawCircle(Color(0xFFB7BDB5), radius = size.minDimension * 0.22f)
-                    }
-                }
+                Image(
+                    painterResource(EmotionFeedbackCatalog.face(raceFaces[row.markerIndex.mod(raceFaces.size)])),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
         }
         Text(

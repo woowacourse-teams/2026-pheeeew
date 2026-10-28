@@ -10,11 +10,12 @@ internal data class PressRaceRowModel(
     val isMe: Boolean = false,
     val emotion: EmotionKind? = null,
     val publicId: String? = null,
+    val markerIndex: Int = 0,
 )
 
 internal fun List<PressPersonRank>.toRaceRows(): List<PressRaceRowModel> {
     val maximum = maxOfOrNull { it.count } ?: 0L
-    return map { person ->
+    return mapIndexed { index, person ->
         PressRaceRowModel(
             person.rank,
             person.nickname,
@@ -23,6 +24,7 @@ internal fun List<PressPersonRank>.toRaceRows(): List<PressRaceRowModel> {
             isMe = person.isMe,
             publicId = person.publicId,
             emotion = person.emotion,
+            markerIndex = index % 3,
         )
     }
 }
