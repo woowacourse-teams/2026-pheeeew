@@ -3,6 +3,7 @@ package com.pheeeew.data.remote.datasource
 import com.pheeeew.core.network.ApiResult
 import com.pheeeew.core.network.MutationCertainty
 import com.pheeeew.core.network.NetworkFailure
+import com.pheeeew.data.press.retry.pressRetryAfter
 import com.pheeeew.data.remote.api.EmotionPressApi
 import com.pheeeew.data.remote.dto.EmotionPressWriteResponseDto
 import com.pheeeew.domain.model.emotion.EmotionState
@@ -48,9 +49,16 @@ internal class PressApiSender(
             is NetworkFailure.HttpStatus -> {
                 when {
                     statusCode == BAD_REQUEST -> PressSendResult.Rejected
+
                     statusCode == UNAUTHORIZED -> PressSendResult.NotSent
+
+                    // The press endpoint rejects the entire rate-limited batch before applying it.
+                    statusCode == TOO_MANY_REQUESTS -> PressSendResult.RetryAfter(pressRetryAfter(retryAfter))
+
                     mutationCertainty == MutationCertainty.NOT_APPLIED -> PressSendResult.NotSent
+
                     mutationCertainty == MutationCertainty.UNKNOWN -> PressSendResult.OutcomeUnknown
+
                     else -> PressSendResult.NotSent
                 }
             }
@@ -89,5 +97,6 @@ internal class PressApiSender(
     private companion object {
         const val BAD_REQUEST = 400
         const val UNAUTHORIZED = 401
+        const val TOO_MANY_REQUESTS = 429
     }
 }
