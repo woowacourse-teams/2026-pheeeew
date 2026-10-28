@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -34,7 +35,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.feature.emotion.component.EmotionFeedbackCatalog
-import com.pheeeew.feature.emotion.model.EmotionKind
 import com.pheeeew.feature.screens.ranking.press.PressRaceRowModel
 import com.pheeeew.feature.screens.ranking.press.raceCountText
 import com.pheeeew.feature.screens.ranking.press.raceTrackPosition
@@ -54,7 +54,6 @@ import pheeeew.shared.generated.resources.press_ranking_medal_3
 
 private val ink = Color(0xFF202323)
 private val muted = Color(0xFF767D78)
-private val raceFaces = listOf(EmotionKind.Blocked, EmotionKind.Annoyed, EmotionKind.Tired)
 
 @Composable
 internal fun PressRaceHeader(
@@ -179,9 +178,7 @@ internal fun PressRaceRow(
                     x += step
                 }
             }
-            Image(
-                painterResource(EmotionFeedbackCatalog.face(raceFaces[row.markerIndex.mod(raceFaces.size)])),
-                contentDescription = null,
+            Box(
                 modifier =
                     Modifier.fillMaxWidth().layout { measurable, constraints ->
                         val faceSize = minOf(30.dp.roundToPx(), constraints.maxWidth)
@@ -205,7 +202,17 @@ internal fun PressRaceRow(
                             placeable.placeRelative(x, 0)
                         }
                     },
-            )
+            ) {
+                val emotion = row.emotion
+                if (emotion != null) {
+                    Image(painterResource(EmotionFeedbackCatalog.face(emotion)), null, Modifier.fillMaxSize())
+                } else {
+                    // Missing server emotion is unknown, never a guessed emotion based on row order.
+                    Canvas(Modifier.fillMaxSize()) {
+                        drawCircle(Color(0xFFB7BDB5), radius = size.minDimension * 0.22f)
+                    }
+                }
+            }
         }
         Text(
             raceCountText(row.count),

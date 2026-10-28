@@ -3,6 +3,7 @@ package com.pheeeew.feature.screens.ranking.press
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.feature.emotion.model.EmotionKind
 
 private val raceSample =
     listOf(
@@ -21,7 +22,17 @@ private val raceSample =
         "차분한 여우",
     ).mapIndexed { index, name ->
         val counts = listOf(12L, 10L, 9L, 8L, 7L, 6L, 5L, 4L, 3L, 3L, 2L, 1L, 1L)
-        PressRaceRowModel(index + 1L, name, counts[index], raceProgress(counts[index], 12L), index == 1, index % 3)
+        PressRaceRowModel(
+            index + 1L,
+            name,
+            counts[index],
+            raceProgress(counts[index], 12L),
+            index == 1,
+            EmotionKind.entries[
+                index %
+                    EmotionKind.entries.size,
+            ],
+        )
     }
 
 @Preview(name = "전체 순위 SVG", widthDp = 402, heightDp = 874)

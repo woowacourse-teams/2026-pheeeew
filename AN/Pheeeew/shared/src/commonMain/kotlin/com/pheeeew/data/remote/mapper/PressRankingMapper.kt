@@ -3,6 +3,7 @@ package com.pheeeew.data.remote.mapper
 import com.pheeeew.data.remote.dto.DailyPressRankingResponseDto
 import com.pheeeew.data.remote.dto.PressRankingItemResponseDto
 import com.pheeeew.data.remote.dto.PressRankingResponseDto
+import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.ranking.DailyPressRanking
 import com.pheeeew.domain.model.ranking.PressRanking
 import com.pheeeew.domain.model.ranking.PressRankingItem
@@ -48,6 +49,11 @@ object PressRankingMapper {
         if (dto.rank < 1) throw PressRankingContractException("items.rank")
         if (dto.nickname.isBlank()) throw PressRankingContractException("items.nickname")
         if (dto.pressCount < 0) throw PressRankingContractException("items.pressCount")
-        return PressRankingItem(dto.rank, dto.nickname, dto.pressCount)
+        return PressRankingItem(
+            rank = dto.rank,
+            nickname = dto.nickname,
+            pressCount = dto.pressCount,
+            representativeState = EmotionState.entries.firstOrNull { it.name == dto.representativeState },
+        )
     }
 }

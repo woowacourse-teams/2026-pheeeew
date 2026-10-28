@@ -1,5 +1,6 @@
 package com.pheeeew.feature.screens.ranking
 
+import com.pheeeew.feature.emotion.model.EmotionKind
 import com.pheeeew.feature.screens.ranking.press.CompactRaceCount
 import com.pheeeew.feature.screens.ranking.press.PressPersonRank
 import com.pheeeew.feature.screens.ranking.press.RaceCountUnit
@@ -13,6 +14,22 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class PressRaceRowModelTest {
+    @Test
+    fun serverEmotionStaysWithIdentityWhenTiedRowsReorderAndUnknownRemainsUnknown() {
+        val people =
+            listOf(
+                PressPersonRank(2, "익명", 10, publicId = "a", emotion = EmotionKind.Angry),
+                PressPersonRank(2, "익명", 10, publicId = "b", emotion = EmotionKind.Tired),
+                PressPersonRank(4, "익명", 1, publicId = "c"),
+            )
+        val before = people.toRaceRows().associate { it.publicId to it.emotion }
+        val after = people.reversed().toRaceRows().associate { it.publicId to it.emotion }
+        val expected: Map<String?, EmotionKind?> =
+            mapOf("a" to EmotionKind.Angry, "b" to EmotionKind.Tired, "c" to null)
+        assertEquals(expected, before)
+        assertEquals(before, after)
+    }
+
     @Test
     fun zeroAndInvalidCountsStayWithinTrack() {
         assertEquals(0f, raceProgress(0, 0))
