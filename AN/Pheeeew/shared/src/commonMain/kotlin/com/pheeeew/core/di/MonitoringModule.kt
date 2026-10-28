@@ -12,6 +12,7 @@ import com.pheeeew.core.monitoring.MonitoringRuntime
 import com.pheeeew.core.monitoring.monitoringJson
 import com.pheeeew.core.time.koreaCalendarDate
 import com.pheeeew.feature.monitoring.compat.MonitoringTicker
+import com.pheeeew.feature.monitoring.product.ProductEvents
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -28,7 +29,10 @@ import com.pheeeew.feature.monitoring.compat.MonitoringState as CompatibilitySta
 
 fun appMonitoringRegistry(): EventRegistry =
     EventRegistry(
-        listOf(MeaningfulActivity.definition),
+        listOf(
+            MeaningfulActivity.definition,
+            ProductEvents.definition(ProductEvents.COLLECTION_CLAIM_CLICKED),
+        ),
         setOf(
             "splash",
             "map",
@@ -36,6 +40,7 @@ fun appMonitoringRegistry(): EventRegistry =
             "legaldocument",
             "onboarding",
             "ranking",
+            "collection",
             "network",
         ),
     )
@@ -77,7 +82,10 @@ fun decodeAppMonitoringState(raw: String): CollectionState {
             }
         }
     return loaded.copy(
-        pending = loaded.pending.filter { it.name == MeaningfulActivity.NAME },
+        pending =
+            loaded.pending.filter {
+                it.name == MeaningfulActivity.NAME || it.name == ProductEvents.COLLECTION_CLAIM_CLICKED
+            },
         extensions = loaded.extensions - "sigh_v2",
     )
 }

@@ -11,15 +11,19 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.domain.model.collection.COLLECTION_PRESS_CLAIM_TARGET
 import com.pheeeew.domain.model.collection.COLLECTION_STAMP_CLAIM_TARGET
 import com.pheeeew.domain.model.collection.CollectionCardReference
 import com.pheeeew.feature.emotion.model.EmotionType
+import com.pheeeew.feature.monitoring.product.ProductEvents
+import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import com.pheeeew.feature.screens.collection.card.CollectionCardUiModel
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 
 @Composable
 internal fun CollectionRoute(
+    monitoring: Monitoring,
     sessionGeneration: Long?,
     currentNickname: String?,
     notificationDate: String? = null,
@@ -30,6 +34,7 @@ internal fun CollectionRoute(
 ) {
     val viewModel: CollectionViewModel = metroViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val telemetry = remember(monitoring) { ProductMonitoring(monitoring, "collection") }
     val scope = rememberCoroutineScope()
     val imageActions = rememberCollectionCardImageActions()
     val exportState =
@@ -72,7 +77,10 @@ internal fun CollectionRoute(
         onDismissSaveCompletion = exportState::dismissResult,
         modifier = modifier,
         bottomBar = bottomBar,
-        onClaim = viewModel::claim,
+        onClaim = { emotion ->
+            telemetry.emit(ProductEvents.COLLECTION_CLAIM_CLICKED)
+            viewModel.claim(emotion)
+        },
         onRetryClaim = viewModel::retryClaim,
         onFilterChange = viewModel::setFilter,
         onLoadMore = viewModel::loadNextPage,

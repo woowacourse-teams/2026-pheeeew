@@ -972,6 +972,7 @@ private fun AppContent(
                 ) {
                     if (!mainFeaturesReady) return@composable
                     CollectionRoute(
+                        monitoring = apiDependencies.client.monitoring,
                         sessionGeneration = sessionGeneration,
                         currentNickname = appEntryState.currentNickname,
                         notificationDate = collectionNotificationDate,

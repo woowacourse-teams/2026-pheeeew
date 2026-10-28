@@ -2,11 +2,14 @@ package com.pheeeew.core.monitoring
 
 import com.pheeeew.core.di.appMonitoringRegistry
 import com.pheeeew.core.di.decodeAppMonitoringState
+import com.pheeeew.feature.monitoring.product.ProductEvents
+import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -19,6 +22,48 @@ import kotlin.time.Instant
 class MeaningfulActivityTest {
     private val beforeMidnight = Instant.parse("2026-10-08T14:59:00Z").toEpochMilliseconds()
     private val afterMidnight = beforeMidnight + 120_000
+
+    @Test
+    fun `restored queue retains collection claim clicks and filters retired events`() {
+        val state =
+            CollectionState(
+                anonymousId = "install",
+                environment = "dev",
+                pending =
+                    listOf(
+                        EventEnvelope(MeaningfulActivity.NAME, 1L, JsonObject(emptyMap())),
+                        EventEnvelope(
+                            ProductEvents.COLLECTION_CLAIM_CLICKED,
+                            2L,
+                            JsonObject(emptyMap()),
+                        ),
+                        EventEnvelope("settings_action_selected", 3L, JsonObject(emptyMap())),
+                    ),
+            )
+
+        val restored = decodeAppMonitoringState(monitoringJson.encodeToString(state))
+
+        assertEquals(
+            listOf(MeaningfulActivity.NAME, ProductEvents.COLLECTION_CLAIM_CLICKED),
+            restored.pending.map(EventEnvelope::name),
+        )
+    }
+
+    @Test
+    fun `collection claim click is recorded with the collection screen`() =
+        runTest {
+            val transport = Transport()
+            val runtime = runtime(Store(), transport) { beforeMidnight }
+            runCurrent()
+
+            ProductMonitoring(runtime, "collection").emit(ProductEvents.COLLECTION_CLAIM_CLICKED)
+            runCurrent()
+
+            val event = transport.events.single()
+            assertEquals(ProductEvents.COLLECTION_CLAIM_CLICKED, event.name)
+            assertEquals("collection", (event.properties["screen"] as JsonPrimitive).content)
+            runtime.close()
+        }
 
     @Test
     fun `thousand presses and two action types produce only two records across restart`() =
