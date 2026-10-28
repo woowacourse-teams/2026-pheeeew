@@ -109,6 +109,14 @@ class GenerationProbeTest(unittest.TestCase):
                 self.assertEqual(self.probe(mode), GENERATION)
         self.assertFalse((self.root / 'natural-eof-split').exists())
 
+    def test_닫힌_후보_확인은_SERVER_DRAINING을_요구한다(self):
+        with patch.dict(os.environ, PATH=str(self.root) + os.pathsep + os.environ['PATH']):
+            command = [sys.executable, str(self.peer), str(self.root / 'eof')]
+            self.assertEqual(generation.probe_generation(self.env, command + ['draining'],
+                                                        required_code='SERVER_DRAINING'), GENERATION)
+            with self.assertRaisesRegex(ValueError, 'required admission state'):
+                generation.probe_generation(self.env, command + ['short'], required_code='SERVER_DRAINING')
+
     def test_잘못된_인증_응답과_프레임은_거절한다(self):
         for mode in ('bad-status', 'bad-accept', 'bad-upgrade', 'bad-connection',
                      'fragmented', 'reserved', 'binary', 'masked', 'length64',

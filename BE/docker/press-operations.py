@@ -15,6 +15,14 @@ GATE = '/app/press-admission'
 GATE_KEY = 'PHEEEEW_PRESS_RACE_ADMISSION_FILE'
 REQUIRED_KEY = 'PHEEEEW_PRESS_RACE_ADMISSION_REQUIRED'
 PROBE_PATH = '/api/v3/devices/nicknames/availability?nickname=probe'
+
+
+def probe_host(container):
+    if container.startswith('pheeeew-prod-app-'):
+        return 'api.pheeeew.com'
+    return 'api-dev.pheeeew.com'
+
+
 CAS = r'''set -eu
 path=$1; expected=$2; replacement=$3
 flock -x -n "$path.lock" sh -c '
@@ -110,8 +118,9 @@ class Operations:
             time.sleep(0.1)
         raise ValueError('Logical WS closure could not be confirmed; keep inputs paused')
 
-    def route(self, slot, port):
-        if slot not in ('app-blue', 'app-green') or not 1 <= port <= 65535:
+    def route(self, slot, port, host='api-dev.pheeeew.com'):
+        if (slot not in ('app-blue', 'app-green') or not 1 <= port <= 65535
+                or host not in ('api-dev.pheeeew.com', 'api.pheeeew.com')):
             raise ValueError('Invalid expected local route')
         pointer = Path('nginx/upstream/active.conf').read_text().strip()
         if pointer != f'set $upstream_app {slot};':
@@ -121,8 +130,8 @@ class Operations:
             result = subprocess.run(['curl', '-q', '--noproxy', '*', '--silent', '--show-error',
                 '--connect-timeout', '2', '--max-time', '5', '--max-filesize', '65536', '--http1.1',
                 '-o', str(body_file), '-D', str(headers_file), '-w', '%{http_code}',
-                '--resolve', f'api-dev.pheeeew.com:{port}:127.0.0.1',
-                f'https://api-dev.pheeeew.com:{port}{PROBE_PATH}'],
+                '--resolve', f'{host}:{port}:127.0.0.1',
+                f'https://{host}:{port}{PROBE_PATH}'],
                 text=True, capture_output=True, check=True, timeout=8)
             if body_file.stat().st_size > 65536 or headers_file.stat().st_size > 65536:
                 raise ValueError('HTTPS proof exceeds response size limit')
@@ -140,7 +149,8 @@ class Operations:
         if self.version(active) == '2':
             if not self.gate(active).startswith('OPEN '):
                 raise ValueError('Active admission is not OPEN; reconcile before deployment')
-            self.route('app-blue' if state['target_slot'] == 'app-green' else 'app-green', state['probe_port'])
+            self.route('app-blue' if state['target_slot'] == 'app-green' else 'app-green',
+                       state['probe_port'], state.get('probe_host', 'api-dev.pheeeew.com'))
 
     def record_target(self, state, inspected):
         version = self.version(inspected)
@@ -270,7 +280,7 @@ class Operations:
         if self.c.read_state(self.c.environment(inspected)) != expected:
             raise ValueError('Expected storage ownership could not be proved')
         slot = state['target_slot'] if target_action else ('app-blue' if state['target_slot'] == 'app-green' else 'app-green')
-        self.route(slot, state['probe_port'])
+        self.route(slot, state['probe_port'], state.get('probe_host', 'api-dev.pheeeew.com'))
         if not target_action:
             if state.get('phase') != 'RESTORED':
                 raise ValueError('The original server has not been restored')
@@ -287,7 +297,7 @@ class Operations:
             self.c.save_state(state)
         self.set_gate(state, inspected, 'OPEN', action)
         self.check(state, target_action)
-        self.route(slot, state['probe_port'])
+        self.route(slot, state['probe_port'], state.get('probe_host', 'api-dev.pheeeew.com'))
         if self.c.read_state(self.c.environment(inspected)) != expected:
             raise ValueError('Ownership changed while opening admission')
         state['phase'] = 'TARGET_OPEN' if target_action else 'ORIGINAL_OPEN'
@@ -514,7 +524,7 @@ class Operations:
             raise ValueError('Deployment cannot finish before the recorded old container cleanup succeeds')
         target = self.check(state, True)
         env = self.c.environment(target)
-        self.route(state['target_slot'], state['probe_port'])
+        self.route(state['target_slot'], state['probe_port'], state.get('probe_host', 'api-dev.pheeeew.com'))
         if self.version(target) == '2' and not self.gate(target).startswith('OPEN '):
             raise ValueError('Deployment admission is not OPEN')
         expected = self.expected(state, state['target_generation'])
@@ -549,7 +559,7 @@ class Operations:
         elif self.c.read_state(env) != intent['desired_control']:
             raise ValueError('Initial activation outcome is unconfirmed; keep its intent and never replay it')
         self.check(state, True)
-        self.route(state['target_slot'], state['probe_port'])
+        self.route(state['target_slot'], state['probe_port'], state.get('probe_host', 'api-dev.pheeeew.com'))
         if (self.c.read_state(env) != intent['desired_control']
                 or not self.gate(target).startswith('OPEN ')):
             raise ValueError('Initial competition activation could not be confirmed; keep the journal')
@@ -584,7 +594,7 @@ class Operations:
                 or self.c.runtime_generation(inspected) != expected_generation):
             raise ValueError('Expected active runtime/control state does not match')
         slot = 'app-blue' if args.container.endswith('-app-blue') else 'app-green' if args.container.endswith('-app-green') else None
-        self.route(slot, args.probe_port)
+        self.route(slot, args.probe_port, probe_host(args.container))
         if not self.gate(inspected).startswith('OPEN '):
             raise ValueError('Current admission is not OPEN')
         if args.action == 'activate' and control['enabled']:
@@ -598,7 +608,8 @@ class Operations:
             activation = self.c.query(env, 'BEGIN READ ONLY;\n' + calendar + '\nCOMMIT;')['activation_day']
         state = dict(kind=args.action, generation=expected_generation, enabled=control['enabled'],
                      activation_date=expected_date, active_container=args.container,
-                     active_identity=self.c.identity(inspected), probe_port=args.probe_port, phase='PREPARED',
+                     active_identity=self.c.identity(inspected), probe_port=args.probe_port,
+                     probe_host=probe_host(args.container), phase='PREPARED',
                      database=list(self.c.db_target(env)), original_control=control,
                      requested_activation_date=activation, initial_admission=self.gate(inspected))
         replacement = (dict(control, enabled=True, activation_date=activation) if args.action == 'activate'
@@ -647,7 +658,7 @@ class Operations:
             state['phase'] = 'STOP_CLOSED'
             self.c.save_state(state)
         if state['phase'] == 'STOP_CLOSED':
-            self.route(slot, state['probe_port'])
+            self.route(slot, state['probe_port'], state.get('probe_host', 'api-dev.pheeeew.com'))
             if self.c.read_state(env) != desired:
                 raise ValueError('Stop outcome is uncertain; admission remains CLOSED')
             self.wait_closed(inspected, self.gate(inspected))
@@ -655,7 +666,7 @@ class Operations:
             self.c.save_state(state)
         if state['phase'] != 'HTTP_OPEN_ATTEMPTED' or self.c.read_state(env) != desired:
             raise ValueError('Stop is not eligible to complete HTTP admission')
-        self.route(slot, state['probe_port'])
+        self.route(slot, state['probe_port'], state.get('probe_host', 'api-dev.pheeeew.com'))
         state['completed_admission'] = self.set_gate(state, inspected, 'OPEN', 'stop-http-open')
 
     def complete_control(self, state, inspected, slot, expected, action):
@@ -663,7 +674,7 @@ class Operations:
         if (self.c.read_state(self.c.environment(inspected)) != expected
                 or self.gate(inspected) != state['completed_admission']):
             raise ValueError('Control/admission changed before completion; keep journal')
-        self.route(slot, state['probe_port'])
+        self.route(slot, state['probe_port'], state.get('probe_host', 'api-dev.pheeeew.com'))
         self.c.STATE_FILE.unlink()
         print(json.dumps(dict(action=action, kind=state['kind'], control=expected,
                               admission=state['completed_admission'].strip()), sort_keys=True))
@@ -686,7 +697,7 @@ class Operations:
         if list(self.c.db_target(env)) != state['database']:
             raise ValueError('The recorded database target changed')
         slot = 'app-blue' if args.container.endswith('-app-blue') else 'app-green'
-        self.route(slot, state['probe_port'])
+        self.route(slot, state['probe_port'], state.get('probe_host', 'api-dev.pheeeew.com'))
         current = self.c.read_state(env)
         if state['kind'] == 'activate':
             if current == state['original_control']:
@@ -735,7 +746,7 @@ class Operations:
             raise ValueError('Resume requires the exact already-OFF control state')
         if args.probe_port != state['probe_port']:
             raise ValueError('Resume must use the recorded local HTTPS port')
-        self.route(slot, args.probe_port)
+        self.route(slot, args.probe_port, state.get('probe_host', 'api-dev.pheeeew.com'))
         purpose = 'resume-off-open-' + state['emergency_round']
         prior = next((command for command in state.get('gate_commands', []) if command['purpose'] == purpose), None)
         for inspected in processes:
@@ -758,7 +769,7 @@ class Operations:
         self.c.save_state(state)
         self.set_gate(state, owner, 'OPEN', purpose)
         self.check(state, args.container == state['target_container'])
-        self.route(slot, args.probe_port)
+        self.route(slot, args.probe_port, state.get('probe_host', 'api-dev.pheeeew.com'))
         if self.c.read_state(self.c.environment(owner)) != expected:
             raise ValueError('OFF resume ownership changed; retain journal and both servers')
         state['phase'] = 'HTTP_RECOVERED'

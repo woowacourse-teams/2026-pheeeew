@@ -11,8 +11,30 @@ on:
       - 'BE/docker/press-generation.py'
       - 'BE/docker/test-press-generation.py'
       - 'BE/docker/press-operations.py'
+      - 'BE/docker/press-prod-bootstrap.py'
+      - 'BE/docker/test-prod-bootstrap.py'
+      - 'BE/docker/press-prod-deploy-guard.sh'
+      - 'BE/docker/test-prod-deploy-guard.py'
+      - 'BE/docker/press-prod-lock.py'
+      - 'BE/docker/test-prod-lock.py'
+      - 'BE/docker/press-prod-deploy.sh'
+      - 'BE/docker/test-prod-deploy-contract.py'
+      - 'BE/docker/test-prod-route.py'
+      - 'BE/docker/press-prod-manifest.py'
+      - 'BE/docker/test-prod-manifest.py'
+      - 'BE/docker/test-prod-workflow.py'
+      - 'BE/docker/press-prod-preflight.py'
+      - 'BE/docker/test-prod-preflight.py'
+      - 'BE/docker/test-prod-monitoring.py'
+      - 'BE/docker/test-prod-owner-postgres.py'
+      - 'BE/docker/compose.monitoring.prod-bluegreen.yml'
+      - 'BE/docker/alloy/config.prod-bluegreen.alloy'
+      - 'BE/docker/compose.prod-bluegreen.yml'
+      - 'BE/docker/compose.nginx.prod-bluegreen.yml'
+      - 'BE/docker/nginx/api-prod-bluegreen.conf'
       - 'BE/docker/Dockerfile'
       - '.github/workflows/be-dev-deploy.yml'
+      - '.github/workflows/be-deploy.yml'
       - '.github/workflows/be-nginx-ci.yml'
 
 permissions:
@@ -31,7 +53,9 @@ jobs:
 
       - name: 운영 ALB 상태 검사와 WebSocket 전달 검증
         working-directory: BE
-        run: python3 docker/nginx/test-prod-ws.py
+        run: |
+          python3 docker/nginx/test-prod-ws.py
+          python3 docker/nginx/test-prod-ws.py --bluegreen
 
   nginx-health:
     name: 개발 Nginx ALB 상태 검사
@@ -59,6 +83,16 @@ jobs:
         run: |
           pip install --quiet pyyaml
           python3 BE/docker/test-press-generation.py
+          python3 BE/docker/test-prod-bootstrap.py
+          python3 BE/docker/test-prod-deploy-guard.py
+          python3 BE/docker/test-prod-lock.py
+          python3 BE/docker/test-prod-route.py
+          python3 BE/docker/test-prod-manifest.py
+          python3 BE/docker/test-prod-workflow.py
+          python3 BE/docker/test-prod-preflight.py
+          python3 BE/docker/test-prod-monitoring.py
+          python3 BE/docker/test-prod-owner-postgres.py
+          python3 BE/docker/test-prod-deploy-contract.py
           python3 BE/docker/test-deploy-switch.py --ci
 
   press-proxy:

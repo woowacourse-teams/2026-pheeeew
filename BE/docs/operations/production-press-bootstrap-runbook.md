@@ -1,0 +1,15 @@
+# 운영 프레스 최초 이행 실행 순서
+
+이 문서는 실행 준비용이다. 최종 릴리스 SHA, 이미지 ID, 시험 기기와 실행 시점, 중단 기준을 확인하기 전에는 실행하지 않는다. 최초 이행 중에는 운영 API가 일시 중단된다. 운영 RDS 스냅샷을 만들지 않기로 한 사용자 결정에 따라 별도 백업은 없다.
+
+1. `develop` 최종 커밋의 이미지 빌드만 `be-deploy.yml`의 `build_only=true`로 실행한다. 이미지 `APP_RELEASE`와 이미지 ID가 검토한 커밋의 빌드인지 확인한다. 같은 커밋에서 `python3 BE/docker/press-prod-manifest.py <40자리 SHA>`로 manifest를 만들고, 로컬에서 manifest와 `BE/docker/nginx/api-prod-bluegreen.conf`의 SHA-256을 기록한다. Git commit에서 생성된 파일만 운영에 복사한다.
+2. 기존 main CD를 비활성화하고 실행 중·대기 중·재실행 중인 배포와 원격 작업이 없는지 확인한다. 수동 Docker 작업과 다른 DB writer도 중지한다. 기존 앱 이미지·컨테이너·nginx 설정·DB/Flyway 상태와 복구 담당자를 기록한다. 이번 최초 이행은 `press_race_control`이 없을 때만 가능하다.
+3. 검토한 파일을 `/opt/pheeeew`에 설치한다. 앱 compose는 `compose.yml`, nginx compose는 `compose.nginx.yml`, 모니터링 compose는 `compose.monitoring.yml`, nginx 설정은 `nginx/api-bluegreen.conf`, manifest는 `.press-release-manifest.json`으로 저장한다. manifest의 나머지 경로와 해시도 일치해야 한다. 기존 `.env`와 `.env.alloy`는 별도로 보존한다.
+4. `/opt/pheeeew`에서 후보의 `docker image inspect` 이미지 ID로 `python3 press-prod-bootstrap.py prepare <이미지 ID>`를 실행하고, 검토한 SHA로 `attest-image-release <SHA>`를 실행한다. 기존 nginx와 앱의 자동 재시작을 각각 `no`로 바꾼 뒤 nginx부터 정지하고 앱을 정지한다. `verify-drained`, `attest-quiescence CD_STOPPED_AND_NO_OTHER_WRITERS`, `write-blue-environment`, `attest-proxy-config <로컬에서 기록한 nginx SHA-256>`을 순서대로 실행한다.
+5. `APP_IMAGE=<확인한 이미지> APP_RESTART_POLICY=no python3 press-prod-bootstrap.py check-blue-configuration`이 통과해야 한다. 같은 두 환경변수를 유지해 `docker compose --env-file .env --env-file press-generations.env -f compose.yml --profile blue up -d --wait --wait-timeout 180 app-blue`를 한 번 실행한다. `record-candidate`, `assign-owner`, `open-candidate`를 차례로 실행한다. DB 소유권 지정이나 OPEN 결과가 불명확하면 해당 `confirm` 명령으로 조회하며 변경을 재시도하지 않는다.
+6. `retire-proxy`로 기존 nginx를 이름 변경해 보존한다. 새 포인터가 없는지 확인한 뒤 `nginx/upstream/active.conf`에 `set $upstream_app app-blue;`를 기록한다. `docker compose -f compose.nginx.yml up -d --wait --wait-timeout 60`으로 새 nginx를 기동하고 `confirm-proxy-live`로 공개 인증 WS의 UUID를 확인한다. ALB target health와 공개 API도 확인한다.
+7. 다른 입력이 없는 **본인 시험 기기**의 UUID로 `begin-press-probe <UUID>`를 실행한다. `send-press-probe`는 HTTP 프레스 하나를 실제로 저장한다. 응답이 유실돼도 이 명령은 다시 실행하지 않는다. `confirm-press-probe`로 기록된 날짜의 원본과 점수 투영만 재조회한다. 시험 입력은 사용자 데이터로 남긴다.
+8. `enable-restart-policy`를 실행하고 실패·응답 유실 시 `confirm-restart-policy`로 확인한다. blue·green 로그 볼륨과 각 `application.json`을 준비한다. `compose.monitoring.yml`로 새 Alloy 설정을 `validate`하고 기동한다. `attest-release-files <로컬에서 기록한 manifest SHA-256>`, `finalize-bootstrap`을 실행한다. Grafana Cloud에서 활성 blue 지표 수신과 기존·두 색을 모두 포함하도록 변경한 알림 규칙을 확인한다.
+9. `FINALIZED` 기록을 보존한 채 journal의 잠금 token으로 `python3 press-prod-lock.py release <token>`을 실행한다. main PR의 CI·리뷰와 실행 준비를 다시 확인해 머지한다. CD가 비활성화된 상태에서 발생한 머지 이벤트는 자동 배포로 간주하지 않는다. CD를 다시 활성화하고 main의 `build_only=false` 워크플로를 한 번 실행해 결과·현재 이미지·API·인증 WS·ALB health를 확인한다.
+
+중단 기준은 이미지·DB·세대·프로세스 신원 불일치, 원본 fingerprint 불일치, migration 실패, 공개 경로·저장 검증 실패 또는 결과 미확정이다. 실패 시 journal과 잠금을 보존하고 실행 중인 작업이 끝났는지 먼저 확인한다. 개방 이후 구형 앱으로 돌아가려면 후보 입력 차단과 저장 종료, 원본·투영 정산 및 구형 앱과 변경 DB의 호환성을 확인해야 한다. DB 세대 UUID나 NULL을 임의로 지정하지 않는다.
