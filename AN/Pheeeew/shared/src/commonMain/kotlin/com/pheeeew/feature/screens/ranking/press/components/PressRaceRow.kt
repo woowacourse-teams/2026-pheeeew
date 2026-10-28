@@ -48,6 +48,9 @@ import pheeeew.shared.generated.resources.press_race_column_track
 import pheeeew.shared.generated.resources.press_race_me
 import pheeeew.shared.generated.resources.press_race_my_row_description
 import pheeeew.shared.generated.resources.press_race_row_description
+import pheeeew.shared.generated.resources.press_ranking_medal_1
+import pheeeew.shared.generated.resources.press_ranking_medal_2
+import pheeeew.shared.generated.resources.press_ranking_medal_3
 
 private val ink = Color(0xFF202323)
 private val muted = Color(0xFF767D78)
@@ -130,34 +133,27 @@ internal fun PressRaceRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.width(rankWidth).padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
-            if (row.rank in 1L..3L) {
-                Canvas(Modifier.size(21.dp)) {
-                    val color =
-                        when (row.rank) {
-                            1L -> Color(0xFFFFD851)
-                            2L -> Color(0xFFC8CDCC)
-                            else -> Color(0xFFDCA46C)
-                        }
-                    drawCircle(color)
-                    drawCircle(ink, style = Stroke(1.dp.toPx()))
+            val medal =
+                when (row.rank) {
+                    1L -> Res.drawable.press_ranking_medal_1
+                    2L -> Res.drawable.press_ranking_medal_2
+                    3L -> Res.drawable.press_ranking_medal_3
+                    else -> null
                 }
+            if (medal != null) {
+                Image(painterResource(medal), contentDescription = null, modifier = Modifier.size(26.dp))
+            } else {
+                Text(
+                    row.rank.toString(),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = muted,
+                )
             }
-            Text(
-                row.rank.toString(),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                color =
-                    if (row.rank in
-                        1L..3L
-                    ) {
-                        ink
-                    } else {
-                        muted
-                    },
-            )
         }
+
         Text(
             if (row.isMe) stringResource(Res.string.press_race_me) else row.nickname,
             Modifier.weight(0.85f).padding(start = 8.dp, end = 6.dp),
