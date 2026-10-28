@@ -111,6 +111,7 @@ internal actual fun NativeMap(
     val currentOnFirstFrameReady by rememberUpdatedState(onFirstFrameReady)
     val currentOnCameraSaved by rememberUpdatedState(onCameraSaved)
     val currentOnMemoryPressure by rememberUpdatedState(onMemoryPressure)
+    val currentOnViewportChanged by rememberUpdatedState(onViewportChanged)
     var appLifecycleState by remember(lifecycleOwner) { mutableStateOf(lifecycleOwner.lifecycle.currentState) }
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { owner, _ -> appLifecycleState = owner.lifecycle.currentState }
@@ -133,7 +134,7 @@ internal actual fun NativeMap(
                         onMapRecovered = currentOnMapRecovered,
                         onFirstFrameReady = { currentOnFirstFrameReady() },
                         onRecordViewportChanged = onRecordViewportChanged,
-                        onViewportChanged = onViewportChanged,
+                        onViewportChanged = { currentOnViewportChanged(it) },
                         onCameraMovingChanged = { if (currentIsVisible) currentOnCameraMovingChanged(it) },
                         onEmotionPinClick = { currentOnEmotionPinClick(it) },
                         onRegionClusterClick = { currentOnRegionClusterClick(it) },

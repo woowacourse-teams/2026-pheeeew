@@ -1,6 +1,7 @@
 package com.pheeeew
 
 import android.app.Activity
+import android.content.ComponentCallbacks2
 import android.content.Intent
 import android.os.SystemClock
 import android.view.View
@@ -9,6 +10,8 @@ import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNotSame
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.maplibre.android.camera.CameraPosition
@@ -50,12 +53,26 @@ class MapCameraRestorationTest {
         for (releaseMap in listOf(false, true)) {
             clickText("프레스")
             if (releaseMap) {
+                SystemClock.sleep(1000)
+                onMain {
+                    activity.application.onTrimMemory(ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW)
+                }
                 awaitMapReleased(activity)
             } else {
-                SystemClock.sleep(1000)
+                SystemClock.sleep(31000)
+                assertSame(
+                    "Map stays mounted while another tab is open",
+                    initial.first,
+                    onMain { findMap(activity.window.decorView) },
+                )
             }
             clickText("지도")
             val restored = awaitMap(activity)
+            if (releaseMap) {
+                assertNotSame("Memory pressure releases the hidden map", initial.first, restored.first)
+            } else {
+                assertSame("Tab round trip retains the map", initial.first, restored.first)
+            }
             SystemClock.sleep(1000)
             val actual = onMain { restored.second.cameraPosition }
             val scenario = if (releaseMap) "released map" else "retained map"
@@ -69,12 +86,12 @@ class MapCameraRestorationTest {
     }
 
     private fun awaitMapReleased(activity: Activity) {
-        val deadline = SystemClock.uptimeMillis() + 45000
+        val deadline = SystemClock.uptimeMillis() + 10000
         while (SystemClock.uptimeMillis() < deadline) {
             if (onMain { findMap(activity.window.decorView) == null }) return
             SystemClock.sleep(100)
         }
-        error("Inactive map did not leave composition within 45 seconds")
+        error("Hidden map did not leave composition after memory pressure")
     }
 
     private fun awaitMap(activity: Activity): Pair<MapView, MapLibreMap> {

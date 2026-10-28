@@ -3,6 +3,7 @@ package com.pheeeew
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.app.Activity
 import android.app.Application
+import android.content.ComponentCallbacks2
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -41,7 +42,9 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -61,7 +64,14 @@ class DeveloperToolsLifecycleTest {
     @Test
     fun liveRecoveryKeepsUiSession() = audit(verifyRecreation = false)
 
-    private fun audit(verifyRecreation: Boolean) {
+    @Test
+    fun mapSurvivesTabSwitchesAndRecreatesAfterMemoryPressure() =
+        audit(verifyRecreation = false, verifyMapLifetime = true)
+
+    private fun audit(
+        verifyRecreation: Boolean,
+        verifyMapLifetime: Boolean = false,
+    ) {
         val accessibility = instrumentation.uiAutomation.serviceInfo
         accessibility.flags = accessibility.flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
         instrumentation.uiAutomation.serviceInfo = accessibility
@@ -156,6 +166,7 @@ class DeveloperToolsLifecycleTest {
                 )
             }
             graph.onboardingStore.complete()
+            graph.onboardingStore.completeUsageGuide()
             onMain { graphField.set(application, graph) }
             ErrorSimulation.replaceSettings(
                 ErrorSimulationState(location = LocationSimulationSettings(LocationSimulationMode.FIXED)),
@@ -173,6 +184,36 @@ class DeveloperToolsLifecycleTest {
             val processSession = graph.apiDependencies.appSession
             awaitMap()
             println("AUDIT native-map-mounted")
+            if (verifyMapLifetime) {
+                val initialMap = onMain { findMap(beforeActivity.window.decorView)!! }
+                click("프레스")
+                SystemClock.sleep(31_000)
+                assertSame(initialMap, onMain { findMap(beforeActivity.window.decorView) })
+                assertEquals(View.VISIBLE, onMain { initialMap.visibility })
+                assertEquals(
+                    View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS,
+                    onMain { initialMap.importantForAccessibility },
+                )
+                click("컬렉션")
+                click("지도")
+                awaitMap()
+                assertSame(initialMap, onMain { findMap(beforeActivity.window.decorView) })
+                click("프레스")
+                await("Map hidden from accessibility") {
+                    onMain {
+                        initialMap.importantForAccessibility == View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+                    }
+                }
+                SystemClock.sleep(1000)
+                onMain { application.onTrimMemory(ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) }
+                await("Hidden map released on memory pressure") {
+                    onMain { findMap(beforeActivity.window.decorView) == null }
+                }
+                click("지도")
+                awaitMap()
+                assertNotSame(initialMap, onMain { findMap(beforeActivity.window.decorView) })
+                return
+            }
             if (verifyRecreation) {
                 onMain { beforeActivity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
                 await("Activity recreated on rotation") {
