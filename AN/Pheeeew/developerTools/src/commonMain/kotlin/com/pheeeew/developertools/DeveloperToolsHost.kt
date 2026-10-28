@@ -32,6 +32,7 @@ import com.pheeeew.feature.screens.map.renderer.LocalMapStyleOverrideProvider
 fun DeveloperToolsHost(
     info: DeveloperToolsInfo,
     onClearUiSession: () -> Unit,
+    onResetOnboarding: () -> Unit,
     content: @Composable (onOpenDeveloperTools: () -> Unit) -> Unit,
 ) {
     var visible by rememberSaveable { mutableStateOf(false) }
@@ -69,6 +70,7 @@ fun DeveloperToolsHost(
                 showErrorScenarios = showErrorScenarios,
                 onOpenErrorScenarios = { showErrorScenarios = true },
                 onBack = onBack,
+                onResetOnboarding = onResetOnboarding,
                 onRestart = { apply ->
                     NetworkRecovery.controller.stop()
                     showErrorScenarios = false

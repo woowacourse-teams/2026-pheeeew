@@ -51,6 +51,7 @@ fun DeveloperToolsScreen(
     showErrorScenarios: Boolean,
     onOpenErrorScenarios: () -> Unit,
     onBack: () -> Unit,
+    onResetOnboarding: () -> Unit,
     onRestart: (() -> Unit) -> Unit,
     onStartRecovery: (Long?) -> Unit,
 ) {
@@ -72,7 +73,11 @@ fun DeveloperToolsScreen(
                 if (showErrorScenarios) {
                     ErrorSimulationScreen(onRestart = onRestart, onStartRecovery = onStartRecovery)
                 } else {
-                    DeveloperToolsHome(info, onOpenErrorScenarios)
+                    DeveloperToolsHome(
+                        info = info,
+                        onOpenErrorScenarios = onOpenErrorScenarios,
+                        onResetOnboarding = { onRestart(onResetOnboarding) },
+                    )
                 }
             }
         }
@@ -83,6 +88,7 @@ fun DeveloperToolsScreen(
 private fun DeveloperToolsHome(
     info: DeveloperToolsInfo,
     onOpenErrorScenarios: () -> Unit,
+    onResetOnboarding: () -> Unit,
 ) {
     Text("개발자 도구", style = MaterialTheme.typography.headlineMedium)
     Spacer(Modifier.height(24.dp))
@@ -104,6 +110,20 @@ private fun DeveloperToolsHome(
         Text("에러 상황 재현")
         Spacer(Modifier.weight(1f))
         Text("›")
+    }
+    Spacer(Modifier.height(24.dp))
+    Text("로컬 기록 초기화", style = MaterialTheme.typography.titleLarge)
+    Spacer(Modifier.height(8.dp))
+    Text(
+        "온보딩과 사용 가이드의 열람 기록을 지우고 온보딩 화면으로 돌아갑니다.",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    OutlinedButton(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onResetOnboarding,
+    ) {
+        Text("온보딩·가이드 열람 기록 초기화")
     }
 }
 

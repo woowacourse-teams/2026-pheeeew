@@ -64,6 +64,8 @@ class InitialNotificationPermissionRequestTest {
 
         override fun complete() = Unit
 
+        override fun resetCompletion() = Unit
+
         override fun isInitialNotificationPermissionHandled() = handled
 
         override fun completeInitialNotificationPermission() {

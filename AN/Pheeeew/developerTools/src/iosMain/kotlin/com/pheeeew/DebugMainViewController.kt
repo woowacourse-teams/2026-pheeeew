@@ -3,6 +3,7 @@ package com.pheeeew
 import androidx.compose.runtime.remember
 import androidx.compose.ui.window.ComposeUIViewController
 import com.pheeeew.core.di.iosDeviceBuildConfig
+import com.pheeeew.core.di.iosOnboardingStore
 import com.pheeeew.developertools.DeveloperToolsHost
 import com.pheeeew.developertools.DeveloperToolsInfo
 import com.pheeeew.developertools.DeveloperToolsSettingsEntry
@@ -28,6 +29,7 @@ fun DebugMainViewController(): UIViewController {
         DeveloperToolsHost(
             info = info,
             onClearUiSession = {},
+            onResetOnboarding = iosOnboardingStore()::resetCompletion,
         ) { onOpen ->
             MainApp(settingsContent = { DeveloperToolsSettingsEntry(onOpen) })
         }
