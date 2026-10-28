@@ -15,8 +15,20 @@ spec = importlib.util.spec_from_file_location('alb_health', HERE / 'test-alb-hea
 fixture = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(fixture)
 CLIENT = r'''
-import socket, ssl, sys
+import socket, ssl, sys, time
 ctx = ssl.create_default_context(cafile='/fixture/fullchain.pem')
+for attempt in range(30):
+    try:
+        with ctx.wrap_socket(socket.create_connection(('proxy', 443), timeout=2),
+                             server_hostname='api.pheeeew.com') as ready:
+            ready.sendall(b'GET /ready HTTP/1.1\r\nHost: api.pheeeew.com\r\nConnection: close\r\n\r\n')
+            if ready.recv(1024).startswith(b'HTTP/1.1 200 '):
+                break
+    except OSError:
+        pass
+    time.sleep(.2)
+else:
+    raise RuntimeError('proxy and backend did not become ready')
 for auth in (True, False):
     sock = ctx.wrap_socket(socket.create_connection(('proxy', 443), timeout=5),
                            server_hostname='api.pheeeew.com')
