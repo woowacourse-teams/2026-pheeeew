@@ -24,6 +24,6 @@ internal object NotificationClickRouter {
             NotificationClickTarget.Revisit -> NotificationDestination.Map
             is NotificationClickTarget.CollectionClaimable -> NotificationDestination.Collection(target.date)
             is NotificationClickTarget.Collection -> NotificationDestination.Map
-            is NotificationClickTarget.DailyPressRanking -> NotificationDestination.DailyRanking(target.date)
+            is NotificationClickTarget.DailyPressRanking -> NotificationDestination.Press
         }
 }

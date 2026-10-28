@@ -20,9 +20,9 @@ class NotificationClickRouterTest {
     }
 
     @Test
-    fun `순위 하락 알림은 해당 날짜의 일별 순위 화면에 연결한다`() {
+    fun `순위 하락 알림은 프레스 화면에 연결한다`() {
         assertEquals(
-            NotificationDestination.DailyRanking("2026-10-26"),
+            NotificationDestination.Press,
             NotificationClickRouter.destinationFor(NotificationClickTarget.DailyPressRanking("2026-10-26", 5, 6)),
         )
     }
