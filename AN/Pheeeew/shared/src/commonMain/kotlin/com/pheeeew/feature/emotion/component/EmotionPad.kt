@@ -67,7 +67,8 @@ internal fun EmotionPad(
     fun now(): Double = mark.elapsedNow().inWholeNanoseconds / 1_000_000.0
 
     val feedback = remember { TapFeedbackState<EmotionKind>() }
-    val motions = remember { EmotionKind.entries.associateWith { TapButtonMotion() } }
+    val buzzer = faceVisuals.isNotEmpty()
+    val motions = remember(buzzer) { EmotionKind.entries.associateWith { TapButtonMotion(buzzer = buzzer) } }
     val random = remember { TapRandom() }
     var tick by remember { mutableIntStateOf(0) }
     // Read the frame clock only inside graphicsLayer to avoid recomposing the pad per frame.

@@ -6,8 +6,18 @@ import kotlin.test.assertFalse
 
 class PressButtonRestPositionTest {
     @Test
+    fun buzzerMovesOnlyByCapDepthAndQuickTapStillShowsPress() {
+        val motion = TapButtonMotion(buzzer = true)
+        motion.press(0.0)
+        assertEquals(TapTransform(y = 3.0), motion.sample(55.0))
+        motion.release(60.0)
+        assertEquals(TapTransform(y = 3.0), motion.sample(65.0))
+        assertEquals(TapTransform(), motion.sample(250.0))
+    }
+
+    @Test
     fun rapidRetargetsAndCancelledPressReturnToOriginalRestPosition() {
-        val motion = TapButtonMotion()
+        val motion = TapButtonMotion(buzzer = true)
         repeat(20) { index ->
             val now = index * 30.0
             motion.press(now)
