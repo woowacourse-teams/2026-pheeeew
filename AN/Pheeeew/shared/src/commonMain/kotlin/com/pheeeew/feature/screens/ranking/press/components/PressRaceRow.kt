@@ -34,6 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.feature.component.PressRankBadge
 import com.pheeeew.feature.emotion.component.EmotionFeedbackCatalog
 import com.pheeeew.feature.emotion.model.EmotionKind
 import com.pheeeew.feature.screens.ranking.press.PressRaceRowModel
@@ -49,9 +50,6 @@ import pheeeew.shared.generated.resources.press_race_column_track
 import pheeeew.shared.generated.resources.press_race_me
 import pheeeew.shared.generated.resources.press_race_my_row_description
 import pheeeew.shared.generated.resources.press_race_row_description
-import pheeeew.shared.generated.resources.press_ranking_medal_1
-import pheeeew.shared.generated.resources.press_ranking_medal_2
-import pheeeew.shared.generated.resources.press_ranking_medal_3
 
 // Decorative markers until product enables representative emotion display.
 private val raceFaces = listOf(EmotionKind.Blocked, EmotionKind.Annoyed, EmotionKind.Tired)
@@ -136,25 +134,7 @@ internal fun PressRaceRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.width(rankWidth).padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
-            val medal =
-                when (row.rank) {
-                    1L -> Res.drawable.press_ranking_medal_1
-                    2L -> Res.drawable.press_ranking_medal_2
-                    3L -> Res.drawable.press_ranking_medal_3
-                    else -> null
-                }
-            if (medal != null) {
-                Image(painterResource(medal), contentDescription = null, modifier = Modifier.size(26.dp))
-            } else {
-                Text(
-                    row.rank.toString(),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = muted,
-                )
-            }
+            PressRankBadge(row.rank, numberColor = muted, numberSize = 13.sp)
         }
 
         Text(
