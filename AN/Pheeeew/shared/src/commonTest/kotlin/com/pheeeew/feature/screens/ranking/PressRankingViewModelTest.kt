@@ -10,6 +10,7 @@ import com.pheeeew.data.press.race.PressRaceReady
 import com.pheeeew.data.press.race.PressRaceSessionState
 import com.pheeeew.data.press.race.PressRaceSnapshot
 import com.pheeeew.data.press.race.PressRaceView
+import com.pheeeew.feature.emotion.model.EmotionKind
 import com.pheeeew.feature.screens.ranking.press.PressRankingStatus
 import com.pheeeew.feature.screens.ranking.press.PressRankingViewModel
 import com.pheeeew.feature.screens.ranking.press.toRaceRows
@@ -29,6 +30,48 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PressRankingViewModelTest {
+    @Test
+    fun wsRepresentativeEmotionUpdatesWithoutChangingRankOrIdentityAndSurvivesCache() {
+        val base = rankingState()
+        val snapshot = base.all!!
+        val first =
+            snapshot.copy(
+                me = snapshot.me.copy(rank = 101, representativeState = "ANGRY"),
+                top100 =
+                    snapshot.top100
+                        .filter { it.publicId != snapshot.me.publicId }
+                        .map { it.copy(representativeState = "EXHAUSTED") },
+            )
+        val state = base.update(base.session.copy(snapshot = first))
+        val ui = state.toRankingUiState()
+        assertEquals(EmotionKind.Angry, ui.me?.emotion)
+        assertEquals(101L, ui.me?.rank)
+        assertTrue(ui.people.all { it.emotion == EmotionKind.Tired })
+        val changed =
+            first.copy(
+                snapshotVersion = "2",
+                top100 = first.top100.map { it.copy(representativeState = "IRRITATED") },
+            )
+        val next = state.update(state.session.copy(snapshot = changed)).toRankingUiState()
+        assertEquals(ui.people.map { it.publicId }, next.people.map { it.publicId })
+        assertEquals(ui.people.map { it.rank }, next.people.map { it.rank })
+        assertEquals(ui.people.map { it.count }, next.people.map { it.count })
+        assertTrue(next.people.toRaceRows().all { it.emotion == EmotionKind.Annoyed })
+        val stale = state.copy(session = state.session.copy(phase = PressRacePhase.Failed)).toRankingUiState()
+        assertTrue(stale.isStale)
+        assertEquals(ui.people, stale.people)
+        for (raw in listOf(null, "UNKNOWN_STATE")) {
+            val unsupported = first.copy(top100 = first.top100.map { it.copy(representativeState = raw) })
+            assertTrue(
+                state
+                    .copy(all = unsupported)
+                    .toRankingUiState()
+                    .people
+                    .all { it.emotion == null },
+            )
+        }
+    }
+
     @Test
     fun snapshotStreamUpdatesWithoutPollingAndRefreshBorrowsOwner() =
         runTest {

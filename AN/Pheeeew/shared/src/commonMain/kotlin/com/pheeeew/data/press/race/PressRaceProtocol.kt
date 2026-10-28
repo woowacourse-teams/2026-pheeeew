@@ -36,6 +36,7 @@ internal data class PressRaceParticipant(
     val score: Long,
     val rank: Long?,
     val participating: Boolean,
+    val representativeState: String? = null,
 )
 
 @Serializable

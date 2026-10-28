@@ -12,7 +12,9 @@ import com.pheeeew.data.press.race.PressRaceRankingState
 import com.pheeeew.data.press.race.PressRaceRankings
 import com.pheeeew.data.press.race.PressRaceView
 import com.pheeeew.data.press.race.frameKey
+import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
+import com.pheeeew.feature.screens.press.toUiKind
 import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -107,5 +109,12 @@ private fun PressRaceParticipant.toPersonRank(meId: String?): PressPersonRank? {
     val id = publicId?.takeIf { it.isNotBlank() } ?: return null
     val place = rank?.takeIf { it > 0 } ?: return null
     if (!participating || score < 0) return null
-    return PressPersonRank(place, nickname.orEmpty(), score, id, meId != null && id == meId)
+    return PressPersonRank(
+        rank = place,
+        nickname = nickname.orEmpty(),
+        count = score,
+        publicId = id,
+        isMe = meId != null && id == meId,
+        emotion = EmotionState.entries.firstOrNull { it.name == representativeState }?.toUiKind(),
+    )
 }
