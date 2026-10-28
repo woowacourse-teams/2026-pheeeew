@@ -94,3 +94,28 @@ internal object PressFaceCatalog {
         stage: EmotionFaceStage,
     ): DrawableResource = artwork.getValue(kind).getValue(stage)
 }
+
+/** Main cap radius and baked shadow spread in the original 180-unit PNG canvas. */
+internal data class PressFaceCapGeometry(
+    val radius: Float = 46f,
+    val shadowSpread: Float = 0f,
+)
+
+private val standardCapGeometry = PressFaceCapGeometry()
+private val tiredCapGeometry = PressFaceCapGeometry(radius = 47.5f, shadowSpread = 8.5f)
+
+internal fun pressFaceCapGeometry(
+    kind: EmotionKind,
+    stage: EmotionFaceStage,
+): PressFaceCapGeometry =
+    if (kind == EmotionKind.Tired) {
+        when (stage) {
+            EmotionFaceStage.Intact, EmotionFaceStage.Hairline,
+            EmotionFaceStage.Cracked, EmotionFaceStage.Fractured,
+            -> tiredCapGeometry
+
+            else -> standardCapGeometry
+        }
+    } else {
+        standardCapGeometry
+    }

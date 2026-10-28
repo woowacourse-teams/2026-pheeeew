@@ -26,10 +26,16 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathOperation
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -52,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import com.pheeeew.feature.emotion.model.EmotionFaceStage
 import com.pheeeew.feature.emotion.model.EmotionFaceVisual
 import com.pheeeew.feature.emotion.model.EmotionKind
 import org.jetbrains.compose.resources.painterResource
@@ -59,6 +66,8 @@ import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.emotion_tap_accessibility
 import pheeeew.shared.generated.resources.group_emotion_button_base
+import pheeeew.shared.generated.resources.press_button_face_shadow
+import pheeeew.shared.generated.resources.press_button_silver_base
 
 private val activationKeys = setOf(Key.Enter, Key.NumPadEnter, Key.Spacebar, Key.DirectionCenter)
 private val emotionCountColor = Color(0xFF777C78)
@@ -109,6 +118,62 @@ internal fun EmotionPadButton(
         pointer = null
     }
 
+    fun Modifier.faceMotion(
+        origin: TransformOrigin,
+        restOffset: Float,
+        depthShadow: Boolean = false,
+    ): Modifier =
+        graphicsLayer {
+            val transform = motion.sample(frameTime.value)
+            if (depthShadow) {
+                // Raised at rest; fully hidden when the cap is compressed into the base.
+                alpha = 1f - (transform.y / 3.0).toFloat().coerceIn(0f, 1f)
+            }
+            transformOrigin = origin
+            val motionUnit = if (faceVisual == null) 1f else unit
+            translationY = (transform.y.toFloat() * motionUnit + restOffset) * density.density
+            scaleX = transform.scale.toFloat()
+            scaleY = scaleX
+        }
+
+    fun Modifier.capDepth(): Modifier =
+        drawWithContent {
+            val depth = (motion.sample(frameTime.value).y / 3.0).toFloat().coerceIn(0f, 1f)
+            if (depth == 0f || faceVisual == null || faceVisual.stage == EmotionFaceStage.Burst) {
+                drawContent()
+            } else {
+                // Preserve the cap's own outline; expand the tired-face mask to include its baked blur.
+                val geometry = pressFaceCapGeometry(kind, faceVisual.stage)
+                val pixelUnit = size.width / PressFaceCatalog.CANVAS_SIZE
+                val remainingDepth = 3f * (1f - depth)
+                val outerRadius = geometry.radius + geometry.shadowSpread * depth
+                val raised =
+                    Path().apply {
+                        addOval(
+                            Rect(
+                                (90f - outerRadius) * pixelUnit,
+                                (93f - outerRadius) * pixelUnit,
+                                (90f + outerRadius) * pixelUnit,
+                                (93f + outerRadius) * pixelUnit,
+                            ),
+                        )
+                    }
+                val cap =
+                    Path().apply {
+                        addOval(
+                            Rect(
+                                (90f - geometry.radius) * pixelUnit,
+                                (90f + remainingDepth - geometry.radius) * pixelUnit,
+                                (90f + geometry.radius) * pixelUnit,
+                                (90f + remainingDepth + geometry.radius) * pixelUnit,
+                            ),
+                        )
+                    }
+                val concealed = Path.combine(PathOperation.Difference, raised, cap)
+                clipPath(concealed, ClipOp.Difference) { this@drawWithContent.drawContent() }
+            }
+        }
+
     val buttonModifier =
         Modifier
             .size((105 * unit).dp, (110 * unit).dp)
@@ -136,6 +201,7 @@ internal fun EmotionPadButton(
                 } finally {
                     motion.reset()
                     pointer = null
+                    onMotionChanged()
                 }
             }.onFocusChanged { focusState ->
                 if (!focusState.isFocused) {
@@ -196,22 +262,47 @@ internal fun EmotionPadButton(
             contentAlignment = Alignment.Center,
         ) {
             Image(
-                painter = painterResource(Res.drawable.group_emotion_button_base),
+                painter =
+                    painterResource(
+                        if (faceVisual ==
+                            null
+                        ) {
+                            Res.drawable.group_emotion_button_base
+                        } else {
+                            Res.drawable.press_button_silver_base
+                        },
+                    ),
                 contentDescription = null,
                 modifier = Modifier.size((105 * unit).dp, (110 * unit).dp),
             )
+            if (faceVisual != null) {
+                Image(
+                    painterResource(Res.drawable.press_button_face_shadow),
+                    contentDescription = null,
+                    modifier =
+                        Modifier
+                            .size((105 * unit).dp, (110 * unit).dp)
+                            .faceMotion(
+                                TransformOrigin(
+                                    .5f,
+                                    (55f + PressFaceCatalog.CANVAS_SIZE * .26f - 4f / unit) / 110f,
+                                ),
+                                restOffset = 0f,
+                                depthShadow = true,
+                            ),
+                )
+            }
             val faceModifier =
                 Modifier
                     .requiredSize(
                         ((if (faceVisual == null) 110 else PressFaceCatalog.CANVAS_SIZE) * unit).dp,
                         ((if (faceVisual == null) 115 else PressFaceCatalog.CANVAS_SIZE) * unit).dp,
-                    ).graphicsLayer {
-                        val transform = motion.sample(frameTime.value)
-                        transformOrigin = TransformOrigin(.5f, .8f)
-                        translationY = (transform.y.toFloat() - 4f) * density.density
-                        scaleX = transform.scale.toFloat()
-                        scaleY = scaleX
-                    }.testTag("emotion-surface-${kind.name}")
+                    ).faceMotion(
+                        // Both layers pivot at the face's lower edge in button coordinates.
+                        if (faceVisual == null) TransformOrigin(.5f, .8f) else TransformOrigin(.5f, .76f),
+                        restOffset = -4f,
+                    ).capDepth()
+                    .testTag("emotion-surface-${kind.name}")
             if (faceVisual == null) {
                 Image(painterResource(EmotionFeedbackCatalog.buttonFace(kind)), null, faceModifier)
             } else {

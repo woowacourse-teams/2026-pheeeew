@@ -13,7 +13,11 @@ import com.pheeeew.feature.emotion.model.EmotionKind
 @Stable
 internal class PressFaceDemoState {
     private val progress = mutableMapOf<EmotionKind, PressFaceDemoProgress>()
-    var visuals: Map<EmotionKind, EmotionFaceVisual> by mutableStateOf(emptyMap())
+    var visuals: Map<EmotionKind, EmotionFaceVisual> by mutableStateOf(
+        EmotionKind.entries.associateWith {
+            EmotionFaceVisual()
+        },
+    )
         private set
 
     fun onInput(

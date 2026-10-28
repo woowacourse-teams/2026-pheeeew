@@ -4,15 +4,19 @@ import com.pheeeew.feature.emotion.model.EmotionFaceStage
 import com.pheeeew.feature.emotion.model.EmotionKind
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 class PressFaceDemoStateTest {
     @Test
-    fun acceptedInputsAreIndependentPerEmotionAndRejectionsDoNotCreateVisualState() {
+    fun initialFacesStayIntactOnFirstInputAndRejectionsDoNotChangeThem() {
         val state = PressFaceDemoState()
+        val initial = state.visuals
+        assertEquals(EmotionKind.entries.toSet(), initial.keys)
+        initial.values.forEach { assertEquals(EmotionFaceStage.Intact, it.stage) }
         state.onInput(EmotionKind.Angry, accepted = false)
-        assertTrue(state.visuals.isEmpty())
-        repeat(4) { state.onInput(EmotionKind.Angry, accepted = true) }
+        assertEquals(initial, state.visuals)
+        state.onInput(EmotionKind.Angry, accepted = true)
+        assertEquals(initial, state.visuals)
+        repeat(3) { state.onInput(EmotionKind.Angry, accepted = true) }
         repeat(3) { state.onInput(EmotionKind.Blocked, accepted = true) }
         repeat(10) { state.onInput(EmotionKind.Angry, accepted = false) }
         assertEquals(EmotionFaceStage.Intact, state.visuals.getValue(EmotionKind.Angry).stage)
