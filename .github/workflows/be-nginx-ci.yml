@@ -19,6 +19,20 @@ permissions:
   contents: read
 
 jobs:
+  nginx-prod-ws:
+    name: 운영 Nginx WebSocket 전달 검사
+    if: github.base_ref == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: 운영 WebSocket 인증 및 프레임 전달 검증
+        working-directory: BE
+        run: python3 docker/nginx/test-prod-ws.py
+
   nginx-health:
     name: 개발 Nginx ALB 상태 검사
     runs-on: ubuntu-latest
