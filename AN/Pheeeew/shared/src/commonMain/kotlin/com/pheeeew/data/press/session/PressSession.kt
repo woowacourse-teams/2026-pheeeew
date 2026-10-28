@@ -109,8 +109,9 @@ internal class PressSession(
             mutableState.update { it.copy(notice = PressSessionNotice.NumericLimit) }
             return PressAcceptance.NumericLimit
         }
+        val inputTime = wallClock()
         val acceptance =
-            when (val result = inputQueue.accept(emotion, wallClock(), nowMillis())) {
+            when (val result = inputQueue.accept(emotion, inputTime, nowMillis())) {
                 PressQueueAcceptance.NumericLimit -> {
                     mutableState.update { it.copy(notice = PressSessionNotice.NumericLimit) }
                     return PressAcceptance.NumericLimit
@@ -121,6 +122,7 @@ internal class PressSession(
                 }
             }
         writeSession.accept(emotion)
+        runCatching { monitoring.recordPressInput(inputTime.value) }
         if (pausedNotice == PressSessionNotice.Rejected) pausedNotice = null
         publish(
             mutableState.value.copy(

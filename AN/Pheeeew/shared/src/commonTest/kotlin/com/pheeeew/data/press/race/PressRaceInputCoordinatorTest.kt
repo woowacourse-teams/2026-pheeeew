@@ -67,11 +67,36 @@ class PressRaceInputCoordinatorTest {
             )
         }
 
-    private suspend fun TestScope.input(port: InputPort): PressRaceInputCoordinator {
+    @Test
+    fun onlyAcceptedButtonInputsAreCountedOnceBeforeDelivery() =
+        runTest {
+            val port = InputPort()
+            var taps = 0
+            val monitoring =
+                object : com.pheeeew.core.monitoring.Monitoring by com.pheeeew.core.monitoring.NoOpMonitoring {
+                    override fun recordPressInput(occurredAt: Long) {
+                        taps++
+                    }
+                }
+            val input = input(port, monitoring)
+            repeat(99) { assertEquals(PressAcceptance.Accepted, input.accept(EmotionState.ANGRY)) }
+            assertEquals(99, taps)
+            port.state.value = port.state.value.copy(phase = PressRacePhase.Connecting, ready = null)
+            runCurrent()
+            assertEquals(PressAcceptance.Unavailable, input.accept(EmotionState.ANGRY))
+            assertEquals(99, taps)
+        }
+
+    private suspend fun TestScope.input(
+        port: InputPort,
+        monitoring: com.pheeeew.core.monitoring.Monitoring = com.pheeeew.core.monitoring.NoOpMonitoring,
+    ): PressRaceInputCoordinator {
         port.clock = { testScheduler.currentTime }
         var id = 0
         val coordinator =
-            PressRaceInputCoordinator(port, backgroundScope, { testScheduler.currentTime }, { "id-${++id}" })
+            PressRaceInputCoordinator(port, backgroundScope, {
+                testScheduler.currentTime
+            }, { "id-${++id}" }, monitoring = monitoring)
         runCurrent()
         port.observer.ready(port.ready)
         port.state.value =

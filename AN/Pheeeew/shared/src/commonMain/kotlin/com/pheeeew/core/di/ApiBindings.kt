@@ -215,7 +215,7 @@ internal interface ApiBindings {
         measurements: PressRaceMeasurements,
     ): PressRepository =
         if (build.pressInputMode == PressInputMode.WEBSOCKET_DEVELOPMENT) {
-            PressRaceInputCoordinator(race, scope, measurements = measurements)
+            PressRaceInputCoordinator(race, scope, measurements = measurements, monitoring = monitoring)
         } else {
             PressRepositoryImpl(
                 statistics,

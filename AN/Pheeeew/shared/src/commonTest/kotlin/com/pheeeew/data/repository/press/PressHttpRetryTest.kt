@@ -1,5 +1,7 @@
 package com.pheeeew.data.repository.press
 
+import com.pheeeew.core.monitoring.Monitoring
+import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.core.network.AccessToken
 import com.pheeeew.core.network.AccessTokenProvider
 import com.pheeeew.core.network.ApiConfig
@@ -37,6 +39,7 @@ class PressHttpRetryTest {
     fun `HTTP 429 twice preserves all input across reads reconnect and foreground until accepted`() =
         runTest {
             val counts = EmotionState.entries.associate { it.name to 0L }.toMutableMap()
+            val inputTimes = mutableListOf<Long>()
             val bodies = mutableListOf<String>()
             val attempts = mutableListOf<Long>()
             val connection = MutableStateFlow(true)
@@ -96,6 +99,12 @@ class PressHttpRetryTest {
                         flushDelayMillis = PressDelayMillis.Zero,
                         retryPolicy = PressRetryPolicy(jitter = { 1.0 }),
                         connectivity = connection,
+                        monitoring =
+                            object : Monitoring by NoOpMonitoring {
+                                override fun recordPressInput(occurredAt: Long) {
+                                    inputTimes += occurredAt
+                                }
+                            },
                         nowMillis = { PressMonotonicMillis(testScheduler.currentTime) },
                     )
                 repository.refreshToday()
@@ -155,6 +164,7 @@ class PressHttpRetryTest {
                 assertEquals(17L, counts.getValue("ANGRY"))
                 assertEquals(48L, counts.getValue("FRUSTRATED"))
                 assertEquals(5, attempts.size)
+                assertEquals(65, inputTimes.size)
             } finally {
                 client.close()
             }
