@@ -166,7 +166,6 @@ class DeveloperToolsLifecycleTest {
                 )
             }
             graph.onboardingStore.complete()
-            graph.onboardingStore.completeUsageGuide()
             onMain { graphField.set(application, graph) }
             ErrorSimulation.replaceSettings(
                 ErrorSimulationState(location = LocationSimulationSettings(LocationSimulationMode.FIXED)),

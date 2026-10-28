@@ -174,14 +174,12 @@ private class IosOnboardingStore : OnboardingStore {
     override fun isCompleted(): Boolean = NSUserDefaults.standardUserDefaults.boolForKey("onboarding_completed")
 
     override fun complete() {
-        NSUserDefaults.standardUserDefaults.setBool(false, forKey = "usage_guide_completed")
         NSUserDefaults.standardUserDefaults.setBool(true, forKey = "onboarding_completed")
     }
 
     override fun resetCompletion() {
         val defaults = NSUserDefaults.standardUserDefaults
         defaults.removeObjectForKey("onboarding_completed")
-        defaults.setBool(false, forKey = "usage_guide_completed")
     }
 
     override fun isInitialNotificationPermissionHandled(): Boolean {
@@ -194,17 +192,6 @@ private class IosOnboardingStore : OnboardingStore {
 
     override fun completeInitialNotificationPermission() {
         NSUserDefaults.standardUserDefaults.setBool(true, forKey = "initial_notification_permission_handled")
-    }
-
-    override fun isUsageGuideCompleted(): Boolean =
-        if (NSUserDefaults.standardUserDefaults.objectForKey("usage_guide_completed") == null) {
-            isCompleted()
-        } else {
-            NSUserDefaults.standardUserDefaults.boolForKey("usage_guide_completed")
-        }
-
-    override fun completeUsageGuide() {
-        NSUserDefaults.standardUserDefaults.setBool(true, forKey = "usage_guide_completed")
     }
 }
 

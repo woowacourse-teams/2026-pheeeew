@@ -28,7 +28,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -109,8 +108,6 @@ import com.pheeeew.feature.screens.map.rememberRegionClusterSymbolImages
 import com.pheeeew.feature.screens.map.renderer.LocalMapRenderer
 import com.pheeeew.feature.screens.map.renderer.MapCameraSnapshotUiModel
 import com.pheeeew.feature.screens.map.symbolImageKey
-import com.pheeeew.feature.screens.onboarding.FeatureGuideScreen
-import com.pheeeew.feature.screens.onboarding.FeatureGuideState
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
 import com.pheeeew.feature.screens.press.PressRaceLifecycleEffect
 import com.pheeeew.feature.screens.press.PressRoute
@@ -161,7 +158,6 @@ internal enum class AppStartupPresentation {
     VERSION_CHECK,
     REQUIRED_UPDATE,
     ONBOARDING,
-    FEATURE_GUIDE,
     MAIN,
 }
 
@@ -170,10 +166,9 @@ internal fun resolveAppStartupPresentation(
     splashDismissed: Boolean,
     requiredUpdate: Boolean,
     onboardingCompleted: Boolean,
-    usageGuidePending: Boolean = false,
 ): AppStartupPresentation =
     when {
-        !initialVersionCheckComplete && (!onboardingCompleted || usageGuidePending) -> {
+        !initialVersionCheckComplete && !onboardingCompleted -> {
             if (splashDismissed) AppStartupPresentation.VERSION_CHECK else AppStartupPresentation.SPLASH
         }
 
@@ -183,10 +178,6 @@ internal fun resolveAppStartupPresentation(
 
         !onboardingCompleted -> {
             if (splashDismissed) AppStartupPresentation.ONBOARDING else AppStartupPresentation.SPLASH
-        }
-
-        usageGuidePending -> {
-            if (splashDismissed) AppStartupPresentation.FEATURE_GUIDE else AppStartupPresentation.SPLASH
         }
 
         else -> {
@@ -205,20 +196,6 @@ fun App(
     notificationMessages: NotificationMessageInbox? = null,
 ) {
     val factory = remember(uiGraph) { uiGraph.viewModelFactory }
-    val featureGuide =
-        rememberSaveable(
-            appGraph.onboardingStore,
-            saver =
-                FeatureGuideState.saver(
-                    onFinished = appGraph.onboardingStore::completeUsageGuide,
-                    canResume = { !appGraph.onboardingStore.isUsageGuideCompleted() },
-                ),
-        ) {
-            FeatureGuideState(
-                pending = !appGraph.onboardingStore.isUsageGuideCompleted(),
-                onFinished = appGraph.onboardingStore::completeUsageGuide,
-            )
-        }
     CompositionLocalProvider(
         LocalMetroViewModelFactory provides factory,
         LocalAudioFactories provides appGraph.audioFactories,
@@ -227,7 +204,6 @@ fun App(
             AppContent(
                 appGraph,
                 uiGraph,
-                featureGuide,
                 settingsContent,
                 notificationClicks,
                 notificationPermissionController,
@@ -242,7 +218,6 @@ fun App(
 private fun AppContent(
     appGraph: AppGraph,
     uiGraph: UiGraph,
-    featureGuide: FeatureGuideState,
     settingsContent: @Composable () -> Unit,
     notificationClicks: NotificationClickInbox?,
     notificationPermissionController: NotificationPermissionController?,
@@ -320,9 +295,9 @@ private fun AppContent(
     val entryReady =
         appEntryState.phase == AppEntryPhase.READY && sessionGeneration != null &&
             appEntryState.sessionGeneration == sessionGeneration
-    LaunchedEffect(startupViewModel, onboardingCompleted, featureGuide.pending, appEntryState.phase, entryReady) {
+    LaunchedEffect(startupViewModel, onboardingCompleted, appEntryState.phase, entryReady) {
         startupViewModel.updateEntryPreparation(
-            onboardingCompleted && !featureGuide.pending,
+            onboardingCompleted,
             appEntryState.phase,
             entryReady,
         )
@@ -333,7 +308,6 @@ private fun AppContent(
             splashDismissed = startupState.splashDismissed,
             requiredUpdate = requiredUpdate != null,
             onboardingCompleted = onboardingCompleted,
-            usageGuidePending = featureGuide.pending,
         )
 
     if (startupPresentation == AppStartupPresentation.SPLASH) {
@@ -370,14 +344,8 @@ private fun AppContent(
             onFinished = {
                 onboardingStore.complete()
                 onboardingCompleted = true
-                featureGuide.start()
             },
         )
-        return
-    }
-
-    if (startupPresentation == AppStartupPresentation.FEATURE_GUIDE) {
-        FeatureGuideScreen(state = featureGuide)
         return
     }
 

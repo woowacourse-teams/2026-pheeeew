@@ -256,7 +256,6 @@ private class AndroidOnboardingStore(
         preferences
             .edit()
             .putBoolean("onboarding_completed", true)
-            .putBoolean("usage_guide_completed", false)
             .apply()
     }
 
@@ -264,7 +263,6 @@ private class AndroidOnboardingStore(
         preferences
             .edit()
             .remove("onboarding_completed")
-            .putBoolean("usage_guide_completed", false)
             .apply()
     }
 
@@ -278,12 +276,6 @@ private class AndroidOnboardingStore(
 
     override fun completeInitialNotificationPermission() {
         preferences.edit().putBoolean("initial_notification_permission_handled", true).apply()
-    }
-
-    override fun isUsageGuideCompleted(): Boolean = preferences.getBoolean("usage_guide_completed", isCompleted())
-
-    override fun completeUsageGuide() {
-        preferences.edit().putBoolean("usage_guide_completed", true).apply()
     }
 }
 
