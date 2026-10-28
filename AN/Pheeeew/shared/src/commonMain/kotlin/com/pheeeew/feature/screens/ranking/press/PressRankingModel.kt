@@ -1,5 +1,7 @@
 package com.pheeeew.feature.screens.ranking.press
 
+import com.pheeeew.feature.emotion.model.EmotionKind
+
 internal enum class PressEmotion(
     val label: String,
     val phrase: String,
@@ -14,9 +16,12 @@ internal enum class PressEmotion(
 }
 
 internal data class PressPersonRank(
-    val rank: Int,
+    val rank: Long,
     val nickname: String,
     val count: Long,
+    val publicId: String? = null,
+    val isMe: Boolean = false,
+    val emotion: EmotionKind? = null,
 )
 
 internal val samplePressPersonRanks =

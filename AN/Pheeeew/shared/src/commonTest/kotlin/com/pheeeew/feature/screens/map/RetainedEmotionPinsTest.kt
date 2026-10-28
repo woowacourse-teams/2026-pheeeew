@@ -52,5 +52,5 @@ class RetainedEmotionPinsTest {
         id: Long,
         longitude: Double,
         latitude: Double,
-    ) = EmotionPinUiModel(id, latitude, longitude, "2026-10-12T00:00:00Z", 0.0, EmotionTypeUiModel.ANGRY, null)
+    ) = EmotionPinUiModel(id, latitude, longitude, "2026-10-12T00:00:00Z", 0.0, EmotionTypeUiModel.ANGRY)
 }

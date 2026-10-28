@@ -1,5 +1,6 @@
 package com.pheeeew.core.monitoring
 
+import com.pheeeew.core.time.koreaCalendarDate
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.time.Instant
@@ -7,6 +8,7 @@ import kotlin.time.Instant
 enum class ActivityType(
     val wireValue: String,
 ) {
+    APP_OPEN("app_open"),
     EMOTION_RECORD("emotion_record"),
     PERSONAL_PRESS("personal_press"),
 }
@@ -15,8 +17,8 @@ internal const val DAY_MILLIS = 86_400_000L
 internal const val ACTIVITY_MAX_AGE = 35 * DAY_MILLIS
 internal const val ACTIVITY_KEY_RETENTION = 42 * DAY_MILLIS
 
-fun activityDate(timestamp: Long): String =
-    Instant.fromEpochMilliseconds(timestamp + 9 * 60 * 60 * 1000L).toString().substringBefore('T')
+/** Keeps the monitoring package API while sharing the timezone conversion with other core features. */
+fun activityDate(timestamp: Long): String = koreaCalendarDate(timestamp)
 
 object MeaningfulActivity {
     const val NAME = "meaningful_activity_day"
@@ -31,7 +33,11 @@ object MeaningfulActivity {
                         PropertyRule(
                             ValueType.TEXT,
                             required = true,
-                            allowed = ActivityType.entries.map { it.wireValue }.toSet(),
+                            allowed =
+                                setOf(
+                                    ActivityType.EMOTION_RECORD.wireValue,
+                                    ActivityType.PERSONAL_PRESS.wireValue,
+                                ),
                         ),
                     "audience" to
                         PropertyRule(
@@ -60,4 +66,34 @@ object MeaningfulActivity {
         }
         return JsonObject(fields.filterKeys { it in common || it in definition.properties })
     }
+}
+
+/** Split daily product metrics; legacy envelopes keep their original definition while draining. */
+object DailyActivity {
+    const val VERSION = "activity_split_v1"
+    const val PRESS_TARGET = 100
+    private val names =
+        mapOf(
+            ActivityType.APP_OPEN to "app_open_day",
+            ActivityType.EMOTION_RECORD to "emotion_record_day",
+            ActivityType.PERSONAL_PRESS to "press_100_day",
+        )
+    val definitions =
+        names.map { (type, name) ->
+            MeaningfulActivity.definition.copy(
+                name = name,
+                properties =
+                    MeaningfulActivity.definition.properties +
+                        mapOf(
+                            "activity_type" to
+                                PropertyRule(ValueType.TEXT, required = true, allowed = setOf(type.wireValue)),
+                            "measurement_version" to
+                                PropertyRule(ValueType.TEXT, required = true, allowed = setOf(VERSION)),
+                        ),
+            )
+        }
+
+    fun definition(type: ActivityType): EventDefinition = definitions.single { it.name == names.getValue(type) }
+
+    fun isDaily(name: String): Boolean = name == MeaningfulActivity.NAME || definitions.any { it.name == name }
 }

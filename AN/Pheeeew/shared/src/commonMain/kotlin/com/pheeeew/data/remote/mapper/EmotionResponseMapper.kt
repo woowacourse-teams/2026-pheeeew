@@ -6,7 +6,6 @@ import com.pheeeew.data.remote.dto.EmotionDto
 import com.pheeeew.data.remote.dto.EmotionPageDto
 import com.pheeeew.data.remote.dto.EmotionPointDto
 import com.pheeeew.data.remote.dto.EmotionPropertiesDto
-import com.pheeeew.data.remote.dto.GroupStampResponseDto
 import com.pheeeew.data.remote.dto.NearbyEmotionEmojiDto
 import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.model.emotion.Emotion
@@ -16,9 +15,6 @@ import com.pheeeew.domain.model.emotion.EmotionPage
 import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.emotion.ReactionCount
-import com.pheeeew.domain.model.group.GroupStamp
-import com.pheeeew.domain.model.group.GroupStampFrame
-import com.pheeeew.domain.model.group.StampColor
 import kotlin.time.Instant
 
 internal object EmotionResponseMapper {
@@ -53,10 +49,6 @@ internal object EmotionResponseMapper {
                         contentType = dto.properties.contentType,
                         memo = dto.properties.memo,
                         emojis = dto.properties.emojis.map { NearbyEmotionEmojiDto(it.type, it.count, it.selected) },
-                        groupStamp =
-                            dto.properties.groupStamp?.let {
-                                GroupStampResponseDto(it.text, it.textColor, it.backgroundColor, it.frame)
-                            },
                         audio = dto.properties.audio?.let { EmotionAudioDto(it.playbackUrl, it.expiresAt) },
                     ),
             ),
@@ -87,14 +79,6 @@ internal object EmotionResponseMapper {
             EmotionReactionType.entries.map { type ->
                 reactions.find { it.type == type }
                     ?: ReactionCount(type, 0, false)
-            },
-            p.groupStamp?.let {
-                GroupStamp(
-                    it.text,
-                    requireNotNull(StampColor.parseServerValue(it.textColor)),
-                    requireNotNull(StampColor.parseServerValue(it.backgroundColor)),
-                    GroupStampFrame.valueOf(it.frame),
-                )
             },
             audio,
             dto.geometry?.toCoordinateOrNull(),

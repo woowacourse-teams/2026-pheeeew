@@ -39,14 +39,14 @@ class DebugNetworkEngineTest {
                 )
             val client = HttpClient(engine)
             try {
-                for (path in listOf("/api/v2/emotions/map", "/api/v2/emotions/map/regions", "/api/v1/emotions/1")) {
+                for (path in listOf("/api/v4/emotions/map", "/api/v4/emotions/map/regions", "/api/v4/emotions/1")) {
                     assertFailsWith<IOException> { client.get("https://example.test$path") }
                 }
-                assertFailsWith<IOException> { client.post("https://example.test/api/v3/emotions") }
+                assertFailsWith<IOException> { client.post("https://example.test/api/v4/emotions") }
                 assertFailsWith<IOException> { client.put("https://storage.test/recording") }
                 assertEquals(0, sent)
                 ErrorSimulation.setOffline(false)
-                assertEquals("ok", client.get("https://example.test/api/v2/emotions/map").bodyAsText())
+                assertEquals("ok", client.get("https://example.test/api/v4/emotions/map").bodyAsText())
                 assertEquals(1, sent)
             } finally {
                 client.close()
@@ -70,12 +70,12 @@ class DebugNetworkEngineTest {
                 )
             val client = HttpClient(engine)
             try {
-                assertFailsWith<IOException> { client.get("https://example.test/api/v2/emotions/map") }
-                assertEquals("ok", client.get("https://example.test/api/v2/emotions/map").bodyAsText())
+                assertFailsWith<IOException> { client.get("https://example.test/api/v4/emotions/map") }
+                assertEquals("ok", client.get("https://example.test/api/v4/emotions/map").bodyAsText())
                 repeat(2) {
                     assertFailsWith<IOException> {
                         client.get(
-                            "https://example.test/api/v2/emotions/map/regions",
+                            "https://example.test/api/v4/emotions/map/regions",
                         )
                     }
                 }
@@ -97,7 +97,7 @@ class DebugNetworkEngineTest {
                 )
             val client = HttpClient(engine)
             try {
-                assertEquals(HttpStatusCode.NotFound, client.get("https://example.test/api/v1/emotions/1").status)
+                assertEquals(HttpStatusCode.NotFound, client.get("https://example.test/api/v4/emotions/1").status)
             } finally {
                 client.close()
                 engine.close()
@@ -112,7 +112,7 @@ class DebugNetworkEngineTest {
             val engine = DebugNetworkEngine(MockEngine { respond("ok") })
             val client = HttpClient(engine) { install(HttpTimeout) { requestTimeoutMillis = 2_000 } }
             try {
-                assertEquals("ok", client.get("https://example.test/api/v2/emotions/map").bodyAsText())
+                assertEquals("ok", client.get("https://example.test/api/v4/emotions/map").bodyAsText())
             } finally {
                 client.close()
                 engine.close()
@@ -161,7 +161,7 @@ class DebugNetworkEngineTest {
                 )
             val client = HttpClient(engine)
             try {
-                val request = async { client.get("https://example.test/api/v2/emotions/map") }
+                val request = async { client.get("https://example.test/api/v4/emotions/map") }
                 delay(20)
                 request.cancel()
                 request.join()

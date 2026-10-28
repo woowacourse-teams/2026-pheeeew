@@ -1,5 +1,6 @@
 package com.pheeeew.core.monitoring
 
+import com.pheeeew.core.time.koreaCalendarDate
 import com.posthog.kmp.CaptureOptions
 import com.posthog.kmp.PostHog
 import com.posthog.kmp.PostHogBeforeSend
@@ -20,8 +21,8 @@ internal class SdkMonitoringTransport(
 ) : MonitoringTransport {
     override fun track(event: EventEnvelope): Boolean {
         if (!analyticsEnabled) return false
-        if (event.name == MeaningfulActivity.NAME &&
-            event.properties["activity_date"] != JsonPrimitive(activityDate(event.timestamp))
+        if (DailyActivity.isDaily(event.name) &&
+            event.properties["activity_date"] != JsonPrimitive(koreaCalendarDate(event.timestamp))
         ) {
             return false
         }

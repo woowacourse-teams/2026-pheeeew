@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,12 +22,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppBorders
@@ -36,12 +32,8 @@ import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.domain.model.emotion.ReactionCount
-import com.pheeeew.feature.component.stamp.GroupStamp
-import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
-import com.pheeeew.feature.component.stamp.StampShapeId
 import org.jetbrains.compose.resources.painterResource
 import pheeeew.shared.generated.resources.Res
-import pheeeew.shared.generated.resources.ic_emotion_exhausted
 import pheeeew.shared.generated.resources.ic_emotion_frustrated
 
 @Composable
@@ -70,14 +62,14 @@ internal fun EmotionChatItem(
         horizontalAlignment = alignment,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (!item.isMine) EmotionProfile(item)
+            if (!item.isMine) EmotionFace(item)
             Text(
                 if (item.isMine) "${item.nickname} · 나" else item.nickname,
                 color = AppColors.GroupInk,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 13.sp,
             )
-            if (item.isMine) EmotionProfile(item)
+            if (item.isMine) EmotionFace(item)
         }
         Spacer(Modifier.height(2.dp))
         Row(
@@ -105,9 +97,6 @@ internal fun EmotionChatItem(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    if (item.isMine && item.content !is EmotionChatContentUiModel.EmotionOnly) {
-                        EmotionFace(item)
-                    }
                     Column(
                         if (item.content is EmotionChatContentUiModel.EmotionOnly) {
                             Modifier
@@ -147,9 +136,6 @@ internal fun EmotionChatItem(
                             }
                         }
                     }
-                    if (!item.isMine && item.content !is EmotionChatContentUiModel.EmotionOnly) {
-                        EmotionFace(item)
-                    }
                 }
                 EmotionActionsMenu(
                     mode = actionsMenuMode,
@@ -180,33 +166,8 @@ internal fun EmotionChatItem(
 }
 
 @Composable
-private fun EmotionProfile(item: EmotionChatItemUiModel) {
-    if (item.stamp != null) EmotionStamp(item.stamp, 32.dp) else EmotionFace(item)
-}
-
-@Composable
 private fun EmotionFace(item: EmotionChatItemUiModel) {
     Image(painterResource(item.emotionIcon), item.emotionDescription, Modifier.size(32.dp))
-}
-
-@Composable
-private fun EmotionStamp(
-    appearance: StampAppearanceUiModel,
-    size: Dp,
-) {
-    val editorSize = 96.dp
-    val scale = size / editorSize
-    Box(Modifier.size(size), contentAlignment = Alignment.Center) {
-        GroupStamp(
-            appearance = appearance,
-            size = editorSize,
-            modifier =
-                Modifier.requiredSize(editorSize).graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                },
-        )
-    }
 }
 
 @Composable
@@ -336,5 +297,4 @@ private fun sampleEmotionChatItem() =
         timeLabel = "10분 전",
         content = EmotionChatContentUiModel.Text("오늘은 조금 지쳤지만, 잠깐 쉬어 가려고요."),
         reactions = listOf(ReactionCount(EmotionReactionType.HEART, 2, selected = true)),
-        stamp = StampAppearanceUiModel("산책", StampShapeId.FLOWER, 0xFFACD9EE, 0xFF252826),
     )

@@ -1,7 +1,6 @@
 package com.pheeeew.core.di
 
 import com.pheeeew.core.monitoring.Monitoring
-import com.pheeeew.core.network.ApiRequestExecutor
 import com.pheeeew.data.repository.BlockRepositoryImpl
 import com.pheeeew.data.repository.EmotionAudioRepositoryImpl
 import com.pheeeew.data.repository.EmotionDetailRepositoryImpl
@@ -15,7 +14,6 @@ import com.pheeeew.domain.repository.EmotionMapRepository
 import com.pheeeew.domain.repository.EmotionRegionMapRepository
 import com.pheeeew.domain.repository.EmotionRegistrationRepository
 import com.pheeeew.domain.repository.EmotionRepository
-import com.pheeeew.domain.repository.GroupStampListRepository
 import com.pheeeew.domain.repository.MapFilterSettingsRepository
 import com.pheeeew.domain.repository.ReportRepository
 import com.pheeeew.domain.usecase.BlockUserUseCase
@@ -110,8 +108,6 @@ internal interface EmotionBindings {
 
     @Provides fun nullableRegionSnapshot(deps: EmotionMapDependencies): FindEmotionRegionSnapshotUseCase? =
         deps.findRegionSnapshot
-
-    @Provides fun nullableGroupStamps(services: UiServices): GroupStampListRepository? = services.groupStamps
 
     @Provides fun nullableFilters(repository: MapFilterSettingsRepository): MapFilterSettingsRepository? = repository
 

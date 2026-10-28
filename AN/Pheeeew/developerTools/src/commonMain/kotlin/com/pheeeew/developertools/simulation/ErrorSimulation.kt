@@ -20,7 +20,6 @@ enum class ErrorSimulationScenario(
     EmotionRegistrationUnavailable("감정 등록 실패"),
     AudioUnavailable("녹음 파일 확인 실패"),
     AudioUploadFailed("녹음 업로드 실패"),
-    GroupOptionsUnavailable("그룹 목록 조회 실패"),
     EmotionDeleteUnavailable("감정 삭제 실패"),
     EmotionBlockUnavailable("감정 차단 실패"),
     EmotionReportUnavailable("감정 신고 실패"),

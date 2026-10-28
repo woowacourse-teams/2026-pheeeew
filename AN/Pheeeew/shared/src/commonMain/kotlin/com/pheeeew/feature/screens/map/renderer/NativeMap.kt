@@ -2,7 +2,6 @@ package com.pheeeew.feature.screens.map.renderer
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.pheeeew.domain.model.emotion.EmotionMapBounds
 import com.pheeeew.domain.model.emotion.EmotionMapViewport
 import com.pheeeew.feature.screens.map.HighlightedPinPosition
 import com.pheeeew.feature.screens.map.MapErrorUiModel

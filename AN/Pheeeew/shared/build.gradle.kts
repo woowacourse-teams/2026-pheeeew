@@ -72,10 +72,13 @@ kotlin {
             implementation(libs.compose.ui)
             implementation(libs.compose.components.resources)
             implementation(libs.compose.uiToolingPreview)
+            implementation(libs.coil.compose)
+            implementation(libs.coil.network.ktor3)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.androidx.navigation.compose)
             implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.websockets)
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.serialization.json)
             implementation(libs.kotlinx.coroutines.core)
@@ -94,6 +97,10 @@ kotlin {
             implementation(libs.androidx.uiautomator)
         }
     }
+}
+
+dependencies {
+    androidRuntimeClasspath(libs.compose.uiTooling)
 }
 
 // Resolve both graphs without relying on dead-code elimination or stripped symbols.

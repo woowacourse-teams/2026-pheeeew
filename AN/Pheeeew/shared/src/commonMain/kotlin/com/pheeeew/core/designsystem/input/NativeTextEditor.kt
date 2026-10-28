@@ -1,7 +1,9 @@
 package com.pheeeew.core.designsystem.input
 
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 
@@ -19,6 +21,9 @@ internal expect fun NativeTextEditor(
     singleLine: Boolean = false,
     enabled: Boolean = true,
     onSearch: () -> Unit = {},
+    keyboardOptions: KeyboardOptions? = null,
+    containerColor: Color? = null,
+    acceptText: (String) -> Boolean = { true },
 )
 
 internal fun limitMemoText(text: String): String = TextFieldValue(text, TextRange(text.length)).limitMemoValue().text

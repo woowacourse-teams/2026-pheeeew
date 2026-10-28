@@ -6,7 +6,6 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
-import com.pheeeew.domain.model.emotion.EmotionMapBounds
 import com.pheeeew.domain.model.emotion.EmotionMapViewport
 import com.pheeeew.feature.screens.map.HighlightedPinPosition
 import com.pheeeew.feature.screens.map.MapErrorUiModel

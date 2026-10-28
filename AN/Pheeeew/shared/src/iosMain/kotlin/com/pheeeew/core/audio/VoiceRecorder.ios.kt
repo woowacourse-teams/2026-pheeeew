@@ -88,7 +88,10 @@ internal class IosVoiceRecorder : VoiceRecorder {
         if (released || state.value.recording || state.value.requestingPermission) return
         val token = ++generation
         refreshPermissionStatus()
-        if (state.value.microphonePermissionGranted && !startRecording) return
+        if (state.value.microphonePermissionGranted) {
+            if (startRecording) begin()
+            return
+        }
         mutable.value = state.value.copy(requestingPermission = true, microphonePermissionDenied = false, error = null)
         session.requestRecordPermission { granted ->
             scope.launch {

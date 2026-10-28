@@ -96,7 +96,7 @@ class ApiRequestExecutorTest {
             try {
                 val result =
                     client.requests.executeNoContent(
-                        ApiRequest(HttpMethod.Delete, "/groups/1", RequestKind.WRITE),
+                        ApiRequest(HttpMethod.Delete, "/test-items/1", RequestKind.WRITE),
                     )
 
                 assertEquals(ApiResult.Success(Unit), result)
@@ -169,7 +169,7 @@ class ApiRequestExecutorTest {
             try {
                 val result =
                     client.requests.execute(
-                        ApiRequest(HttpMethod.Post, "/groups", RequestKind.WRITE),
+                        ApiRequest(HttpMethod.Post, "/test-items", RequestKind.WRITE),
                     ) { it.body<PingResponse>() }
 
                 val failure = assertIs<NetworkFailure.HttpStatus>(assertIs<ApiResult.Failure>(result).reason)
@@ -237,7 +237,7 @@ class ApiRequestExecutorTest {
             try {
                 val result =
                     client.requests.execute(
-                        ApiRequest(HttpMethod.Post, "/groups", RequestKind.WRITE),
+                        ApiRequest(HttpMethod.Post, "/test-items", RequestKind.WRITE),
                     ) { it.body<PingResponse>() }
 
                 assertEquals(

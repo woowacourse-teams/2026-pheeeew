@@ -92,13 +92,13 @@ class NearbyEmotionViewModelTest {
         }
 
     @Test
-    fun `새로고침해도 통합 그룹 필터를 유지한다`() =
+    fun `새로고침해도 내 기록 필터를 유지한다`() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
             try {
                 val repo = FakeRepository()
                 val vm = viewModel(repo)
-                val settings = MapFilterSettings(scope = MapFilterScope.GROUP, groupId = "group-id")
+                val settings = MapFilterSettings(scope = MapFilterScope.MY)
                 vm.setAppliedSettings(settings)
                 vm.open()
                 advanceUntilIdle()
@@ -106,7 +106,6 @@ class NearbyEmotionViewModelTest {
                 advanceUntilIdle()
                 assertEquals(List(2) { settings.toSearchFilter() }, repo.filters)
                 assertTrue(repo.bounds.isEmpty())
-                assertEquals(listOf<String?>("group-id", "group-id"), repo.groupIds)
                 vm.dismiss()
             } finally {
                 Dispatchers.resetMain()
@@ -277,17 +276,12 @@ class NearbyEmotionViewModelTest {
         EmotionRepository,
         BlockRepository {
         val bounds = mutableListOf<EmotionBounds>()
-        val groupIds = mutableListOf<String?>()
         val filters = mutableListOf<EmotionSearchFilter>()
         var first: suspend () -> EmotionResult<EmotionPage> = { successPage(1) }
         var next: suspend () -> EmotionResult<EmotionPage> = { successPage(2) }
 
-        override suspend fun firstPage(
-            bounds: EmotionBounds,
-            groupId: String?,
-        ): EmotionResult<EmotionPage> {
+        override suspend fun firstPage(bounds: EmotionBounds): EmotionResult<EmotionPage> {
             this.bounds += bounds
-            groupIds += groupId
             return first()
         }
 
@@ -295,14 +289,8 @@ class NearbyEmotionViewModelTest {
 
         override suspend fun filteredFirstPage(filter: EmotionSearchFilter): EmotionResult<EmotionPage> {
             filters += filter
-            groupIds += filter.groupId
             return first()
         }
-
-        override suspend fun feedPage(
-            groupId: String,
-            cursor: String?,
-        ) = next()
 
         override suspend fun detail(id: Long): EmotionResult<Emotion> =
             EmotionResult.Failure(EmotionFailure.UNAVAILABLE)

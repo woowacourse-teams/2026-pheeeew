@@ -17,6 +17,7 @@ import com.pheeeew.domain.usecase.RefreshLocationUseCase
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
@@ -31,6 +32,32 @@ import kotlin.time.Clock
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MapInitialLocationPermissionTest {
+    @Test
+    fun `다음 권한 처리는 초기 위치 권한 응답이 끝날 때까지 기다린다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val permission = FakePermissionController(LocationPermissionStatus.Denied)
+                val viewModel = createViewModel(permission)
+                viewModel.updateReadiness(ready = true, generation = 1)
+                var locationFinished = false
+                val waiter =
+                    launch {
+                        viewModel.awaitInitialLocationRequest()
+                        locationFinished = true
+                    }
+                runCurrent()
+                assertEquals(1, permission.requests)
+                assertFalse(locationFinished)
+
+                permission.response.complete(LocationPermissionStatus.Denied)
+                waiter.join()
+                assertTrue(locationFinished)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
     @Test
     fun `스플래시 중에는 위치 권한 요청을 미루고 준비 완료 후 요청한다`() =
         runTest {
@@ -151,15 +178,11 @@ class MapInitialLocationPermissionTest {
             object : EmotionMapRepository {
                 override suspend fun findPage(
                     bounds: EmotionMapBounds?,
-                    groupId: String?,
                     cursor: String?,
                     forceRefresh: Boolean,
                 ): EmotionMapPageResult = error("No map page requested")
 
-                override fun findSnapshot(
-                    bounds: EmotionMapBounds,
-                    groupId: String?,
-                ): EmotionMapSnapshot? = null
+                override fun findSnapshot(bounds: EmotionMapBounds): EmotionMapSnapshot? = null
             }
         return MapViewModel(
             RefreshLocationUseCase(permission, locationRepository),

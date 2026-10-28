@@ -19,8 +19,6 @@ data class EmotionDetailPropertiesDto(
     val isMine: Boolean,
     val memo: String? = null,
     val audio: EmotionPlaybackDto? = null,
-    val groupStamp: EmotionGroupStampDto? = null,
-    val groupId: String? = null,
 )
 
 @Serializable

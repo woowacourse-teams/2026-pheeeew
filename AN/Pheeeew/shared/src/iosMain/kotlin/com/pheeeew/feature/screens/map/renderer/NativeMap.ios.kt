@@ -10,7 +10,6 @@ import androidx.compose.ui.viewinterop.UIKitInteropInteractionMode
 import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
 import com.pheeeew.domain.model.LocationState
-import com.pheeeew.domain.model.emotion.EmotionMapBounds
 import com.pheeeew.domain.model.emotion.EmotionMapViewport
 import com.pheeeew.feature.screens.map.HighlightedPinPosition
 import com.pheeeew.feature.screens.map.MapCameraActionUiModel
@@ -156,7 +155,7 @@ internal actual fun NativeMap(
         onRelease = FoundationIosMapBridge::releaseMapView,
         properties =
             UIKitInteropProperties(
-                interactionMode = UIKitInteropInteractionMode.NonCooperative,
+                interactionMode = if (isVisible) UIKitInteropInteractionMode.NonCooperative else null,
                 isNativeAccessibilityEnabled = false,
             ),
     )

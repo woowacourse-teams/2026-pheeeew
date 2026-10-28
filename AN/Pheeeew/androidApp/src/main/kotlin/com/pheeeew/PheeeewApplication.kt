@@ -9,6 +9,7 @@ import com.pheeeew.core.di.AndroidAppConfig
 import com.pheeeew.core.di.AppGraph
 import com.pheeeew.core.di.appCollectionMetadata
 import com.pheeeew.core.di.device.DeviceSessionBuildConfig
+import com.pheeeew.core.di.device.PressInputMode
 import com.pheeeew.core.di.monitoringActiveDay
 import com.pheeeew.core.monitoring.MonitoringConfig
 
@@ -19,11 +20,14 @@ class PheeeewApplication :
         private set
     private val owner get() = appGraph.monitoringOwner
     val monitoring get() = owner.runtime
+    internal lateinit var notificationRuntime: AndroidNotificationRuntime
+        private set
 
     suspend fun compatibilityMonitoring() = owner.compatibility()
 
     override fun onCreate() {
         super<Application>.onCreate()
+        AndroidNotificationChannels.create(this)
         val config =
             MonitoringConfig(
                 environment = BuildConfig.MONITORING_ENVIRONMENT,
@@ -48,6 +52,7 @@ class PheeeewApplication :
                         BuildConfig.API_BASE_URL,
                         BuildConfig.DEVICE_ATTESTATION_MODE,
                         "${BuildConfig.VERSION_NAME}+${BuildConfig.VERSION_CODE}",
+                        PressInputMode.fromBuildValue(BuildConfig.PRESS_INPUT_MODE),
                     ),
                     BuildConfig.APPLICATION_ID,
                     BuildConfig.DEVICE_CLOUD_PROJECT_NUMBER,
@@ -56,14 +61,17 @@ class PheeeewApplication :
                 ),
             )
         appGraph.monitoringOwner
+        notificationRuntime = AndroidNotificationRuntime(this, appGraph.apiDependencies)
         ProcessLifecycleOwner.get().lifecycle.addObserver(this)
     }
 
     override fun onStart(owner: LifecycleOwner) {
         this.owner.foreground()
+        notificationRuntime.foreground()
     }
 
     override fun onStop(owner: LifecycleOwner) {
         this.owner.background()
+        notificationRuntime.background()
     }
 }

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -38,6 +39,8 @@ import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.core.navigation.PredictiveBackContent
+import com.pheeeew.core.notification.NotificationPermissionController
+import com.pheeeew.core.notification.NotificationPreferencesStore
 import com.pheeeew.core.permission.AppSettingsLauncher
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import com.pheeeew.feature.monitoring.product.ProductScreen
@@ -58,6 +61,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.notification_settings_save_failed
 import pheeeew.shared.generated.resources.settings_app_section
 import pheeeew.shared.generated.resources.settings_app_version
 import pheeeew.shared.generated.resources.settings_help_section
@@ -85,6 +89,7 @@ fun SettingsScreen(
     profileNickname: String? = null,
     onNicknameClick: () -> Unit = {},
     nicknameDialog: (@Composable () -> Unit)? = null,
+    notificationPermissionContent: @Composable () -> Unit = {},
 ) {
     Column(
         modifier =
@@ -92,61 +97,66 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .background(AppColors.Background)
                 .statusBarsPadding()
-                .navigationBarsPadding()
-                .verticalScroll(rememberScrollState()),
+                .navigationBarsPadding(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         SettingsHeader(onBackClick = onBackClick)
-        Spacer(Modifier.height(32.dp))
+        Column(
+            modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Spacer(Modifier.height(32.dp))
 
-        SettingsSectionTitle(stringResource(Res.string.settings_profile_section))
-        SettingsCard {
-            SettingsActionRow(
-                title = profileNickname ?: stringResource(Res.string.settings_nickname_default),
-                icon = SettingsIcon.Person,
-                trailingText = stringResource(Res.string.settings_nickname_change),
-                onClick = onNicknameClick,
-            )
+            SettingsSectionTitle(stringResource(Res.string.settings_profile_section))
+            SettingsCard {
+                SettingsActionRow(
+                    title = profileNickname ?: stringResource(Res.string.settings_nickname_default),
+                    icon = SettingsIcon.Person,
+                    trailingText = stringResource(Res.string.settings_nickname_change),
+                    onClick = onNicknameClick,
+                )
+            }
+            Spacer(Modifier.height(32.dp))
+
+            SettingsSectionTitle(stringResource(Res.string.settings_app_section))
+            SettingsCard {
+                SettingsActionRow(
+                    title = stringResource(Res.string.settings_permissions),
+                    icon = SettingsIcon.Tune,
+                    highlighted = true,
+                    onClick = onPermissionClick,
+                )
+                notificationPermissionContent()
+            }
+
+            Spacer(Modifier.height(32.dp))
+            SettingsSectionTitle(stringResource(Res.string.settings_help_section))
+            SettingsCard {
+                SettingsActionRow(
+                    stringResource(Res.string.settings_legal_privacy),
+                    SettingsIcon.Shield,
+                    onClick = onPrivacyPolicyClick,
+                )
+                SettingsDivider()
+                SettingsActionRow(
+                    stringResource(Res.string.settings_legal_open_source),
+                    SettingsIcon.Document,
+                    onClick = onOpenSourceLicenseClick,
+                )
+                SettingsDivider()
+                SettingsActionRow(
+                    stringResource(Res.string.settings_app_version),
+                    SettingsIcon.Info,
+                    trailingText = appVersion,
+                    onClick = onVersionClick,
+                )
+            }
+
+            settingsContent()
+
+            Spacer(Modifier.height(32.dp))
+            ContactCard(onClick = onContactClick)
         }
-        Spacer(Modifier.height(32.dp))
-
-        SettingsSectionTitle(stringResource(Res.string.settings_app_section))
-        SettingsCard {
-            SettingsActionRow(
-                title = stringResource(Res.string.settings_permissions),
-                icon = SettingsIcon.Tune,
-                highlighted = true,
-                onClick = onPermissionClick,
-            )
-        }
-
-        Spacer(Modifier.height(32.dp))
-        SettingsSectionTitle(stringResource(Res.string.settings_help_section))
-        SettingsCard {
-            SettingsActionRow(
-                stringResource(Res.string.settings_legal_privacy),
-                SettingsIcon.Shield,
-                onClick = onPrivacyPolicyClick,
-            )
-            SettingsDivider()
-            SettingsActionRow(
-                stringResource(Res.string.settings_legal_open_source),
-                SettingsIcon.Document,
-                onClick = onOpenSourceLicenseClick,
-            )
-            SettingsDivider()
-            SettingsActionRow(
-                stringResource(Res.string.settings_app_version),
-                SettingsIcon.Info,
-                trailingText = appVersion,
-                onClick = onVersionClick,
-            )
-        }
-
-        settingsContent()
-
-        Spacer(Modifier.height(32.dp))
-        ContactCard(onClick = onContactClick)
     }
 
     nicknameDialog?.invoke()
@@ -157,24 +167,47 @@ fun SettingsScreen(
     appVersion: String,
     onBackClick: () -> Unit,
     permissionSettingsLauncher: AppSettingsLauncher,
+    notificationPermissionController: NotificationPermissionController? = null,
+    notificationPreferencesStore: NotificationPreferencesStore? = null,
     monitoring: Monitoring = NoOpMonitoring,
     modifier: Modifier = Modifier,
     settingsContent: @Composable () -> Unit = {},
 ) {
     var versionTaps by remember { mutableStateOf(0) }
     var analyticsIdentity by remember { mutableStateOf<String?>(null) }
+    var notificationSettingsVisible by remember { mutableStateOf(false) }
     var selectedLegalDocument by remember { mutableStateOf<LegalDocument?>(null) }
     val telemetry = remember(monitoring) { ProductMonitoring(monitoring, "settings") }
     val legalTelemetry = remember(monitoring) { ProductMonitoring(monitoring, "legaldocument") }
     ProductScreen(telemetry, selectedLegalDocument == null)
     ProductScreen(legalTelemetry, selectedLegalDocument != null)
     val coroutineScope = rememberCoroutineScope()
+    // Keep both edits and their state alive when the notification sub-screen closes.
+    val notificationSettings =
+        remember(notificationPermissionController, notificationPreferencesStore) {
+            if (notificationPermissionController != null && notificationPreferencesStore != null) {
+                NotificationSettingsState(notificationPermissionController, notificationPreferencesStore)
+            } else {
+                null
+            }
+        }
+    val notificationSnackbarHostState = remember { SnackbarHostState() }
+    val notificationSaveFailedMessage = stringResource(Res.string.notification_settings_save_failed)
     val uriHandler = LocalUriHandler.current
     val snackbarHostState = remember { SnackbarHostState() }
     val nicknameViewModel: SettingsViewModel = metroViewModel()
     val nicknameState by nicknameViewModel.uiState.collectAsStateWithLifecycle()
     val nicknameChangedMessage = stringResource(Res.string.settings_nickname_changed)
     val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(notificationSettings, lifecycleOwner, notificationSaveFailedMessage) {
+        val model = notificationSettings ?: return@LaunchedEffect
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            model.state.map { it.saveFailureNoticeId }.filterNotNull().collect { noticeId ->
+                model.acknowledgeSaveFailure(noticeId)
+                notificationSnackbarHostState.showSnackbar(notificationSaveFailedMessage)
+            }
+        }
+    }
     LaunchedEffect(nicknameViewModel, lifecycleOwner, nicknameChangedMessage) {
         val viewModel = nicknameViewModel
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -192,6 +225,15 @@ fun SettingsScreen(
                 content = {
                     SettingsScreen(
                         appVersion = appVersion,
+                        notificationPermissionContent = {
+                            if (notificationPermissionController != null && notificationPreferencesStore != null) {
+                                SettingsDivider()
+                                NotificationPermissionRow(notificationPermissionController) {
+                                    notificationSettingsVisible =
+                                        true
+                                }
+                            }
+                        },
                         settingsContent = settingsContent,
                         profileNickname =
                             nicknameState.nickname
@@ -291,6 +333,19 @@ fun SettingsScreen(
                 },
             )
 
+            if (notificationSettingsVisible && notificationSettings != null) {
+                PredictiveBackContent(
+                    onBack = { notificationSettingsVisible = false },
+                    content = {
+                        NotificationSettingsRoute(
+                            model = notificationSettings,
+                            scope = coroutineScope,
+                            onBackClick = { notificationSettingsVisible = false },
+                        )
+                    },
+                )
+            }
+
             selectedLegalDocument?.let { document ->
                 PredictiveBackContent(
                     onBack = { selectedLegalDocument = null },
@@ -316,6 +371,24 @@ fun SettingsScreen(
                     },
                 )
             }
+
+            SnackbarHost(
+                hostState = notificationSnackbarHostState,
+                modifier =
+                    Modifier
+                        .align(Alignment.TopCenter)
+                        .statusBarsPadding()
+                        .padding(top = 64.dp)
+                        .padding(16.dp),
+                snackbar = { data ->
+                    Snackbar(
+                        message = data.visuals.message,
+                        onDismiss = data::dismiss,
+                        isError = true,
+                        presentationKey = data,
+                    )
+                },
+            )
 
             SnackbarHost(
                 hostState = snackbarHostState,

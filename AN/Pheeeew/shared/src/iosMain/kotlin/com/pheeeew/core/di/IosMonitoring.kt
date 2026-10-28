@@ -4,7 +4,6 @@ package com.pheeeew.core.di
 
 import cocoapods.Sentry.SentryException
 import cocoapods.Sentry.SentryUser
-import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.monitoring.MonitoringConfig
 import com.pheeeew.core.monitoring.MonitoringRuntime
 import com.pheeeew.core.monitoring.MonitoringStore

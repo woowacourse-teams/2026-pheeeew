@@ -35,7 +35,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
@@ -48,6 +47,37 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MapFilterApplyTest {
+    @Test
+    fun `필터 표시는 편집이 아니라 적용 성공과 초기화 적용을 따른다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val vm = viewModel(SettingsRepository(), ListRefresher(visible = false))
+                runCurrent()
+                vm.onViewportChanged(EmotionMapViewport(BOUNDS, 15.0))
+                advanceUntilIdle()
+                assertFalse(vm.uiModel.value.isFilterApplied)
+                vm.openFilter()
+                vm.selectFilterScope(FilterScope.Mine)
+                assertFalse(vm.uiModel.value.isFilterApplied)
+                vm.dismissFilter()
+                assertFalse(vm.uiModel.value.isFilterApplied)
+                vm.openFilter()
+                vm.selectFilterScope(FilterScope.Mine)
+                vm.applyFilter()
+                advanceUntilIdle()
+                assertTrue(vm.uiModel.value.isFilterApplied)
+                vm.openFilter()
+                vm.resetFilter()
+                assertTrue(vm.uiModel.value.isFilterApplied)
+                vm.applyFilter()
+                advanceUntilIdle()
+                assertFalse(vm.uiModel.value.isFilterApplied)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
     @Test
     fun `집계가 성공해도 열린 목록이 실패하면 기존 필터와 집계를 유지한다`() =
         runTest {
@@ -75,6 +105,7 @@ class MapFilterApplyTest {
                 advanceUntilIdle()
                 assertEquals(null, settings.saved)
                 assertFalse(list.committed)
+                assertFalse(vm.uiModel.value.isFilterApplied)
                 assertEquals(
                     listOf("original"),
                     vm.uiModel.value.regionClusters
@@ -88,7 +119,7 @@ class MapFilterApplyTest {
         }
 
     @Test
-    fun `설정 저장 중 이동하면 이전 집계를 표시하지 않고 저장한 필터로 최신 영역을 조회한다`() =
+    fun `설정 저장 중 같은 단계로 이동하면 전체 집계를 최신 화면에 표시한다`() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
             try {
@@ -99,17 +130,7 @@ class MapFilterApplyTest {
                 val regions =
                     regionRepository { bounds, filter ->
                         requests += bounds to filter
-                        regionResult(
-                            if (bounds ==
-                                latest
-                            ) {
-                                "latest"
-                            } else if (filter?.scope == MapFilterScope.MY) {
-                                "stale"
-                            } else {
-                                "original"
-                            },
-                        )
+                        if (filter?.scope == MapFilterScope.MY) nationalRegionResult() else regionResult("original")
                     }
                 val vm = viewModel(settings, ListRefresher(visible = false), regions = regions)
                 runCurrent()
@@ -119,19 +140,20 @@ class MapFilterApplyTest {
                 vm.selectFilterScope(FilterScope.Mine)
                 vm.applyFilter()
                 runCurrent()
-                vm.onViewportChanged(EmotionMapViewport(latest, 10.0, WORLD_RENDER_BOUNDS))
+                vm.onViewportChanged(EmotionMapViewport(latest, 10.0))
                 gate.complete(Unit)
                 runCurrent()
                 assertEquals(
-                    listOf("original"),
+                    listOf("east"),
                     vm.uiModel.value.regionClusters
                         .map { it.id },
                 )
                 advanceUntilIdle()
-                assertEquals(latest, requests.last().first)
-                assertEquals(MapFilterScope.MY, requests.last().second?.scope)
+                val candidateRequests = requests.filter { it.second?.scope == MapFilterScope.MY }
+                assertEquals(1, candidateRequests.size)
+                assertEquals(BOUNDS, candidateRequests.single().first)
                 assertEquals(
-                    listOf("latest"),
+                    listOf("east"),
                     vm.uiModel.value.regionClusters
                         .map { it.id },
                 )
@@ -142,7 +164,7 @@ class MapFilterApplyTest {
         }
 
     @Test
-    fun `필터 집계 응답 대기 중 이동하면 최신 영역을 다시 조회한 뒤 적용한다`() =
+    fun `필터 집계 응답 대기 중 같은 단계로 이동하면 전체 응답을 최신 화면에 적용한다`() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
             try {
@@ -154,10 +176,8 @@ class MapFilterApplyTest {
                         requests += bounds to filter
                         if (filter?.scope != MapFilterScope.MY) {
                             regionResult("original")
-                        } else if (requests.count { it.second?.scope == MapFilterScope.MY } == 1) {
-                            response.await()
                         } else {
-                            regionResult("latest")
+                            response.await()
                         }
                     }
                 val vm = viewModel(settings, ListRefresher(visible = false), regions = regions)
@@ -169,7 +189,7 @@ class MapFilterApplyTest {
                 vm.applyFilter()
                 runCurrent()
                 val latest = BOUNDS.copy(minLongitude = 128.0, maxLongitude = 128.2)
-                vm.onViewportChanged(EmotionMapViewport(latest, 10.0, WORLD_RENDER_BOUNDS))
+                vm.onViewportChanged(EmotionMapViewport(latest, 10.0))
                 runCurrent()
                 assertEquals(null, settings.saved)
                 assertEquals(
@@ -177,12 +197,13 @@ class MapFilterApplyTest {
                     vm.uiModel.value.regionClusters
                         .map { it.id },
                 )
-                response.complete(regionResult("stale"))
+                response.complete(nationalRegionResult())
                 advanceUntilIdle()
-                assertEquals(latest, requests.last().first)
-                assertEquals(MapFilterScope.MY, requests.last().second?.scope)
+                val candidateRequests = requests.filter { it.second?.scope == MapFilterScope.MY }
+                assertEquals(1, candidateRequests.size)
+                assertEquals(BOUNDS, candidateRequests.single().first)
                 assertEquals(
-                    listOf("latest"),
+                    listOf("east"),
                     vm.uiModel.value.regionClusters
                         .map { it.id },
                 )
@@ -415,7 +436,6 @@ class MapFilterApplyTest {
                 val vm = viewModel(SettingsRepository(), ListRefresher(visible = false), map)
                 runCurrent()
                 vm.onViewportChanged(BOUNDS)
-                advanceTimeBy(700)
                 runCurrent()
                 assertEquals(listOf(1L), vm.pinIds())
 
@@ -425,8 +445,8 @@ class MapFilterApplyTest {
                 runCurrent()
                 assertEquals(BOUNDS.expandedForPinQuery(), requestedBounds.last())
                 assertEquals(listOf(3L), vm.pinIds())
-                advanceUntilIdle()
-                assertEquals(listOf(3L), vm.pinIds())
+                vm.updateReadiness(ready = false, generation = null)
+                runCurrent()
             } finally {
                 Dispatchers.resetMain()
             }
@@ -479,15 +499,11 @@ class MapFilterApplyTest {
             mapOverride ?: object : EmotionMapRepository {
                 override suspend fun findPage(
                     bounds: EmotionMapBounds?,
-                    groupId: String?,
                     cursor: String?,
                     forceRefresh: Boolean,
                 ) = EmotionMapPageResult.Success(EmotionMapPage(emptyList(), false, null, 0))
 
-                override fun findSnapshot(
-                    bounds: EmotionMapBounds,
-                    groupId: String?,
-                ): EmotionMapSnapshot? = null
+                override fun findSnapshot(bounds: EmotionMapBounds): EmotionMapSnapshot? = null
             }
         return MapViewModel(
             refreshLocation =
@@ -514,6 +530,14 @@ class MapFilterApplyTest {
     private fun regionResult(id: String) =
         EmotionRegionResult.Success(listOf(EmotionRegion(id, id, 127.0, 37.55, 3, EmotionState.ANGRY)))
 
+    private fun nationalRegionResult() =
+        EmotionRegionResult.Success(
+            listOf(
+                EmotionRegion("west", "서쪽", 127.05, 37.55, 1, null),
+                EmotionRegion("east", "동쪽", 128.05, 37.55, 2, null),
+            ),
+        )
+
     private fun regionRepository(
         load: suspend (EmotionMapBounds, EmotionSearchFilter?) -> EmotionRegionResult,
     ): EmotionRegionMapRepository =
@@ -521,14 +545,12 @@ class MapFilterApplyTest {
             override suspend fun findRegions(
                 bounds: EmotionMapBounds,
                 level: EmotionRegionLevel,
-                groupId: String?,
                 forceRefresh: Boolean,
                 filter: EmotionSearchFilter?,
             ) = load(bounds, filter)
 
             override fun findSnapshot(
                 level: EmotionRegionLevel,
-                groupId: String?,
                 filter: EmotionSearchFilter?,
             ): List<EmotionRegion>? = null
         }
@@ -539,7 +561,6 @@ class MapFilterApplyTest {
     ) : EmotionMapRepository {
         override suspend fun findPage(
             bounds: EmotionMapBounds?,
-            groupId: String?,
             cursor: String?,
             forceRefresh: Boolean,
         ): EmotionMapPageResult = error("Filtered queries must include the applied settings")
@@ -551,10 +572,8 @@ class MapFilterApplyTest {
             forceRefresh: Boolean,
         ) = load(bounds, filter, cursor)
 
-        override fun findSnapshot(
-            bounds: EmotionMapBounds,
-            groupId: String?,
-        ): EmotionMapSnapshot? = error("Filtered snapshots must include the applied settings")
+        override fun findSnapshot(bounds: EmotionMapBounds): EmotionMapSnapshot? =
+            error("Filtered snapshots must include the applied settings")
 
         override fun findFilteredSnapshot(
             bounds: EmotionMapBounds,
@@ -564,7 +583,7 @@ class MapFilterApplyTest {
 
     private fun MapViewModel.pinIds() = uiModel.value.emotionPins.map { it.id }
 
-    private fun pin(id: Long) = EmotionMapPin(id, 127.0, 37.55, "2026-10-13T00:00:00Z", EmotionState.ANGRY, 0.0, null)
+    private fun pin(id: Long) = EmotionMapPin(id, 127.0, 37.55, "2026-10-13T00:00:00Z", EmotionState.ANGRY, 0.0)
 
     private fun page(
         pin: EmotionMapPin,

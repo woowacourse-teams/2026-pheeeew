@@ -10,9 +10,6 @@ import com.pheeeew.domain.model.emotion.EmotionPlayback
 import com.pheeeew.domain.model.emotion.EmotionReaction
 import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.domain.model.emotion.EmotionState
-import com.pheeeew.domain.model.group.GroupStamp
-import com.pheeeew.domain.model.group.GroupStampFrame
-import com.pheeeew.domain.model.group.StampColor
 import com.pheeeew.domain.repository.EmotionDetailRepository
 import dev.zacsweers.metro.Inject
 import kotlin.time.Instant
@@ -94,15 +91,6 @@ class EmotionDetailRepositoryImpl(
             properties.createdAt,
             properties.memo.takeIf { contentType == "MEMO" },
             audio,
-            properties.groupStamp?.let {
-                GroupStamp(
-                    it.text,
-                    requireNotNull(StampColor.parseServerValue(it.textColor)),
-                    requireNotNull(StampColor.parseServerValue(it.backgroundColor)),
-                    GroupStampFrame.valueOf(it.frame),
-                )
-            },
-            properties.groupId,
             properties.isMine,
             reactions,
         )

@@ -1,12 +1,8 @@
 package com.pheeeew.feature.screens.map.detail
 
-import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
 
 data class EmotionDetailUiModel(
-    val groupName: String,
-    val stampText: String,
-    val stamp: StampAppearanceUiModel?,
     val nickname: String,
     val emotion: EmotionTypeUiModel,
     val createdAtLabel: String,

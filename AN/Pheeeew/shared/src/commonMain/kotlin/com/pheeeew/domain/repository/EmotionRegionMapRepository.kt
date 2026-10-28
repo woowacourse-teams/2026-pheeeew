@@ -10,14 +10,12 @@ interface EmotionRegionMapRepository {
     suspend fun findRegions(
         bounds: EmotionMapBounds,
         level: EmotionRegionLevel,
-        groupId: String? = null,
         forceRefresh: Boolean = false,
         filter: EmotionSearchFilter? = null,
     ): EmotionRegionResult
 
     fun findSnapshot(
         level: EmotionRegionLevel,
-        groupId: String? = null,
         filter: EmotionSearchFilter? = null,
     ): List<EmotionRegion>?
 }

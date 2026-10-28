@@ -47,7 +47,7 @@ class DebugNetworkEngine(
             return delegate.execute(data)
         }
         val path = data.url.encodedPath
-        if (data.method == HttpMethod.Get && path.matches(Regex("${ApiEndpointPaths.EMOTIONS}/[0-9]+")) &&
+        if (data.method == HttpMethod.Get && path.matches(Regex("${ApiEndpointPaths.EMOTION_DETAIL}/[0-9]+")) &&
             ErrorSimulation.shouldFail(ErrorSimulationScenario.EmotionDetailNotFound)
         ) {
             return syntheticResponse(HttpStatusCode.NotFound)
@@ -78,11 +78,7 @@ class DebugNetworkEngine(
                     ErrorSimulationScenario.RegionClusters
                 }
 
-                data.method == HttpMethod.Get && path == ApiEndpointPaths.GROUP_STAMPS -> {
-                    ErrorSimulationScenario.GroupOptionsUnavailable
-                }
-
-                data.method == HttpMethod.Get && path.matches(Regex("${ApiEndpointPaths.EMOTIONS}/[0-9]+")) -> {
+                data.method == HttpMethod.Get && path.matches(Regex("${ApiEndpointPaths.EMOTION_DETAIL}/[0-9]+")) -> {
                     ErrorSimulationScenario.EmotionDetailUnavailable
                 }
 

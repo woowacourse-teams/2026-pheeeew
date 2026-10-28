@@ -1,7 +1,6 @@
 package com.pheeeew.domain.model.emotion
 
 import com.pheeeew.domain.model.GeoCoordinate
-import com.pheeeew.domain.model.group.GroupStamp
 
 enum class EmotionState {
     FRUSTRATED,
@@ -18,7 +17,6 @@ data class EmotionMapPin(
     val createdAt: String,
     val state: EmotionState,
     val rotationDegrees: Double,
-    val groupStamp: GroupStamp?,
 )
 
 data class EmotionMapBounds(

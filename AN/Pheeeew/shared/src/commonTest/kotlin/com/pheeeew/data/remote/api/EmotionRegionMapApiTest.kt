@@ -18,9 +18,12 @@ import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpHeaders
 import io.ktor.http.headersOf
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -29,6 +32,43 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class EmotionRegionMapApiTest {
+    @Test
+    fun `마지막 대기자가 취소되면 공유 중인 HTTP 요청도 취소한다`() =
+        runTest {
+            var requests = 0
+            val started = CompletableDeferred<Unit>()
+            val cancelled = CompletableDeferred<Unit>()
+            val client =
+                createApiClient(
+                    MockEngine {
+                        requests++
+                        started.complete(Unit)
+                        try {
+                            awaitCancellation()
+                        } catch (cancellation: CancellationException) {
+                            cancelled.complete(Unit)
+                            throw cancellation
+                        }
+                    },
+                    ApiConfig("https://api.example.test"),
+                    AccessTokenProvider { AccessToken("token") },
+                )
+            try {
+                val repository = EmotionRegionMapRepositoryImpl(EmotionRegionMapApi(client.requests))
+                val area = EmotionMapBounds(126.9, 37.5, 127.1, 37.6)
+                val request = async { repository.findRegions(area, EmotionRegionLevel.SIGUNGU) }
+
+                started.await()
+                request.cancelAndJoin()
+                cancelled.await()
+
+                assertEquals(1, requests)
+                assertTrue(request.isCancelled)
+            } finally {
+                client.close()
+            }
+        }
+
     @Test
     @OptIn(ExperimentalCoroutinesApi::class)
     fun `동일한 전국 조건의 동시 요청은 bbox가 달라도 하나로 공유한다`() =
@@ -164,8 +204,7 @@ class EmotionRegionMapApiTest {
                     MapFilterSettings(period = MapFilterPeriod.ALL).toSearchFilter(today),
                     MapFilterSettings(scope = MapFilterScope.MY, content = MapFilterContent.MEMO).toSearchFilter(today),
                     MapFilterSettings(
-                        scope = MapFilterScope.GROUP,
-                        groupId = "group",
+                        scope = MapFilterScope.ALL,
                         content = MapFilterContent.AUDIO,
                     ).toSearchFilter(today),
                 )
@@ -188,8 +227,7 @@ class EmotionRegionMapApiTest {
                         "startDate" to "2026-09-13",
                         "endDate" to "2026-10-13",
                         "contentType" to "AUDIO",
-                        "scope" to "GROUP",
-                        "groupId" to "group",
+                        "scope" to "ALL",
                     ),
                 )
             var calls = 0
@@ -276,8 +314,8 @@ class EmotionRegionMapApiTest {
                 repository.findRegions(area, EmotionRegionLevel.SIGUNGU, forceRefresh = true)
                 repository.findRegions(area, EmotionRegionLevel.SIDO)
                 assertEquals(4, calls)
-                repository.findRegions(area, EmotionRegionLevel.SIGUNGU, groupId = "group")
-                assertEquals(5, calls)
+                repository.findRegions(area, EmotionRegionLevel.SIGUNGU)
+                assertEquals(4, calls)
             } finally {
                 client.close()
             }
@@ -334,7 +372,7 @@ class EmotionRegionMapApiTest {
                 createApiClient(
                     engine =
                         MockEngine { request ->
-                            assertEquals("/api/v2/emotions/map/regions", request.url.encodedPath)
+                            assertEquals("/api/v4/emotions/map/regions", request.url.encodedPath)
                             assertEquals("126.75", request.url.parameters["minLongitude"])
                             assertEquals("37.375", request.url.parameters["minLatitude"])
                             assertEquals("127.25", request.url.parameters["maxLongitude"])

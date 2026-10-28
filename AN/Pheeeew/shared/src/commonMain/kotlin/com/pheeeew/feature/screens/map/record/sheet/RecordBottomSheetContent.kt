@@ -14,12 +14,10 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -31,17 +29,13 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LocalTextStyle
-import androidx.compose.material3.ModalBottomSheetProperties
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,7 +48,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
@@ -68,7 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.audio.VoiceRecorder
 import com.pheeeew.core.audio.VoiceRecordingState
-import com.pheeeew.core.designsystem.component.AppModalBottomSheet
+import com.pheeeew.core.designsystem.component.AppNavigableBottomSheet
 import com.pheeeew.core.designsystem.component.ConfirmDialog
 import com.pheeeew.core.designsystem.component.SheetDragHandle
 import com.pheeeew.core.designsystem.component.raisedButtonBorder
@@ -80,10 +73,7 @@ import com.pheeeew.core.designsystem.input.usesNativeTextEditor
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
-import com.pheeeew.core.navigation.FlowBackHandler
-import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
-import com.pheeeew.feature.screens.map.record.group.GroupSelectionButton
 import com.pheeeew.feature.screens.map.record.noRippleClickable
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -110,12 +100,9 @@ fun RecordBottomSheet(
     memo: String,
     isAnonymous: Boolean,
     onAnonymousChange: (Boolean) -> Unit,
-    selectedGroupStamp: StampAppearanceUiModel?,
-    isGroupSelectionLoading: Boolean,
     onDismissRequest: () -> Unit,
     onInputModeChange: (RecordInputModeUiModel) -> Unit,
     onMemoChange: (String) -> Unit,
-    onGroupClick: () -> Unit,
     onNext: () -> Unit,
     modifier: Modifier = Modifier,
     voiceRecorder: VoiceRecorder? = null,
@@ -123,63 +110,23 @@ fun RecordBottomSheet(
     isDismissConfirmationVisible: Boolean = false,
     dismissConfirmationContent: @Composable () -> Unit = {},
 ) {
-    val keyboardController = LocalSoftwareKeyboardController.current
-    val focusManager = LocalFocusManager.current
-    var dismissRequested by remember { mutableStateOf(false) }
     var showOtherInputDialog by remember { mutableStateOf(false) }
-    val currentOnDismissRequest by rememberUpdatedState(onDismissRequest)
-    val currentConfirmationVisible by rememberUpdatedState(isDismissConfirmationVisible)
-    // Keep this callback stable: SheetState uses its identity as a rememberSaveable key.
-    val confirmValueChange: (SheetValue) -> Boolean =
-        remember {
-            { value ->
-                if (value == SheetValue.Hidden) {
-                    if (!currentConfirmationVisible) dismissRequested = true
-                    false
-                } else {
-                    true
-                }
-            }
-        }
-    val sheetState =
-        rememberModalBottomSheetState(
-            skipPartiallyExpanded = true,
-            confirmValueChange = confirmValueChange,
-        )
-    LaunchedEffect(dismissRequested) {
-        if (dismissRequested) {
-            // Consume this attempt without waiting for a cancellable sheet animation.
-            // Material restores the sheet when the Hidden transition is vetoed.
-            dismissRequested = false
-            dismissNativeTextKeyboard()
-            focusManager.clearFocus()
-            keyboardController?.hide()
-            currentOnDismissRequest()
-        }
-    }
-    AppModalBottomSheet(
-        onDismissRequest = {
-            if (!currentConfirmationVisible) dismissRequested = true
-        },
-        modifier = modifier,
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val requestDismiss = { if (!isDismissConfirmationVisible) onDismissRequest() }
+    AppNavigableBottomSheet(
+        onDismissRequest = requestDismiss,
+        onBackOrOutsideClick = requestDismiss,
+        outsideContentDescription = stringResource(Res.string.record_discard_title),
         sheetState = sheetState,
-        // The default predictive back keeps its scale when Hidden is vetoed for confirmation.
-        properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false),
+        modifier = modifier,
+        dismissKeyboardBeforeNavigation = true,
+        dragFromContent = true,
+        restoreOnSwipeDismissRequest = true,
         shape = AppShapes.BottomSheet,
         containerColor = AppColors.Surface,
         scrimColor = Color.Black.copy(alpha = 0.3f),
         dragHandle = { SheetDragHandle() },
     ) {
-        val isKeyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
-        FlowBackHandler(enabled = true) {
-            if (isKeyboardVisible) {
-                dismissNativeTextKeyboard()
-                focusManager.clearFocus()
-                keyboardController?.hide()
-            } else {
-                dismissRequested = true
-            }
-        }
         dismissConfirmationContent()
         feedbackContent()
         RecordBottomSheetContent(
@@ -188,11 +135,8 @@ fun RecordBottomSheet(
             memo = memo,
             isAnonymous = isAnonymous,
             onAnonymousChange = onAnonymousChange,
-            selectedGroupStamp = selectedGroupStamp,
-            isGroupSelectionLoading = isGroupSelectionLoading,
             onInputModeChange = onInputModeChange,
             onMemoChange = onMemoChange,
-            onGroupClick = onGroupClick,
             onNext = {
                 val hasOtherInput =
                     when (inputMode) {
@@ -254,11 +198,8 @@ private fun RecordBottomSheetContent(
     memo: String,
     isAnonymous: Boolean,
     onAnonymousChange: (Boolean) -> Unit,
-    selectedGroupStamp: StampAppearanceUiModel?,
-    isGroupSelectionLoading: Boolean,
     onInputModeChange: (RecordInputModeUiModel) -> Unit,
     onMemoChange: (String) -> Unit,
-    onGroupClick: () -> Unit,
     onNext: () -> Unit,
     modifier: Modifier,
     voiceRecorder: VoiceRecorder? = null,
@@ -325,11 +266,6 @@ private fun RecordBottomSheetContent(
                     fontWeight = FontWeight.Bold,
                 )
             }
-            GroupSelectionButton(
-                stamp = selectedGroupStamp,
-                loading = isGroupSelectionLoading,
-                onClick = onGroupClick,
-            )
         }
 
         Spacer(modifier = Modifier.height(4.dp))
@@ -396,16 +332,15 @@ private fun RecordBottomSheetContent(
         RecordSheetActions(
             onNext = onNext,
             enabled =
-                !isGroupSelectionLoading &&
-                    when (inputMode) {
-                        RecordInputModeUiModel.Memo -> {
-                            memo.isNotBlank()
-                        }
+                when (inputMode) {
+                    RecordInputModeUiModel.Memo -> {
+                        memo.isNotBlank()
+                    }
 
-                        RecordInputModeUiModel.Recording -> {
-                            recordingReady
-                        }
-                    },
+                    RecordInputModeUiModel.Recording -> {
+                        recordingReady
+                    }
+                },
         )
     }
 }
@@ -649,11 +584,8 @@ private fun RecordBottomSheetContentPreview() {
         memo = "",
         isAnonymous = false,
         onAnonymousChange = {},
-        selectedGroupStamp = null,
-        isGroupSelectionLoading = false,
         onInputModeChange = {},
         onMemoChange = {},
-        onGroupClick = {},
         onNext = {},
         modifier = Modifier,
     )
@@ -668,11 +600,8 @@ private fun RecordBottomSheetRecordingPreview() {
         memo = "",
         isAnonymous = false,
         onAnonymousChange = {},
-        selectedGroupStamp = null,
-        isGroupSelectionLoading = false,
         onInputModeChange = {},
         onMemoChange = {},
-        onGroupClick = {},
         onNext = {},
         modifier = Modifier,
     )

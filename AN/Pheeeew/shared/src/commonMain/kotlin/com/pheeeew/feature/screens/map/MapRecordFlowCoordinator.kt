@@ -36,7 +36,6 @@ internal class MapRecordFlowCoordinator(
     }
 
     fun next(currentLocation: CurrentLocation?) {
-        if (recordViewModel.uiModel.value.isGroupSelectionLoading) return
         voiceRecorder.stop()
         voiceRecorder.pause()
         recordViewModel.onNext(currentLocation, voiceRecorder.state.value.filePath)

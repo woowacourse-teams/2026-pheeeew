@@ -5,6 +5,7 @@ import com.pheeeew.core.audio.IosAudioPlayback
 import com.pheeeew.core.audio.IosAudioPlayer
 import com.pheeeew.core.audio.IosVoiceRecorder
 import com.pheeeew.core.di.device.DeviceSessionBuildConfig
+import com.pheeeew.core.di.device.PressInputMode
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.ConnectivityObserver
@@ -12,8 +13,6 @@ import com.pheeeew.core.permission.AppSettingsLauncher
 import com.pheeeew.core.permission.IosAppSettingsLauncher
 import com.pheeeew.data.local.device.DeviceCredentialStorage
 import com.pheeeew.data.local.device.IosDeviceCredentialStorage
-import com.pheeeew.data.local.group.IosGroupCreateSessionStore
-import com.pheeeew.data.local.group.IosLastRecordedGroupRepository
 import com.pheeeew.data.location.platform.ios.IosLocationPermissionController
 import com.pheeeew.data.location.platform.ios.IosPlatformLocationProvider
 import com.pheeeew.data.remote.attestation.DeviceAttestationPolicy
@@ -21,16 +20,9 @@ import com.pheeeew.data.remote.attestation.IosAppAttestProofProvider
 import com.pheeeew.data.repository.AppVersionRepositoryImpl
 import com.pheeeew.data.repository.EmotionMapRepositoryImpl
 import com.pheeeew.data.repository.EmotionRegionMapRepositoryImpl
-import com.pheeeew.data.repository.GroupDetailRepositoryImpl
-import com.pheeeew.data.repository.GroupListRepositoryImpl
-import com.pheeeew.data.repository.GroupStampListRepositoryImpl
 import com.pheeeew.domain.model.device.DevicePlatform
 import com.pheeeew.domain.repository.AppVersionRepository
-import com.pheeeew.domain.repository.LastRecordedGroupRepository
 import com.pheeeew.domain.repository.OnboardingStore
-import com.pheeeew.feature.screens.group.create.GroupCreateSessionStore
-import com.pheeeew.feature.screens.group.create.ProcessGroupCreateSessionStore
-import com.pheeeew.feature.screens.group.model.GroupOperationKeyAllocator
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.GraphExtension
 import dev.zacsweers.metro.Provides
@@ -41,7 +33,6 @@ import platform.Foundation.NSBundle
 import platform.Foundation.NSUserDefaults
 import kotlin.experimental.ExperimentalNativeApi
 import kotlin.native.Platform
-import kotlin.random.Random
 
 @DependencyGraph(AppScope::class)
 internal interface IosAppGraph :
@@ -71,6 +62,7 @@ internal interface IosAppGraph :
             setting("API_BASE_URL"),
             setting("DEVICE_ATTESTATION_MODE"),
             "${setting("CFBundleShortVersionString")}+${setting("CFBundleVersion")}",
+            PressInputMode.fromBuildValue(setting("PRESS_INPUT_MODE")),
         )
     }
 
@@ -104,15 +96,6 @@ internal interface IosAppGraph :
 
     @Provides
     @SingleIn(AppScope::class)
-    fun lastGroup(): LastRecordedGroupRepository = IosLastRecordedGroupRepository(NSUserDefaults.standardUserDefaults)
-
-    @Provides
-    @SingleIn(AppScope::class)
-    fun groupDraft(): GroupCreateSessionStore =
-        ProcessGroupCreateSessionStore(IosGroupCreateSessionStore(NSUserDefaults.standardUserDefaults))
-
-    @Provides
-    @SingleIn(AppScope::class)
     fun onboarding(): OnboardingStore = IosOnboardingStore()
 
     @Provides
@@ -143,17 +126,10 @@ internal interface ViewControllerGraph :
     fun services(
         map: EmotionMapRepositoryImpl,
         regions: EmotionRegionMapRepositoryImpl,
-        stamps: GroupStampListRepositoryImpl,
-        list: GroupListRepositoryImpl,
-        detail: GroupDetailRepositoryImpl,
     ): UiServices =
         UiServices(
             map,
             regions,
-            stamps,
-            list,
-            detail,
-            GroupOperationKeyAllocator("group-${Random.nextLong().toULong().toString(16)}"),
         )
 
     @Provides
@@ -200,6 +176,25 @@ private class IosOnboardingStore : OnboardingStore {
     override fun complete() {
         NSUserDefaults.standardUserDefaults.setBool(true, forKey = "onboarding_completed")
     }
+
+    override fun resetCompletion() {
+        val defaults = NSUserDefaults.standardUserDefaults
+        defaults.removeObjectForKey("onboarding_completed")
+    }
+
+    override fun isInitialNotificationPermissionHandled(): Boolean {
+        val defaults = NSUserDefaults.standardUserDefaults
+        if (defaults.objectForKey("initial_notification_permission_handled") == null) {
+            defaults.setBool(isCompleted(), forKey = "initial_notification_permission_handled")
+        }
+        return defaults.boolForKey("initial_notification_permission_handled")
+    }
+
+    override fun completeInitialNotificationPermission() {
+        NSUserDefaults.standardUserDefaults.setBool(true, forKey = "initial_notification_permission_handled")
+    }
 }
 
 fun iosDeviceBuildConfig(): DeviceSessionBuildConfig = IosGraphs.app.apiDependencies.buildConfig
+
+fun iosOnboardingStore(): OnboardingStore = IosGraphs.app.onboardingStore

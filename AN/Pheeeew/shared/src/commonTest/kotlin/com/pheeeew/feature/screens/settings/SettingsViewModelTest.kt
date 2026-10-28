@@ -168,7 +168,7 @@ class SettingsViewModelTest {
         runViewModelTest {
             val repository = FakeDeviceNicknameRepository("이전 이름")
             repository.lookupResults += DeviceNicknameLookup.Found("이전 이름")
-            repository.lookupResults += DeviceNicknameLookup.Failed
+            repository.lookupResults += DeviceNicknameLookup.Failed()
             repository.lookupResults += DeviceNicknameLookup.Found("새 이름")
             val viewModel = createViewModel(repository)
             viewModel.openNicknameEditor()
@@ -247,7 +247,7 @@ class SettingsViewModelTest {
                     FakeDeviceNicknameRepository("이전 이름").apply {
                         this.updateResult = updateResult
                         lookupResults += DeviceNicknameLookup.Found("이전 이름")
-                        lookupResults += DeviceNicknameLookup.Failed
+                        lookupResults += DeviceNicknameLookup.Failed()
                         lookupResults += DeviceNicknameLookup.Found("서버 이름")
                     }
                 val viewModel = createViewModel(repository)
@@ -280,7 +280,7 @@ class SettingsViewModelTest {
     @Test
     fun `재조회가 계속 실패하거나 저장 값과 달라도 모달을 닫을 수 있다`() =
         runViewModelTest {
-            for (lookup in listOf(DeviceNicknameLookup.Failed, DeviceNicknameLookup.Found("다른 이름"))) {
+            for (lookup in listOf(DeviceNicknameLookup.Failed(), DeviceNicknameLookup.Found("다른 이름"))) {
                 val repository =
                     FakeDeviceNicknameRepository("이전 이름").apply {
                         lookupResults += DeviceNicknameLookup.Found("이전 이름")
@@ -342,7 +342,7 @@ class SettingsViewModelTest {
             nicknameState.value =
                 when (result) {
                     is DeviceNicknameLookup.Found -> DeviceNicknameState(nickname = result.nickname, isConfirmed = true)
-                    DeviceNicknameLookup.Failed -> nicknameState.value.copy(lookupFailed = true)
+                    is DeviceNicknameLookup.Failed -> nicknameState.value.copy(lookupFailed = true)
                 }
             return result
         }

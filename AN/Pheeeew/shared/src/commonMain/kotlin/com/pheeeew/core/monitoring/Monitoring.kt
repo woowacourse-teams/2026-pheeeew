@@ -11,6 +11,9 @@ interface Monitoring {
         occurredAt: Long,
     ) = Unit
 
+    /** Counts one accepted button input, independently of HTTP/WS delivery retries. */
+    fun recordPressInput(occurredAt: Long) = Unit
+
     fun context(
         screen: String,
         parent: EventContext? = null,

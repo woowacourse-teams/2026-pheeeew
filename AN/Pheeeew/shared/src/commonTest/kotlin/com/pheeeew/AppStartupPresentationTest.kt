@@ -86,4 +86,16 @@ class AppStartupPresentationTest {
             ),
         )
     }
+
+    @Test
+    fun `온보딩을 완료하면 바로 메인 진입을 준비한다`() {
+        assertEquals(
+            AppStartupPresentation.MAIN,
+            resolveAppStartupPresentation(true, true, false, true),
+        )
+        assertEquals(
+            AppStartupPresentation.REQUIRED_UPDATE,
+            resolveAppStartupPresentation(true, true, true, true),
+        )
+    }
 }

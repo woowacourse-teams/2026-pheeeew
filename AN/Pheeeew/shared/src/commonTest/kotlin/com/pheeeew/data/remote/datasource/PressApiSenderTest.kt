@@ -28,6 +28,33 @@ private typealias MockResponseHandler = suspend MockRequestHandleScope.(HttpRequ
 
 class PressApiSenderTest {
     @Test
+    fun `rate limited JSON and proxy responses enter retry without replaying inside the adapter`() =
+        runTest {
+            for (header in listOf("5", "120", null, "invalid")) {
+                var requests = 0
+                val client =
+                    client(handler = {
+                        requests++
+                        respond(
+                            "<html>Too Many Requests</html>",
+                            HttpStatusCode.TooManyRequests,
+                            if (header == null) headersOf() else headersOf(HttpHeaders.RetryAfter, header),
+                        )
+                    })
+                try {
+                    val result =
+                        assertIs<PressSendResult.RetryAfter>(
+                            PressApiSender(EmotionPressApi(client.requests)).send(batch()),
+                        )
+                    assertEquals((header?.toLongOrNull() ?: 0L) * 1000L, result.delayMillis.value)
+                    assertEquals(1, requests)
+                } finally {
+                    client.close()
+                }
+            }
+        }
+
+    @Test
     fun `replays the same batch once after recoverable authentication failure`() =
         runTest {
             var requests = 0
@@ -142,7 +169,6 @@ class PressApiSenderTest {
 
     private fun batch() =
         PressBatch(
-            sequence = 7L,
             counts = linkedMapOf(EmotionState.ANGRY to 2, EmotionState.EXHAUSTED to 1),
         )
 

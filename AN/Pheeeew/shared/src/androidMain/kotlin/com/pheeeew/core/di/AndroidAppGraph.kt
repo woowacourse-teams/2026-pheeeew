@@ -19,12 +19,12 @@ import com.pheeeew.core.monitoring.StateDecoder
 import com.pheeeew.core.monitoring.createAndroidMonitoring
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.ConnectivityObserver
+import com.pheeeew.core.notification.AndroidNotificationPermissionController
+import com.pheeeew.core.notification.NotificationPermissionController
 import com.pheeeew.core.permission.AndroidAppSettingsLauncher
 import com.pheeeew.core.permission.AppSettingsLauncher
 import com.pheeeew.data.local.device.AndroidDeviceCredentialStorage
 import com.pheeeew.data.local.device.DeviceCredentialStorage
-import com.pheeeew.data.local.group.AndroidGroupCreateSessionStore
-import com.pheeeew.data.local.group.AndroidLastRecordedGroupRepository
 import com.pheeeew.data.location.platform.android.AndroidLocationPermissionController
 import com.pheeeew.data.location.platform.android.AndroidPlatformLocationProvider
 import com.pheeeew.data.remote.attestation.AndroidPlayIntegrityProofProvider
@@ -32,23 +32,15 @@ import com.pheeeew.data.remote.attestation.DeviceAttestationPolicy
 import com.pheeeew.data.repository.AppVersionRepositoryImpl
 import com.pheeeew.data.repository.EmotionMapRepositoryImpl
 import com.pheeeew.data.repository.EmotionRegionMapRepositoryImpl
-import com.pheeeew.data.repository.GroupDetailRepositoryImpl
-import com.pheeeew.data.repository.GroupListRepositoryImpl
-import com.pheeeew.data.repository.GroupStampListRepositoryImpl
 import com.pheeeew.domain.model.device.DevicePlatform
 import com.pheeeew.domain.permission.LocationPermissionController
 import com.pheeeew.domain.repository.AppVersionRepository
-import com.pheeeew.domain.repository.LastRecordedGroupRepository
 import com.pheeeew.domain.repository.OnboardingStore
-import com.pheeeew.feature.screens.group.create.GroupCreateSessionStore
-import com.pheeeew.feature.screens.group.create.ProcessGroupCreateSessionStore
-import com.pheeeew.feature.screens.group.model.GroupOperationKeyAllocator
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.GraphExtension
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.createGraphFactory
-import kotlin.random.Random
 
 class AndroidAppConfig(
     val device: DeviceSessionBuildConfig,
@@ -132,15 +124,6 @@ internal interface AndroidAppGraph :
 
     @Provides
     @SingleIn(AppScope::class)
-    fun lastGroup(context: Context): LastRecordedGroupRepository = AndroidLastRecordedGroupRepository(context)
-
-    @Provides
-    @SingleIn(AppScope::class)
-    fun groupDraft(context: Context): GroupCreateSessionStore =
-        ProcessGroupCreateSessionStore(AndroidGroupCreateSessionStore(context))
-
-    @Provides
-    @SingleIn(AppScope::class)
     fun onboarding(context: Context): OnboardingStore = AndroidOnboardingStore(context)
 
     @Provides
@@ -163,11 +146,13 @@ internal interface ActivityRetainedGraph :
     UiGraph,
     UiBindings {
     val permissionOwner: AttachedLocationPermission
+    val notificationPermissionOwner: AttachedNotificationPermission
 
     @GraphExtension.Factory
     interface Factory {
         fun create(
             @Provides permission: AttachedLocationPermission,
+            @Provides notificationPermission: AttachedNotificationPermission,
         ): ActivityRetainedGraph
     }
 
@@ -176,17 +161,10 @@ internal interface ActivityRetainedGraph :
     fun services(
         map: EmotionMapRepositoryImpl,
         regions: EmotionRegionMapRepositoryImpl,
-        stamps: GroupStampListRepositoryImpl,
-        list: GroupListRepositoryImpl,
-        detail: GroupDetailRepositoryImpl,
     ): UiServices =
         UiServices(
             map,
             regions,
-            stamps,
-            list,
-            detail,
-            GroupOperationKeyAllocator("group-${Random.nextLong().toULong().toString(16)}"),
         )
 
     @Provides fun permission(owner: AttachedLocationPermission): LocationPermissionController = owner.controller
@@ -214,6 +192,8 @@ class ActivityRetainedGraphOwner private constructor(
     private val app: AndroidAppGraph,
 ) : ViewModel() {
     private var retained: ActivityRetainedGraph? = null
+    val notificationPermissionController: NotificationPermissionController
+        get() = requireNotNull(retained).notificationPermissionOwner.controller
     var uiSession = AppUiSession()
         private set
 
@@ -221,6 +201,7 @@ class ActivityRetainedGraphOwner private constructor(
     fun clearUiSession() {
         uiSession.close()
         retained?.permissionOwner?.controller?.close()
+        retained?.notificationPermissionOwner?.controller?.close()
         retained = null
         uiSession = AppUiSession()
     }
@@ -229,17 +210,27 @@ class ActivityRetainedGraphOwner private constructor(
         val existing = retained
         if (existing != null) {
             existing.permissionOwner.controller.attach(activity)
+            existing.notificationPermissionOwner.controller.attach(activity)
             return existing
         }
-        return app.retainedFactory.create(AttachedLocationPermission(app.permissionFactory.create(activity))).also {
-            retained =
-                it
-        }
+        val graph =
+            app.retainedFactory.create(
+                AttachedLocationPermission(app.permissionFactory.create(activity)),
+                AttachedNotificationPermission(
+                    AndroidNotificationPermissionController(
+                        activity,
+                        app.appSettingsLauncher,
+                    ),
+                ),
+            )
+        retained = graph
+        return graph
     }
 
     override fun onCleared() {
         uiSession.close()
         retained?.permissionOwner?.controller?.close()
+        retained?.notificationPermissionOwner?.controller?.close()
         retained = null
     }
 
@@ -262,10 +253,36 @@ private class AndroidOnboardingStore(
     override fun isCompleted(): Boolean = preferences.getBoolean("onboarding_completed", false)
 
     override fun complete() {
-        preferences.edit().putBoolean("onboarding_completed", true).apply()
+        preferences
+            .edit()
+            .putBoolean("onboarding_completed", true)
+            .apply()
+    }
+
+    override fun resetCompletion() {
+        preferences
+            .edit()
+            .remove("onboarding_completed")
+            .apply()
+    }
+
+    override fun isInitialNotificationPermissionHandled(): Boolean {
+        if (!preferences.contains("initial_notification_permission_handled")) {
+            // Existing installs must not receive a new automatic prompt after updating.
+            preferences.edit().putBoolean("initial_notification_permission_handled", isCompleted()).apply()
+        }
+        return preferences.getBoolean("initial_notification_permission_handled", false)
+    }
+
+    override fun completeInitialNotificationPermission() {
+        preferences.edit().putBoolean("initial_notification_permission_handled", true).apply()
     }
 }
 
 internal class AttachedLocationPermission(
     val controller: AndroidLocationPermissionController,
+)
+
+internal class AttachedNotificationPermission(
+    val controller: AndroidNotificationPermissionController,
 )

@@ -8,5 +8,4 @@ internal fun EmotionSearchFilter.toQueryParameters(): Map<String, String> =
         endDate?.let { put("endDate", it) }
         put("contentType", content.name)
         put("scope", scope.name)
-        groupId?.let { put("groupId", it) }
     }

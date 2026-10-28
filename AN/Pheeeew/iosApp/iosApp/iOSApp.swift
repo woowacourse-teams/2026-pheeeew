@@ -3,6 +3,7 @@ import Shared
 
 @main
 struct iOSApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @Environment(\.scenePhase) private var scenePhase
 #if DEBUG
     @State private var monitoringSmokeTestScheduled = false
@@ -10,20 +11,10 @@ struct iOSApp: App {
 
     init() {
 #if DEBUG
-        if !ProcessInfo.processInfo.arguments.contains("-group-detail-profile") {
-            DeveloperToolsInitializationKt.initializeDeveloperTools()
-            _ = IosMonitoring.shared.instance
-        }
+        DeveloperToolsInitializationKt.initializeDeveloperTools()
+        _ = IosMonitoring.shared.instance
 #else
         _ = IosMonitoring.shared.instance
-#endif
-    }
-
-    private var isGroupDetailProfileMode: Bool {
-#if DEBUG
-        ProcessInfo.processInfo.arguments.contains("-group-detail-profile")
-#else
-        false
 #endif
     }
 
@@ -31,13 +22,24 @@ struct iOSApp: App {
         WindowGroup {
             ContentView()
                 .onChange(of: scenePhase) { phase in
-                    if !isGroupDetailProfileMode {
-                        if phase == .active { IosMonitoring.shared.foreground() }
-                        if phase == .background { IosMonitoring.shared.background() }
+                    if phase == .active {
+                        IosMonitoring.shared.foreground()
+                        RevisitNotificationLifecycle.shared.foreground()
+                        PushTokenLifecycle.foreground()
+                    }
+                    if phase == .background {
+                        IosNotificationMessages.shared.inbox.clearPending()
+                        IosMonitoring.shared.background()
+                        RevisitNotificationLifecycle.shared.background()
+                        PushTokenLifecycle.background()
                     }
                 }
                 .onAppear {
-                    if !isGroupDetailProfileMode, scenePhase == .active { IosMonitoring.shared.foreground() }
+                    if scenePhase == .active {
+                        IosMonitoring.shared.foreground()
+                        RevisitNotificationLifecycle.shared.foreground()
+                        PushTokenLifecycle.foreground()
+                    }
 #if DEBUG
                     if !monitoringSmokeTestScheduled,
                        ["1", "crash"].contains(ProcessInfo.processInfo.environment["MONITORING_SMOKE_TEST"] ?? ""),

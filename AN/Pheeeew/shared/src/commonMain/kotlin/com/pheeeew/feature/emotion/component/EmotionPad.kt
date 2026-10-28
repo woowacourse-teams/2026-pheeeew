@@ -34,6 +34,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.feature.emotion.model.EmotionCountUiModel
+import com.pheeeew.feature.emotion.model.EmotionFaceVisual
 import com.pheeeew.feature.emotion.model.EmotionKind
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.isActive
@@ -58,6 +59,7 @@ internal fun EmotionPad(
     preserveFeedbackWhileDisabled: Boolean = false,
     modifier: Modifier = Modifier,
     reducedMotionOverride: Boolean? = null,
+    faceVisuals: Map<EmotionKind, EmotionFaceVisual> = emptyMap(),
 ) {
     val reducedMotion = reducedMotionOverride ?: rememberTapReducedMotion()
     val mark = remember { TimeSource.Monotonic.markNow() }
@@ -65,7 +67,8 @@ internal fun EmotionPad(
     fun now(): Double = mark.elapsedNow().inWholeNanoseconds / 1_000_000.0
 
     val feedback = remember { TapFeedbackState<EmotionKind>() }
-    val motions = remember { EmotionKind.entries.associateWith { TapButtonMotion() } }
+    val buzzer = faceVisuals.isNotEmpty()
+    val motions = remember(buzzer) { EmotionKind.entries.associateWith { TapButtonMotion(buzzer = buzzer) } }
     val random = remember { TapRandom() }
     var tick by remember { mutableIntStateOf(0) }
     // Read the frame clock only inside graphicsLayer to avoid recomposing the pad per frame.
@@ -230,6 +233,7 @@ internal fun EmotionPad(
 
                 EmotionPadButton(
                     kind = kind,
+                    faceVisual = faceVisuals[kind],
                     emotionLabel = emotionLabel,
                     count = count,
                     countPlaceholder = countTextOverrides[kind] ?: countPlaceholder,
@@ -283,7 +287,7 @@ internal fun formatCount(value: Long): String =
         .joinToString(",")
         .reversed()
 
-@Preview(widthDp = 354, heightDp = 345, name = "그룹 감정 버튼")
+@Preview(widthDp = 354, heightDp = 345, name = "감정 버튼")
 @Composable
 private fun EmotionPadPreview() {
     EmotionPad(

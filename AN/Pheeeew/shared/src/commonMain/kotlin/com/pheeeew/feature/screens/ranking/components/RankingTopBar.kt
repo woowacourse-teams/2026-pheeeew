@@ -27,7 +27,7 @@ import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
-import pheeeew.shared.generated.resources.ranking_weekly_title
+import pheeeew.shared.generated.resources.ranking_press_title
 
 internal val RankingTopBarHeight = 56.dp
 
@@ -66,6 +66,7 @@ internal fun rememberRankingTopBarScrollBehavior(canScrollDown: () -> Boolean): 
 @Composable
 internal fun RankingTopBarOverlay(
     title: String,
+    onBack: (() -> Unit)? = null,
     behavior: RankingTopBarScrollBehavior,
     modifier: Modifier = Modifier,
 ) {
@@ -82,6 +83,7 @@ internal fun RankingTopBarOverlay(
     ) {
         BasicTopBar(
             title = title,
+            onBack = onBack,
             titleColor = AppColors.RankingContent,
             modifier = Modifier.offset(y = offsetY).background(AppColors.GroupBackground, RectangleShape),
         )
@@ -93,7 +95,7 @@ internal fun RankingTopBarOverlay(
 private fun RankingTopBarPreview() {
     AppTheme {
         RankingTopBarOverlay(
-            title = stringResource(Res.string.ranking_weekly_title),
+            title = stringResource(Res.string.ranking_press_title),
             behavior = rememberRankingTopBarScrollBehavior { false },
         )
     }

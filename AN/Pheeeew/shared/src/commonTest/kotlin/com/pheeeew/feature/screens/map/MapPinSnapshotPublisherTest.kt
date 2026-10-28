@@ -142,4 +142,27 @@ class MapPinSnapshotPublisherTest {
             assertEquals(listOf(1), published)
             assertEquals(listOf(2), discarded)
         }
+
+    @Test
+    fun `화면 비활성 중 완료된 최신 스냅샷은 복귀할 때 발행한다`() =
+        runTest {
+            val published = mutableListOf<Int>()
+            val publisher =
+                MapPinSnapshotPublisher(
+                    scope = backgroundScope,
+                    intervalMillis = 300,
+                    wait = { delay(it) },
+                    sameSnapshot = { first, second -> first == second },
+                    publish = published::add,
+                    discard = {},
+                )
+            publisher.begin(7)
+            publisher.setActive(false)
+            publisher.finish(7, 42)
+
+            assertEquals(emptyList(), published)
+            publisher.setActive(true)
+
+            assertEquals(listOf(42), published)
+        }
 }
