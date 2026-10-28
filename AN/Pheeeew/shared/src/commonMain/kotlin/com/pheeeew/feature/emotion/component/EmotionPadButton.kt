@@ -142,10 +142,11 @@ internal fun EmotionPadButton(
             if (depth == 0f || faceVisual == null || faceVisual.stage == EmotionFaceStage.Burst) {
                 drawContent()
             } else {
-                // Preserve the cap's thin outline while concealing its lower extrusion.
+                // Preserve the cap's own outline; expand the tired-face mask to include its baked blur.
+                val geometry = pressFaceCapGeometry(kind, faceVisual.stage)
                 val pixelUnit = size.width / PressFaceCatalog.CANVAS_SIZE
                 val remainingDepth = 3f * (1f - depth)
-                val outerRadius = 46f
+                val outerRadius = geometry.radius + geometry.shadowSpread * depth
                 val raised =
                     Path().apply {
                         addOval(
@@ -161,10 +162,10 @@ internal fun EmotionPadButton(
                     Path().apply {
                         addOval(
                             Rect(
-                                (90f - 46f) * pixelUnit,
-                                (90f + remainingDepth - 46f) * pixelUnit,
-                                (90f + 46f) * pixelUnit,
-                                (90f + remainingDepth + 46f) * pixelUnit,
+                                (90f - geometry.radius) * pixelUnit,
+                                (90f + remainingDepth - geometry.radius) * pixelUnit,
+                                (90f + geometry.radius) * pixelUnit,
+                                (90f + remainingDepth + geometry.radius) * pixelUnit,
                             ),
                         )
                     }
