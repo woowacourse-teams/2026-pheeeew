@@ -3,6 +3,7 @@ package com.pheeeew.feature.monitoring.compat
 import com.pheeeew.core.di.appMonitoringRegistry
 import com.pheeeew.core.monitoring.MeaningfulActivity
 import com.pheeeew.core.monitoring.sanitizePostHogEvent
+import com.pheeeew.feature.monitoring.product.ProductEvents
 import com.posthog.kmp.PostHogEvent
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -48,6 +49,20 @@ class SdkMonitoringTransportTest {
     }
 
     @Test
+    fun `collection claim click is registered and keeps its collection screen`() {
+        val event =
+            input.copy(
+                event = ProductEvents.COLLECTION_CLAIM_CLICKED,
+                properties = input.properties + ("screen" to "collection"),
+            )
+
+        val clean = assertNotNull(sanitizePostHogEvent(event, appMonitoringRegistry()))
+
+        assertEquals("collection", clean.properties["screen"])
+        assertEquals("install", clean.distinctId)
+    }
+
+    @Test
     fun `automatic legacy request and funnel events are all rejected`() {
         for (name in listOf(
             "sigh_started",
@@ -55,6 +70,7 @@ class SdkMonitoringTransportTest {
             "star_detail_shown",
             "http_attempt_finished",
             "app_active_day",
+            "settings_action_selected",
             "\$screen",
             "\$snapshot",
         )) {

@@ -66,6 +66,7 @@ internal class CollectionViewModel(
     private var historyCursor: String? = null
     private val historyByFilter = mutableMapOf<EmotionType?, HistorySnapshot>()
     private var pendingClaim: ClaimIntent? = null
+    private var historyScrollResetPending = false
 
     fun onSessionChanged(
         generation: Long?,
@@ -94,6 +95,7 @@ internal class CollectionViewModel(
         historyCursor = null
         historyByFilter.clear()
         pendingClaim = null
+        historyScrollResetPending = false
         mutableUiState.value = CollectionUiState(nickname = currentNickname)
         if (generation != null) refresh()
     }
@@ -156,9 +158,10 @@ internal class CollectionViewModel(
         cancelInFlight: Boolean = false,
     ) {
         val generation = sessionGeneration ?: return
+        val shouldResetToTop = resetToTop && !historyScrollResetPending
         if (refreshJob?.isActive == true) {
             if (!cancelInFlight) {
-                if (resetToTop) {
+                if (shouldResetToTop) {
                     mutableUiState.update { it.copy(scrollToTopRequestId = it.scrollToTopRequestId + 1) }
                 }
                 return
@@ -186,7 +189,7 @@ internal class CollectionViewModel(
                 isRefreshRequestActive = true,
                 isRefreshIndicatorVisible = false,
                 scrollToTopRequestId =
-                    if (resetToTop) it.scrollToTopRequestId + 1 else it.scrollToTopRequestId,
+                    if (shouldResetToTop) it.scrollToTopRequestId + 1 else it.scrollToTopRequestId,
             )
         }
         val todayRequest = loadToday(showLoading = state.today == null)
@@ -376,7 +379,12 @@ internal class CollectionViewModel(
                             claimOutcomeUnknown = false,
                         )
                     }
-                    refresh(resetToTop = false, showIndicator = false, cancelInFlight = true)
+                    historyScrollResetPending = true
+                    refresh(
+                        resetToTop = false,
+                        showIndicator = false,
+                        cancelInFlight = true,
+                    )
                 }
 
                 is CollectionResult.Failure -> {
@@ -470,6 +478,7 @@ internal class CollectionViewModel(
         when (result) {
             is CollectionResult.Success -> {
                 historyCursor = result.value.nextCursor
+                val resetScroll = !append && historyScrollResetPending
                 mutableUiState.update { state ->
                     val cards = result.value.cards.map { it.toUiModel(result.value.nickname ?: state.nickname) }
                     val updatedCards =
@@ -479,6 +488,8 @@ internal class CollectionViewModel(
                     state.copy(
                         nickname = result.value.nickname ?: state.nickname,
                         cards = updatedCards,
+                        scrollToTopRequestId =
+                            if (resetScroll) state.scrollToTopRequestId + 1 else state.scrollToTopRequestId,
                         totalCount = result.value.counts.total,
                         emotionCounts =
                             result.value.counts.byEmotion
@@ -493,6 +504,7 @@ internal class CollectionViewModel(
                         cardError = if (selectionRemoved) null else state.cardError,
                     )
                 }
+                if (resetScroll) historyScrollResetPending = false
                 val updated = mutableUiState.value
                 historyByFilter[updated.selectedFilter] =
                     HistorySnapshot(

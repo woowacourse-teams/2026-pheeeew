@@ -260,6 +260,7 @@
     <string name="collection_title">나의 감정 컬렉션</string>
     <string name="collection_subtitle">%1$s님의 감정 카드</string>
     <string name="collection_card_count">모은 카드 %1$s장</string>
+    <string name="collection_card_action_hint">카드를 눌러 저장하거나 공유해보세요</string>
     <string name="collection_cover_flow">커버플로</string>
     <string name="collection_album">앨범</string>
     <string name="collection_empty">아직 모은 감정 카드가 없어요</string>

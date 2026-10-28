@@ -12,6 +12,8 @@ import kotlin.time.TimeSource
 
 /** App feature events. Only fixed labels and opaque identifiers belong in these properties. */
 object ProductEvents {
+    const val COLLECTION_CLAIM_CLICKED = "collection_claim_clicked"
+
     private val names =
         """
         emotion_record_closed emotion_record_location_changed emotion_record_location_confirmed
@@ -23,7 +25,7 @@ object ProductEvents {
         ranking_viewed ranking_load_finished ranking_week_changed
         app_startup_finished app_startup_step_finished
         device_session_prepare_finished location_acquire_finished map_load_finished map_location_requested
-        onboarding_step_viewed onboarding_finished operation_reconciled
+        onboarding_step_viewed onboarding_finished operation_reconciled collection_claim_clicked
         settings_action_selected settings_external_open_finished
         """.trimIndent().split(Regex("\\s+"))
     private val properties =

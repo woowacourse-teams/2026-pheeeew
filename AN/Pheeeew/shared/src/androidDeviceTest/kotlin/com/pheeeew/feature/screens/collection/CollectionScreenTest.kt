@@ -82,19 +82,33 @@ class CollectionScreenTest {
             }
             assertEquals(1, refreshEvents.poll(5, TimeUnit.SECONDS), "Cover flow must dispatch pull refresh")
             assertEquals(listOf(HapticFeedbackType.GestureThresholdActivate), haptics.toList())
+            val returnDeadline = SystemClock.uptimeMillis() + 2_000
+            while (node("모은 카드 5장").visibleBounds.top != headerTop && SystemClock.uptimeMillis() < returnDeadline) {
+                SystemClock.sleep(20)
+            }
+            assertEquals(headerTop, node("모은 카드 5장").visibleBounds.top, "Return must not wait for the request")
+            instrumentation.runOnMainSync {
+                model.value = model.value.copy(isRefreshIndicatorVisible = true)
+            }
+            device.waitForIdle()
+            assertEquals(headerTop, node("모은 카드 5장").visibleBounds.top, "Loading must not move the page")
 
             pullDown()
             assertEquals(1, refreshes.get(), "An active request must block duplicate refresh")
             assertEquals(1, haptics.size)
-            instrumentation.runOnMainSync { model.value = model.value.copy(isRefreshRequestActive = false) }
+            instrumentation.runOnMainSync {
+                model.value = model.value.copy(isRefreshRequestActive = false, isRefreshIndicatorVisible = false)
+            }
             device.waitForIdle()
+            val pendingBounds = card("발급 전").visibleBounds
             device.swipe(
                 device.displayWidth * 3 / 4,
-                device.displayHeight / 2,
+                pendingBounds.centerY(),
                 device.displayWidth / 4,
-                device.displayHeight / 2,
+                pendingBounds.centerY(),
                 30,
             )
+            device.waitForIdle()
             node("지침")
 
             node("앨범").click()
@@ -209,6 +223,7 @@ class CollectionScreenTest {
                 cardBounds.centerY(),
                 30,
             )
+            device.waitForIdle()
             node("지침")
             instrumentation.runOnMainSync { model.value = model.value.copy(cards = emptyList()) }
             node("발급전")
@@ -221,6 +236,7 @@ class CollectionScreenTest {
                 pendingCardBounds.centerY(),
                 30,
             )
+            device.waitForIdle()
             node("지침")
             node("앨범").click()
             card("답답")
@@ -247,11 +263,33 @@ class CollectionScreenTest {
             card("분노").click()
             node("카드 저장")
             instrumentation.runOnMainSync { model.value = model.value.copy(cards = emptyList()) }
-            node("발급전")
+            node("발급 전")
             assertFalse(device.hasObject(By.text("카드 저장")))
             instrumentation.runOnMainSync { model.value = sampleCollection() }
             node("모은 카드 5장")
             assertFalse(device.hasObject(By.text("카드 저장")))
+            instrumentation.runOnMainSync {
+                val current = model.value
+                val issued = current.cards.first().copy(id = "issued-today", title = "오늘 발급 카드")
+                model.value =
+                    current.copy(
+                        cards = listOf(issued) + current.cards,
+                        pendingProgress = null,
+                        scrollToTopRequestId = current.scrollToTopRequestId + 1,
+                    )
+            }
+            val issuedSelector = By.descContains("오늘 발급 카드")
+            val issuedAlbumCard = checkNotNull(device.wait(Until.findObject(issuedSelector), 5_000))
+            assertTrue(
+                issuedAlbumCard.visibleBounds.top < device.displayHeight / 2,
+                "Album must reset to the first card",
+            )
+            node("커버플로").click()
+            assertTrue(device.wait(Until.gone(By.text("전체")), 5_000))
+            device.waitForIdle()
+            val issuedCoverCard = checkNotNull(device.wait(Until.findObject(issuedSelector), 5_000))
+            val coverBounds = issuedCoverCard.visibleBounds
+            assertTrue(coverBounds.contains(device.displayWidth / 2, coverBounds.centerY()))
         } catch (error: Throwable) {
             screenshot("failure")
             throw error
