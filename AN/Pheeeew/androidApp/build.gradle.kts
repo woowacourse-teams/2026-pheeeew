@@ -115,8 +115,8 @@ android {
             buildConfigField("String", key, quotedConfig(monitoringValue(key)))
         }
         buildConfigField("boolean", "MONITORING_ENABLED", (monitoringValue("MONITORING_ENABLED") == "true").toString())
-        versionCode = 12
-        versionName = "2.4.0"
+        versionCode = 13
+        versionName = "2.5.0"
     }
     packaging {
         resources {
