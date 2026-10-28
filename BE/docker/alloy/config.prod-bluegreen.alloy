@@ -1,0 +1,149 @@
+logging {
+	level = "warn"
+}
+
+prometheus.scrape "app" {
+	// 교체 구간에는 두 색이 함께 뜬다. instance 를 나눠 같은 시계열에 두 프로세스의
+	// 카운터가 섞이지 않게 한다. 꺼진 색은 up=0 으로 나온다.
+	targets = [
+		{
+			__address__ = "app-blue:8080",
+			application = "pheeeew",
+			environment = "prod",
+			instance    = "pheeeew-prod-blue",
+		},
+		{
+			__address__ = "app-green:8080",
+			application = "pheeeew",
+			environment = "prod",
+			instance    = "pheeeew-prod-green",
+		},
+	]
+	job_name        = "pheeeew-api"
+	honor_labels    = true
+	metrics_path    = "/actuator/prometheus"
+	scrape_interval = "60s"
+	scrape_timeout  = "10s"
+	forward_to      = [prometheus.relabel.app.receiver]
+}
+
+prometheus.relabel "app" {
+	forward_to = [prometheus.remote_write.grafana.receiver]
+
+	// pheeeew_group_press_* 는 일부러 넣지 않는다. ADR-0032 의 전환이 끝나면 사라지는 경로다.
+	rule {
+		source_labels = ["__name__"]
+		regex         = "up|scrape_duration_seconds|scrape_samples_scraped|http_server_requests_seconds_(count|sum|bucket|max)|pheeeew_sigh_list_(query_seconds_(count|sum|bucket|max)|results_(count|sum|max))|jvm_memory_(used|committed|max)_bytes|jvm_gc_pause_seconds_(count|sum|max)|jvm_threads_live_threads|tomcat_threads_(busy|current|config_max)_threads|process_(cpu_usage|uptime_seconds)|system_cpu_usage|hikaricp_connections(_(active|idle|pending|max|min|timeout_total|(acquire|usage)_seconds_(count|sum|max)))?|spring_data_repository_invocations_seconds_(count|sum|bucket|max)|pheeeew_emotion_create_throttled_total|pheeeew_device_attestation_(accepted|skipped|verdict|rejected)_total|pheeeew_device_appattest_(accepted|rejected)_total|pheeeew_emotion_press_((empty|deadlocks)_total|(applied|clamped|states)_(count|sum|max)|query_seconds_(count|sum|bucket|max))|pheeeew_region_query_seconds_(count|sum|bucket|max)|pheeeew_map_(read_stage|response_write)_seconds_(count|sum|bucket|max)|pheeeew_map_cache_((requests|rebuilds|failures|maintenance_failures|maintenance_busy)_total|(lock_wait|maintenance|rebuild|pin_search)_seconds_(count|sum|max)|pin_scanned_(count|sum|max)|pending_age_seconds|candidates)"
+		action        = "keep"
+	}
+}
+
+prometheus.remote_write "grafana" {
+	endpoint {
+		url              = sys.env("GRAFANA_METRICS_URL")
+		follow_redirects = false
+
+		basic_auth {
+			username = sys.env("GRAFANA_METRICS_USER")
+			password = sys.env("GRAFANA_CLOUD_TOKEN")
+		}
+
+		queue_config {
+			min_shards           = 1
+			max_shards           = 2
+			capacity             = 2500
+			max_samples_per_send = 500
+		}
+	}
+
+	wal {
+		truncate_frequency = "15m"
+		min_keepalive_time = "5m"
+		max_keepalive_time = "1h"
+	}
+}
+
+// Read only the active file. Archives are retained locally, not re-ingested.
+loki.source.file "app" {
+	targets = [
+		{
+			__path__    = "/var/log/pheeeew-blue/application.json",
+			job         = "pheeeew-api",
+			application = "pheeeew",
+			environment = "prod",
+			instance    = "pheeeew-prod-blue",
+		},
+		{
+			__path__    = "/var/log/pheeeew-green/application.json",
+			job         = "pheeeew-api",
+			application = "pheeeew",
+			environment = "prod",
+			instance    = "pheeeew-prod-green",
+		},
+	]
+	forward_to = [loki.process.http_requests.receiver]
+}
+
+loki.process "http_requests" {
+	forward_to = [loki.write.grafana.receiver]
+
+	stage.json {
+		expressions = {
+			logger    = "logger_name",
+			event     = "event",
+			level     = "level",
+			timestamp = "\"@timestamp\"",
+		}
+		drop_malformed = true
+	}
+
+	stage.labels {
+		values = {logger = "", event = "", level = ""}
+	}
+	// 개인정보 검토를 마친 클래스와 해당 이벤트의 조합만 전송한다.
+	stage.match {
+		selector            = "{job=\"pheeeew-api\", logger!~\"com[.]pheeeew[.]common[.]logging[.](RequestLogWriter|ScheduledTaskErrorHandler)\"}"
+		action              = "drop"
+		drop_counter_reason = "unreviewed_logger"
+	}
+
+	stage.match {
+		selector            = "{job=\"pheeeew-api\", logger=\"com.pheeeew.common.logging.RequestLogWriter\", event!~\"http_request_failed|http_request_slow\"}"
+		action              = "drop"
+		drop_counter_reason = "unreviewed_event"
+	}
+
+	stage.match {
+		selector            = "{job=\"pheeeew-api\", logger=\"com.pheeeew.common.logging.ScheduledTaskErrorHandler\", event!=\"scheduled_task_failed\"}"
+		action              = "drop"
+		drop_counter_reason = "unreviewed_event"
+	}
+
+	stage.match {
+		selector            = "{job=\"pheeeew-api\", logger=\"com.pheeeew.common.logging.ScheduledTaskErrorHandler\", level!=\"ERROR\"}"
+		action              = "drop"
+		drop_counter_reason = "unreviewed_level"
+	}
+
+	stage.timestamp {
+		source            = "timestamp"
+		format            = "RFC3339Nano"
+		action_on_failure = "skip"
+	}
+
+	stage.label_drop {
+		values = ["logger", "filename"]
+	}
+}
+
+loki.write "grafana" {
+	endpoint {
+		url              = sys.env("GRAFANA_LOGS_URL")
+		follow_redirects = false
+
+		basic_auth {
+			username = sys.env("GRAFANA_LOGS_USER")
+			password = sys.env("GRAFANA_CLOUD_TOKEN")
+		}
+	}
+}

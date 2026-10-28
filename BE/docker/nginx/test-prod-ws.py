@@ -126,14 +126,18 @@ def run(*args, check=True):
 
 
 def main():
+    bluegreen = '--bluegreen' in sys.argv[1:]
     prefix = 'prod-ws-test-' + uuid4().hex[:10]
-    net, second, outside, app, proxy, client = (prefix + suffix for suffix in
-                                               ('-net', '-second', '-outside', '-app', '-proxy', '-client'))
+    net, second, outside, app, green, proxy, client = (prefix + suffix for suffix in
+                                               ('-net', '-second', '-outside', '-app', '-green', '-proxy', '-client'))
     try:
         with tempfile.TemporaryDirectory(prefix=prefix) as tmp:
             root = Path(tmp)
             (root / 'app.py').write_text(fixture.APP)
             (root / 'status-app').write_text('200')
+            (root / 'status-green').write_text('503')
+            (root / 'upstream').mkdir()
+            (root / 'upstream/active.conf').write_text('set $upstream_app app-blue;\n')
             (root / 'client.py').write_text(CLIENT)
             run('openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '1',
                 '-subj', '/CN=api.pheeeew.com', '-addext', 'subjectAltName=DNS:api.pheeeew.com',
@@ -143,10 +147,14 @@ def main():
             run('docker', 'network', 'create', '--internal', '--subnet', '10.0.10.0/24', net)
             run('docker', 'network', 'create', '--internal', '--subnet', '10.0.11.0/24', second)
             run('docker', 'network', 'create', '--internal', '--subnet', '10.0.12.0/24', outside)
-            run('docker', 'run', '-d', '--name', app, '--network', net, '--network-alias', 'app', '--ip', '10.0.10.4',
+            run('docker', 'run', '-d', '--name', app, '--network', net, '--network-alias', 'app-blue' if bluegreen else 'app', '--ip', '10.0.10.4',
                 '-v', f'{root}:/fixtures:ro', 'python:3.13-alpine', 'python', '/fixtures/app.py', 'app')
+            if bluegreen:
+                run('docker', 'run', '-d', '--name', green, '--network', net, '--network-alias', 'app-green', '--ip', '10.0.10.5',
+                    '-v', f'{root}:/fixtures:ro', 'python:3.13-alpine', 'python', '/fixtures/app.py', 'green')
             run('docker', 'create', '--name', proxy, '--network', net, '--network-alias', 'proxy', '--ip', '10.0.10.2',
-                '-v', f'{HERE / "api.conf"}:/etc/nginx/conf.d/default.conf:ro',
+                '-v', f'{HERE / ("api-prod-bluegreen.conf" if bluegreen else "api.conf")}:/etc/nginx/conf.d/default.conf:ro',
+                '-v', f'{root / "upstream"}:/etc/nginx/upstream:ro',
                 '-v', f'{root}:/etc/letsencrypt/live/api.pheeeew.com:ro',
                 '-v', f'{root}:/etc/ssl/cloudflare:ro', 'nginx:1.27-alpine')
             run('docker', 'create', '--name', client, '--network', net, '--ip', '10.0.10.3',
@@ -166,6 +174,26 @@ def main():
             print(result.stdout, end='')
             if result.returncode:
                 raise RuntimeError(result.stderr.strip())
+            if bluegreen:
+                (root / 'upstream/active.conf').write_text('set $upstream_app app-green;\n')
+                run('docker', 'exec', proxy, 'nginx', '-t')
+                run('docker', 'exec', proxy, 'nginx', '-s', 'reload')
+                run('docker', 'exec', client, 'python', '-c',
+                    "import http.client,time; "
+                    "time.sleep(1); c=http.client.HTTPConnection('10.0.10.2',80,timeout=10,"
+                    "source_address=('10.0.10.3',0)); c.request('GET','/actuator/health',"
+                    "headers={'Host':'10.0.10.2'}); r=c.getresponse(); assert r.status == 503, r.status")
+                (root / 'status-green').write_text('200')
+                run('docker', 'exec', client, 'python', '-c',
+                    "import http.client,json,ssl; ctx=ssl.create_default_context(cafile='/fixture/fullchain.pem'); "
+                    "ctx.check_hostname=False; "
+                    "c=http.client.HTTPSConnection('proxy',443,timeout=10,"
+                    "context=ctx); "
+                    "c.request('GET','/identity',headers={'Host':'api.pheeeew.com'}); r=c.getresponse(); "
+                    "assert r.status == 200 and r.getheader('X-Upstream') == 'app-green'; "
+                    "assert json.loads(r.read())['target'] == 'green'")
+                print('PASS: API and ALB health follow the switched production upstream')
+                return
             run('docker', 'stop', '--time', '1', app)
             run('docker', 'exec', client, 'python', '-c',
                 "import http.client; c=http.client.HTTPConnection('10.0.10.2',80,timeout=10,"
@@ -173,7 +201,7 @@ def main():
                 "headers={'Host':'10.0.10.2'}); r=c.getresponse(); assert r.status in (502,504), r.status")
             print('PASS: unavailable backend is not reported healthy')
     finally:
-        run('docker', 'rm', '-f', client, proxy, app, check=False)
+        run('docker', 'rm', '-f', client, proxy, green, app, check=False)
         run('docker', 'network', 'rm', outside, second, net, check=False)
 
 
