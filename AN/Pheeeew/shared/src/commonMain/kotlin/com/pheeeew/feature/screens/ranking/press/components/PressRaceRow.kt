@@ -60,29 +60,37 @@ internal fun PressRaceHeader(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier.fillMaxWidth().height(28.dp).padding(horizontal = 8.dp),
+        modifier.fillMaxWidth().heightIn(min = 28.dp).padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             stringResource(Res.string.press_race_column_rank),
             Modifier.width(rankWidth),
             fontSize = 11.sp,
+            lineHeight = 16.sp,
             color = muted,
         )
         Text(
             stringResource(Res.string.press_race_column_person),
             Modifier.weight(0.85f).padding(start = 8.dp),
             fontSize = 11.sp,
+            lineHeight = 16.sp,
             color = muted,
         )
         Box(Modifier.weight(1f)) {
-            Text(stringResource(Res.string.press_race_column_track), fontSize = 11.sp, color = muted)
+            Text(
+                stringResource(Res.string.press_race_column_track),
+                fontSize = 11.sp,
+                lineHeight = 16.sp,
+                color = muted,
+            )
         }
         Text(
             stringResource(Res.string.press_race_column_count),
             Modifier.width(countWidth),
             textAlign = TextAlign.End,
             fontSize = 11.sp,
+            lineHeight = 16.sp,
             color = muted,
         )
     }

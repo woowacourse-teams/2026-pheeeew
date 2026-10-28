@@ -190,3 +190,23 @@ private fun PressRaceListDatePreview() {
         )
     }
 }
+
+@Preview(name = "고정 헤더 작은 화면 큰 글씨", widthDp = 320, heightDp = 568, fontScale = 2f)
+@Preview(name = "고정 헤더 일반 화면", widthDp = 402, heightDp = 874)
+@Composable
+private fun PressRaceFixedOverviewPreview() {
+    AppTheme {
+        PressRankingScreen(
+            onBack = {},
+            uiState =
+                PressRankingUiState(
+                    date = "2026-10-28",
+                    status = PressRankingStatus.Ready,
+                    me = PressPersonRank(10, "나", 12345),
+                ),
+            onRetry = {},
+            onRefresh = {},
+            rows = raceSample,
+        )
+    }
+}
