@@ -13,6 +13,27 @@ import kotlin.time.TimeSource
 /** App feature events. Only fixed labels and opaque identifiers belong in these properties. */
 object ProductEvents {
     const val COLLECTION_CLAIM_CLICKED = "collection_claim_clicked"
+    const val COLLECTION_CARD_VIEWED = "collection_card_viewed"
+    const val COLLECTION_CARD_SAVE_CLICKED = "collection_card_save_clicked"
+    const val COLLECTION_CARD_SHARE_CLICKED = "collection_card_share_clicked"
+
+    val collectionCardDefinitions =
+        listOf(
+            COLLECTION_CARD_VIEWED,
+            COLLECTION_CARD_SAVE_CLICKED,
+            COLLECTION_CARD_SHARE_CLICKED,
+        ).map { name ->
+            EventDefinition(
+                name,
+                properties =
+                    mapOf(
+                        "view_id" to PropertyRule(ValueType.TEXT, required = true),
+                        "activity_date" to PropertyRule(ValueType.TEXT, maxLength = 10),
+                    ),
+                preserveOnOverflow = true,
+                oncePerDay = true,
+            )
+        }
 
     private val names =
         """
@@ -69,7 +90,7 @@ object ProductEvents {
                 }
             EventDefinition(name, properties = rules)
         }
-    private val byName = definitions.associateBy { it.name }
+    private val byName = (definitions + collectionCardDefinitions).associateBy { it.name }
 
     fun definition(name: String) = byName.getValue(name)
 }

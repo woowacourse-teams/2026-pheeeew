@@ -69,7 +69,7 @@ class MonitoringRuntime(
                             val safe = registry.sanitizeEnvelope(event.name, fields)
                             if (safe == null ||
                                 (
-                                    event.name == MeaningfulActivity.NAME &&
+                                    DailyActivity.isDaily(event.name) &&
                                         safe["activity_date"] != JsonPrimitive(koreaCalendarDate(event.timestamp))
                                 ) ||
                                 safe["anonymous_id"] != JsonPrimitive(loaded.anonymousId) ||
@@ -145,7 +145,7 @@ class MonitoringRuntime(
             val definition = event.definition
             if (registry.definition(definition.name, definition.version) != definition) return
             // Daily events must pass the durable deduplication path.
-            if (definition.name == MeaningfulActivity.NAME) return
+            if (DailyActivity.isDaily(definition.name)) return
             val fields = event.properties().mapValues { it.value.primitive() }
             val safe = registry.validate(definition, fields)
             if (safe == null || context.owner != owner) {
@@ -154,7 +154,31 @@ class MonitoringRuntime(
             }
             droppedProperties.update { it + (fields.size - safe.size) }
             val timestamp = now()
-            enqueue { if (healthy) record(definition, safe, context, timestamp) }
+            enqueue {
+                if (!healthy) return@enqueue
+                var collected = safe
+                if (definition.oncePerDay) {
+                    val date = koreaCalendarDate(timestamp)
+                    val key = "$date:${definition.name}"
+                    val current = state!!
+                    if (key in current.dailyProductEvents) return@enqueue
+                    // Do not reserve today's event if the outbox cannot retain it.
+                    if (current.pending.size >= config.queueCapacity) {
+                        rejected.update { it + 1 }
+                        return@enqueue
+                    }
+                    state =
+                        current.copy(
+                            dailyProductEvents =
+                                current.dailyProductEvents.filterValues {
+                                    timestamp - it <= ACTIVITY_KEY_RETENTION
+                                } + (key to timestamp),
+                        )
+                    collected = JsonObject(safe + ("activity_date" to JsonPrimitive(date)))
+                }
+                // append commits the daily receipt and envelope together before SDK handoff.
+                record(definition, collected, context, timestamp)
+            }
         } catch (_: Exception) {
             rejected.update { it + 1 }
         }
@@ -166,59 +190,104 @@ class MonitoringRuntime(
         type: ActivityType,
         occurredAt: Long,
     ) {
-        if (!config.configured || registry.definition(MeaningfulActivity.NAME, 1) == null) return
-        enqueue {
+        // Press delivery confirmations must not count the same button inputs again.
+        if (type == ActivityType.PERSONAL_PRESS || !config.configured) return
+        enqueue { recordDailyActivity(type, occurredAt) }
+    }
+
+    override fun recordPressInput(occurredAt: Long) {
+        if (!config.configured) return
+        enqueue(control = true) {
             if (!healthy) return@enqueue
-            val currentTime = now()
-            if (occurredAt < 0 || occurredAt > currentTime ||
-                currentTime - occurredAt > ACTIVITY_MAX_AGE
-            ) {
-                return@enqueue
-            }
-            val current = state!!
+            val time = now()
+            if (occurredAt < 0 || occurredAt > time || time - occurredAt > ACTIVITY_MAX_AGE) return@enqueue
             val date = koreaCalendarDate(occurredAt)
-            val key = "$date:${type.wireValue}"
-            if (key in current.meaningfulDays) return@enqueue
-            if (current.pending.size >= config.queueCapacity) {
-                rejected.update { it + 1 }
+            val name = DailyActivity.definition(ActivityType.PERSONAL_PRESS).name
+            if (registry.definition(name, 1) == null || "$date:$name" in state!!.meaningfulDays) return@enqueue
+            state!!.pressThresholds[date]?.let {
+                recordDailyActivity(ActivityType.PERSONAL_PRESS, it)
                 return@enqueue
             }
-            val fields =
-                JsonObject(
-                    mapOf(
-                        "anonymous_id" to JsonPrimitive(current.anonymousId),
-                        "event_id" to JsonPrimitive(newId()),
-                        "event_schema_version" to JsonPrimitive(1),
-                        "activity_date" to JsonPrimitive(date),
-                        "activity_type" to JsonPrimitive(type.wireValue),
-                        "audience" to
-                            JsonPrimitive(
-                                if (config.environment == "dev" ||
-                                    config.collection.isTestUser == true
-                                ) {
-                                    "test"
-                                } else {
-                                    "unknown"
-                                },
-                            ),
-                        "environment" to JsonPrimitive(config.environment),
-                        "platform" to JsonPrimitive(config.platform),
-                        "app_version" to JsonPrimitive(config.appVersion),
-                        "measurement_version" to JsonPrimitive(MeaningfulActivity.VERSION),
-                    ),
+            val count =
+                ((state!!.dailyPressInputs[date] ?: 0).coerceIn(0, DailyActivity.PRESS_TARGET) + 1)
+                    .coerceAtMost(DailyActivity.PRESS_TARGET)
+            state =
+                state!!.copy(
+                    dailyPressInputs =
+                        state!!.dailyPressInputs.filterKeys {
+                            it >= koreaCalendarDate(time - ACTIVITY_KEY_RETENTION)
+                        } + (date to count),
                 )
-            val next =
-                current.copy(
-                    meaningfulDays =
-                        current.meaningfulDays.filterValues { currentTime - it <= ACTIVITY_KEY_RETENTION } +
-                            (key to occurredAt),
-                    pending = current.pending + EventEnvelope(MeaningfulActivity.NAME, occurredAt, fields),
-                )
-            // Commit the receipt and outbox together; never mark success only in memory.
-            store.write(monitoringJson.encodeToString(next))
-            state = next
-            drain()
+            if (count >= DailyActivity.PRESS_TARGET) {
+                state =
+                    state!!.copy(
+                        pressThresholds =
+                            state!!.pressThresholds.filterValues {
+                                time - it <= ACTIVITY_KEY_RETENTION
+                            } + (date to (state!!.pressThresholds[date] ?: occurredAt)),
+                    )
+                recordDailyActivity(ActivityType.PERSONAL_PRESS, state!!.pressThresholds.getValue(date))
+            }
+            persist()
         }
+    }
+
+    private fun recordDailyActivity(
+        type: ActivityType,
+        occurredAt: Long,
+    ) {
+        if (!healthy) return
+        val currentTime = now()
+        if (occurredAt < 0 || occurredAt > currentTime ||
+            currentTime - occurredAt > ACTIVITY_MAX_AGE
+        ) {
+            return
+        }
+        val current = state!!
+        val date = koreaCalendarDate(occurredAt)
+        val definition = DailyActivity.definition(type)
+        if (registry.definition(definition.name, 1) == null) return
+        val key = "$date:${definition.name}"
+        if (key in current.meaningfulDays) return
+        if (current.pending.size >= config.queueCapacity) {
+            rejected.update { it + 1 }
+            return
+        }
+        val fields =
+            JsonObject(
+                mapOf(
+                    "anonymous_id" to JsonPrimitive(current.anonymousId),
+                    "event_id" to JsonPrimitive(newId()),
+                    "event_schema_version" to JsonPrimitive(1),
+                    "activity_date" to JsonPrimitive(date),
+                    "activity_type" to JsonPrimitive(type.wireValue),
+                    "audience" to
+                        JsonPrimitive(
+                            if (config.environment == "dev" ||
+                                config.collection.isTestUser == true
+                            ) {
+                                "test"
+                            } else {
+                                "unknown"
+                            },
+                        ),
+                    "environment" to JsonPrimitive(config.environment),
+                    "platform" to JsonPrimitive(config.platform),
+                    "app_version" to JsonPrimitive(config.appVersion),
+                    "measurement_version" to JsonPrimitive(DailyActivity.VERSION),
+                ),
+            )
+        val next =
+            current.copy(
+                meaningfulDays =
+                    current.meaningfulDays.filterValues { currentTime - it <= ACTIVITY_KEY_RETENTION } +
+                        (key to occurredAt),
+                pending = current.pending + EventEnvelope(definition.name, occurredAt, fields),
+            )
+        // Commit the receipt and outbox together; never mark success only in memory.
+        store.write(monitoringJson.encodeToString(next))
+        state = next
+        drain()
     }
 
     override fun reportError(
@@ -358,7 +427,7 @@ class MonitoringRuntime(
         }
     }
 
-    // Low-frequency lifecycle/barrier commands cannot be displaced by a burst of events.
+    // Lifecycle/barriers and accepted input counts cannot be displaced by a burst of analytics events.
     // Data commands (including compatibility snapshots) have a separate bounded admission budget.
     private fun enqueue(
         control: Boolean = false,
@@ -392,6 +461,10 @@ class MonitoringRuntime(
     }
 
     private fun activeDay(context: EventContext) {
+        recordDailyActivity(ActivityType.APP_OPEN, now())
+        state!!.pressThresholds.values.toList().forEach {
+            recordDailyActivity(ActivityType.PERSONAL_PRESS, it)
+        }
         if (registry.definition(LifecycleEvents.activeDay.name, LifecycleEvents.activeDay.version) == null) return
         val date = config.activeDay(now())
         if (date in state!!.activeDays) return

@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.pheeeew.core.monitoring.EventValue
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.domain.model.collection.COLLECTION_PRESS_CLAIM_TARGET
 import com.pheeeew.domain.model.collection.COLLECTION_STAMP_CLAIM_TARGET
@@ -20,6 +21,7 @@ import com.pheeeew.feature.monitoring.product.ProductEvents
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import com.pheeeew.feature.screens.collection.card.CollectionCardUiModel
 import dev.zacsweers.metrox.viewmodel.metroViewModel
+import kotlin.uuid.Uuid
 
 @Composable
 internal fun CollectionRoute(
@@ -35,6 +37,22 @@ internal fun CollectionRoute(
     val viewModel: CollectionViewModel = metroViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val telemetry = remember(monitoring) { ProductMonitoring(monitoring, "collection") }
+    val cardId = state.selectedCard?.id
+    val cardViewId =
+        remember(cardId) {
+            Uuid
+                .random()
+                .toString()
+        }
+    val cardFields =
+        mapOf(
+            "view_id" to
+                EventValue
+                    .Text(cardViewId),
+        )
+    LaunchedEffect(cardId, cardViewId) {
+        if (cardId != null) telemetry.emit(ProductEvents.COLLECTION_CARD_VIEWED, cardFields)
+    }
     val scope = rememberCoroutineScope()
     val imageActions = rememberCollectionCardImageActions()
     val exportState =
@@ -71,8 +89,14 @@ internal fun CollectionRoute(
                 imageActionPhase = exportState.phase,
                 notificationDate = notificationDate,
             ),
-        onSaveCard = { cardId, capture -> exportState.export(cardId, CollectionImageAction.SAVE, capture) },
-        onShareCard = { cardId, capture -> exportState.export(cardId, CollectionImageAction.SHARE, capture) },
+        onSaveCard = { cardId, capture ->
+            telemetry.emit(ProductEvents.COLLECTION_CARD_SAVE_CLICKED, cardFields)
+            exportState.export(cardId, CollectionImageAction.SAVE, capture)
+        },
+        onShareCard = { cardId, capture ->
+            telemetry.emit(ProductEvents.COLLECTION_CARD_SHARE_CLICKED, cardFields)
+            exportState.export(cardId, CollectionImageAction.SHARE, capture)
+        },
         onCancelCardCapture = exportState::cancelCapture,
         onDismissSaveCompletion = exportState::dismissResult,
         modifier = modifier,

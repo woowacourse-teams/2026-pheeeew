@@ -21,7 +21,7 @@ internal class SdkMonitoringTransport(
 ) : MonitoringTransport {
     override fun track(event: EventEnvelope): Boolean {
         if (!analyticsEnabled) return false
-        if (event.name == MeaningfulActivity.NAME &&
+        if (DailyActivity.isDaily(event.name) &&
             event.properties["activity_date"] != JsonPrimitive(koreaCalendarDate(event.timestamp))
         ) {
             return false

@@ -1,5 +1,7 @@
 package com.pheeeew.data.press.race
 
+import com.pheeeew.core.monitoring.Monitoring
+import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.press.MyDailyPressSnapshot
 import com.pheeeew.domain.model.press.PressAcceptance
@@ -14,6 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.Clock
 import kotlin.time.TimeSource
 import kotlin.uuid.Uuid
 
@@ -24,6 +27,12 @@ internal class PressRaceInputCoordinator(
     private val now: () -> Long = monotonicClock(),
     private val newId: () -> String = { Uuid.random().toString() },
     private val measurements: PressRaceMeasurements = PressRaceMeasurements(),
+    private val monitoring: Monitoring = NoOpMonitoring,
+    private val wallClock: () -> Long = {
+        Clock.System
+            .now()
+            .toEpochMilliseconds()
+    },
 ) : PressRepository,
     PressRaceInputObserver {
     private val ownerContext = scope.coroutineContext.minusKey(Job)
@@ -85,6 +94,7 @@ internal class PressRaceInputCoordinator(
         if (input.counts.values.sum() == 100) freeze()
         publish()
         wake.trySend(Unit)
+        runCatching { monitoring.recordPressInput(wallClock()) }
         return PressAcceptance.Accepted
     }
 

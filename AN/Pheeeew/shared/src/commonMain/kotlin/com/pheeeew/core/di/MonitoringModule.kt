@@ -3,6 +3,7 @@ package com.pheeeew.core.di
 import com.pheeeew.core.monitoring.ClassificationSource
 import com.pheeeew.core.monitoring.CollectionMetadata
 import com.pheeeew.core.monitoring.CollectionState
+import com.pheeeew.core.monitoring.DailyActivity
 import com.pheeeew.core.monitoring.DataSource
 import com.pheeeew.core.monitoring.EventEnvelope
 import com.pheeeew.core.monitoring.EventRegistry
@@ -32,7 +33,7 @@ fun appMonitoringRegistry(): EventRegistry =
         listOf(
             MeaningfulActivity.definition,
             ProductEvents.definition(ProductEvents.COLLECTION_CLAIM_CLICKED),
-        ),
+        ) + DailyActivity.definitions + ProductEvents.collectionCardDefinitions,
         setOf(
             "splash",
             "map",
@@ -84,7 +85,8 @@ fun decodeAppMonitoringState(raw: String): CollectionState {
     return loaded.copy(
         pending =
             loaded.pending.filter {
-                it.name == MeaningfulActivity.NAME || it.name == ProductEvents.COLLECTION_CLAIM_CLICKED
+                DailyActivity.isDaily(it.name) || it.name == ProductEvents.COLLECTION_CLAIM_CLICKED ||
+                    ProductEvents.collectionCardDefinitions.any { definition -> definition.name == it.name }
             },
         extensions = loaded.extensions - "sigh_v2",
     )

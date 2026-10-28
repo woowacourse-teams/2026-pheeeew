@@ -6,6 +6,7 @@ import com.pheeeew.feature.monitoring.product.ProductEvents
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.encodeToString
@@ -72,7 +73,7 @@ class MeaningfulActivityTest {
             val transport = Transport()
             val runtime = runtime(store, transport) { beforeMidnight }
             runCurrent()
-            repeat(1000) { runtime.recordSuccessfulActivity(ActivityType.PERSONAL_PRESS, beforeMidnight) }
+            repeat(1000) { runtime.recordPressInput(beforeMidnight) }
             runCurrent()
             runtime.recordSuccessfulActivity(ActivityType.EMOTION_RECORD, beforeMidnight)
             runCurrent()
@@ -88,7 +89,8 @@ class MeaningfulActivityTest {
             runtime.close()
             val restored = runtime(store, transport) { beforeMidnight }
             runCurrent()
-            ActivityType.entries.forEach { restored.recordSuccessfulActivity(it, beforeMidnight) }
+            restored.recordSuccessfulActivity(ActivityType.EMOTION_RECORD, beforeMidnight)
+            repeat(100) { restored.recordPressInput(beforeMidnight) }
             runCurrent()
             assertEquals(2, transport.events.size)
             assertEquals(identity, assertNotNull(restored.awaitInitialState()).anonymousId)
@@ -101,8 +103,8 @@ class MeaningfulActivityTest {
             val transport = Transport()
             val runtime = runtime(Store(), transport) { afterMidnight }
             runCurrent()
-            runtime.recordSuccessfulActivity(ActivityType.PERSONAL_PRESS, beforeMidnight)
-            runtime.recordSuccessfulActivity(ActivityType.PERSONAL_PRESS, afterMidnight)
+            repeat(100) { runtime.recordPressInput(beforeMidnight) }
+            repeat(100) { runtime.recordPressInput(afterMidnight) }
             runCurrent()
             assertEquals(
                 listOf("2026-10-08", "2026-10-09"),
@@ -142,9 +144,10 @@ class MeaningfulActivityTest {
             runCurrent()
             restored.background()
             runCurrent()
-            assertEquals(listOf(pending), online.events)
+            assertEquals(pending, online.events.first())
+            assertEquals("app_open_day", online.events.last().name)
             assertEquals(1, online.errors)
-            assertEquals(1, monitoringJson.decodeFromString<CollectionState>(store.raw!!).meaningfulDays.size)
+            assertEquals(2, monitoringJson.decodeFromString<CollectionState>(store.raw!!).meaningfulDays.size)
             restored.close()
         }
 
@@ -155,8 +158,8 @@ class MeaningfulActivityTest {
             val store = Store()
             val runtime = runtime(store, transport) { beforeMidnight }
             runCurrent()
-            runtime.recordSuccessfulActivity(ActivityType.PERSONAL_PRESS, beforeMidnight + 1)
-            runtime.recordSuccessfulActivity(ActivityType.PERSONAL_PRESS, beforeMidnight - ACTIVITY_MAX_AGE - 1)
+            runtime.recordPressInput(beforeMidnight + 1)
+            runtime.recordPressInput(beforeMidnight - ACTIVITY_MAX_AGE - 1)
             runCurrent()
             assertTrue(transport.events.isEmpty())
             assertTrue(monitoringJson.decodeFromString<CollectionState>(store.raw!!).meaningfulDays.isEmpty())
@@ -207,9 +210,180 @@ class MeaningfulActivityTest {
             runtime.close()
         }
 
+    @Test
+    fun `ninety nine taps survive restart and hundredth emits once independent of delivery`() =
+        runTest {
+            val store = Store()
+            val transport = Transport()
+            val runtime = runtime(store, transport) { beforeMidnight }
+            runCurrent()
+            repeat(99) { runtime.recordPressInput(beforeMidnight) }
+            runCurrent()
+            assertTrue(transport.events.isEmpty())
+            runtime.close()
+            val restored = runtime(store, transport) { beforeMidnight }
+            runCurrent()
+            restored.recordPressInput(beforeMidnight)
+            repeat(10) { restored.recordSuccessfulActivity(ActivityType.PERSONAL_PRESS, beforeMidnight) }
+            runCurrent()
+            assertEquals(listOf("press_100_day"), transport.events.map { it.name })
+            repeat(1000) { restored.recordPressInput(beforeMidnight) }
+            runCurrent()
+            assertEquals(1, transport.events.size)
+            restored.close()
+        }
+
+    @Test
+    fun `opening foreground once per KST day stays deduplicated across restart`() =
+        runTest {
+            val store = Store()
+            val transport = Transport()
+            var time = beforeMidnight
+            val runtime = runtime(store, transport) { time }
+            runCurrent()
+            repeat(3) {
+                runtime.foreground()
+                runtime.background()
+            }
+            runCurrent()
+            assertEquals(listOf("app_open_day"), transport.events.map { it.name })
+            time = afterMidnight
+            runtime.foreground()
+            runCurrent()
+            assertEquals(2, transport.events.size)
+            runtime.close()
+            val restored = runtime(store, transport) { time }
+            runCurrent()
+            restored.foreground()
+            runCurrent()
+            assertEquals(2, transport.events.size)
+            restored.close()
+        }
+
+    @Test
+    fun `card impression and save share clicks retain a common visit identifier after restore`() =
+        runTest {
+            val store = Store()
+            val offline = Transport(accept = false)
+            val runtime = runtime(store, offline) { beforeMidnight }
+            runCurrent()
+            val product = ProductMonitoring(runtime, "collection")
+            val names =
+                listOf("collection_card_viewed", "collection_card_save_clicked", "collection_card_share_clicked")
+            names.forEach { product.emit(it, mapOf("view_id" to EventValue.Text("card-visit"))) }
+            runCurrent()
+            runtime.close()
+            val online = Transport()
+            val restored = runtime(store, online) { beforeMidnight }
+            runCurrent()
+            restored.flush()
+            runCurrent()
+            assertEquals(names, online.events.map { it.name })
+            assertTrue(online.events.all { it.properties["view_id"] == JsonPrimitive("card-visit") })
+            restored.close()
+        }
+
+    @Test
+    fun `full offline queue retains threshold date and emits after midnight recovery`() =
+        runTest {
+            val store = Store()
+            val runtime = runtime(store, Transport(accept = false), capacity = 2) { beforeMidnight }
+            runCurrent()
+            repeat(2) { ProductMonitoring(runtime, "collection").emit(ProductEvents.COLLECTION_CLAIM_CLICKED) }
+            runCurrent()
+            repeat(100) { runtime.recordPressInput(beforeMidnight) }
+            runCurrent()
+            val stored = monitoringJson.decodeFromString<CollectionState>(store.raw!!)
+            assertEquals(2, stored.pending.size)
+            assertTrue(stored.meaningfulDays.isEmpty())
+            assertEquals(beforeMidnight, stored.pressThresholds["2026-10-08"])
+            runtime.close()
+            val online = Transport()
+            val restored = runtime(store, online, capacity = 2) { afterMidnight }
+            runCurrent()
+            restored.foreground()
+            runCurrent()
+            advanceTimeBy(30_001)
+            runCurrent()
+            val press = online.events.single { it.name == "press_100_day" }
+            assertEquals(beforeMidnight, press.timestamp)
+            assertEquals(JsonPrimitive("2026-10-08"), press.properties["activity_date"])
+            restored.close()
+        }
+
+    @Test
+    fun `card view save and share each collect once per KST day across cards and process restart`() =
+        runTest {
+            val store = Store()
+            val transport = Transport()
+            var time = beforeMidnight
+            val runtime = runtime(store, transport) { time }
+            runCurrent()
+            val names =
+                listOf(
+                    "collection_card_viewed",
+                    "collection_card_save_clicked",
+                    "collection_card_share_clicked",
+                )
+            repeat(10) { visit ->
+                names.forEach {
+                    ProductMonitoring(runtime, "collection").emit(
+                        it,
+                        mapOf("view_id" to EventValue.Text("visit-$visit")),
+                    )
+                }
+            }
+            runCurrent()
+            assertEquals(names, transport.events.map { it.name })
+            runtime.close()
+            val restored = runtime(store, transport) { time }
+            runCurrent()
+            names.forEach {
+                ProductMonitoring(restored, "collection").emit(
+                    it,
+                    mapOf("view_id" to EventValue.Text("reopened")),
+                )
+            }
+            runCurrent()
+            assertEquals(3, transport.events.size)
+            time = afterMidnight
+            names.forEach {
+                ProductMonitoring(restored, "collection").emit(
+                    it,
+                    mapOf("view_id" to EventValue.Text("next-day")),
+                )
+            }
+            runCurrent()
+            assertEquals(names + names, transport.events.map { it.name })
+            assertEquals(
+                List(3) { "2026-10-08" } + List(3) { "2026-10-09" },
+                transport.events.map { (it.properties.getValue("activity_date") as JsonPrimitive).content },
+            )
+            restored.close()
+        }
+
+    @Test
+    fun `failed daily click persistence does not consume a daily receipt`() =
+        runTest {
+            val store = Store()
+            val transport = Transport()
+            val runtime = runtime(store, transport) { beforeMidnight }
+            runCurrent()
+            store.fail = true
+            ProductMonitoring(runtime, "collection").emit(
+                "collection_card_save_clicked",
+                mapOf("view_id" to EventValue.Text("visit")),
+            )
+            runCurrent()
+            assertTrue(transport.events.isEmpty())
+            assertTrue(monitoringJson.decodeFromString<CollectionState>(store.raw!!).dailyProductEvents.isEmpty())
+            runtime.close()
+        }
+
     private fun TestScope.runtime(
         store: Store,
         transport: Transport,
+        capacity: Int = 1000,
         time: () -> Long,
     ): MonitoringRuntime =
         MonitoringRuntime(
@@ -223,6 +397,7 @@ class MeaningfulActivityTest {
                 "test-token",
                 "https://example.com",
                 "https://example.com",
+                queueCapacity = capacity,
             ),
             appMonitoringRegistry(),
             store,
