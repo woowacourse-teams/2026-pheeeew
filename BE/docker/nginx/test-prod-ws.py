@@ -15,7 +15,7 @@ spec = importlib.util.spec_from_file_location('alb_health', HERE / 'test-alb-hea
 fixture = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(fixture)
 CLIENT = r'''
-import http.client, socket, ssl, sys, time
+import http.client, json, socket, ssl, sys, time
 from pathlib import Path
 ctx = ssl.create_default_context(cafile='/fixture/fullchain.pem')
 for attempt in range(30):
@@ -45,6 +45,7 @@ def health(source, target, path='/actuator/health', method='GET', headers=None):
 
 assert health('10.0.10.3', '10.0.10.2') == 200
 assert health('10.0.11.3', '10.0.11.2') == 200
+assert health('10.0.10.3', '10.0.10.2', headers={'X-Forwarded-For': '198.51.100.77'}) == 200
 assert health('10.0.10.3', '10.0.10.2', method='POST') == 405
 assert health('10.0.10.3', '10.0.10.2', path='/actuator/health;other') == 444
 assert health('10.0.10.3', '10.0.10.2', path='/actuator/prometheus') == 444
@@ -59,6 +60,38 @@ with ctx.wrap_socket(socket.create_connection(('proxy', 443), timeout=3),
     public.sendall(b'GET /actuator/health HTTP/1.1\r\nHost: api.pheeeew.com\r\nConnection: close\r\n\r\n')
     assert public.recv(1024).startswith(b'HTTP/1.1 404 ')
 print('PASS: ALB-only health path propagates backend health')
+
+def request(source, target, forwarded, path='/identity', method='GET'):
+    conn = socket.create_connection((target, 443), timeout=5, source_address=(source, 0))
+    with ctx.wrap_socket(conn, server_hostname='api.pheeeew.com') as tls:
+        tls.sendall((method + ' ' + path + ' HTTP/1.1\r\nHost: api.pheeeew.com\r\nConnection: close\r\n'
+                     'X-Forwarded-For: ' + forwarded + '\r\nForwarded: for=127.0.0.1\r\n'
+                     'CF-Connecting-IP: 127.0.0.1\r\nX-Forwarded-Host: evil.example\r\n'
+                     'X-Forwarded-Port: 9999\r\nContent-Length: 0\r\n\r\n').encode())
+        response = http.client.HTTPResponse(tls)
+        response.begin()
+        body = response.read()
+        return response.status, body
+
+def observed_ip(source, target, forwarded):
+    code, body = request(source, target, forwarded)
+    assert code == 200, code
+    headers = json.loads(body)['headers']
+    assert 'Forwarded' not in headers and 'CF-Connecting-IP' not in headers, headers
+    assert headers['X-Forwarded-Host'] == 'api.pheeeew.com' and headers['X-Forwarded-Port'] == '443', headers
+    return headers['X-Real-IP']
+
+assert observed_ip('10.0.10.3', '10.0.10.2', '203.0.113.7, 198.51.100.77') == '198.51.100.77'
+assert observed_ip('10.0.11.3', '10.0.11.2', '203.0.113.7, 198.51.100.78') == '198.51.100.78'
+assert observed_ip('10.0.12.3', '10.0.12.2', '127.0.0.1') == '10.0.12.3'
+print('PASS: ALB appended address wins over a forged earlier address; untrusted peers cannot spoof')
+
+codes = [request('10.0.10.3', '10.0.10.2', f'203.0.113.{i}, 198.51.100.90',
+                 '/api/v2/devices/challenge', 'POST')[0] for i in range(1, 15)]
+assert 429 in codes and 200 in codes, codes
+assert request('10.0.10.3', '10.0.10.2', '203.0.113.1, 198.51.100.91',
+               '/api/v2/devices/challenge', 'POST')[0] == 200
+print('PASS: rate limit follows the actual client address, not the forged prefix')
 
 for auth in (True, False):
     sock = ctx.wrap_socket(socket.create_connection(('proxy', 443), timeout=5),
