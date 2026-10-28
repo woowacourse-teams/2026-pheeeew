@@ -1,6 +1,8 @@
 package com.pheeeew.feature.monitoring.compat
 
 import com.pheeeew.core.di.appMonitoringRegistry
+import com.pheeeew.core.monitoring.ActivityType
+import com.pheeeew.core.monitoring.DailyActivity
 import com.pheeeew.core.monitoring.MeaningfulActivity
 import com.pheeeew.core.monitoring.sanitizePostHogEvent
 import com.pheeeew.feature.monitoring.product.ProductEvents
@@ -28,6 +30,29 @@ class SdkMonitoringTransportTest {
                 "app_version" to "2.2",
             ),
         )
+
+    @Test
+    fun `split daily events pass the SDK allowlist without session or content properties`() {
+        ActivityType.entries.forEach { type ->
+            val event =
+                input.copy(
+                    event = DailyActivity.definition(type).name,
+                    properties =
+                        input.properties +
+                            mapOf(
+                                "activity_type" to type.wireValue,
+                                "measurement_version" to DailyActivity.VERSION,
+                                "screen" to "press",
+                                "memo" to "private",
+                            ),
+                )
+            val clean = assertNotNull(sanitizePostHogEvent(event, appMonitoringRegistry()))
+            assertEquals(event.event, clean.event)
+            assertEquals("install", clean.distinctId)
+            assertNull(clean.properties["memo"])
+            assertNull(clean.properties["screen"])
+        }
+    }
 
     @Test
     fun `report event uses installation identity and removes SDK and content properties`() {

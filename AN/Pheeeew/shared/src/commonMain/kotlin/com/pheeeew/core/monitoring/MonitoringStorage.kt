@@ -30,6 +30,9 @@ data class CollectionState(
     val activeDays: List<String> = emptyList(),
     val pending: List<EventEnvelope> = emptyList(),
     val meaningfulDays: Map<String, Long> = emptyMap(),
+    val dailyPressInputs: Map<String, Int> = emptyMap(),
+    val pressThresholds: Map<String, Long> = emptyMap(),
+    val dailyProductEvents: Map<String, Long> = emptyMap(),
     val extensions: Map<String, JsonObject> = emptyMap(),
 )
 
