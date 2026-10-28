@@ -88,38 +88,14 @@ class AppStartupPresentationTest {
     }
 
     @Test
-    fun `미완료 기능 안내는 버전 확인과 스플래시를 건너뛰지 않는다`() {
+    fun `온보딩을 완료하면 바로 메인 진입을 준비한다`() {
         assertEquals(
-            AppStartupPresentation.SPLASH,
-            resolveAppStartupPresentation(false, false, false, true, usageGuidePending = true),
-        )
-        assertEquals(
-            AppStartupPresentation.VERSION_CHECK,
-            resolveAppStartupPresentation(false, true, false, true, usageGuidePending = true),
-        )
-        assertEquals(
-            AppStartupPresentation.SPLASH,
-            resolveAppStartupPresentation(true, false, false, true, usageGuidePending = true),
-        )
-    }
-
-    @Test
-    fun `기능 안내는 슬라이드 이후 표시하고 필수 업데이트보다 앞서지 않는다`() {
-        assertEquals(
-            AppStartupPresentation.ONBOARDING,
-            resolveAppStartupPresentation(true, true, false, false, usageGuidePending = true),
-        )
-        assertEquals(
-            AppStartupPresentation.FEATURE_GUIDE,
-            resolveAppStartupPresentation(true, true, false, true, usageGuidePending = true),
+            AppStartupPresentation.MAIN,
+            resolveAppStartupPresentation(true, true, false, true),
         )
         assertEquals(
             AppStartupPresentation.REQUIRED_UPDATE,
-            resolveAppStartupPresentation(true, true, true, true, usageGuidePending = true),
-        )
-        assertEquals(
-            AppStartupPresentation.MAIN,
-            resolveAppStartupPresentation(true, true, false, true, usageGuidePending = false),
+            resolveAppStartupPresentation(true, true, true, true),
         )
     }
 }

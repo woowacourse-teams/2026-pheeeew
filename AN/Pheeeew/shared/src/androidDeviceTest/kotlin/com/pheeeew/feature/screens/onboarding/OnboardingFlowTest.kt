@@ -29,16 +29,15 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 
-/** The actual onboarding and guide screens, with no API/session/recording dependencies. */
-class OnboardingGuideFlowTest {
+/** The actual onboarding screen, with no API/session/recording dependencies. */
+class OnboardingFlowTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val device = UiDevice.getInstance(instrumentation)
 
     @Test
-    fun fourSlidesThreeOverviewsThenStartOnMap() {
+    fun fourSlidesThenStartOnMap() {
         device.wakeUp()
         val writes = AtomicInteger()
-        val guide = FeatureGuideState(true) { writes.incrementAndGet() }
         val activity =
             instrumentation.startActivitySync(
                 Intent(
@@ -58,10 +57,8 @@ class OnboardingGuideFlowTest {
                         if (intro) {
                             OnboardingScreen(onFinished = {
                                 intro = false
-                                guide.start()
+                                writes.incrementAndGet()
                             })
-                        } else if (guide.pending) {
-                            FeatureGuideScreen(guide)
                         } else {
                             Box(
                                 Modifier.fillMaxSize().background(Color(0xFFE8EDE2)),
@@ -99,51 +96,18 @@ class OnboardingGuideFlowTest {
                 if (index < titles.lastIndex) node("다음").click()
             }
             assertFalse(device.hasObject(By.text("일일 랭킹")))
-            node("사용법 살펴보기").click()
-            node("주변의 감정을 목록으로")
-            screenshot("final-guide-map")
             assertEquals(0, writes.get())
-            swipeGuide()
-            node("전체 순위가 궁금할 땐")
-            SystemClock.sleep(650)
-            assertEquals(1, guide.page)
-            device.pressBack()
-            node("주변의 감정을 목록으로")
-            SystemClock.sleep(650)
-            assertEquals(0, guide.page)
-            swipeGuide()
-            node("전체 순위가 궁금할 땐")
-            screenshot("final-guide-press")
-            swipeGuide()
-            node("내 감정이 카드로 모여요")
-            SystemClock.sleep(650)
-            assertEquals(2, guide.page)
-            assertFalse(device.hasObject(By.text("랭킹")))
-            screenshot("final-guide-collection")
-            assertEquals(0, writes.get())
-            assertFalse(device.hasObject(By.clazz("android.widget.EditText")))
             node("시작하기").click()
             node("지도 화면")
             assertFalse(device.hasObject(By.text("첫 사용 안내를 마쳤어요")))
-            assertFalse(guide.pending)
             assertEquals(1, writes.get())
-            screenshot("final-guide-started-map")
+            screenshot("final-onboarding-started-map")
         } catch (error: Throwable) {
             screenshot("final-onboarding-failure")
             throw error
         } finally {
             instrumentation.runOnMainSync { activity.finish() }
         }
-    }
-
-    private fun swipeGuide() {
-        device.swipe(
-            device.displayWidth * 4 / 5,
-            device.displayHeight / 2,
-            device.displayWidth / 5,
-            device.displayHeight / 2,
-            30,
-        )
     }
 
     private fun node(text: String): UiObject2 =

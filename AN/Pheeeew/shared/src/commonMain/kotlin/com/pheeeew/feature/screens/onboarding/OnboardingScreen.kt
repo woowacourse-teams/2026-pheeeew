@@ -54,7 +54,6 @@ import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.onboarding_brand
 import pheeeew.shared.generated.resources.onboarding_collection
 import pheeeew.shared.generated.resources.onboarding_emotion
-import pheeeew.shared.generated.resources.onboarding_lookaround
 import pheeeew.shared.generated.resources.onboarding_memo
 import pheeeew.shared.generated.resources.onboarding_next
 import pheeeew.shared.generated.resources.onboarding_press
@@ -67,6 +66,7 @@ import pheeeew.shared.generated.resources.onboarding_slide_memo_body
 import pheeeew.shared.generated.resources.onboarding_slide_memo_title
 import pheeeew.shared.generated.resources.onboarding_slide_press_body
 import pheeeew.shared.generated.resources.onboarding_slide_press_title
+import pheeeew.shared.generated.resources.onboarding_start
 
 const val WELCOME_ONBOARDING_COMPLETED_KEY = "onboarding_completed"
 private val OnboardingBackground = Color(0xFFFCFCFA)
@@ -233,7 +233,7 @@ fun OnboardingScreen(
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                stringResource(if (isLastPage) Res.string.onboarding_lookaround else Res.string.onboarding_next),
+                stringResource(if (isLastPage) Res.string.onboarding_start else Res.string.onboarding_next),
                 color = AppColors.GroupInk,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
