@@ -1,13 +1,11 @@
 package com.pheeeew
 
-import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,7 +22,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -36,7 +33,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -133,7 +129,6 @@ import dev.zacsweers.metrox.viewmodel.LocalMetroViewModelFactory
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
@@ -282,8 +277,12 @@ private fun AppContent(
     var suggestionDismissed by remember { mutableStateOf(false) }
     var storeOpenError by remember { mutableStateOf(false) }
     var onboardingCompleted by remember { mutableStateOf(onboardingStore.isCompleted()) }
+    var appResumed by remember(lifecycleOwner) {
+        mutableStateOf(lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))
+    }
     var mapVisible by remember { mutableStateOf(false) }
     var mapMounted by remember { mutableStateOf(false) }
+    var mapEntryPresent by remember { mutableStateOf(false) }
     var savedMapCamera by remember { mutableStateOf<MapCameraSnapshotUiModel?>(null) }
     val splashAnimationDuration = AppStartupViewModel.MINIMUM_SPLASH_MILLIS.toFloat()
     val splashProgress =
@@ -301,7 +300,8 @@ private fun AppContent(
 
     DisposableEffect(lifecycleOwner) {
         val observer =
-            LifecycleEventObserver { _, event ->
+            LifecycleEventObserver { owner, event ->
+                appResumed = owner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
                 if (event == Lifecycle.Event.ON_RESUME) {
                     startupViewModel.refreshSplashDeadline()
                     if (checkedForResume) startupViewModel.checkVersion()
@@ -396,9 +396,10 @@ private fun AppContent(
         assistedMetroViewModel<MapViewModel, MapViewModel.Factory> {
             create(nearbyViewModel)
         }
-    val mapRendererActive = mapVisible || shouldPrepareMapDuringSplash
-    DisposableEffect(mapViewModel, mapRendererActive) {
-        mapViewModel.setMapRendererActive(mapRendererActive)
+    val mapDataActive = appResumed && (mapVisible || shouldPrepareMapDuringSplash)
+    val mapRendererActive = mapMounted && appResumed
+    DisposableEffect(mapViewModel, mapDataActive) {
+        mapViewModel.setMapRendererActive(mapDataActive)
         onDispose { mapViewModel.setMapRendererActive(false) }
     }
     LaunchedEffect(
@@ -431,7 +432,6 @@ private fun AppContent(
     }
     val mapRecordViewModel: MapRecordViewModel = metroViewModel()
     val nearbyState by nearbyViewModel.state.collectAsStateWithLifecycle()
-    var mapPageOffset by remember { mutableStateOf(0f) }
     var isMapCameraMoving by remember { mutableStateOf(false) }
     var nearbyMapControlHeight by remember { mutableStateOf(0.dp) }
     LaunchedEffect(nearbyState.visible, mapViewModel) {
@@ -442,7 +442,7 @@ private fun AppContent(
     val detailViewModel: EmotionDetailViewModel = metroViewModel()
     val detailState by detailViewModel.uiModel.collectAsStateWithLifecycle()
 
-    val firstMapFrameReady = remember(mapUiModel.mapRevision) { mutableStateOf(false) }
+    val firstMapFrameReady = remember(mapUiModel.mapRevision, mapMounted) { mutableStateOf(false) }
     DisposableEffect(firstMapFrameReady) {
         onDispose { startupViewModel.updateMapPreparation(false) }
     }
@@ -450,11 +450,7 @@ private fun AppContent(
         startupViewModel.updateMapPreparation(firstMapFrameReady.value || mapUiModel.mapError != null)
     }
     LaunchedEffect(mapVisible, shouldPrepareMapDuringSplash) {
-        mapMounted = true
-        if (!mapVisible && !shouldPrepareMapDuringSplash) {
-            delay(MAP_INACTIVE_RELEASE_DELAY_MILLIS)
-            if (!mapVisible) mapMounted = false
-        }
+        if (mapVisible || shouldPrepareMapDuringSplash) mapMounted = true
     }
 
     var highlightedEmotion by remember { mutableStateOf<RegisteredEmotionUiModel?>(null) }
@@ -538,7 +534,9 @@ private fun AppContent(
                 isMounted = mapMounted,
                 savedCamera = savedMapCamera,
                 onCameraSaved = { savedMapCamera = it },
-                onMemoryPressure = { if (!mapVisible && !shouldPrepareMapDuringSplash) mapMounted = false },
+                onMemoryPressure = {
+                    if (!mapEntryPresent && !shouldPrepareMapDuringSplash) mapMounted = false
+                },
                 onMapError = { mapViewModel.onMapError(it, mapRevision) },
                 onMapRecovered = { mapViewModel.onMapRecovered(mapRevision) },
                 onFirstFrameReady = { firstMapFrameReady.value = true },
@@ -546,7 +544,9 @@ private fun AppContent(
                     val viewport = RecordMapViewport(centerX, centerY, radius)
                     if (recordViewport.value != viewport) recordViewport.value = viewport
                 },
-                onViewportChanged = mapViewModel::onViewportChanged,
+                onViewportChanged = { viewport ->
+                    if (mapDataActive) mapViewModel.onViewportChanged(viewport)
+                },
                 onCameraMovingChanged = { isMapCameraMoving = it },
                 onEmotionPinClick = { id ->
                     highlightedEmotion = null
@@ -571,8 +571,10 @@ private fun AppContent(
                 },
                 onMapBackgroundClick = { if (nearbyState.visible) nearbyViewModel.dismiss() },
                 onHighlightedPinPositionChanged = { highlightedPinPosition.value = it },
-                onContentPresented = mapViewModel::contentPresented,
-                modifier = Modifier.fillMaxSize().graphicsLayer { translationX = mapPageOffset * size.width },
+                onContentPresented = { token, ids ->
+                    if (mapDataActive && mapContentActive) mapViewModel.contentPresented(token, ids)
+                },
+                modifier = Modifier.fillMaxSize(),
             )
         }
 
@@ -759,13 +761,10 @@ private fun AppContent(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .background(
-                        if (selectedDestination == AppDestination.Collection) {
-                            AppColors.GroupBackground
-                        } else {
-                            Color.Transparent
-                        },
-                    ).then(
+                    // Keep the persistent map covered while two opaque destinations crossfade.
+                    // Retain transparency throughout transitions that still include the map entry.
+                    .background(if (mapEntryPresent) Color.Transparent else AppColors.GroupBackground)
+                    .then(
                         if (shouldPrepareMapDuringSplash) Modifier.clearAndSetSemantics {} else Modifier,
                     ),
         ) {
@@ -773,55 +772,20 @@ private fun AppContent(
                 navController = navController,
                 startDestination = MapRootDestination,
                 modifier = Modifier.fillMaxSize(),
+                enterTransition = { fadeIn(tween(200)) },
+                exitTransition = { fadeOut(tween(200)) },
             ) {
                 composable<MapRootDestination>(
-                    enterTransition = {
-                        if (coldNotificationEntry) {
-                            EnterTransition.None
-                        } else {
-                            rootTabEnterTransition(
-                                initialState.destination,
-                                targetState.destination,
-                            )
-                        }
-                    },
-                    exitTransition = {
-                        if (coldNotificationEntry) {
-                            ExitTransition.None
-                        } else {
-                            rootTabExitTransition(
-                                initialState.destination,
-                                targetState.destination,
-                            )
-                        }
-                    },
-                    popEnterTransition = {
-                        if (coldNotificationEntry) {
-                            EnterTransition.None
-                        } else {
-                            rootTabEnterTransition(
-                                initialState.destination,
-                                targetState.destination,
-                            )
-                        }
-                    },
-                    popExitTransition = {
-                        if (coldNotificationEntry) {
-                            ExitTransition.None
-                        } else {
-                            rootTabExitTransition(
-                                initialState.destination,
-                                targetState.destination,
-                            )
-                        }
-                    },
+                    enterTransition = { if (coldNotificationEntry) EnterTransition.None else null },
+                    exitTransition = { if (coldNotificationEntry) ExitTransition.None else null },
+                    popEnterTransition = { if (coldNotificationEntry) EnterTransition.None else null },
+                    popExitTransition = { if (coldNotificationEntry) ExitTransition.None else null },
                 ) {
-                    // Keep the persistent native map in step with its Compose overlay.
-                    val pageOffset by transition.animateFloat(
-                        transitionSpec = { tween(300) },
-                        label = "nativeMapPageOffset",
-                    ) { state -> if (state == EnterExitState.Visible) 0f else -1f }
-                    SideEffect { mapPageOffset = pageOffset }
+                    DisposableEffect(Unit) {
+                        mapEntryPresent = true
+                        mapMounted = true
+                        onDispose { mapEntryPresent = false }
+                    }
                     Box(modifier = Modifier.fillMaxSize()) {
                         MapScreen(
                             viewModel = mapViewModel,
@@ -912,46 +876,10 @@ private fun AppContent(
                 }
 
                 composable<PressRootDestination>(
-                    enterTransition = {
-                        if (coldNotificationEntry) {
-                            EnterTransition.None
-                        } else {
-                            rootTabEnterTransition(
-                                initialState.destination,
-                                targetState.destination,
-                            )
-                        }
-                    },
-                    exitTransition = {
-                        if (coldNotificationEntry) {
-                            ExitTransition.None
-                        } else {
-                            rootTabExitTransition(
-                                initialState.destination,
-                                targetState.destination,
-                            )
-                        }
-                    },
-                    popEnterTransition = {
-                        if (coldNotificationEntry) {
-                            EnterTransition.None
-                        } else {
-                            rootTabEnterTransition(
-                                initialState.destination,
-                                targetState.destination,
-                            )
-                        }
-                    },
-                    popExitTransition = {
-                        if (coldNotificationEntry) {
-                            ExitTransition.None
-                        } else {
-                            rootTabExitTransition(
-                                initialState.destination,
-                                targetState.destination,
-                            )
-                        }
-                    },
+                    enterTransition = { if (coldNotificationEntry) EnterTransition.None else null },
+                    exitTransition = { if (coldNotificationEntry) ExitTransition.None else null },
+                    popEnterTransition = { if (coldNotificationEntry) EnterTransition.None else null },
+                    popExitTransition = { if (coldNotificationEntry) ExitTransition.None else null },
                 ) {
                     if (!mainFeaturesReady) return@composable
                     PressRoute(
@@ -964,12 +892,7 @@ private fun AppContent(
                     )
                 }
 
-                composable<CollectionRootDestination>(
-                    enterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
-                    exitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
-                    popEnterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
-                    popExitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
-                ) {
+                composable<CollectionRootDestination> {
                     if (!mainFeaturesReady) return@composable
                     CollectionRoute(
                         monitoring = apiDependencies.client.monitoring,
@@ -1166,34 +1089,4 @@ private fun RequiredUpdateDialog(
             }
         }
     }
-}
-
-private const val MAP_INACTIVE_RELEASE_DELAY_MILLIS = 30_000L
-
-private fun androidx.navigation.NavDestination.rootTabIndex(): Int? =
-    when {
-        hasRoute<MapRootDestination>() -> 0
-        hasRoute<PressRootDestination>() -> 1
-        hasRoute<CollectionRootDestination>() -> 2
-        else -> null
-    }
-
-private fun rootTabEnterTransition(
-    from: androidx.navigation.NavDestination,
-    to: androidx.navigation.NavDestination,
-): EnterTransition? {
-    val fromIndex = from.rootTabIndex() ?: return null
-    val toIndex = to.rootTabIndex() ?: return null
-    if (fromIndex == toIndex) return EnterTransition.None
-    return slideInHorizontally(tween(300)) { width -> if (toIndex > fromIndex) width else -width }
-}
-
-private fun rootTabExitTransition(
-    from: androidx.navigation.NavDestination,
-    to: androidx.navigation.NavDestination,
-): ExitTransition? {
-    val fromIndex = from.rootTabIndex() ?: return null
-    val toIndex = to.rootTabIndex() ?: return null
-    if (fromIndex == toIndex) return ExitTransition.None
-    return slideOutHorizontally(tween(300)) { width -> if (toIndex > fromIndex) -width else width }
 }

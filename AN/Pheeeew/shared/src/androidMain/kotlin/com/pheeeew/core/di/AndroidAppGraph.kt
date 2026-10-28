@@ -260,6 +260,14 @@ private class AndroidOnboardingStore(
             .apply()
     }
 
+    override fun resetCompletion() {
+        preferences
+            .edit()
+            .remove("onboarding_completed")
+            .putBoolean("usage_guide_completed", false)
+            .apply()
+    }
+
     override fun isInitialNotificationPermissionHandled(): Boolean {
         if (!preferences.contains("initial_notification_permission_handled")) {
             // Existing installs must not receive a new automatic prompt after updating.

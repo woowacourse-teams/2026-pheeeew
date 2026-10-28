@@ -30,6 +30,7 @@ internal fun AppEntry(
                 apiBaseUrl = build.baseUrl,
             ),
         onClearUiSession = owner::clearUiSession,
+        onResetOnboarding = appGraph.onboardingStore::resetCompletion,
     ) { onOpen ->
         AndroidAppContent(
             activity,
