@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -33,6 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.feature.component.PressRankBadge
 import com.pheeeew.feature.emotion.component.EmotionFeedbackCatalog
 import com.pheeeew.feature.emotion.model.EmotionKind
 import com.pheeeew.feature.screens.ranking.press.PressRaceRowModel
@@ -49,9 +51,11 @@ import pheeeew.shared.generated.resources.press_race_me
 import pheeeew.shared.generated.resources.press_race_my_row_description
 import pheeeew.shared.generated.resources.press_race_row_description
 
+// Decorative markers until product enables representative emotion display.
+private val raceFaces = listOf(EmotionKind.Blocked, EmotionKind.Annoyed, EmotionKind.Tired)
+
 private val ink = Color(0xFF202323)
 private val muted = Color(0xFF767D78)
-private val raceFaces = listOf(EmotionKind.Blocked, EmotionKind.Annoyed, EmotionKind.Tired)
 
 @Composable
 internal fun PressRaceHeader(
@@ -60,29 +64,37 @@ internal fun PressRaceHeader(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier.fillMaxWidth().height(28.dp).padding(horizontal = 8.dp),
+        modifier.fillMaxWidth().heightIn(min = 28.dp).padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             stringResource(Res.string.press_race_column_rank),
             Modifier.width(rankWidth),
             fontSize = 11.sp,
+            lineHeight = 16.sp,
             color = muted,
         )
         Text(
             stringResource(Res.string.press_race_column_person),
             Modifier.weight(0.85f).padding(start = 8.dp),
             fontSize = 11.sp,
+            lineHeight = 16.sp,
             color = muted,
         )
         Box(Modifier.weight(1f)) {
-            Text(stringResource(Res.string.press_race_column_track), fontSize = 11.sp, color = muted)
+            Text(
+                stringResource(Res.string.press_race_column_track),
+                fontSize = 11.sp,
+                lineHeight = 16.sp,
+                color = muted,
+            )
         }
         Text(
             stringResource(Res.string.press_race_column_count),
             Modifier.width(countWidth),
             textAlign = TextAlign.End,
             fontSize = 11.sp,
+            lineHeight = 16.sp,
             color = muted,
         )
     }
@@ -122,34 +134,9 @@ internal fun PressRaceRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.width(rankWidth).padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
-            if (row.rank in 1L..3L) {
-                Canvas(Modifier.size(21.dp)) {
-                    val color =
-                        when (row.rank) {
-                            1L -> Color(0xFFFFD851)
-                            2L -> Color(0xFFC8CDCC)
-                            else -> Color(0xFFDCA46C)
-                        }
-                    drawCircle(color)
-                    drawCircle(ink, style = Stroke(1.dp.toPx()))
-                }
-            }
-            Text(
-                row.rank.toString(),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                color =
-                    if (row.rank in
-                        1L..3L
-                    ) {
-                        ink
-                    } else {
-                        muted
-                    },
-            )
+            PressRankBadge(row.rank, numberColor = muted, numberSize = 13.sp)
         }
+
         Text(
             if (row.isMe) stringResource(Res.string.press_race_me) else row.nickname,
             Modifier.weight(0.85f).padding(start = 8.dp, end = 6.dp),
@@ -175,9 +162,7 @@ internal fun PressRaceRow(
                     x += step
                 }
             }
-            Image(
-                painterResource(EmotionFeedbackCatalog.face(raceFaces[row.markerIndex.mod(raceFaces.size)])),
-                contentDescription = null,
+            Box(
                 modifier =
                     Modifier.fillMaxWidth().layout { measurable, constraints ->
                         val faceSize = minOf(30.dp.roundToPx(), constraints.maxWidth)
@@ -201,7 +186,13 @@ internal fun PressRaceRow(
                             placeable.placeRelative(x, 0)
                         }
                     },
-            )
+            ) {
+                Image(
+                    painterResource(EmotionFeedbackCatalog.face(raceFaces[row.markerIndex.mod(raceFaces.size)])),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
         }
         Text(
             raceCountText(row.count),

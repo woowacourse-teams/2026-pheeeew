@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,6 +31,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.feature.component.PressRankBadge
 import com.pheeeew.feature.emotion.component.formatCount
 import com.pheeeew.feature.screens.press.PressActivityUiState
 import com.pheeeew.feature.screens.press.PressNearbyRankRow
@@ -146,28 +146,9 @@ internal fun NearbyRankRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        val medal =
-            when (row.rank) {
-                1L -> Color(0xFFFFD752)
-                2L -> Color(0xFFCCD4DC)
-                3L -> Color(0xFFDCA46C)
-                else -> null
-            }
         Box(Modifier.widthIn(min = 26.dp, max = 96.dp), contentAlignment = Alignment.Center) {
-            if (medal !=
-                null
-            ) {
-                Box(Modifier.size(24.dp).background(medal, CircleShape).border(1.dp, RankingInk, CircleShape))
-            }
             Crossfade(row.rank, animationSpec = tween(if (reducedMotion) 0 else 120), label = "nearby rank") { rank ->
-                Text(
-                    rank.toString(),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = if (row.isMe || medal != null) RankingInk else RankingMuted,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                )
+                PressRankBadge(rank, numberColor = if (row.isMe) RankingInk else RankingMuted)
             }
         }
         Text(

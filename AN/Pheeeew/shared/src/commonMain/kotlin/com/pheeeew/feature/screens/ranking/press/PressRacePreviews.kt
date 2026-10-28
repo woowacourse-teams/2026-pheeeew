@@ -3,6 +3,7 @@ package com.pheeeew.feature.screens.ranking.press
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.feature.emotion.model.EmotionKind
 
 private val raceSample =
     listOf(
@@ -21,7 +22,17 @@ private val raceSample =
         "차분한 여우",
     ).mapIndexed { index, name ->
         val counts = listOf(12L, 10L, 9L, 8L, 7L, 6L, 5L, 4L, 3L, 3L, 2L, 1L, 1L)
-        PressRaceRowModel(index + 1L, name, counts[index], raceProgress(counts[index], 12L), index == 1, index % 3)
+        PressRaceRowModel(
+            index + 1L,
+            name,
+            counts[index],
+            raceProgress(counts[index], 12L),
+            index == 1,
+            EmotionKind.entries[
+                index %
+                    EmotionKind.entries.size,
+            ],
+        )
     }
 
 @Preview(name = "전체 순위 SVG", widthDp = 402, heightDp = 874)
@@ -184,6 +195,26 @@ private fun PressRaceListDatePreview() {
         PressRankingScreen(
             onBack = {},
             uiState = PressRankingUiState(status = PressRankingStatus.Ready, date = "2026-10-27"),
+            onRetry = {},
+            onRefresh = {},
+            rows = raceSample,
+        )
+    }
+}
+
+@Preview(name = "고정 헤더 작은 화면 큰 글씨", widthDp = 320, heightDp = 568, fontScale = 2f)
+@Preview(name = "고정 헤더 일반 화면", widthDp = 402, heightDp = 874)
+@Composable
+private fun PressRaceFixedOverviewPreview() {
+    AppTheme {
+        PressRankingScreen(
+            onBack = {},
+            uiState =
+                PressRankingUiState(
+                    date = "2026-10-28",
+                    status = PressRankingStatus.Ready,
+                    me = PressPersonRank(10, "나", 12345),
+                ),
             onRetry = {},
             onRefresh = {},
             rows = raceSample,

@@ -69,7 +69,39 @@ internal fun MyRaceRankCard(
     onPress: () -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
+    compact: Boolean = false,
 ) {
+    if (compact && status == PressRankingStatus.Ready && me != null) {
+        Column(
+            modifier
+                .fillMaxWidth()
+                .background(cardYellow, RoundedCornerShape(18.dp))
+                .border(1.dp, cardInk, RoundedCornerShape(18.dp))
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+        ) {
+            Text(stringResource(Res.string.press_my_rank_title), fontSize = 11.sp, lineHeight = 16.sp, color = cardInk)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(Res.string.press_my_rank_position, me.rank.toString()),
+                    Modifier.weight(1f),
+                    fontSize = 22.sp,
+                    lineHeight = 30.sp,
+                    fontWeight = FontWeight.Black,
+                    color = cardInk,
+                )
+                Text(
+                    stringResource(Res.string.press_my_rank_count, raceCountText(me.count)),
+                    Modifier.weight(1f),
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = cardInk,
+                    textAlign = TextAlign.End,
+                )
+            }
+        }
+        return
+    }
     if (status != PressRankingStatus.Ready || me == null) {
         val title =
             when (status) {

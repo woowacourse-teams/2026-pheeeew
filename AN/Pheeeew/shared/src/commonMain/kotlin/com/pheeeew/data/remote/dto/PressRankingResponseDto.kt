@@ -26,4 +26,5 @@ data class PressRankingItemResponseDto(
     val rank: Int,
     val nickname: String,
     val pressCount: Long,
+    val representativeState: String? = null,
 )

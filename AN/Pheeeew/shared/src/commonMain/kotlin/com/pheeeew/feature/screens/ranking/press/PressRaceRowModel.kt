@@ -1,13 +1,16 @@
 package com.pheeeew.feature.screens.ranking.press
 
+import com.pheeeew.feature.emotion.model.EmotionKind
+
 internal data class PressRaceRowModel(
     val rank: Long,
     val nickname: String,
     val count: Long,
     val progress: Float,
     val isMe: Boolean = false,
-    val markerIndex: Int = 0,
+    val emotion: EmotionKind? = null,
     val publicId: String? = null,
+    val markerIndex: Int = 0,
 )
 
 internal fun List<PressPersonRank>.toRaceRows(): List<PressRaceRowModel> {
@@ -20,8 +23,8 @@ internal fun List<PressPersonRank>.toRaceRows(): List<PressRaceRowModel> {
             raceProgress(person.count, maximum),
             isMe = person.isMe,
             publicId = person.publicId,
-            markerIndex =
-                index % 3,
+            emotion = person.emotion,
+            markerIndex = index % 3,
         )
     }
 }

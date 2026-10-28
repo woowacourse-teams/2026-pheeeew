@@ -48,6 +48,7 @@ internal fun rememberRankingEncouragementMessage(): StringResource = remember { 
 internal fun RankingEncouragementBanner(
     modifier: Modifier = Modifier,
     message: StringResource = rememberRankingEncouragementMessage(),
+    compact: Boolean = false,
 ) {
     val shape = RoundedCornerShape(16.dp)
     Row(
@@ -55,7 +56,7 @@ internal fun RankingEncouragementBanner(
             .fillMaxWidth()
             .background(Color(0xFFF0F1EB), shape)
             .border(1.dp, Color(0xFFDFE3D9), shape)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 16.dp, vertical = if (compact) 8.dp else 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -63,8 +64,8 @@ internal fun RankingEncouragementBanner(
         Text(
             stringResource(message),
             Modifier.weight(1f),
-            fontSize = 14.sp,
-            lineHeight = 20.sp,
+            fontSize = if (compact) 13.sp else 14.sp,
+            lineHeight = if (compact) 18.sp else 20.sp,
             fontWeight = FontWeight.Bold,
             color = Color(0xFF202323),
         )

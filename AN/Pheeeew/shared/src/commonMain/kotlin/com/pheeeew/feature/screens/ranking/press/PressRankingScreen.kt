@@ -4,19 +4,20 @@ import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -27,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
@@ -44,14 +46,10 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.component.LoadErrorContent
-import com.pheeeew.core.designsystem.component.RefreshErrorBanner
 import com.pheeeew.feature.emotion.component.rememberTapReducedMotion
 import com.pheeeew.feature.monitoring.product.ProductScreen
 import com.pheeeew.feature.screens.press.measurement.pressRaceDrawMeasurement
-import com.pheeeew.feature.screens.ranking.press.components.MyRaceRankCard
-import com.pheeeew.feature.screens.ranking.press.components.PressRaceHeader
 import com.pheeeew.feature.screens.ranking.press.components.PressRaceRow
-import com.pheeeew.feature.screens.ranking.press.components.RankingEncouragementBanner
 import com.pheeeew.feature.screens.ranking.press.components.rememberRankingEncouragementMessage
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import dev.zacsweers.metrox.viewmodel.metroViewModel
@@ -61,8 +59,6 @@ import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_arrow_back
 import pheeeew.shared.generated.resources.press_daily_ranking_back
 import pheeeew.shared.generated.resources.press_daily_ranking_empty
-import pheeeew.shared.generated.resources.press_daily_ranking_people
-import pheeeew.shared.generated.resources.press_daily_ranking_refresh_error
 import pheeeew.shared.generated.resources.press_daily_ranking_title
 
 @Composable
@@ -127,6 +123,7 @@ internal fun PressRankingScreen(
     dailyDate: String? = null,
 ) {
     val encouragementMessage = rememberRankingEncouragementMessage()
+    val listState = remember(uiState.date) { LazyListState() }
     val scope = rememberCoroutineScope()
     val reducedMotion = rememberTapReducedMotion() || scope.coroutineContext[MotionDurationScale]?.scaleFactor == 0f
     val fontScale = LocalDensity.current.fontScale
@@ -178,99 +175,81 @@ internal fun PressRankingScreen(
             }
             Spacer(Modifier.size(48.dp))
         }
-        PullToRefreshBox(
-            isRefreshing = uiState.isRefreshing,
-            onRefresh = onRefresh,
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-        ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 26.dp),
-                contentPadding = PaddingValues(top = 16.dp, bottom = 24.dp),
-            ) {
-                item {
-                    RankingEncouragementBanner(message = encouragementMessage)
-                    Spacer(Modifier.height(16.dp))
-                    MyRaceRankCard(uiState.me, uiState.status, onBack, onRetry)
-                    Spacer(Modifier.height(20.dp))
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
+        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+            val compact = maxHeight < 600.dp
+            Column(Modifier.fillMaxSize().padding(horizontal = 26.dp)) {
+                PressRankingOverview(
+                    uiState,
+                    dailyDate,
+                    encouragementMessage,
+                    rankWidth,
+                    countWidth,
+                    onBack,
+                    onRetry,
+                    onRefresh,
+                    compact,
+                )
+                PullToRefreshBox(
+                    isRefreshing = uiState.isRefreshing,
+                    onRefresh = onRefresh,
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                ) {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        state = listState,
+                        contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
                     ) {
-                        Text(
-                            stringResource(Res.string.press_daily_ranking_people),
-                            modifier = Modifier.weight(1f).padding(end = 12.dp),
-                            fontSize = 16.sp,
-                            lineHeight = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        if (uiState.date != null && dailyDate == null) {
-                            Text(
-                                uiState.date,
-                                modifier = Modifier.weight(0.65f),
-                                fontSize = 12.sp,
-                                lineHeight = 18.sp,
-                                color = Color(0xFF767D78),
-                                textAlign = TextAlign.End,
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(12.dp))
-                    PressRaceHeader(rankWidth, countWidth)
-                }
-                if (uiState.hasRefreshError) {
-                    item {
-                        RefreshErrorBanner(stringResource(Res.string.press_daily_ranking_refresh_error), onRefresh)
-                    }
-                }
-                when (uiState.status) {
-                    PressRankingStatus.Loading -> {
-                        item {
-                            Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
-                                CircularLoadingIndicator(color = Color(0xFF202323))
+                        when (uiState.status) {
+                            PressRankingStatus.Loading -> {
+                                item {
+                                    Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
+                                        CircularLoadingIndicator(color = Color(0xFF202323))
+                                    }
+                                }
+                            }
+
+                            PressRankingStatus.Failed -> {
+                                item {
+                                    LoadErrorContent(onRetry, Modifier.padding(top = 48.dp))
+                                }
+                            }
+
+                            PressRankingStatus.Ready -> {
+                                if (rows.isEmpty()) {
+                                    item {
+                                        Text(
+                                            stringResource(Res.string.press_daily_ranking_empty),
+                                            Modifier.padding(vertical = 48.dp),
+                                        )
+                                    }
+                                }
+                                itemsIndexed(rows, key = { index, row ->
+                                    "${uiState.date}:${row.publicId ?: "preview-$index"}"
+                                }) { _, row ->
+                                    PressRaceRow(
+                                        row,
+                                        rankWidth,
+                                        countWidth,
+                                        Modifier.animateItem(
+                                            fadeInSpec = if (reducedMotion) null else tween(150),
+                                            placementSpec =
+                                                if (reducedMotion) {
+                                                    null
+                                                } else {
+                                                    tween(
+                                                        300,
+                                                        easing = CubicBezierEasing(0.22f, 0.7f, 0.25f, 1f),
+                                                    )
+                                                },
+                                            fadeOutSpec = if (reducedMotion) null else tween(150),
+                                        ),
+                                    )
+                                }
                             }
                         }
-                    }
-
-                    PressRankingStatus.Failed -> {
-                        item {
-                            LoadErrorContent(onRetry, Modifier.padding(top = 48.dp))
-                        }
-                    }
-
-                    PressRankingStatus.Ready -> {
-                        if (rows.isEmpty()) {
-                            item {
-                                Text(
-                                    stringResource(Res.string.press_daily_ranking_empty),
-                                    Modifier.padding(vertical = 48.dp),
-                                )
-                            }
-                        }
-                        itemsIndexed(rows, key = { index, row ->
-                            "${uiState.date}:${row.publicId ?: "preview-$index"}"
-                        }) { _, row ->
-                            PressRaceRow(
-                                row,
-                                rankWidth,
-                                countWidth,
-                                Modifier.animateItem(
-                                    fadeInSpec = if (reducedMotion) null else tween(150),
-                                    placementSpec =
-                                        if (reducedMotion) {
-                                            null
-                                        } else {
-                                            tween(
-                                                300,
-                                                easing = CubicBezierEasing(0.22f, 0.7f, 0.25f, 1f),
-                                            )
-                                        },
-                                    fadeOutSpec = if (reducedMotion) null else tween(150),
-                                ),
-                            )
-                        }
+                        item { Spacer(Modifier.navigationBarsPadding()) }
                     }
                 }
-                item { Spacer(Modifier.navigationBarsPadding()) }
             }
         }
     }

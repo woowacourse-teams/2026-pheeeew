@@ -3,6 +3,9 @@ package com.pheeeew.data.remote.mapper
 import com.pheeeew.data.remote.dto.DailyPressRankingResponseDto
 import com.pheeeew.data.remote.dto.PressRankingItemResponseDto
 import com.pheeeew.data.remote.dto.PressRankingResponseDto
+import com.pheeeew.domain.model.emotion.EmotionState
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -11,6 +14,40 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class PressRankingMapperTest {
+    @Test
+    fun `일별 JSON 대표 감정은 items와 me에 보존하고 미지 누락 null 값은 순위를 깨지 않는다`() {
+        val json = Json { ignoreUnknownKeys = true }
+        val cases =
+            EmotionState.entries.map { it.name to it } +
+                listOf("FUTURE_EMOTION" to null, null to null)
+        for ((raw, expected) in cases) {
+            val field = raw?.let { ",\"representativeState\":\"$it\"" }.orEmpty()
+            val item =
+                json.decodeFromString<PressRankingItemResponseDto>(
+                    "{\"rank\":2,\"nickname\":\"익명\",\"pressCount\":99$field}",
+                )
+            val ranking =
+                PressRankingMapper.toDailyDomain(
+                    DailyPressRankingResponseDto(
+                        "2026-10-28",
+                        "2026-10-27T15:00:00Z",
+                        "2026-10-28T15:00:00Z",
+                        listOf(item),
+                        item,
+                    ),
+                )
+            assertEquals(expected, ranking.items.single().representativeState)
+            assertEquals(expected, ranking.me?.representativeState)
+            assertEquals(2, ranking.items.single().rank)
+            assertEquals(99L, ranking.items.single().pressCount)
+        }
+        val nullItem =
+            json.decodeFromString<PressRankingItemResponseDto>(
+                "{\"rank\":1,\"nickname\":\"익명\",\"pressCount\":1,\"representativeState\":null}",
+            )
+        assertNull(nullItem.representativeState)
+    }
+
     @Test
     fun `일별 응답은 빈 목록 null me와 100위 밖 me를 보존한다`() {
         val ranking =

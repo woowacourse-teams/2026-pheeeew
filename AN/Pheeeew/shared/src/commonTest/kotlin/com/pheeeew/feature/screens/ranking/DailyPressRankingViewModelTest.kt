@@ -1,10 +1,12 @@
 package com.pheeeew.feature.screens.ranking
 
+import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.ranking.DailyPressRanking
 import com.pheeeew.domain.model.ranking.PressRankingItem
 import com.pheeeew.domain.repository.DailyPressRankingLoadResult
 import com.pheeeew.domain.repository.PressRankingLoadResult
 import com.pheeeew.domain.repository.PressRankingRepository
+import com.pheeeew.feature.emotion.model.EmotionKind
 import com.pheeeew.feature.screens.ranking.press.DailyPressRankingViewModel
 import com.pheeeew.feature.screens.ranking.press.PressRankingStatus
 import kotlinx.coroutines.CompletableDeferred
@@ -25,6 +27,46 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class DailyPressRankingViewModelTest {
+    @Test
+    fun `items와 목록 밖 me의 대표 감정을 UI에 전달한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val repository =
+                    RankingRepository { date, _ ->
+                        DailyPressRankingLoadResult.Loaded(
+                            DailyPressRanking(
+                                date,
+                                "2026-10-27T15:00:00Z",
+                                "2026-10-28T15:00:00Z",
+                                listOf(PressRankingItem(1, "익명", 99, EmotionState.EXHAUSTED)),
+                                PressRankingItem(101, "나", 1, EmotionState.ANGRY),
+                            ),
+                        )
+                    }
+                val vm = DailyPressRankingViewModel(repository, "2026-10-28", 1)
+                runCurrent()
+                assertEquals(
+                    EmotionKind.Tired,
+                    vm.uiState.value.people
+                        .single()
+                        .emotion,
+                )
+                assertEquals(
+                    EmotionKind.Angry,
+                    vm.uiState.value.me
+                        ?.emotion,
+                )
+                assertEquals(
+                    101L,
+                    vm.uiState.value.me
+                        ?.rank,
+                )
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
     @Test
     fun `자동 복귀 조회는 표시 없이 갱신하고 수동 조회만 표시한다`() =
         runTest {

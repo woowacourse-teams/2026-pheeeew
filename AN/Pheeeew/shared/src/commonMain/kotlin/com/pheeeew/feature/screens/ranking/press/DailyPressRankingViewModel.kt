@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pheeeew.domain.repository.DailyPressRankingLoadResult
 import com.pheeeew.domain.repository.PressRankingRepository
+import com.pheeeew.feature.screens.press.toUiKind
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
@@ -112,6 +113,7 @@ internal class DailyPressRankingViewModel(
                                                 it.rank.toLong(),
                                                 it.nickname,
                                                 it.pressCount,
+                                                emotion = it.representativeState?.toUiKind(),
                                             )
                                         },
                                     me =
@@ -120,6 +122,7 @@ internal class DailyPressRankingViewModel(
                                                 it.rank.toLong(),
                                                 it.nickname,
                                                 it.pressCount,
+                                                emotion = it.representativeState?.toUiKind(),
                                             )
                                         },
                                     status = PressRankingStatus.Ready,
