@@ -50,7 +50,7 @@ def encode(value: bytes) -> str:
     return base64.urlsafe_b64encode(value).rstrip(b'=').decode('ascii')
 
 
-def probe_output(command: list[str], config: bytes, key: str) -> str:
+def probe_output(command: list[str], config: bytes, key: str, required_code: str | None = None) -> str:
     # Bound collected evidence, not the lifetime traffic of the upgraded connection.
     process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     try:
@@ -72,7 +72,7 @@ def probe_output(command: list[str], config: bytes, key: str) -> str:
                 output.extend(chunk)
                 if len(output) > 65536:
                     raise ValueError('Runtime generation probe exceeded response limit')
-                generation = probe_response(bytes(output), key)
+                generation = probe_response(bytes(output), key, required_code)
                 if generation is not None:
                     if process.poll() not in (None, 0, 28):
                         raise ValueError('Runtime generation probe failed')
@@ -86,7 +86,8 @@ def probe_output(command: list[str], config: bytes, key: str) -> str:
         process.stdout.close()
 
 
-def probe_generation(env: dict, curl_command: list[str], url: str = 'http://127.0.0.1:8080/api/v1/press-race') -> str:
+def probe_generation(env: dict, curl_command: list[str], url: str = 'http://127.0.0.1:8080/api/v1/press-race',
+                     required_code: str | None = None) -> str:
     """Read the runtime UUID via the existing nonexistent-device error; credentials use stdin/FD only."""
     subject = str(uuid4())
     absent = READ_STATE.replace("json_build_object(",
@@ -118,10 +119,10 @@ def probe_generation(env: dict, curl_command: list[str], url: str = 'http://127.
     # -q must be curl's first argument: never load an operator's curlrc or proxy credentials.
     return probe_output(curl_command + ['-q', '--noproxy', '*', '--http1.1', '--include',
                           '--silent', '--no-buffer', '--max-time', '3', '--max-filesize', '65536',
-                          '--config', '-'], config.encode(), key)
+                          '--config', '-'], config.encode(), key, required_code)
 
 
-def probe_response(output: bytes, key: str) -> str | None:
+def probe_response(output: bytes, key: str, required_code: str | None = None) -> str | None:
     """None means incomplete transport data; malformed complete evidence fails closed."""
     headers, separator, frames = output.partition(b'\r\n\r\n')
     if not separator:
@@ -154,13 +155,16 @@ def probe_response(output: bytes, key: str) -> str | None:
     if (not isinstance(response, dict) or response.get('v') != 1 or response.get('type') != 'protocol.error'
             or response.get('code') not in ('DEVICE_NOT_FOUND', 'SERVER_DRAINING')):
         raise ValueError('Unexpected generation probe response')
+    if required_code is not None and response['code'] != required_code:
+        raise ValueError('Generation probe did not confirm the required admission state')
     if not isinstance(response.get('serverGeneration'), str):
         raise ValueError('Invalid generation probe UUID')
     return str(UUID(response['serverGeneration']))
 
 
-def runtime_generation(inspected: dict) -> str:
-    return probe_generation(environment(inspected), ['docker', 'exec', '-i', inspected['Id'], 'curl'])
+def runtime_generation(inspected: dict, required_code: str | None = None) -> str:
+    return probe_generation(environment(inspected), ['docker', 'exec', '-i', inspected['Id'], 'curl'],
+                            required_code=required_code)
 
 
 def check_instance(name: str, snapshot: dict, generation: str | None, legacy: bool = False) -> dict:
@@ -328,7 +332,8 @@ def prepare(active_name: str, target_slot: str, allow_legacy: bool = False, prob
     state.update(target_generation=str(uuid4()), database=list(db_target(env)),
                  active_container=active_name, target_slot=target_slot,
                  legacy=legacy, active_identity=snapshot, probe_port=probe_port,
-                 active_contract=version, active_process_identity=identity(active, True),
+                 probe_host=('api.pheeeew.com' if active_name.startswith('pheeeew-prod-app-')
+                             else 'api-dev.pheeeew.com'), active_contract=version, active_process_identity=identity(active, True),
                  phase='PREPARED', operations=version == '2')
     operations().prepare(state, active)
     descriptor = os.open(STATE_FILE, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)

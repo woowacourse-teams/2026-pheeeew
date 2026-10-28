@@ -1,0 +1,64 @@
+name: pheeeew-prod
+
+x-app: &app
+  image: ${APP_IMAGE:?}
+  restart: ${APP_RESTART_POLICY:-unless-stopped}
+  environment: &app-environment
+    SPRING_PROFILES_ACTIVE: prod
+    TZ: Asia/Seoul
+    DB_URL: ${DB_URL:?}
+    DB_USERNAME: ${DB_USERNAME:?}
+    DB_PASSWORD: ${DB_PASSWORD:?}
+    JWT_PRIVATE_KEY_BASE64: ${JWT_PRIVATE_KEY_BASE64:?}
+    JWT_PUBLIC_KEY_BASE64: ${JWT_PUBLIC_KEY_BASE64:?}
+    PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64: ${PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64:-}
+    PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER: ${PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER:-}
+    FCM_SERVICE_ACCOUNT_BASE64: ${FCM_SERVICE_ACCOUNT_BASE64:-}
+    S3_BUCKET: ${S3_BUCKET:?}
+    S3_KEY_PREFIX: ${S3_KEY_PREFIX:?}
+    S3_REGION: ${S3_REGION:?}
+    COLLECTION_CARD_VERSION: ${COLLECTION_CARD_VERSION:-}
+    JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=40"
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+  healthcheck:
+    test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/actuator/health"]
+    interval: 10s
+    timeout: 5s
+    retries: 12
+    start_period: 60s
+  mem_limit: 640m
+  stop_grace_period: 30s
+  init: true
+
+services:
+  app-blue:
+    <<: *app
+    container_name: pheeeew-prod-app-blue
+    profiles: ["blue"]
+    environment:
+      <<: *app-environment
+      PHEEEEW_PRESS_RACE_SERVER_GENERATION: ${PRESS_BLUE_GENERATION:-}
+    volumes:
+      - app-logs-blue:/app/logs
+  app-green:
+    <<: *app
+    container_name: pheeeew-prod-app-green
+    profiles: ["green"]
+    environment:
+      <<: *app-environment
+      PHEEEEW_PRESS_RACE_SERVER_GENERATION: ${PRESS_GREEN_GENERATION:-}
+    volumes:
+      - app-logs-green:/app/logs
+
+networks:
+  default:
+    external: true
+    name: pheeeew-prod_default
+
+volumes:
+  app-logs-blue:
+  app-logs-green:
