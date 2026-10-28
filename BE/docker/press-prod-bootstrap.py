@@ -902,7 +902,13 @@ def main():
             if args.action == 'prepare':
                 token = 'bootstrap-' + str(uuid4())
                 operations_lock.acquire(token)
-                prepare(args.parameter, token)
+                try:
+                    prepare(args.parameter, token)
+                except Exception:
+                    if not (os.path.lexists(core.STATE_FILE)
+                            or os.path.lexists(str(core.STATE_FILE) + '.new')):
+                        operations_lock.release(token)
+                    raise
             else:
                 state = json.loads(core.STATE_FILE.read_text())
                 with operations_lock.mutex():

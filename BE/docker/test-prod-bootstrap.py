@@ -167,6 +167,14 @@ else:
         result = self.cli('prepare', NEW_IMAGE, env=env)
         self.assertNotEqual(result.returncode, 0)
         self.assertFalse((self.root / '.press-prod-bootstrap.json').exists())
+        self.assertFalse((self.root / '.press-operations.lockdir').exists())
+        self.assertEqual(self.cli('prepare', NEW_IMAGE).returncode, 0)
+
+    def test_prepare_preserves_lock_when_journal_write_was_attempted(self):
+        result = self.cli('prepare', NEW_IMAGE, fail_handoff_journal=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertTrue((self.root / '.press-prod-bootstrap.json.new').exists())
+        self.assertTrue((self.root / '.press-operations.lockdir').is_dir())
 
     def test_prepare_preserves_dangling_journal_symlink(self):
         journal = self.root / '.press-prod-bootstrap.json'
