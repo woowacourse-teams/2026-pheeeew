@@ -113,6 +113,7 @@ import com.pheeeew.feature.screens.settings.AppEntryViewModel
 import com.pheeeew.feature.screens.settings.AppStartupViewModel
 import com.pheeeew.feature.screens.settings.AppUpdatePrompt
 import com.pheeeew.feature.screens.settings.SettingsScreen
+import com.pheeeew.feature.screens.settings.shouldShowOptionalAppUpdatePrompt
 import com.pheeeew.feature.screens.splash.SplashScreen
 import com.pheeeew.feature.screens.splash.rememberSplashProgress
 import dev.zacsweers.metrox.viewmodel.LocalMetroViewModelFactory
@@ -236,16 +237,21 @@ private fun AppContent(
     val initialVersionCheckComplete = startupState.checked
     val versionDecision = startupState.decision
     val checkedForResume by rememberUpdatedState(initialVersionCheckComplete)
-    var suggestionDismissed by rememberSaveable(
-        versionDecision,
-    ) { mutableStateOf(false) }
+    val suggestedUpdate = versionDecision as? AppVersionDecision.UpdateSuggested
+    var suggestionDismissed by rememberSaveable(suggestedUpdate?.latestVersion) { mutableStateOf(false) }
     val updateState by (
         updateController?.state
             ?: remember { MutableStateFlow(AppUpdateState.IDLE) }
     ).collectAsStateWithLifecycle()
     var installationDeferred by remember { mutableStateOf(false) }
+    var installationAttempted by rememberSaveable { mutableStateOf(false) }
+    var previousUpdateState by remember { mutableStateOf(updateState) }
     LaunchedEffect(updateState) {
         if (updateState == AppUpdateState.DOWNLOADED) installationDeferred = false
+        if (updateState == AppUpdateState.IDLE && previousUpdateState != AppUpdateState.IDLE) {
+            installationAttempted = false
+        }
+        previousUpdateState = updateState
     }
     var storeOpenError by remember(versionDecision) { mutableStateOf(false) }
     var onboardingCompleted by remember { mutableStateOf(onboardingStore.isCompleted()) }
@@ -554,10 +560,14 @@ private fun AppContent(
             )
         }
 
-        val suggestedUpdate = versionDecision as? AppVersionDecision.UpdateSuggested
-        val downloaded = updateState == AppUpdateState.DOWNLOADED && !installationDeferred
         if (mainFeaturesReady && !shouldPrepareMapDuringSplash &&
-            ((suggestedUpdate != null && !suggestionDismissed) || downloaded)
+            shouldShowOptionalAppUpdatePrompt(
+                suggestedUpdate,
+                suggestionDismissed,
+                updateState,
+                installationDeferred,
+                installationAttempted,
+            )
         ) {
             AppUpdatePrompt(
                 required = false,
@@ -565,6 +575,7 @@ private fun AppContent(
                 storeOpenError = storeOpenError,
                 onUpdate = {
                     if (updateState == AppUpdateState.DOWNLOADED) {
+                        installationAttempted = true
                         updateController?.complete()
                     } else if (updateController != null) {
                         updateController.request(false)
@@ -580,6 +591,7 @@ private fun AppContent(
                 onLater = {
                     suggestionDismissed = true
                     installationDeferred = true
+                    installationAttempted = false
                 },
             )
         }

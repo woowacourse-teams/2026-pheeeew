@@ -19,7 +19,7 @@
 
 ### 실제 공개 API 관찰
 
-정확한 시각과 원본 JSON은 [metadata.json](metadata.json)에 기록했다. 인증 없는 조회만 수행했다.
+관찰 시각과 응답값은 [metadata.json](metadata.json)에 정리했다. HTTP 응답 전문 파일을 별도로 보존한 것은 아니다. 인증 없는 조회만 수행했다.
 
 | 환경 | 응답 |
 | --- | --- |
