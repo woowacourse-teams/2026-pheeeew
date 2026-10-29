@@ -1,0 +1,40 @@
+package com.pheeeew.domain.repository
+
+import com.pheeeew.domain.model.emotion.Emotion
+import com.pheeeew.domain.model.emotion.EmotionBounds
+import com.pheeeew.domain.model.emotion.EmotionPage
+import com.pheeeew.domain.model.emotion.EmotionReactionType
+import com.pheeeew.domain.model.emotion.EmotionSearchFilter
+
+sealed interface EmotionResult<out T> {
+    data class Success<T>(
+        val value: T,
+    ) : EmotionResult<T>
+
+    data class Failure(
+        val reason: EmotionFailure,
+    ) : EmotionResult<Nothing>
+}
+
+enum class EmotionFailure { UNAVAILABLE, NOT_FOUND, INVALID_REQUEST, AUTHENTICATION, FORBIDDEN }
+
+interface EmotionRepository {
+    suspend fun firstPage(bounds: EmotionBounds): EmotionResult<EmotionPage>
+
+    suspend fun filteredFirstPage(filter: EmotionSearchFilter): EmotionResult<EmotionPage> =
+        firstPage(EmotionBounds(-180.0, -90.0, 180.0, 90.0))
+
+    suspend fun nextPage(cursor: String): EmotionResult<EmotionPage>
+
+    suspend fun nextFilteredPage(cursor: String): EmotionResult<EmotionPage> = nextPage(cursor)
+
+    suspend fun detail(id: Long): EmotionResult<Emotion>
+
+    suspend fun react(
+        id: Long,
+        type: EmotionReactionType,
+        selected: Boolean,
+    ): EmotionResult<Unit>
+
+    suspend fun delete(emotionId: Long): EmotionModerationResult
+}

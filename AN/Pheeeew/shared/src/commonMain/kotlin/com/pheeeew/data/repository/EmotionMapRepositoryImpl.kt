@@ -3,11 +3,10 @@ package com.pheeeew.data.repository
 import com.pheeeew.core.network.ApiResult
 import com.pheeeew.core.network.NetworkFailure
 import com.pheeeew.data.cache.EmotionMapCache
-import com.pheeeew.data.remote.emotion.EmotionGroupStampDto
-import com.pheeeew.data.remote.emotion.EmotionMapApi
-import com.pheeeew.data.remote.emotion.EmotionMapFeatureDto
-import com.pheeeew.data.remote.emotion.EmotionMapPageDto
-import com.pheeeew.data.remote.emotion.EmotionMapPropertiesDto
+import com.pheeeew.data.remote.api.EmotionMapApi
+import com.pheeeew.data.remote.dto.EmotionMapFeatureDto
+import com.pheeeew.data.remote.dto.EmotionMapPageDto
+import com.pheeeew.data.remote.dto.EmotionMapPropertiesDto
 import com.pheeeew.domain.model.emotion.EmotionMapBounds
 import com.pheeeew.domain.model.emotion.EmotionMapFailure
 import com.pheeeew.domain.model.emotion.EmotionMapPage
@@ -16,46 +15,45 @@ import com.pheeeew.domain.model.emotion.EmotionMapPin
 import com.pheeeew.domain.model.emotion.EmotionMapSnapshot
 import com.pheeeew.domain.model.emotion.EmotionSearchFilter
 import com.pheeeew.domain.model.emotion.EmotionState
-import com.pheeeew.domain.model.group.GroupStamp
-import com.pheeeew.domain.model.group.GroupStampFrame
-import com.pheeeew.domain.model.group.StampColor
 import com.pheeeew.domain.repository.EmotionMapRepository
+import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.CancellationException
 import kotlin.time.Instant
 
+@Inject
 class EmotionMapRepositoryImpl(
     private val api: EmotionMapApi,
 ) : EmotionMapRepository {
     private val cache = EmotionMapCache()
     private var cacheGeneration = 0L
 
-    override fun findSnapshot(
-        bounds: EmotionMapBounds,
-        groupId: String?,
-    ): EmotionMapSnapshot? = cache.snapshot(bounds, groupId)
+    fun invalidateSession() {
+        cacheGeneration++
+        cache.clear()
+    }
+
+    override fun findSnapshot(bounds: EmotionMapBounds): EmotionMapSnapshot? = cache.snapshot(bounds)
 
     override fun findFilteredSnapshot(
         bounds: EmotionMapBounds,
         filter: EmotionSearchFilter,
-    ): EmotionMapSnapshot? = cache.snapshot(bounds, filter.groupId, filter)
+    ): EmotionMapSnapshot? = cache.snapshot(bounds, filter)
 
     override suspend fun findPage(
         bounds: EmotionMapBounds?,
-        groupId: String?,
         cursor: String?,
         forceRefresh: Boolean,
-    ): EmotionMapPageResult = findPageInternal(bounds, groupId, cursor, forceRefresh, null)
+    ): EmotionMapPageResult = findPageInternal(bounds, cursor, forceRefresh, null)
 
     override suspend fun findFilteredPage(
         bounds: EmotionMapBounds?,
         filter: EmotionSearchFilter,
         cursor: String?,
         forceRefresh: Boolean,
-    ): EmotionMapPageResult = findPageInternal(bounds, filter.groupId, cursor, forceRefresh, filter)
+    ): EmotionMapPageResult = findPageInternal(bounds, cursor, forceRefresh, filter)
 
     private suspend fun findPageInternal(
         bounds: EmotionMapBounds?,
-        groupId: String?,
         cursor: String?,
         forceRefresh: Boolean,
         filter: EmotionSearchFilter?,
@@ -66,12 +64,12 @@ class EmotionMapRepositoryImpl(
                 cache.clear()
             } else {
                 // Remove only overlapping regions; stale requests cannot repopulate the cache.
-                cache.invalidate(bounds, groupId, filter)
+                cache.invalidate(bounds, filter)
             }
         }
         val generation = cacheGeneration
         if (!forceRefresh && cursor == null && bounds != null) {
-            cache.completePage(bounds, groupId, filter)?.let { page ->
+            cache.completePage(bounds, filter)?.let { page ->
                 return EmotionMapPageResult.Success(page, fromCache = true)
             }
         }
@@ -83,7 +81,6 @@ class EmotionMapRepositoryImpl(
                         bounds?.minLatitude,
                         bounds?.maxLongitude,
                         bounds?.maxLatitude,
-                        if (cursor == null) groupId else null,
                         cursor,
                         filter,
                     )
@@ -103,7 +100,7 @@ class EmotionMapRepositoryImpl(
                         if (pageResult is EmotionMapPageResult.Success && bounds != null &&
                             generation == cacheGeneration
                         ) {
-                            cache.appendPage(bounds, groupId, cursor, pageResult.page, filter)
+                            cache.appendPage(bounds, cursor, pageResult.page, filter)
                         }
                     }
                 }
@@ -148,23 +145,9 @@ class EmotionMapRepositoryImpl(
                 createdAt = properties.createdAt,
                 state = state,
                 rotationDegrees = properties.rotationDegrees,
-                groupStamp = properties.groupStamp?.toDomain(),
             )
         }.getOrNull()
 
     private fun EmotionMapPropertiesDto.rotationDegreesValid(value: Double): Boolean =
         value.isFinite() && value >= 0.0 && value < 360.0
-
-    private fun EmotionGroupStampDto.toDomain(): GroupStamp {
-        require(text.isNotBlank())
-        val resolvedFrame =
-            GroupStampFrame.entries.firstOrNull { it.name == frame }
-                ?: error("Unknown stamp frame")
-        return GroupStamp(
-            text = text,
-            textColor = StampColor.parseServerValue(textColor) ?: error("Invalid stamp text color"),
-            backgroundColor = StampColor.parseServerValue(backgroundColor) ?: error("Invalid stamp background color"),
-            frame = resolvedFrame,
-        )
-    }
 }

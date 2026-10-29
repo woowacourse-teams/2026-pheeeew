@@ -1,22 +1,18 @@
 package com.pheeeew
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
@@ -26,22 +22,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -51,6 +44,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -59,53 +53,44 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
-import com.pheeeew.core.audio.rememberVoiceRecorder
+import com.pheeeew.core.audio.LocalAudioFactories
 import com.pheeeew.core.designsystem.component.AppAlertDialog
 import com.pheeeew.core.designsystem.component.AppDialog
-import com.pheeeew.core.designsystem.component.ConfirmDialog
-import com.pheeeew.core.designsystem.component.Snackbar
+import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
-import com.pheeeew.core.di.ApiDependencies
-import com.pheeeew.core.di.LocationDependencies
-import com.pheeeew.core.di.createEmotionAudioRepository
-import com.pheeeew.core.di.createEmotionDetailRepository
-import com.pheeeew.core.di.createEmotionMapDependencies
-import com.pheeeew.core.di.createEmotionModerationDependencies
-import com.pheeeew.core.di.createEmotionRegistrationRepository
-import com.pheeeew.core.di.emotion.createNearbyEmotionViewModel
-import com.pheeeew.core.di.group.createGroupDependencies
-import com.pheeeew.core.di.group.createGroupStampListRepository
+import com.pheeeew.core.di.AppGraph
+import com.pheeeew.core.di.UiGraph
+import com.pheeeew.core.navigation.CollectionRootDestination
+import com.pheeeew.core.navigation.DailyPressRankingRootDestination
 import com.pheeeew.core.navigation.DoubleBackToExitHandler
-import com.pheeeew.core.navigation.GroupRootDestination
+import com.pheeeew.core.navigation.FirstMainPresentationEffect
+import com.pheeeew.core.navigation.FlowBackHandler
 import com.pheeeew.core.navigation.MapRootDestination
+import com.pheeeew.core.navigation.NotificationClickRouter
+import com.pheeeew.core.navigation.NotificationDestination
 import com.pheeeew.core.navigation.PressRootDestination
 import com.pheeeew.core.navigation.RankingRootDestination
-import com.pheeeew.core.permission.AppSettingsLauncher
-import com.pheeeew.data.remote.version.AppVersionApi
-import com.pheeeew.data.remote.version.toPolicy
+import com.pheeeew.core.notification.InitialNotificationPermissionRequest
+import com.pheeeew.core.notification.NotificationClickInbox
+import com.pheeeew.core.notification.NotificationMessageInbox
+import com.pheeeew.core.notification.NotificationPermissionController
+import com.pheeeew.core.notification.NotificationPreferencesStore
+import com.pheeeew.data.press.race.PressRaceView
+import com.pheeeew.domain.model.device.DeviceSessionResult
 import com.pheeeew.domain.model.version.AppVersionDecision
-import com.pheeeew.domain.model.version.evaluateAppVersion
-import com.pheeeew.domain.repository.MapFilterSettingsRepository
-import com.pheeeew.domain.repository.group.LastRecordedGroupRepository
-import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
 import com.pheeeew.feature.component.AppBottomNavigationBar
 import com.pheeeew.feature.component.AppBottomNavigationBarBottomSpacing
+import com.pheeeew.feature.component.AppBottomNavigationBarOverlaySpace
 import com.pheeeew.feature.component.AppDestination
-import com.pheeeew.feature.component.RankingBottomNavigationDestination
-import com.pheeeew.feature.component.emotion.face
 import com.pheeeew.feature.monitoring.product.LocalProductMonitoringVisible
-import com.pheeeew.feature.screens.group.create.GroupCreateSessionStore
-import com.pheeeew.feature.screens.group.detail.GroupCopyCodeResult
-import com.pheeeew.feature.screens.group.detail.GroupDetailRoute
-import com.pheeeew.feature.screens.group.detail.GroupDetailViewModel
-import com.pheeeew.feature.screens.group.model.GroupId
-import com.pheeeew.feature.screens.group.navigation.GroupDetailDestination
-import com.pheeeew.feature.screens.group.navigation.GroupFeatureHost
+import com.pheeeew.feature.notification.NotificationClickEffect
+import com.pheeeew.feature.screens.collection.CollectionRoute
 import com.pheeeew.feature.screens.map.EmotionPinUiModel
 import com.pheeeew.feature.screens.map.HighlightedPinPosition
 import com.pheeeew.feature.screens.map.MapContentRenderState
 import com.pheeeew.feature.screens.map.MapScreen
+import com.pheeeew.feature.screens.map.MapTransientNoticeUiModel
 import com.pheeeew.feature.screens.map.MapViewModel
 import com.pheeeew.feature.screens.map.detail.EmotionDetailLoadUiModel
 import com.pheeeew.feature.screens.map.detail.EmotionDetailOverlay
@@ -120,30 +105,32 @@ import com.pheeeew.feature.screens.map.record.sheet.RecordFlowStepUiModel
 import com.pheeeew.feature.screens.map.rememberEmotionPinSymbolImages
 import com.pheeeew.feature.screens.map.rememberMapContentRenderState
 import com.pheeeew.feature.screens.map.rememberRegionClusterSymbolImages
+import com.pheeeew.feature.screens.map.renderer.LocalMapRenderer
 import com.pheeeew.feature.screens.map.renderer.MapCameraSnapshotUiModel
-import com.pheeeew.feature.screens.map.renderer.NativeMap
 import com.pheeeew.feature.screens.map.symbolImageKey
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
+import com.pheeeew.feature.screens.press.PressRaceLifecycleEffect
 import com.pheeeew.feature.screens.press.PressRoute
+import com.pheeeew.feature.screens.ranking.press.DailyPressRankingRoute
 import com.pheeeew.feature.screens.ranking.press.PressRankingRoute
-import com.pheeeew.feature.screens.ranking.stamp.WeeklyRankingRoute
 import com.pheeeew.feature.screens.report.ReportRoute
+import com.pheeeew.feature.screens.settings.AppEntryGate
+import com.pheeeew.feature.screens.settings.AppEntryPhase
+import com.pheeeew.feature.screens.settings.AppEntryUiState
+import com.pheeeew.feature.screens.settings.AppEntryViewModel
+import com.pheeeew.feature.screens.settings.AppStartupViewModel
 import com.pheeeew.feature.screens.settings.SettingsScreen
 import com.pheeeew.feature.screens.splash.SplashScreen
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CompletableDeferred
+import com.pheeeew.feature.screens.splash.rememberSplashProgress
+import dev.zacsweers.metrox.viewmodel.LocalMetroViewModelFactory
+import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
+import dev.zacsweers.metrox.viewmodel.metroViewModel
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeout
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
-import pheeeew.shared.generated.resources.app_cancel
-import pheeeew.shared.generated.resources.app_microphone_permission_message
-import pheeeew.shared.generated.resources.app_microphone_permission_title
-import pheeeew.shared.generated.resources.app_open_settings
 import pheeeew.shared.generated.resources.app_update
 import pheeeew.shared.generated.resources.app_update_later
 import pheeeew.shared.generated.resources.app_update_required_message
@@ -153,139 +140,285 @@ import pheeeew.shared.generated.resources.app_update_store_error
 import pheeeew.shared.generated.resources.app_update_suggested_message
 import pheeeew.shared.generated.resources.app_update_suggested_title
 
+internal fun shouldShowMapFeedback(
+    mainFeaturesReady: Boolean,
+    selectedDestination: AppDestination?,
+    nearbyVisible: Boolean,
+    detailState: EmotionDetailLoadUiModel,
+    settingsVisible: Boolean,
+    hasReportTarget: Boolean,
+): Boolean =
+    mainFeaturesReady && selectedDestination == AppDestination.Map &&
+        !nearbyVisible &&
+        (detailState == EmotionDetailLoadUiModel.Closed || detailState is EmotionDetailLoadUiModel.Failed) &&
+        !settingsVisible && !hasReportTarget
+
+internal enum class AppStartupPresentation {
+    SPLASH,
+    VERSION_CHECK,
+    REQUIRED_UPDATE,
+    ONBOARDING,
+    MAIN,
+}
+
+internal fun resolveAppStartupPresentation(
+    initialVersionCheckComplete: Boolean,
+    splashDismissed: Boolean,
+    requiredUpdate: Boolean,
+    onboardingCompleted: Boolean,
+): AppStartupPresentation =
+    when {
+        !initialVersionCheckComplete && !onboardingCompleted -> {
+            if (splashDismissed) AppStartupPresentation.VERSION_CHECK else AppStartupPresentation.SPLASH
+        }
+
+        requiredUpdate -> {
+            if (splashDismissed) AppStartupPresentation.REQUIRED_UPDATE else AppStartupPresentation.SPLASH
+        }
+
+        !onboardingCompleted -> {
+            if (splashDismissed) AppStartupPresentation.ONBOARDING else AppStartupPresentation.SPLASH
+        }
+
+        else -> {
+            AppStartupPresentation.MAIN
+        }
+    }
+
 @Composable
 fun App(
-    locationDependencies: LocationDependencies,
-    apiDependencies: ApiDependencies,
-    lastRecordedGroupRepository: LastRecordedGroupRepository,
-    groupCreateSessionStore: GroupCreateSessionStore,
-    appVersion: String,
-    appVersionApi: AppVersionApi,
-    permissionSettingsLauncher: AppSettingsLauncher,
-    appSettingsLauncher: AppSettingsLauncher,
-    mapFilterSettingsRepository: MapFilterSettingsRepository,
-    hasCompletedOnboarding: Boolean,
-    onOnboardingCompleted: () -> Unit,
+    appGraph: AppGraph,
+    uiGraph: UiGraph,
+    settingsContent: @Composable () -> Unit = {},
+    notificationClicks: NotificationClickInbox? = null,
+    notificationPermissionController: NotificationPermissionController? = null,
+    notificationPreferencesStore: NotificationPreferencesStore? = null,
+    notificationMessages: NotificationMessageInbox? = null,
 ) {
-    AppTheme {
-        AppContent(
-            locationDependencies = locationDependencies,
-            apiDependencies = apiDependencies,
-            lastRecordedGroupRepository = lastRecordedGroupRepository,
-            groupCreateSessionStore = groupCreateSessionStore,
-            appVersion = appVersion,
-            appVersionApi = appVersionApi,
-            permissionSettingsLauncher = permissionSettingsLauncher,
-            appSettingsLauncher = appSettingsLauncher,
-            mapFilterSettingsRepository = mapFilterSettingsRepository,
-            hasCompletedOnboarding = hasCompletedOnboarding,
-            onOnboardingCompleted = onOnboardingCompleted,
-        )
+    val factory = remember(uiGraph) { uiGraph.viewModelFactory }
+    CompositionLocalProvider(
+        LocalMetroViewModelFactory provides factory,
+        LocalAudioFactories provides appGraph.audioFactories,
+    ) {
+        AppTheme {
+            AppContent(
+                appGraph,
+                uiGraph,
+                settingsContent,
+                notificationClicks,
+                notificationPermissionController,
+                notificationPreferencesStore,
+                notificationMessages,
+            )
+        }
     }
 }
 
 @Composable
 private fun AppContent(
-    locationDependencies: LocationDependencies,
-    apiDependencies: ApiDependencies,
-    lastRecordedGroupRepository: LastRecordedGroupRepository,
-    groupCreateSessionStore: GroupCreateSessionStore,
-    appVersion: String,
-    appVersionApi: AppVersionApi,
-    permissionSettingsLauncher: AppSettingsLauncher,
-    appSettingsLauncher: AppSettingsLauncher,
-    mapFilterSettingsRepository: MapFilterSettingsRepository,
-    hasCompletedOnboarding: Boolean,
-    onOnboardingCompleted: () -> Unit,
+    appGraph: AppGraph,
+    uiGraph: UiGraph,
+    settingsContent: @Composable () -> Unit,
+    notificationClicks: NotificationClickInbox?,
+    notificationPermissionController: NotificationPermissionController?,
+    notificationPreferencesStore: NotificationPreferencesStore?,
+    notificationMessages: NotificationMessageInbox?,
 ) {
+    val apiDependencies = appGraph.apiDependencies
+    val appVersion = appGraph.appVersion
+    val appSettingsLauncher = appGraph.appSettingsLauncher
+    val onboardingStore = appGraph.onboardingStore
+    // Initialize before onboarding completes, including migration of existing installs.
+    val initialNotificationPermission =
+        remember(onboardingStore) { InitialNotificationPermissionRequest(onboardingStore) }
     val uriHandler = LocalUriHandler.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val connectivityObserver = apiDependencies.connectivityObserver
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { apiDependencies.appSession.onForeground() }
-    var versionCheckAttempt by remember { mutableStateOf(0) }
-    var initialVersionCheckComplete by remember { mutableStateOf(false) }
-    var splashAnimationCompleted by rememberSaveable { mutableStateOf(false) }
-    var versionDecision by remember { mutableStateOf<AppVersionDecision?>(null) }
+    val startupViewModel: AppStartupViewModel = metroViewModel()
+    val startupState by startupViewModel.state.collectAsStateWithLifecycle()
+    val queuedClick = notificationClicks?.queuedClick?.collectAsStateWithLifecycle()?.value
+    var firstMainPresented by remember { mutableStateOf(false) }
+    var startupNotificationDestination by remember { mutableStateOf<NotificationDestination?>(null) }
+    val queuedDestination = queuedClick?.let { NotificationClickRouter.destinationFor(it.target) }
+    val startupTarget = startupNotificationDestination ?: queuedDestination.takeUnless { firstMainPresented }
+    LaunchedEffect(queuedClick, firstMainPresented) {
+        if (!firstMainPresented && queuedDestination != null) {
+            startupNotificationDestination = queuedDestination
+        }
+    }
+    val initialVersionCheckComplete = startupState.checked
+    val versionDecision = startupState.decision
+    val checkedForResume by rememberUpdatedState(initialVersionCheckComplete)
     var suggestionDismissed by remember { mutableStateOf(false) }
     var storeOpenError by remember { mutableStateOf(false) }
-    var onboardingCompleted by remember { mutableStateOf(hasCompletedOnboarding) }
+    var onboardingCompleted by remember { mutableStateOf(onboardingStore.isCompleted()) }
+    var appResumed by remember(lifecycleOwner) {
+        mutableStateOf(lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))
+    }
     var mapVisible by remember { mutableStateOf(false) }
     var mapMounted by remember { mutableStateOf(false) }
+    var mapEntryPresent by remember { mutableStateOf(false) }
     var savedMapCamera by remember { mutableStateOf<MapCameraSnapshotUiModel?>(null) }
+    val splashAnimationDuration = AppStartupViewModel.MINIMUM_SPLASH_MILLIS.toFloat()
+    val splashProgress =
+        rememberSplashProgress(
+            animationCompleted = startupState.minimumSplashElapsed,
+            initialProgress = (startupViewModel.splashElapsedMillis() / splashAnimationDuration).coerceIn(0f, 1f),
+            onAnimationCompleted = {},
+        )
 
-    LaunchedEffect(apiDependencies) {
-        apiDependencies.prepareSession()
+    LaunchedEffect(startupViewModel) {
+        startupViewModel.startSplash()
+        startupViewModel.refreshSplashDeadline()
+        if (!startupViewModel.state.value.checked) startupViewModel.checkVersion()
     }
 
-    val emotionMapDependencies =
-        remember(apiDependencies.client) {
-            createEmotionMapDependencies(apiDependencies.client)
+    DisposableEffect(lifecycleOwner) {
+        val observer =
+            LifecycleEventObserver { owner, event ->
+                appResumed = owner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    startupViewModel.refreshSplashDeadline()
+                    if (checkedForResume) startupViewModel.checkVersion()
+                }
+            }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    val requiredUpdate = versionDecision as? AppVersionDecision.UpdateRequired
+    // Restore the existing identity concurrently with the public version lookup.
+    val appEntryViewModel = if (onboardingCompleted) metroViewModel<AppEntryViewModel>() else null
+    val appEntryState = appEntryViewModel?.uiState?.collectAsStateWithLifecycle()?.value ?: AppEntryUiState()
+    val sessionState by apiDependencies.session.state.collectAsStateWithLifecycle()
+    val sessionGeneration = (sessionState as? DeviceSessionResult.Ready)?.access?.generation
+    val entryReady =
+        appEntryState.phase == AppEntryPhase.READY && sessionGeneration != null &&
+            appEntryState.sessionGeneration == sessionGeneration
+    LaunchedEffect(startupViewModel, onboardingCompleted, appEntryState.phase, entryReady) {
+        startupViewModel.updateEntryPreparation(
+            onboardingCompleted,
+            appEntryState.phase,
+            entryReady,
+        )
+    }
+    val startupPresentation =
+        resolveAppStartupPresentation(
+            initialVersionCheckComplete = initialVersionCheckComplete,
+            splashDismissed = startupState.splashDismissed,
+            requiredUpdate = requiredUpdate != null,
+            onboardingCompleted = onboardingCompleted,
+        )
+
+    if (startupPresentation == AppStartupPresentation.SPLASH) {
+        Box(Modifier.fillMaxSize()) {
+            SplashScreen(progress = splashProgress)
         }
-    val groupStampListRepository =
-        remember(apiDependencies.client) { createGroupStampListRepository(apiDependencies.client) }
-    val nearbyViewModel: NearbyEmotionViewModel =
-        viewModel { createNearbyEmotionViewModel(apiDependencies.client) }
-    val mapViewModel: MapViewModel =
-        viewModel {
-            MapViewModel.create(
-                locationDependencies,
-                emotionMapDependencies.findPage,
-                emotionMapDependencies.findSnapshot,
-                apiDependencies.client.monitoring,
-                findRegions = emotionMapDependencies.findRegions,
-                findRegionSnapshot = emotionMapDependencies.findRegionSnapshot,
-                groupStampListRepository = groupStampListRepository,
-                filterSettingsRepository = mapFilterSettingsRepository,
-                filterListRefresher = nearbyViewModel,
+        return
+    }
+
+    if (startupPresentation == AppStartupPresentation.VERSION_CHECK) {
+        Box(Modifier.fillMaxSize()) {
+            AppEntryGate(AppEntryUiState(), {}, {}, {})
+        }
+        return
+    }
+
+    if (startupPresentation == AppStartupPresentation.REQUIRED_UPDATE) {
+        val update = requireNotNull(requiredUpdate)
+        Box(Modifier.fillMaxSize()) {
+            RequiredUpdateDialog(
+                storeOpenError = storeOpenError,
+                onOpenStore = {
+                    storeOpenError = runCatching { uriHandler.openUri(update.storeUrl) }.isFailure
+                },
+                onRetry = { startupViewModel.checkVersion() },
             )
         }
-    LaunchedEffect(mapViewModel) { mapViewModel.onMapRendererAttached() }
+        return
+    }
+
+    if (startupPresentation == AppStartupPresentation.ONBOARDING) {
+        OnboardingScreen(
+            monitoring = apiDependencies.client.monitoring,
+            onFinished = {
+                onboardingStore.complete()
+                onboardingCompleted = true
+            },
+        )
+        return
+    }
+
+    val entryViewModel = requireNotNull(appEntryViewModel)
+    val mainFeaturesReady = initialVersionCheckComplete && requiredUpdate == null && entryReady
+    val coldNotificationEntry = !firstMainPresented && startupTarget != null
+    val shouldPrepareMapDuringSplash =
+        !startupState.splashDismissed || (mainFeaturesReady && coldNotificationEntry)
+
+    if (mainFeaturesReady) {
+        LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { apiDependencies.appSession.onForeground() }
+    }
+
+    val nearbyViewModel: NearbyEmotionViewModel = metroViewModel()
+    val mapViewModel: MapViewModel =
+        assistedMetroViewModel<MapViewModel, MapViewModel.Factory> {
+            create(nearbyViewModel)
+        }
+    val mapDataActive = appResumed && (mapVisible || shouldPrepareMapDuringSplash)
+    val mapRendererActive = mapMounted && appResumed
+    DisposableEffect(mapViewModel, mapDataActive) {
+        mapViewModel.setMapRendererActive(mapDataActive)
+        onDispose { mapViewModel.setMapRendererActive(false) }
+    }
+    LaunchedEffect(
+        mapViewModel,
+        mainFeaturesReady,
+        sessionGeneration,
+        shouldPrepareMapDuringSplash,
+        notificationPermissionController,
+    ) {
+        mapViewModel.updateReadiness(
+            ready = mainFeaturesReady,
+            generation = sessionGeneration,
+            startInitialLocationRequest = !shouldPrepareMapDuringSplash,
+        )
+        if (mainFeaturesReady && shouldPrepareMapDuringSplash) mapViewModel.prepareCurrentLocation()
+        if (mainFeaturesReady && !shouldPrepareMapDuringSplash && notificationPermissionController != null) {
+            mapViewModel.awaitInitialLocationRequest()
+            initialNotificationPermission.requestIfNeeded(notificationPermissionController)
+        }
+    }
+    LaunchedEffect(mapViewModel, mainFeaturesReady, sessionGeneration) {
+        if (mainFeaturesReady) mapViewModel.onMapRendererAttached()
+    }
     val connectivityLifecycleOwner = LocalLifecycleOwner.current
-    LaunchedEffect(connectivityObserver, connectivityLifecycleOwner, mapViewModel) {
+    LaunchedEffect(connectivityObserver, connectivityLifecycleOwner, mapViewModel, mainFeaturesReady) {
+        if (!mainFeaturesReady) return@LaunchedEffect
         connectivityLifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             connectivityObserver.isConnected.collect(mapViewModel::onConnectivityChanged)
         }
     }
-    val registrationRepository =
-        remember(apiDependencies.client) { createEmotionRegistrationRepository(apiDependencies.client) }
-    val mapRecordViewModel: MapRecordViewModel =
-        viewModel {
-            MapRecordViewModel(
-                IsWithinEmotionRecordRadiusUseCase(),
-                registrationRepository,
-                groupStampListRepository,
-                lastRecordedGroupRepository,
-                apiDependencies.client.monitoring,
-            )
-        }
-    val nearbyState by nearbyViewModel.state.collectAsState()
-    var mapPageOffset by remember { mutableStateOf(0f) }
+    val mapRecordViewModel: MapRecordViewModel = metroViewModel()
+    val nearbyState by nearbyViewModel.state.collectAsStateWithLifecycle()
     var isMapCameraMoving by remember { mutableStateOf(false) }
     var nearbyMapControlHeight by remember { mutableStateOf(0.dp) }
     LaunchedEffect(nearbyState.visible, mapViewModel) {
         if (!nearbyState.visible) mapViewModel.clearFocusedEmotion()
     }
-    val mapUiModel by mapViewModel.uiModel.collectAsState()
-    val recordUiModel by mapRecordViewModel.uiModel.collectAsState()
-    val groupOptions by mapRecordViewModel.groupOptions.collectAsState()
-    val detailRepository = remember(apiDependencies.client) { createEmotionDetailRepository(apiDependencies.client) }
-    val detailViewModel: EmotionDetailViewModel =
-        viewModel { EmotionDetailViewModel(detailRepository, apiDependencies.client.monitoring) }
-    val detailState by detailViewModel.uiModel.collectAsState()
+    val mapUiModel by mapViewModel.uiModel.collectAsStateWithLifecycle()
+    val recordUiModel by mapRecordViewModel.uiModel.collectAsStateWithLifecycle()
+    val detailViewModel: EmotionDetailViewModel = metroViewModel()
+    val detailState by detailViewModel.uiModel.collectAsStateWithLifecycle()
 
-    val requiredUpdate = versionDecision as? AppVersionDecision.UpdateRequired
-    val mapReady =
-        splashAnimationCompleted && initialVersionCheckComplete && requiredUpdate == null && onboardingCompleted
-    LaunchedEffect(mapReady, mapVisible) {
-        if (!mapReady) {
-            mapMounted = false
-            return@LaunchedEffect
-        }
-        mapMounted = true
-        if (!mapVisible) {
-            delay(MAP_INACTIVE_RELEASE_DELAY_MILLIS)
-            if (!mapVisible) mapMounted = false
-        }
+    val firstMapFrameReady = remember(mapUiModel.mapRevision, mapMounted) { mutableStateOf(false) }
+    DisposableEffect(firstMapFrameReady) {
+        onDispose { startupViewModel.updateMapPreparation(false) }
+    }
+    LaunchedEffect(firstMapFrameReady.value, mapUiModel.mapError, mapUiModel.mapRevision) {
+        startupViewModel.updateMapPreparation(firstMapFrameReady.value || mapUiModel.mapError != null)
+    }
+    LaunchedEffect(mapVisible, shouldPrepareMapDuringSplash) {
+        if (mapVisible || shouldPrepareMapDuringSplash) mapMounted = true
     }
 
     var highlightedEmotion by remember { mutableStateOf<RegisteredEmotionUiModel?>(null) }
@@ -310,7 +443,6 @@ private fun AppContent(
                     createdAt = "",
                     rotationDegrees = 0.0,
                     emotion = recordUiModel.selectedEmotion ?: EmotionTypeUiModel.FRUSTRATED,
-                    stamp = groupOptions.firstOrNull { group -> group.id == recordUiModel.selectedGroupId }?.stamp,
                 )
             }
     val pinImageModels =
@@ -352,50 +484,37 @@ private fun AppContent(
             highlightedEmotionId = mapUiModel.focusedEmotionId ?: highlightedEmotion?.id,
             pressedEmotionId = pressedPinId,
             pressedEmotionScale = pinPressScale.value,
-            emotionContentLoad = contentRenderState.contentLoad.takeIf { mapContentActive },
+            emotionContentLoad =
+                contentRenderState.contentLoad.takeIf {
+                    mapContentActive &&
+                        !shouldPrepareMapDuringSplash
+                },
             emotionPins = contentRenderState.pins,
         )
 
-    LaunchedEffect(appVersionApi, appVersion, versionCheckAttempt) {
-        try {
-            val policy = withTimeout(VERSION_CHECK_TIMEOUT_MILLIS) { appVersionApi.getPolicy().toPolicy() }
-            versionDecision = evaluateAppVersion(appVersion, policy)
-        } catch (cancellation: CancellationException) {
-            throw cancellation
-        } catch (_: Exception) {
-            // Fail open if the public version-policy endpoint is temporarily unavailable.
-        } finally {
-            initialVersionCheckComplete = true
-        }
-    }
-
-    DisposableEffect(lifecycleOwner) {
-        val observer =
-            LifecycleEventObserver { _, event ->
-                if (event == Lifecycle.Event.ON_RESUME && initialVersionCheckComplete) {
-                    versionCheckAttempt++
-                }
-            }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
-
     Box(Modifier.fillMaxSize()) {
-        key(mapUiModel.mapRevision) {
-            NativeMap(
+        val mapRevision = mapUiModel.mapRevision
+        key(mapRevision) {
+            LocalMapRenderer.current.Content(
                 state = nativeMapState,
-                isVisible = mapVisible,
+                isVisible = mapVisible && !shouldPrepareMapDuringSplash,
+                isActive = mapRendererActive,
                 isMounted = mapMounted,
                 savedCamera = savedMapCamera,
                 onCameraSaved = { savedMapCamera = it },
-                onMemoryPressure = { if (!mapVisible) mapMounted = false },
-                onMapError = mapViewModel::onMapError,
-                onMapRecovered = mapViewModel::onMapRecovered,
+                onMemoryPressure = {
+                    if (!mapEntryPresent && !shouldPrepareMapDuringSplash) mapMounted = false
+                },
+                onMapError = { mapViewModel.onMapError(it, mapRevision) },
+                onMapRecovered = { mapViewModel.onMapRecovered(mapRevision) },
+                onFirstFrameReady = { firstMapFrameReady.value = true },
                 onRecordViewportChanged = { centerX, centerY, radius ->
                     val viewport = RecordMapViewport(centerX, centerY, radius)
                     if (recordViewport.value != viewport) recordViewport.value = viewport
                 },
-                onViewportChanged = mapViewModel::onViewportChanged,
+                onViewportChanged = { viewport ->
+                    if (mapDataActive) mapViewModel.onViewportChanged(viewport)
+                },
                 onCameraMovingChanged = { isMapCameraMoving = it },
                 onEmotionPinClick = { id ->
                     highlightedEmotion = null
@@ -420,32 +539,15 @@ private fun AppContent(
                 },
                 onMapBackgroundClick = { if (nearbyState.visible) nearbyViewModel.dismiss() },
                 onHighlightedPinPositionChanged = { highlightedPinPosition.value = it },
-                onContentPresented = mapViewModel::contentPresented,
-                modifier = Modifier.fillMaxSize().graphicsLayer { translationX = mapPageOffset * size.width },
-            )
-        }
-
-        if (!splashAnimationCompleted || !initialVersionCheckComplete) {
-            SplashScreen(
-                animationCompleted = splashAnimationCompleted,
-                onAnimationCompleted = { splashAnimationCompleted = true },
-            )
-            return@Box
-        }
-
-        if (requiredUpdate != null) {
-            RequiredUpdateDialog(
-                storeOpenError = storeOpenError,
-                onOpenStore = {
-                    storeOpenError = runCatching { uriHandler.openUri(requiredUpdate.storeUrl) }.isFailure
+                onContentPresented = { token, ids ->
+                    if (mapDataActive && mapContentActive) mapViewModel.contentPresented(token, ids)
                 },
-                onRetry = { versionCheckAttempt++ },
+                modifier = Modifier.fillMaxSize(),
             )
-            return@Box
         }
 
         val suggestedUpdate = versionDecision as? AppVersionDecision.UpdateSuggested
-        if (suggestedUpdate != null && !suggestionDismissed) {
+        if (mainFeaturesReady && !shouldPrepareMapDuringSplash && suggestedUpdate != null && !suggestionDismissed) {
             AppAlertDialog(
                 onDismissRequest = { suggestionDismissed = true },
                 title = { Text(stringResource(Res.string.app_update_suggested_title)) },
@@ -467,136 +569,195 @@ private fun AppContent(
             )
         }
 
-        if (!onboardingCompleted) {
-            val onboardingRecorder = rememberVoiceRecorder()
-            val onboardingScope = rememberCoroutineScope()
-            var microphoneDialogResult by remember { mutableStateOf<CompletableDeferred<Unit>?>(null) }
-            OnboardingScreen(
-                monitoring = apiDependencies.client.monitoring,
-                onFinished = {
-                    try {
-                        onboardingRecorder.requestMicrophonePermission()
-                        onboardingRecorder.state.first { !it.requestingPermission }
-                    } catch (cancellation: CancellationException) {
-                        throw cancellation
-                    } catch (_: Exception) {
-                        // Recording can request permission again when the user needs it.
-                    }
-                    if (!onboardingRecorder.state.value.microphonePermissionGranted) {
-                        val result = CompletableDeferred<Unit>()
-                        microphoneDialogResult = result
-                        try {
-                            result.await()
-                        } finally {
-                            microphoneDialogResult = null
-                        }
-                    }
-                    onOnboardingCompleted()
-                    onboardingCompleted = true
-                },
-            )
-            microphoneDialogResult?.let { result ->
-                ConfirmDialog(
-                    title = stringResource(Res.string.app_microphone_permission_title),
-                    content = stringResource(Res.string.app_microphone_permission_message),
-                    confirmText = stringResource(Res.string.app_open_settings),
-                    cancelText = stringResource(Res.string.app_cancel),
-                    onConfirm = {
-                        onboardingScope.launch {
-                            try {
-                                permissionSettingsLauncher.openAppSettings()
-                            } finally {
-                                result.complete(Unit)
-                            }
-                        }
-                    },
-                    onCancel = { result.complete(Unit) },
-                )
-            }
-            return@Box
-        }
-        val audioRepository = remember { createEmotionAudioRepository() }
+        val audioRepository = remember(uiGraph) { uiGraph.audioRepository }
+        val moderation = remember(uiGraph) { uiGraph.moderation }
 
-        val moderation =
-            remember(apiDependencies.client) {
-                createEmotionModerationDependencies(apiDependencies.client)
-            }
-        val groupDependencies =
-            remember(apiDependencies.client, groupStampListRepository, groupCreateSessionStore) {
-                createGroupDependencies(
-                    apiClient = apiDependencies.client,
-                    membershipChanges = groupStampListRepository.membershipChanges,
-                    invalidateSharedMembership = groupStampListRepository::invalidate,
-                    createSessionStore = groupCreateSessionStore,
-                )
-            }
-
-        val clipboardManager = LocalClipboardManager.current
         val navController = rememberNavController()
         val currentBackStackEntry by navController.currentBackStackEntryAsState()
 
-        val isRankingGroupDetailVisible =
-            currentBackStackEntry?.destination?.hasRoute<GroupDetailDestination>() == true
         val selectedDestination =
             when {
-                currentBackStackEntry?.destination?.hasRoute<PressRootDestination>() == true -> AppDestination.Press
+                currentBackStackEntry?.destination?.hasRoute<CollectionRootDestination>() == true -> {
+                    AppDestination.Collection
+                }
 
-                currentBackStackEntry?.destination?.hasRoute<GroupRootDestination>() == true -> AppDestination.Group
+                currentBackStackEntry?.destination?.hasRoute<PressRootDestination>() == true -> {
+                    AppDestination.Press
+                }
 
-                currentBackStackEntry?.destination?.hasRoute<RankingRootDestination>() == true ||
-                    isRankingGroupDetailVisible -> AppDestination.Ranking
+                currentBackStackEntry?.destination?.hasRoute<MapRootDestination>() == true -> {
+                    AppDestination.Map
+                }
 
-                else -> AppDestination.Map
+                else -> {
+                    null
+                }
             }
 
         var isSettingsVisible by remember { mutableStateOf(false) }
         var reportTarget by remember { mutableStateOf<Triple<Long, DrawableResource, String>?>(null) }
-        var moderationMessage by remember { mutableStateOf<String?>(null) }
-        var isGroupDetailVisible by remember { mutableStateOf(false) }
-        var isGroupCreateVisible by remember { mutableStateOf(false) }
-        var refreshGroup by remember { mutableStateOf<(() -> Unit)?>(null) }
-        var refreshStampRanking by remember { mutableStateOf<(() -> Unit)?>(null) }
-        var refreshPressRanking by remember { mutableStateOf<(() -> Unit)?>(null) }
-        var rankingDestination by remember { mutableStateOf(RankingBottomNavigationDestination.Stamp) }
-        val refreshRanking =
-            when (rankingDestination) {
-                RankingBottomNavigationDestination.Stamp -> refreshStampRanking
-                RankingBottomNavigationDestination.Press -> refreshPressRanking
-            }
-        var previousMainDestination by remember { mutableStateOf(AppDestination.Map) }
-        LaunchedEffect(selectedDestination) {
-            if (selectedDestination != AppDestination.Ranking) {
-                previousMainDestination = selectedDestination
-            }
-        }
+        var moderationMessage by remember { mutableStateOf<MapTransientNoticeUiModel?>(null) }
+        var nextModerationMessageId by remember { mutableStateOf(0L) }
         val isEmotionRecordFlowActive =
             selectedDestination == AppDestination.Map &&
                 (mapUiModel.isEmotionSelectorExpanded || recordUiModel.step != RecordFlowStepUiModel.Closed)
 
+        val pressRaceView =
+            when {
+                currentBackStackEntry?.destination?.hasRoute<PressRootDestination>() == true -> PressRaceView.PRESS
+                currentBackStackEntry?.destination?.hasRoute<RankingRootDestination>() == true -> PressRaceView.ALL
+                else -> null
+            }
+        PressRaceLifecycleEffect(
+            session = apiDependencies.appSession.pressRace,
+            view = pressRaceView,
+            enabled = mainFeaturesReady && !shouldPrepareMapDuringSplash && !isSettingsVisible && reportTarget == null,
+        )
+
+        var collectionNotificationDate by remember { mutableStateOf<String?>(null) }
+        var collectionRefreshRevision by remember { mutableStateOf(0L) }
+        var dailyRankingRefreshRevision by remember { mutableStateOf(0L) }
+        val dailyRankingDate =
+            currentBackStackEntry
+                ?.takeIf { it.destination.hasRoute<DailyPressRankingRootDestination>() }
+                ?.toRoute<DailyPressRankingRootDestination>()
+                ?.date
+        val foregroundMessage = notificationMessages?.pending?.collectAsStateWithLifecycle()?.value
+        val messageMatchesVisibleScreen =
+            foregroundMessage?.let { message ->
+                !isSettingsVisible && reportTarget == null && !isEmotionRecordFlowActive &&
+                    when (message.data["type"]) {
+                        "COLLECTION_CLAIMABLE", "COLLECTION_CLAIM_REMINDER" -> {
+                            currentBackStackEntry?.destination?.hasRoute<CollectionRootDestination>() == true
+                        }
+
+                        "RANK_DROPPED" -> {
+                            dailyRankingDate != null && message.data["date"] == dailyRankingDate
+                        }
+
+                        else -> {
+                            false
+                        }
+                    }
+            } == true
+
+        val navigateFromNotification: (NotificationDestination) -> Unit = { destination ->
+            if (!firstMainPresented) startupNotificationDestination = destination
+            when (destination) {
+                NotificationDestination.Press -> {
+                    isSettingsVisible = false
+                    reportTarget = null
+                    nearbyViewModel.dismiss()
+                    detailViewModel.dismiss()
+                    mapViewModel.dismissFilter()
+                    navController.navigate(PressRootDestination) {
+                        popUpTo<MapRootDestination>()
+                        launchSingleTop = true
+                    }
+                }
+
+                is NotificationDestination.Collection -> {
+                    isSettingsVisible = false
+                    reportTarget = null
+                    nearbyViewModel.dismiss()
+                    detailViewModel.dismiss()
+                    collectionNotificationDate = destination.date
+                    collectionRefreshRevision++
+                    navController.navigate(CollectionRootDestination) {
+                        popUpTo<MapRootDestination>()
+                        launchSingleTop = true
+                    }
+                }
+
+                is NotificationDestination.DailyRanking -> {
+                    isSettingsVisible = false
+                    reportTarget = null
+                    nearbyViewModel.dismiss()
+                    detailViewModel.dismiss()
+                    navController.navigate(DailyPressRankingRootDestination(destination.date)) {
+                        popUpTo<MapRootDestination>()
+                        launchSingleTop = true
+                    }
+                }
+
+                NotificationDestination.Map -> {
+                    isSettingsVisible = false
+                    reportTarget = null
+                    nearbyViewModel.dismiss()
+                    detailViewModel.dismiss()
+                    mapViewModel.dismissFilter()
+                    navController.navigate(MapRootDestination) {
+                        popUpTo<MapRootDestination>()
+                        launchSingleTop = true
+                    }
+                }
+            }
+        }
+
+        LaunchedEffect(foregroundMessage?.id, messageMatchesVisibleScreen, mainFeaturesReady) {
+            val message = foregroundMessage ?: return@LaunchedEffect
+            if (!mainFeaturesReady) return@LaunchedEffect
+            if (messageMatchesVisibleScreen) {
+                when (message.data["type"]) {
+                    "COLLECTION_CLAIMABLE", "COLLECTION_CLAIM_REMINDER" -> collectionRefreshRevision++
+                    "RANK_DROPPED" -> dailyRankingRefreshRevision++
+                }
+            }
+            notificationMessages.acknowledge(message.id)
+        }
+
+        FirstMainPresentationEffect(
+            backStackEntry = currentBackStackEntry,
+            ready = mainFeaturesReady && startupState.splashDismissed,
+            target = startupTarget,
+            alreadyPresented = firstMainPresented,
+            onPresented = { firstMainPresented = true },
+        )
+
+        NotificationClickEffect(
+            inbox = notificationClicks,
+            ready =
+                mainFeaturesReady && (!shouldPrepareMapDuringSplash || coldNotificationEntry) &&
+                    currentBackStackEntry != null && !isEmotionRecordFlowActive,
+            onNavigate = navigateFromNotification,
+        )
+
         // Register the exit fallback before navigation and screen-specific back handlers.
         DoubleBackToExitHandler()
 
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    // Keep the persistent map covered while two opaque destinations crossfade.
+                    // Retain transparency throughout transitions that still include the map entry.
+                    .background(if (mapEntryPresent) Color.Transparent else AppColors.GroupBackground)
+                    .then(
+                        if (shouldPrepareMapDuringSplash) Modifier.clearAndSetSemantics {} else Modifier,
+                    ),
+        ) {
             NavHost(
                 navController = navController,
                 startDestination = MapRootDestination,
                 modifier = Modifier.fillMaxSize(),
+                enterTransition = { fadeIn(tween(200)) },
+                exitTransition = { fadeOut(tween(200)) },
             ) {
                 composable<MapRootDestination>(
-                    enterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
-                    exitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
-                    popEnterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
-                    popExitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
+                    enterTransition = { if (coldNotificationEntry) EnterTransition.None else null },
+                    exitTransition = { if (coldNotificationEntry) ExitTransition.None else null },
+                    popEnterTransition = { if (coldNotificationEntry) EnterTransition.None else null },
+                    popExitTransition = { if (coldNotificationEntry) ExitTransition.None else null },
                 ) {
-                    // Keep the persistent native map in step with its Compose overlay.
-                    val pageOffset by transition.animateFloat(
-                        transitionSpec = { tween(300) },
-                        label = "nativeMapPageOffset",
-                    ) { state -> if (state == EnterExitState.Visible) 0f else -1f }
-                    SideEffect { mapPageOffset = pageOffset }
+                    DisposableEffect(Unit) {
+                        mapEntryPresent = true
+                        mapMounted = true
+                        onDispose { mapEntryPresent = false }
+                    }
                     Box(modifier = Modifier.fillMaxSize()) {
                         MapScreen(
                             viewModel = mapViewModel,
+                            featuresEnabled = mainFeaturesReady && !shouldPrepareMapDuringSplash,
                             recordViewModel = mapRecordViewModel,
                             highlightedEmotion = highlightedEmotion,
                             onHighlightedEmotionChanged = { highlightedEmotion = it },
@@ -606,18 +767,30 @@ private fun AppContent(
                             onMapVisibilityChanged = { mapVisible = it },
                             onMapContentActiveChanged = { mapContentActive = it },
                             monitoringVisible =
-                                !nearbyState.visible && detailState == EmotionDetailLoadUiModel.Closed &&
+                                mainFeaturesReady && !shouldPrepareMapDuringSplash && !nearbyState.visible &&
+                                    detailState == EmotionDetailLoadUiModel.Closed &&
                                     !isSettingsVisible && reportTarget == null,
+                            feedbackVisible =
+                                shouldShowMapFeedback(
+                                    mainFeaturesReady = mainFeaturesReady && !shouldPrepareMapDuringSplash,
+                                    selectedDestination = selectedDestination,
+                                    nearbyVisible = nearbyState.visible,
+                                    detailState = detailState,
+                                    settingsVisible = isSettingsVisible,
+                                    hasReportTarget = reportTarget != null,
+                                ),
                             onListClick = nearbyViewModel::toggle,
                             nearbyMapControlHeight = nearbyMapControlHeight,
                             isMapCameraMoving = isMapCameraMoving,
                             onSettingClick = { isSettingsVisible = true },
                             onEmotionBubbleClick = {},
-                            locationPermissionController = locationDependencies.permissionController,
+                            locationPermissionController = uiGraph.locationDependencies.permissionController,
                             appSettingsLauncher = appSettingsLauncher,
                             modifier = Modifier.fillMaxSize(),
                             message = moderationMessage,
-                            onMessageDismiss = { moderationMessage = null },
+                            onMessageDismiss = { id ->
+                                if (moderationMessage?.id == id) moderationMessage = null
+                            },
                             detailError = detailState as? EmotionDetailLoadUiModel.Failed,
                             onRetryDetail = detailViewModel::retry,
                             onDismissDetailError = detailViewModel::dismiss,
@@ -658,142 +831,72 @@ private fun AppContent(
                             onBlockSucceeded = {
                                 detailViewModel.dismiss()
                                 mapViewModel.refreshEmotionPins()
-                                moderationMessage = "차단했어요."
+                                moderationMessage = MapTransientNoticeUiModel(++nextModerationMessageId, "차단했어요.")
                             },
                             monitoringVisible = !isSettingsVisible && reportTarget == null,
                             onDeleteSucceeded = {
                                 detailViewModel.dismiss()
-                                mapViewModel.refreshEmotionPins()
-                                moderationMessage = "삭제했어요."
+                                mapViewModel.onEmotionDeleted()
+                                moderationMessage = MapTransientNoticeUiModel(++nextModerationMessageId, "삭제했어요.")
                             },
-                        )
-                    }
-                }
-
-                composable<GroupRootDestination>(
-                    enterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
-                    exitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
-                    popEnterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
-                    popExitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
-                ) {
-                    CompositionLocalProvider(
-                        LocalProductMonitoringVisible provides
-                            (!isSettingsVisible && reportTarget == null),
-                    ) {
-                        GroupFeatureHost(
-                            dependencies = groupDependencies,
-                            modifier = Modifier.fillMaxSize(),
-                            onGroupDetailVisibilityChanged = { isGroupDetailVisible = it },
-                            onGroupCreateVisibilityChanged = { isGroupCreateVisible = it },
-                            onMembershipChanged = {
-                                groupStampListRepository.invalidate()
-                            },
-                            onRefreshActionChanged = { refreshGroup = it },
                         )
                     }
                 }
 
                 composable<PressRootDestination>(
-                    enterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
-                    exitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
-                    popEnterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
-                    popExitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
+                    enterTransition = { if (coldNotificationEntry) EnterTransition.None else null },
+                    exitTransition = { if (coldNotificationEntry) ExitTransition.None else null },
+                    popEnterTransition = { if (coldNotificationEntry) EnterTransition.None else null },
+                    popExitTransition = { if (coldNotificationEntry) ExitTransition.None else null },
                 ) {
+                    if (!mainFeaturesReady) return@composable
                     PressRoute(
-                        repository = apiDependencies.appSession.pressRepository,
+                        onOpenRanking = {
+                            if (navController.currentDestination?.hasRoute<PressRootDestination>() == true) {
+                                navController.navigate(RankingRootDestination) { launchSingleTop = true }
+                            }
+                        },
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
 
-                composable<RankingRootDestination>(
-                    enterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
-                    exitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
-                    popEnterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
-                    popExitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
-                ) { entry ->
-                    val openGroupDetail: (String) -> Unit = { groupId ->
-                        if (navController.currentBackStackEntry == entry) {
-                            navController.navigate(GroupDetailDestination(groupId)) {
-                                launchSingleTop = true
-                            }
-                        }
-                    }
-                    AnimatedContent(
-                        targetState = rankingDestination,
+                composable<CollectionRootDestination> {
+                    if (!mainFeaturesReady) return@composable
+                    CollectionRoute(
+                        monitoring = apiDependencies.client.monitoring,
+                        sessionGeneration = sessionGeneration,
+                        currentNickname = appEntryState.currentNickname,
+                        notificationDate = collectionNotificationDate,
+                        refreshRevision = collectionRefreshRevision,
                         modifier = Modifier.fillMaxSize(),
-                        transitionSpec = {
-                            val direction =
-                                if (targetState == RankingBottomNavigationDestination.Press) {
-                                    AnimatedContentTransitionScope.SlideDirection.Left
-                                } else {
-                                    AnimatedContentTransitionScope.SlideDirection.Right
-                                }
-                            (
-                                slideIntoContainer(direction, tween(300)) togetherWith
-                                    slideOutOfContainer(direction, tween(300))
-                            ).using(null)
+                        bottomBar = {
+                            Spacer(Modifier.navigationBarsPadding().height(AppBottomNavigationBarOverlaySpace))
                         },
-                        label = "rankingTabTransition",
-                    ) { destination ->
-                        CompositionLocalProvider(
-                            LocalProductMonitoringVisible provides
-                                (destination == rankingDestination && !isSettingsVisible && reportTarget == null),
-                        ) {
-                            when (destination) {
-                                RankingBottomNavigationDestination.Stamp -> {
-                                    WeeklyRankingRoute(
-                                        apiClient = apiDependencies.client,
-                                        onGroupClick = openGroupDetail,
-                                        modifier = Modifier.fillMaxSize(),
-                                        onRefreshActionChanged = { refreshStampRanking = it },
-                                    )
-                                }
-
-                                RankingBottomNavigationDestination.Press -> {
-                                    PressRankingRoute(
-                                        apiClient = apiDependencies.client,
-                                        onGroupClick = openGroupDetail,
-                                        modifier = Modifier.fillMaxSize(),
-                                        onRefreshActionChanged = { refreshPressRanking = it },
-                                    )
-                                }
-                            }
-                        }
-                    }
+                    )
                 }
 
-                composable<GroupDetailDestination> { entry ->
-                    val destination = entry.toRoute<GroupDetailDestination>()
-                    val groupId = GroupId(destination.groupId)
-                    val groupDetailViewModel: GroupDetailViewModel =
-                        viewModel(viewModelStoreOwner = entry) {
-                            GroupDetailViewModel(groupId = groupId, dependencies = groupDependencies.detail)
-                        }
-
-                    fun returnToRanking() {
-                        groupStampListRepository.invalidate()
-                        navController.popBackStack()
-                    }
-
+                composable<RankingRootDestination> {
+                    if (!mainFeaturesReady) return@composable
                     CompositionLocalProvider(
                         LocalProductMonitoringVisible provides (!isSettingsVisible && reportTarget == null),
                     ) {
-                        GroupDetailRoute(
-                            viewModel = groupDetailViewModel,
-                            isCurrentDestination = currentBackStackEntry == entry,
+                        PressRankingRoute(
+                            modifier = Modifier.fillMaxSize(),
                             onBack = { navController.popBackStack() },
-                            onReturnHome = { returnToRanking() },
-                            onJoined = groupStampListRepository::invalidate,
-                            onLeft = { _, _ -> returnToRanking() },
-                            onMembershipUnavailable = { _, _, _ -> returnToRanking() },
-                            onCopyCode = { code, _ ->
-                                clipboardManager.setText(AnnotatedString(code))
-                                GroupCopyCodeResult.Copied
-                            },
-                            onMoodBlockClick = null,
-                            onMoodReportClick = null,
                         )
                     }
+                }
+
+                composable<DailyPressRankingRootDestination> { entry ->
+                    if (!mainFeaturesReady) return@composable
+                    val destination = entry.toRoute<DailyPressRankingRootDestination>()
+                    DailyPressRankingRoute(
+                        date = destination.date,
+                        sessionGeneration = sessionGeneration,
+                        refreshRevision = dailyRankingRefreshRevision,
+                        onBack = { navController.popBackStack() },
+                        modifier = Modifier.fillMaxSize(),
+                    )
                 }
             }
             reportTarget?.let { (id, stamp, source) ->
@@ -806,7 +909,7 @@ private fun AppContent(
                     onBack = { reportTarget = null },
                     onReportSucceeded = {
                         reportTarget = null
-                        moderationMessage = "신고가 접수됐어요."
+                        moderationMessage = MapTransientNoticeUiModel(++nextModerationMessageId, "신고가 접수됐어요.")
                     },
                 )
             }
@@ -816,14 +919,16 @@ private fun AppContent(
                     monitoring = apiDependencies.client.monitoring,
                     appVersion = appVersion,
                     onBackClick = { isSettingsVisible = false },
-                    permissionSettingsLauncher = permissionSettingsLauncher,
+                    permissionSettingsLauncher = appSettingsLauncher,
+                    notificationPermissionController = notificationPermissionController,
+                    notificationPreferencesStore = notificationPreferencesStore,
                     modifier = Modifier.fillMaxSize(),
+                    settingsContent = settingsContent,
                 )
             }
 
-            if (reportTarget == null && !isSettingsVisible && !nearbyState.visible && !isEmotionRecordFlowActive &&
-                !isRankingGroupDetailVisible &&
-                (selectedDestination != AppDestination.Group || (!isGroupDetailVisible && !isGroupCreateVisible))
+            if (selectedDestination != null && reportTarget == null && !isSettingsVisible &&
+                !nearbyState.visible && !isEmotionRecordFlowActive
             ) {
                 AppBottomNavigationBar(
                     modifier =
@@ -831,61 +936,86 @@ private fun AppContent(
                             .align(Alignment.BottomCenter)
                             .padding(bottom = AppBottomNavigationBarBottomSpacing),
                     selectedDestination = selectedDestination,
-                    rankingDestination = rankingDestination,
-                    onRankingBackClick = {
-                        nearbyViewModel.dismiss()
-                        val route =
-                            when (previousMainDestination) {
-                                AppDestination.Map, AppDestination.Ranking -> MapRootDestination
-                                AppDestination.Press -> PressRootDestination
-                                AppDestination.Group -> GroupRootDestination
-                            }
-                        navController.navigate(route) {
-                            popUpTo<MapRootDestination> { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    onRankingDestinationSelected = { destination ->
-                        rankingDestination = destination
-                    },
                     onDestinationSelected = { destination ->
+                        if (!mainFeaturesReady) return@AppBottomNavigationBar
                         nearbyViewModel.dismiss()
-                        if (destination == AppDestination.Ranking) {
-                            if (selectedDestination != AppDestination.Ranking) {
-                                previousMainDestination = selectedDestination
-                            }
-                            rankingDestination = RankingBottomNavigationDestination.Stamp
-                        } else {
-                            previousMainDestination = destination
-                        }
+                        if (destination == AppDestination.Collection) collectionNotificationDate = null
                         val route =
                             when (destination) {
                                 AppDestination.Map -> MapRootDestination
                                 AppDestination.Press -> PressRootDestination
-                                AppDestination.Group -> GroupRootDestination
-                                AppDestination.Ranking -> RankingRootDestination
+                                AppDestination.Collection -> CollectionRootDestination
                             }
 
                         if (navController.currentDestination?.hasRoute(route::class) == true) {
                             when (destination) {
-                                AppDestination.Map -> mapViewModel.refreshEmotionPins()
-                                AppDestination.Press -> Unit
-                                AppDestination.Group -> refreshGroup?.invoke()
-                                AppDestination.Ranking -> refreshRanking?.invoke()
+                                AppDestination.Map -> {
+                                    mapViewModel.refreshEmotionPins()
+                                }
+
+                                AppDestination.Press -> {
+                                    Unit
+                                }
+
+                                AppDestination.Collection -> {
+                                    collectionNotificationDate = null
+                                    collectionRefreshRevision++
+                                }
                             }
                         } else {
-                            navController.navigate(route) {
-                                popUpTo<MapRootDestination> { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
+                            if (destination == AppDestination.Map) {
+                                if (!navController.popBackStack<MapRootDestination>(inclusive = false)) {
+                                    navController.navigate(MapRootDestination) { launchSingleTop = true }
+                                }
+                            } else {
+                                navController.navigate(route) {
+                                    popUpTo<MapRootDestination> { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
                             }
                         }
                     },
                 )
             }
         }
+        if (!shouldPrepareMapDuringSplash && mainFeaturesReady && mapVisible && !firstMapFrameReady.value &&
+            mapUiModel.mapError == null
+        ) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularLoadingIndicator()
+            }
+        }
+        if (!shouldPrepareMapDuringSplash) {
+            AppEntryGate(
+                state =
+                    if (!initialVersionCheckComplete ||
+                        (appEntryState.phase == AppEntryPhase.READY && !entryReady)
+                    ) {
+                        AppEntryUiState()
+                    } else {
+                        appEntryState
+                    },
+                onNicknameChanged = entryViewModel::onNicknameChanged,
+                onSubmit = entryViewModel::submitNickname,
+                onRetry = entryViewModel::retry,
+            )
+        }
+        if (shouldPrepareMapDuringSplash) {
+            Box(
+                Modifier.fillMaxSize().pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            awaitPointerEvent().changes.forEach { it.consume() }
+                        }
+                    }
+                },
+            ) {
+                SplashScreen(progress = splashProgress)
+            }
+        }
     }
+    FlowBackHandler(enabled = shouldPrepareMapDuringSplash, onBack = {})
 }
 
 @Composable
@@ -927,36 +1057,4 @@ private fun RequiredUpdateDialog(
             }
         }
     }
-}
-
-private const val VERSION_CHECK_TIMEOUT_MILLIS = 10_000L
-private const val MAP_INACTIVE_RELEASE_DELAY_MILLIS = 30_000L
-
-private fun androidx.navigation.NavDestination.rootTabIndex(): Int? =
-    when {
-        hasRoute<MapRootDestination>() -> 0
-        hasRoute<PressRootDestination>() -> 1
-        hasRoute<GroupRootDestination>() -> 2
-        hasRoute<RankingRootDestination>() -> 3
-        else -> null
-    }
-
-private fun rootTabEnterTransition(
-    from: androidx.navigation.NavDestination,
-    to: androidx.navigation.NavDestination,
-): EnterTransition? {
-    val fromIndex = from.rootTabIndex() ?: return null
-    val toIndex = to.rootTabIndex() ?: return null
-    if (fromIndex == toIndex) return EnterTransition.None
-    return slideInHorizontally(tween(300)) { width -> if (toIndex > fromIndex) width else -width }
-}
-
-private fun rootTabExitTransition(
-    from: androidx.navigation.NavDestination,
-    to: androidx.navigation.NavDestination,
-): ExitTransition? {
-    val fromIndex = from.rootTabIndex() ?: return null
-    val toIndex = to.rootTabIndex() ?: return null
-    if (fromIndex == toIndex) return ExitTransition.None
-    return slideOutHorizontally(tween(300)) { width -> if (toIndex > fromIndex) -width else width }
 }

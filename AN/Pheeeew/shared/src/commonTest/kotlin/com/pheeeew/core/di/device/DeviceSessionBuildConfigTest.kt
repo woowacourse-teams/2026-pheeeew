@@ -1,15 +1,42 @@
 package com.pheeeew.core.di.device
 
 import com.pheeeew.data.local.device.LegacyCredentialPolicy
-import com.pheeeew.data.remote.device.attestation.DeviceAttestationPolicy
-import com.pheeeew.data.remote.device.attestation.DeviceProofProvider
-import com.pheeeew.data.remote.device.dto.DeviceAttestationDto
+import com.pheeeew.data.remote.attestation.DeviceAttestationPolicy
+import com.pheeeew.data.remote.attestation.DeviceProofProvider
+import com.pheeeew.data.remote.dto.DeviceAttestationDto
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 
 class DeviceSessionBuildConfigTest {
+    @Test
+    fun explicitBuildModesRejectMisspellingsInsteadOfSilentlyChangingInputPath() {
+        assertEquals(PressInputMode.HTTP, PressInputMode.fromBuildValue("http"))
+        assertEquals(PressInputMode.WEBSOCKET_DEVELOPMENT, PressInputMode.fromBuildValue("ws"))
+        kotlin.test.assertFails { PressInputMode.fromBuildValue("websocket") }
+    }
+
+    @Test
+    fun inputDefaultsToHttpAndReleaseCannotEnableExperimentalWebSocket() {
+        val debug = DeviceSessionBuildConfig(true, "dev", DeviceSessionBuildConfig.DEV_URL, "platform_only", "1")
+        assertEquals(PressInputMode.HTTP, debug.pressInputMode)
+        assertEquals(
+            PressInputMode.WEBSOCKET_DEVELOPMENT,
+            debug.copy(pressInputMode = PressInputMode.WEBSOCKET_DEVELOPMENT).pressInputMode,
+        )
+        assertFailsWith<IllegalArgumentException> {
+            DeviceSessionBuildConfig(
+                false,
+                "prod",
+                DeviceSessionBuildConfig.PROD_URL,
+                "required",
+                "1",
+                PressInputMode.WEBSOCKET_DEVELOPMENT,
+            )
+        }
+    }
+
     @Test
     fun `only production release imports published legacy credentials`() {
         assertEquals(

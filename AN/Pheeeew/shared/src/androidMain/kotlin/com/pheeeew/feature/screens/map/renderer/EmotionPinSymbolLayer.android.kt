@@ -1,6 +1,5 @@
 package com.pheeeew.feature.screens.map.renderer
 
-import android.graphics.Color
 import androidx.compose.ui.graphics.asAndroidBitmap
 import com.google.gson.JsonObject
 import com.pheeeew.feature.screens.map.EmotionPinSymbolImage

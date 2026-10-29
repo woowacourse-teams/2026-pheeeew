@@ -50,6 +50,7 @@ data class EventDefinition(
     val version: Int = 1,
     val properties: Map<String, PropertyRule> = emptyMap(),
     val preserveOnOverflow: Boolean = false,
+    val oncePerDay: Boolean = false,
 )
 
 /** Immutable after startup; feature definitions are supplied by the composition root. */
@@ -134,7 +135,7 @@ class EventRegistry(
         val normalized = common.toMutableMap()
         common["screen"]?.let { normalized["screen"] = JsonPrimitive(screen(it.content)) }
         val result = JsonObject(safe + normalized)
-        return if (name == MeaningfulActivity.NAME) MeaningfulActivity.sanitize(result) else result
+        return if (DailyActivity.isDaily(name)) MeaningfulActivity.sanitize(result) else result
     }
 }
 

@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import com.pheeeew.core.audio.MAX_RECORDING_DURATION_SECONDS
+import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -38,12 +39,14 @@ import platform.Foundation.NSUUID
 
 @Composable
 actual fun rememberVoiceRecorder(): VoiceRecorder {
-    val recorder = remember { IosVoiceRecorder() }
+    val factory = LocalAudioFactories.current.voiceRecorder
+    val recorder = remember(factory) { factory.create() }
     DisposableEffect(recorder) { onDispose { recorder.release() } }
     return recorder
 }
 
-private class IosVoiceRecorder : VoiceRecorder {
+@Inject
+internal class IosVoiceRecorder : VoiceRecorder {
     private val mutable = MutableStateFlow(VoiceRecordingState())
     override val state = mutable.asStateFlow()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -85,7 +88,10 @@ private class IosVoiceRecorder : VoiceRecorder {
         if (released || state.value.recording || state.value.requestingPermission) return
         val token = ++generation
         refreshPermissionStatus()
-        if (state.value.microphonePermissionGranted && !startRecording) return
+        if (state.value.microphonePermissionGranted) {
+            if (startRecording) begin()
+            return
+        }
         mutable.value = state.value.copy(requestingPermission = true, microphonePermissionDenied = false, error = null)
         session.requestRecordPermission { granted ->
             scope.launch {

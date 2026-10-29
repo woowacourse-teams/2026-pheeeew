@@ -21,7 +21,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
@@ -40,7 +39,6 @@ import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.group_home_error_description
 import pheeeew.shared.generated.resources.group_home_error_title
-import pheeeew.shared.generated.resources.group_home_refresh_error
 import pheeeew.shared.generated.resources.group_home_retry
 import pheeeew.shared.generated.resources.ic_emotion_irritated
 
@@ -149,18 +147,6 @@ private fun LoadErrorContentPreview() {
         LoadErrorContent(
             onRetry = {},
             modifier = Modifier.background(AppColors.Background).padding(32.dp),
-        )
-    }
-}
-
-@Preview(name = "공통 - 그룹 새로고침 실패 배너", widthDp = 360)
-@Composable
-private fun GroupRefreshErrorBannerPreview() {
-    AppTheme {
-        RefreshErrorBanner(
-            message = stringResource(Res.string.group_home_refresh_error),
-            onRetry = {},
-            modifier = Modifier.background(AppColors.GroupBackground).padding(24.dp),
         )
     }
 }

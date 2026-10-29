@@ -40,6 +40,7 @@ fun BasicTopBar(
     titleColor: Color = AppColors.GroupInk,
     titleFontFamily: FontFamily? = null,
     height: Dp = 56.dp,
+    titleStartAligned: Boolean = false,
 ) {
     Box(modifier = modifier.fillMaxWidth().height(height), contentAlignment = Alignment.Center) {
         onBack?.let { onBackClick ->
@@ -86,7 +87,7 @@ fun BasicTopBar(
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
+            textAlign = if (titleStartAligned) TextAlign.Start else TextAlign.Center,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 64.dp).semantics { heading() },
         )
     }

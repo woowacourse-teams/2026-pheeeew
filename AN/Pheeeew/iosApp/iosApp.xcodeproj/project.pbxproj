@@ -10,6 +10,7 @@
 		64E63F4A3CF10CB4773C55F8 /* KotlinMultiplatformLinkedPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 42CE4090DE15678DF75AB3F4 /* KotlinMultiplatformLinkedPackage */; };
 		A10101010101010101010101 /* MapLibre in Frameworks */ = {isa = PBXBuildFile; productRef = A30303030303030303030303 /* MapLibre */; };
 		B10101010101010101010101 /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = B30303030303030303030303 /* Sentry */; };
+		F10101010101010101010101 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = F30303030303030303030303 /* FirebaseMessaging */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -49,6 +50,7 @@
 			files = (
 				A10101010101010101010101 /* MapLibre in Frameworks */,
 				B10101010101010101010101 /* Sentry in Frameworks */,
+				F10101010101010101010101 /* FirebaseMessaging in Frameworks */,
 				64E63F4A3CF10CB4773C55F8 /* KotlinMultiplatformLinkedPackage in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -96,6 +98,7 @@
 			packageProductDependencies = (
 				A30303030303030303030303 /* MapLibre */,
 				B30303030303030303030303 /* Sentry */,
+				F30303030303030303030303 /* FirebaseMessaging */,
 				42CE4090DE15678DF75AB3F4 /* KotlinMultiplatformLinkedPackage */,
 			);
 			productName = iosApp;
@@ -129,6 +132,7 @@
 			packageReferences = (
 				A20202020202020202020202 /* XCRemoteSwiftPackageReference "maplibre-gl-native-distribution" */,
 				B20202020202020202020202 /* XCRemoteSwiftPackageReference "sentry-cocoa" */,
+				F20202020202020202020202 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				D8E30D8A61E2C4922BFFBEFE /* XCLocalSwiftPackageReference "KotlinMultiplatformLinkedPackage" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -169,7 +173,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "python3 \"$SRCROOT/../scripts/validate-device-session-build.py\" || exit 1\npython3 \"$SRCROOT/../scripts/validate-monitoring-build.py\" || exit 1\nif [ \"YES\" = \"$OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED\" ]; then\n  echo \"Skipping Gradle build task invocation due to OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED environment variable set to \\\"YES\\\"\"\n  exit 0\nfi\ncd \"$SRCROOT/..\"\n./gradlew :shared:embedAndSignAppleFrameworkForXcode\n";
+			shellScript = "python3 \"$SRCROOT/../scripts/validate-device-session-build.py\" || exit 1\npython3 \"$SRCROOT/../scripts/validate-monitoring-build.py\" || exit 1\nif [ \"YES\" = \"$OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED\" ]; then\n  echo \"Skipping Gradle build task invocation due to OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED environment variable set to \\\"YES\\\"\"\n  exit 0\nfi\ncd \"$SRCROOT/..\"\ncase \"$CONFIGURATION\" in\n  Debug) kotlin_module=developerTools ;;\n  Release) kotlin_module=shared ;;\n  *) echo \"Unsupported build configuration\"; exit 1 ;;\nesac\n./gradlew \":$kotlin_module:embedAndSignAppleFrameworkForXcode\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -319,7 +323,7 @@
 				CODE_SIGN_ENTITLEMENTS = iosApp/Pheeeew.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 13;
 				DEVELOPMENT_ASSET_PATHS = "\"iosApp/Preview Content\"";
 				DEVELOPMENT_TEAM = WKN466N42M;
 				ENABLE_PREVIEWS = YES;
@@ -337,7 +341,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.3.0;
+				MARKETING_VERSION = 2.5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.itda.pheeeew;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -353,7 +357,7 @@
 				CODE_SIGN_ENTITLEMENTS = iosApp/Pheeeew.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 13;
 				DEVELOPMENT_ASSET_PATHS = "\"iosApp/Preview Content\"";
 				DEVELOPMENT_TEAM = WKN466N42M;
 				ENABLE_PREVIEWS = YES;
@@ -371,7 +375,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.3.0;
+				MARKETING_VERSION = 2.5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.itda.pheeeew;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -426,6 +430,14 @@
 				version = 8.58.2;
 			};
 		};
+		F20202020202020202020202 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = exactVersion;
+				version = 13.1.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -442,6 +454,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = B20202020202020202020202 /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
 			productName = Sentry;
+		};
+		F30303030303030303030303 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F20202020202020202020202 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.hibernate.Session;
 import org.hibernate.query.NativeQuery;
 import org.hibernate.type.StandardBasicTypes;
@@ -30,6 +31,25 @@ public class EmotionRegionQueryRepositoryImpl implements EmotionRegionQueryRepos
     }
 
     @Override
+    public List<RegionEmotionSummaryProjection> findNationalSummaries(
+            RegionLevel level, EmotionSearchFilter filter, Long deviceId, Instant snapshotAt
+    ) {
+        // SGIS 코드 길이와 부모 코드의 앞자리 관계는 regions의 CHECK/FK가 보장한다.
+        String root = switch (level) {
+            case SIDO -> "left(e.region_code, 2)";
+            case SIGUNGU -> "left(e.region_code, 5)";
+            case EMD -> throw new IllegalArgumentException("전국 집계는 시도와 시군구만 지원합니다.");
+        };
+        StringBuilder sql = new StringBuilder("""
+                SELECT %s AS region_code, e.state AS state, COUNT(e.id) AS state_count
+                FROM emotions e
+                WHERE e.deleted_at IS NULL
+                  AND e.created_at <= :snapshotAt
+                """.formatted(root));
+        return findSummaries(createFilteredCountsQuery(sql, root, filter), filter, deviceId, snapshotAt);
+    }
+
+    @Override
     public List<RegionEmotionSummaryProjection> findSummariesByRegionCodes(
             List<String> regionCodes,
             RegionLevel level,
@@ -43,6 +63,12 @@ public class EmotionRegionQueryRepositoryImpl implements EmotionRegionQueryRepos
 
         NativeQuery<Object[]> query = createCountsQuery(level, filter);
         query.setParameterList("regionCodes", regionCodes, String.class);
+        return findSummaries(query, filter, deviceId, snapshotAt);
+    }
+
+    private List<RegionEmotionSummaryProjection> findSummaries(
+            NativeQuery<Object[]> query, EmotionSearchFilter filter, Long deviceId, Instant snapshotAt
+    ) {
         query.setParameter("snapshotAt", snapshotAt, StandardBasicTypes.INSTANT);
         if (filter.startInclusive() != null) {
             query.setParameter("startInclusive", filter.startInclusive(), StandardBasicTypes.INSTANT);
@@ -52,7 +78,7 @@ public class EmotionRegionQueryRepositoryImpl implements EmotionRegionQueryRepos
             query.setParameter("deviceId", deviceId);
         }
         if (filter.scope() == EmotionSearchScope.GROUP) {
-            query.setParameter("groupId", filter.groupId());
+            query.setParameterList("groupIds", filter.groupIds(), UUID.class);
         }
 
         Map<String, Map<EmotionState, Long>> countsByRoot = new HashMap<>();
@@ -84,11 +110,6 @@ public class EmotionRegionQueryRepositoryImpl implements EmotionRegionQueryRepos
                     JOIN regions sido ON sido.code = sigungu.parent_code
                     """;
         };
-        String content = switch (filter.contentType()) {
-            case ALL -> "(e.memo IS NOT NULL OR e.audio_object_key IS NOT NULL)";
-            case MEMO -> "e.memo IS NOT NULL";
-            case AUDIO -> "e.audio_object_key IS NOT NULL";
-        };
         StringBuilder sql = new StringBuilder("""
                 SELECT %s AS region_code, e.state AS state, COUNT(e.id) AS state_count
                 FROM emotions e
@@ -97,8 +118,19 @@ public class EmotionRegionQueryRepositoryImpl implements EmotionRegionQueryRepos
                 WHERE %s IN (:regionCodes)
                   AND e.deleted_at IS NULL
                   AND e.created_at <= :snapshotAt
-                  AND %s
-                """.formatted(root, joins, root, content));
+                """.formatted(root, joins, root));
+        return createFilteredCountsQuery(sql, root, filter);
+    }
+
+    private NativeQuery<Object[]> createFilteredCountsQuery(
+            StringBuilder sql, String root, EmotionSearchFilter filter
+    ) {
+        String content = switch (filter.contentType()) {
+            case ALL -> "(e.memo IS NOT NULL OR e.audio_object_key IS NOT NULL)";
+            case MEMO -> "e.memo IS NOT NULL";
+            case AUDIO -> "e.audio_object_key IS NOT NULL";
+        };
+        sql.append(" AND ").append(content);
         if (filter.startInclusive() != null) {
             sql.append(" AND e.created_at >= :startInclusive AND e.created_at < :endExclusive");
         }
@@ -108,7 +140,7 @@ public class EmotionRegionQueryRepositoryImpl implements EmotionRegionQueryRepos
             case GROUP -> sql.append("""
                      AND EXISTS (
                         SELECT 1 FROM group_stamps gs JOIN groups g ON g.id = gs.group_id
-                        WHERE gs.id = e.group_stamp_id AND g.public_id = :groupId
+                        WHERE gs.id = e.group_stamp_id AND g.public_id IN (:groupIds)
                     )
                     """);
         }

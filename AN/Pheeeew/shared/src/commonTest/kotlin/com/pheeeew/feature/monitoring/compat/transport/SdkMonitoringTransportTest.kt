@@ -1,8 +1,11 @@
 package com.pheeeew.feature.monitoring.compat
 
 import com.pheeeew.core.di.appMonitoringRegistry
+import com.pheeeew.core.monitoring.ActivityType
+import com.pheeeew.core.monitoring.DailyActivity
 import com.pheeeew.core.monitoring.MeaningfulActivity
 import com.pheeeew.core.monitoring.sanitizePostHogEvent
+import com.pheeeew.feature.monitoring.product.ProductEvents
 import com.posthog.kmp.PostHogEvent
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -29,6 +32,29 @@ class SdkMonitoringTransportTest {
         )
 
     @Test
+    fun `split daily events pass the SDK allowlist without session or content properties`() {
+        ActivityType.entries.forEach { type ->
+            val event =
+                input.copy(
+                    event = DailyActivity.definition(type).name,
+                    properties =
+                        input.properties +
+                            mapOf(
+                                "activity_type" to type.wireValue,
+                                "measurement_version" to DailyActivity.VERSION,
+                                "screen" to "press",
+                                "memo" to "private",
+                            ),
+                )
+            val clean = assertNotNull(sanitizePostHogEvent(event, appMonitoringRegistry()))
+            assertEquals(event.event, clean.event)
+            assertEquals("install", clean.distinctId)
+            assertNull(clean.properties["memo"])
+            assertNull(clean.properties["screen"])
+        }
+    }
+
+    @Test
     fun `report event uses installation identity and removes SDK and content properties`() {
         val extra =
             mapOf(
@@ -48,6 +74,20 @@ class SdkMonitoringTransportTest {
     }
 
     @Test
+    fun `collection claim click is registered and keeps its collection screen`() {
+        val event =
+            input.copy(
+                event = ProductEvents.COLLECTION_CLAIM_CLICKED,
+                properties = input.properties + ("screen" to "collection"),
+            )
+
+        val clean = assertNotNull(sanitizePostHogEvent(event, appMonitoringRegistry()))
+
+        assertEquals("collection", clean.properties["screen"])
+        assertEquals("install", clean.distinctId)
+    }
+
+    @Test
     fun `automatic legacy request and funnel events are all rejected`() {
         for (name in listOf(
             "sigh_started",
@@ -55,6 +95,7 @@ class SdkMonitoringTransportTest {
             "star_detail_shown",
             "http_attempt_finished",
             "app_active_day",
+            "settings_action_selected",
             "\$screen",
             "\$snapshot",
         )) {

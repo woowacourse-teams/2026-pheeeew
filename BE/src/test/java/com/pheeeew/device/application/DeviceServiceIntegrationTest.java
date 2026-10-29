@@ -134,6 +134,19 @@ class DeviceServiceIntegrationTest {
         assertThat(deviceRefreshTokenRepository.count()).isZero();
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"스타1", "1234567890"})
+    void 숫자가_섞이거나_숫자로만_된_닉네임으로_수정한다(String nickname) {
+        // given
+        Device device = deviceRepository.saveAndFlush(기본_기기_빌더().nickname("스타크").build());
+
+        // when
+        deviceService.updateNickname(device.getPublicId(), nickname);
+
+        // then
+        assertThat(deviceService.findNickname(device.getPublicId())).isEqualTo(nickname);
+    }
+
     @Test
     void 닉네임을_수정해도_기기_식별자와_기존_토큰은_유지한다() {
         // given
@@ -193,7 +206,7 @@ class DeviceServiceIntegrationTest {
 
     @ParameterizedTest
     @NullAndEmptySource
-    @ValueSource(strings = {" 익명 ", "Star1", "abcdefghijk"})
+    @ValueSource(strings = {" 익명 ", "Star!", "abcdefghijk"})
     void 잘못된_닉네임_수정은_거부하고_저장된_값을_유지한다(String nickname) {
         // given
         Device device = deviceRepository.saveAndFlush(기본_기기_빌더().nickname("스타크").build());
@@ -277,6 +290,19 @@ class DeviceServiceIntegrationTest {
         assertThat(available).isFalse();
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"Star1", "star1", " STAR1 "})
+    void 숫자가_섞인_닉네임도_대소문자와_앞뒤_공백에_관계없이_중복을_확인한다(String nickname) {
+        // given
+        deviceRepository.saveAndFlush(기본_기기_빌더().nickname("Star1").build());
+
+        // when
+        boolean available = deviceService.findNicknameAvailability(nickname);
+
+        // then
+        assertThat(available).isFalse();
+    }
+
     @Test
     void 중간_공백_개수가_다른_닉네임은_구분한다() {
         // given
@@ -345,6 +371,20 @@ class DeviceServiceIntegrationTest {
         Device device = deviceRepository.findByRequestId(requestId).orElseThrow();
         assertThat(device.getNickname()).isEqualTo("Star K");
         assertThat(기기_공개_식별자를_뽑는다(result.accessToken())).isEqualTo(device.getPublicId().toString());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"Star 7", "1234567890"})
+    void 숫자가_섞이거나_숫자로만_된_닉네임으로_등록한다(String nickname) {
+        // given
+        UUID requestId = UUID.randomUUID();
+
+        // when
+        deviceService.save(requestId, nickname, 무결성_증명_없음(DevicePlatform.ANDROID));
+
+        // then
+        assertThat(deviceRepository.findByRequestId(requestId).orElseThrow().getNickname()).isEqualTo(nickname);
+        assertThat(deviceRefreshTokenRepository.count()).isOne();
     }
 
     @Test
@@ -452,7 +492,7 @@ class DeviceServiceIntegrationTest {
 
     @ParameterizedTest
     @NullAndEmptySource
-    @ValueSource(strings = {"   ", " 익명 ", "Star1", "abcdefghijk", "Star\tK"})
+    @ValueSource(strings = {"   ", " 익명 ", "Star!", "abcdefghijk", "Star\tK"})
     void 잘못된_닉네임으로_등록하면_기기와_토큰을_저장하지_않는다(String nickname) {
         // given / when
         Throwable throwable = catchThrowable(() -> deviceService.save(

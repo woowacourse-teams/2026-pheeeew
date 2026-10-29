@@ -12,9 +12,11 @@ import com.pheeeew.domain.model.emotion.MapFilterContent
 import com.pheeeew.domain.model.emotion.MapFilterScope
 import com.pheeeew.domain.model.emotion.MapFilterSettings
 import com.pheeeew.domain.model.emotion.ReactionCount
-import com.pheeeew.domain.repository.emotion.EmotionFailure
-import com.pheeeew.domain.repository.emotion.EmotionRepository
-import com.pheeeew.domain.repository.emotion.EmotionResult
+import com.pheeeew.domain.repository.BlockRepository
+import com.pheeeew.domain.repository.EmotionFailure
+import com.pheeeew.domain.repository.EmotionModerationResult
+import com.pheeeew.domain.repository.EmotionRepository
+import com.pheeeew.domain.repository.EmotionResult
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -90,13 +92,13 @@ class NearbyEmotionViewModelTest {
         }
 
     @Test
-    fun `새로고침해도 통합 그룹 필터를 유지한다`() =
+    fun `새로고침해도 내 기록 필터를 유지한다`() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
             try {
                 val repo = FakeRepository()
                 val vm = viewModel(repo)
-                val settings = MapFilterSettings(scope = MapFilterScope.GROUP, groupId = "group-id")
+                val settings = MapFilterSettings(scope = MapFilterScope.MY)
                 vm.setAppliedSettings(settings)
                 vm.open()
                 advanceUntilIdle()
@@ -104,7 +106,6 @@ class NearbyEmotionViewModelTest {
                 advanceUntilIdle()
                 assertEquals(List(2) { settings.toSearchFilter() }, repo.filters)
                 assertTrue(repo.bounds.isEmpty())
-                assertEquals(listOf<String?>("group-id", "group-id"), repo.groupIds)
                 vm.dismiss()
             } finally {
                 Dispatchers.resetMain()
@@ -269,21 +270,18 @@ class NearbyEmotionViewModelTest {
             }
         }
 
-    private fun viewModel(repo: FakeRepository) = NearbyEmotionViewModel(repo)
+    private fun viewModel(repo: FakeRepository) = NearbyEmotionViewModel(repo, repo)
 
-    private class FakeRepository : EmotionRepository {
+    private class FakeRepository :
+        EmotionRepository,
+        BlockRepository {
         val bounds = mutableListOf<EmotionBounds>()
-        val groupIds = mutableListOf<String?>()
         val filters = mutableListOf<EmotionSearchFilter>()
         var first: suspend () -> EmotionResult<EmotionPage> = { successPage(1) }
         var next: suspend () -> EmotionResult<EmotionPage> = { successPage(2) }
 
-        override suspend fun firstPage(
-            bounds: EmotionBounds,
-            groupId: String?,
-        ): EmotionResult<EmotionPage> {
+        override suspend fun firstPage(bounds: EmotionBounds): EmotionResult<EmotionPage> {
             this.bounds += bounds
-            groupIds += groupId
             return first()
         }
 
@@ -291,14 +289,8 @@ class NearbyEmotionViewModelTest {
 
         override suspend fun filteredFirstPage(filter: EmotionSearchFilter): EmotionResult<EmotionPage> {
             filters += filter
-            groupIds += filter.groupId
             return first()
         }
-
-        override suspend fun feedPage(
-            groupId: String,
-            cursor: String?,
-        ) = next()
 
         override suspend fun detail(id: Long): EmotionResult<Emotion> =
             EmotionResult.Failure(EmotionFailure.UNAVAILABLE)
@@ -309,7 +301,11 @@ class NearbyEmotionViewModelTest {
             selected: Boolean,
         ) = EmotionResult.Success(Unit)
 
-        override suspend fun block(id: Long) = EmotionResult.Success(Unit)
+        override suspend fun blockEmotion(emotionId: Long) = EmotionModerationResult.Success
+
+        override suspend fun blockUser(emotionId: Long) = EmotionModerationResult.Success
+
+        override suspend fun delete(emotionId: Long) = EmotionModerationResult.Success
     }
 
     private companion object {

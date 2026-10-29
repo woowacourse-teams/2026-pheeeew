@@ -21,7 +21,9 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import com.pheeeew.emotion.application.mapcache.EmotionMapCacheCoordinator;
 
 @RequiredArgsConstructor
 @Service
@@ -33,16 +35,20 @@ public class EmotionReportService {
     private final EmotionRepository emotionRepository;
     private final DeviceRepository deviceRepository;
     private final EmotionReportMetrics emotionReportMetrics;
+    private final EmotionMapCacheCoordinator mapCache;
+    private final PlatformTransactionManager transactionManager;
 
-    @Transactional
     public int deleteReportedOverThreshold() {
-        int deletedCount = emotionReportRepository.deleteReportedOverThreshold(
-                AUTO_DELETE_REPORT_THRESHOLD,
-                Instant.now()
-        );
-        emotionReportMetrics.recordAutoDeleted(deletedCount);
+        return mapCache.serialized(() -> new TransactionTemplate(transactionManager).execute(status -> {
+            int deletedCount = emotionReportRepository.deleteReportedOverThreshold(AUTO_DELETE_REPORT_THRESHOLD, Instant.now());
 
-        return deletedCount;
+            emotionReportMetrics.recordAutoDeleted(deletedCount);
+            if (deletedCount > 0) {
+                mapCache.invalidateAfterCommit();
+            }
+
+            return deletedCount;
+        }));
     }
 
     public EmotionReportResult save(Long emotionId, UUID devicePublicId, String reason) {

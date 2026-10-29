@@ -110,7 +110,7 @@ Accepted (YYYY-MM-DD)
 | [0023](0023-store-authoring-device-on-sighs.md) | 한숨에 작성 기기 저장 | 사용자 차단을 위해 저장해요. 모으면 생활 반경이 드러나요 |
 | [0024](0024-filter-blocks-with-not-exists.md) | 차단 필터를 `NOT EXISTS` 로 | nullable 컬럼에서 `NOT IN` 은 행을 조용히 지워요 |
 | [0025](0025-check-sigh-expiration-on-detail-request.md) | 한숨의 조회 기간 만료를 상세 재요청 시 판정 | 목록은 이어서 조회하고, 만료된 상세 요청은 전용 코드로 소멸을 안내해요 |
-| [0026](0026-record-device-activity-asynchronously-with-local-cache.md) | 기기 활동 비동기 기록과 로컬 캐시 | 중복 저장 시도를 줄이고 재시작 시 미저장 활동의 유실 가능성을 받아들여요 |
+| [0026](0026-record-device-activity-asynchronously-with-local-cache.md) | 기기 활동 비동기 기록과 로컬 캐시 | Deprecated: #736에서 수집·집계 코드를 제거했으며 기존 데이터는 보존해요 |
 | [0027](0027-use-regions-for-emotion-map.md) | 넓은 지도의 서버 행정구역 집계 | 화면으로 지역을 선택하고 지역 전체 누적 개수·대표 감정을 반환해요. 운영 공개 전 경계·백필 검증이 필요해요 |
 | [0028](0028-assign-nearby-regions-and-restrict-emotion-creation.md) | 경계 밖 감정의 인접 지역 배정과 신규 등록 범위 제한 | 포함 판정을 우선하고 1km 이내만 배정해요. 신규 범위 밖 등록은 거부하고 기존 미매칭은 수동 전환해요 |
 | [0029](0029-log-exception-messages-and-allowed-request-values.md) | 오류 로그의 예외 메시지와 허용한 요청 값 | Proposed: DB가 원인이 아닌 예외의 메시지와 허용한 경로, 쿼리 값을 남겨요. 요청 본문, 위치, 요청자는 남기지 않아요 |
@@ -123,6 +123,9 @@ Accepted (YYYY-MM-DD)
 | [0036](0036-serve-prod-api-without-cloudflare-proxy.md) | 운영 서버 API의 직접 연결 | Proposed: 개발 서버 구성을 운영에 옮겨 프록시를 끄고 nginx가 공인 인증서로 직접 받아요 |
 | [0037](0037-allow-multiple-app-attest-app-ids.md) | App Attest App ID 허용 목록 | 개발자 계정 이전 동안 두 App ID prefix 를 모두 받고, 구버전 지원이 끝나면 이전 것을 지워요 |
 | [0039](0039-use-national-region-map-summaries.md) | v2 시도·시군구 전국 요약 | bbox 검증과 요청 계약을 유지하며 SIDO·SIGUNGU는 전국 집계, EMD는 기존 공간 조회로 처리해요 |
+| [0040](0040-cache-default-emotion-map-queries.md) | 기본 지도 캐시와 쓰기·재집계 직렬화 | DB 커밋 후 기여분을 반영하고 쓰기·재집계를 직렬화해요. 기본 요약·경량 핀을 재사용하며 실패 시 SQL로 대체해요 |
+| [0041](0041-use-stable-ties-and-device-parallel-press-storage.md) | 실시간 프레스의 안정적 동점 표시와 기기별 병렬 저장 | 도달 우선 표시·전역 번호를 제거하고 공통 공유 잠금과 기기별 배타 잠금, 전체 재조회로 정합성을 지켜요 |
+| [0042](0042-fence-press-admission-during-deployment.md) | 배포 입력 차단과 경쟁 공개 분리 | 재시작에 유지되는 차단과 DB 울타리로 전환하고, 제한된 ON 유지 복귀와 OFF 복구 전용 정산을 구분해요 |
 
 ## AI 사용
 

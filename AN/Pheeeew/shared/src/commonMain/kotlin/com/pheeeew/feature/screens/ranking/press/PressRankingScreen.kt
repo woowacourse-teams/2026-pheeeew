@@ -1,67 +1,73 @@
 package com.pheeeew.feature.screens.ranking.press
 
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.MotionDurationScale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.component.LoadErrorContent
-import com.pheeeew.core.designsystem.component.RefreshErrorBanner
-import com.pheeeew.core.designsystem.theme.AppColors
-import com.pheeeew.core.designsystem.theme.AppTheme
-import com.pheeeew.core.di.createPressRankingViewModel
-import com.pheeeew.core.network.ApiClient
-import com.pheeeew.feature.component.AppBottomNavigationBarOverlaySpace
+import com.pheeeew.feature.emotion.component.rememberTapReducedMotion
 import com.pheeeew.feature.monitoring.product.ProductScreen
-import com.pheeeew.feature.screens.ranking.components.RankingTopBarHeight
-import com.pheeeew.feature.screens.ranking.components.RankingTopBarOverlay
-import com.pheeeew.feature.screens.ranking.components.WeekSelector
-import com.pheeeew.feature.screens.ranking.components.rememberRankingTopBarScrollBehavior
-import com.pheeeew.feature.screens.ranking.press.components.MyPressRankList
-import com.pheeeew.feature.screens.ranking.press.components.PressEmotionFilter
-import com.pheeeew.feature.screens.ranking.press.components.PressGroupRankList
+import com.pheeeew.feature.screens.press.measurement.pressRaceDrawMeasurement
+import com.pheeeew.feature.screens.ranking.press.components.PressRaceRow
+import com.pheeeew.feature.screens.ranking.press.components.rememberRankingEncouragementMessage
+import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
+import dev.zacsweers.metrox.viewmodel.metroViewModel
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
-import pheeeew.shared.generated.resources.ranking_empty_week
-import pheeeew.shared.generated.resources.ranking_press_title
+import pheeeew.shared.generated.resources.ic_arrow_back
+import pheeeew.shared.generated.resources.press_daily_ranking_back
+import pheeeew.shared.generated.resources.press_daily_ranking_empty
+import pheeeew.shared.generated.resources.press_daily_ranking_title
 
 @Composable
 fun PressRankingRoute(
-    apiClient: ApiClient,
-    onGroupClick: (String) -> Unit,
+    onBack: () -> Unit,
     modifier: Modifier = Modifier,
     onRefreshActionChanged: ((() -> Unit)?) -> Unit = {},
 ) {
-    val viewModel: PressRankingViewModel = viewModel { createPressRankingViewModel(apiClient) }
+    val viewModel: PressRankingViewModel = metroViewModel()
     val currentOnRefreshActionChanged by rememberUpdatedState(onRefreshActionChanged)
     DisposableEffect(viewModel) {
         currentOnRefreshActionChanged(viewModel::onRefresh)
@@ -70,168 +76,181 @@ fun PressRankingRoute(
     ProductScreen(viewModel.telemetry, true, "press_ranking_viewed")
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     PressRankingScreen(
+        onBack = onBack,
         uiState = uiState,
-        onEmotionSelected = viewModel::onEmotionSelected,
-        onPreviousWeek = viewModel::onPreviousWeek,
-        onNextWeek = viewModel::onNextWeek,
         onRetry = viewModel::onRetry,
         onRefresh = viewModel::onRefresh,
-        onGroupClick = onGroupClick,
+        modifier = modifier.pressRaceDrawMeasurement(uiState.frameKey, viewModel::onFrameDrawn),
+    )
+}
+
+@Composable
+internal fun DailyPressRankingRoute(
+    date: String,
+    sessionGeneration: Long?,
+    refreshRevision: Long,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val viewModel: DailyPressRankingViewModel =
+        assistedMetroViewModel<DailyPressRankingViewModel, DailyPressRankingViewModel.Factory> {
+            create(date, sessionGeneration)
+        }
+    LaunchedEffect(viewModel, sessionGeneration) { viewModel.onSessionChanged(sessionGeneration) }
+    LaunchedEffect(viewModel, refreshRevision) {
+        if (refreshRevision > 0L) viewModel.onNotificationReceived()
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onResumed() }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    PressRankingScreen(
+        onBack = onBack,
+        uiState = uiState,
+        onRetry = viewModel::onRetry,
+        onRefresh = viewModel::onRefresh,
         modifier = modifier,
+        dailyDate = date,
     )
 }
 
 @Composable
 internal fun PressRankingScreen(
+    onBack: () -> Unit,
     uiState: PressRankingUiState,
-    onEmotionSelected: (PressEmotion) -> Unit,
-    onPreviousWeek: () -> Unit,
-    onNextWeek: () -> Unit,
     onRetry: () -> Unit,
     onRefresh: () -> Unit,
-    onGroupClick: (String) -> Unit,
     modifier: Modifier = Modifier,
+    rows: List<PressRaceRowModel> = uiState.people.toRaceRows(),
+    dailyDate: String? = null,
 ) {
-    val pullState = rememberPullToRefreshState()
-    val scrollState = rememberScrollState()
-    val topBarBehavior = rememberRankingTopBarScrollBehavior { scrollState.canScrollForward }
-    LaunchedEffect(uiState.isRefreshing, uiState.status, scrollState.maxValue) {
-        if (uiState.isRefreshing || uiState.status == PressRankingStatus.Loading) {
-            scrollState.scrollTo(0)
-            topBarBehavior.show()
-        } else if (scrollState.maxValue == 0) {
-            topBarBehavior.show()
+    val encouragementMessage = rememberRankingEncouragementMessage()
+    val listState = remember(uiState.date) { LazyListState() }
+    val scope = rememberCoroutineScope()
+    val reducedMotion = rememberTapReducedMotion() || scope.coroutineContext[MotionDurationScale]?.scaleFactor == 0f
+    val fontScale = LocalDensity.current.fontScale
+    val rankWidth = ((rows.maxOfOrNull { it.rank.toString().length } ?: 1) * 8f * fontScale).coerceIn(28f, 80f).dp
+    val textMeasurer = rememberTextMeasurer()
+    val countStyle = LocalTextStyle.current.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold)
+    val countLabels = rows.map { raceCountText(it.count) }
+    val backLabel = stringResource(Res.string.press_daily_ranking_back)
+    val countWidth =
+        with(LocalDensity.current) {
+            val widestCount =
+                countLabels.maxOfOrNull { label ->
+                    textMeasurer.measure(label, countStyle, softWrap = false).size.width
+                } ?: 0
+            (widestCount.toDp() + 12.dp).coerceIn(40.dp, 140.dp)
         }
-    }
-    val pullDistance = with(LocalDensity.current) { 56.dp.toPx() }
-    Column(
-        modifier = modifier.fillMaxSize().background(AppColors.Background).statusBarsPadding(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        PullToRefreshBox(
-            isRefreshing = uiState.isRefreshing,
-            onRefresh = onRefresh,
-            state = pullState,
-            enabled = uiState.status != PressRankingStatus.Loading,
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-            indicator = {
-                PullToRefreshDefaults.Indicator(
-                    state = pullState,
-                    isRefreshing = uiState.isRefreshing,
-                    modifier = Modifier.align(Alignment.TopCenter),
-                    containerColor = AppColors.Surface,
-                    color = AppColors.Primary,
-                )
-            },
+    Column(modifier.fillMaxSize().background(Color(0xFFFAFAFA)).statusBarsPadding()) {
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = 8.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(Modifier.fillMaxSize()) {
-                Column(
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .nestedScroll(topBarBehavior.nestedScrollConnection)
-                            .graphicsLayer {
-                                translationY = pullState.distanceFraction.coerceIn(0f, 1f) * pullDistance
-                            }.verticalScroll(scrollState),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Spacer(Modifier.height(RankingTopBarHeight))
-                    Spacer(Modifier.height(12.dp))
-                    WeekSelector(
-                        week = uiState.weekLabel,
-                        onPrevious = onPreviousWeek,
-                        onNext = onNextWeek,
-                        modifier = Modifier.padding(horizontal = 24.dp),
-                        canGoPrevious = uiState.status == PressRankingStatus.Ready && uiState.hasPrevious,
-                        canGoNext = uiState.status == PressRankingStatus.Ready && uiState.weeksAgo > 0,
-                    )
-                    Spacer(Modifier.height(18.dp))
-                    PressEmotionFilter(
-                        selectedEmotion = uiState.selectedEmotion,
-                        onEmotionSelected = onEmotionSelected,
-                        modifier = Modifier.padding(start = 24.dp),
-                    )
-                    Spacer(Modifier.height(22.dp))
-                    if (uiState.hasRefreshError) {
-                        RefreshErrorBanner(
-                            message = "랭킹을 새로고침하지 못했어요.",
-                            onRetry = onRefresh,
-                            modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 12.dp),
-                        )
-                    }
-                    when (uiState.status) {
-                        PressRankingStatus.Loading -> {
-                            Spacer(Modifier.height(48.dp))
-                            CircularLoadingIndicator(color = AppColors.Primary)
-                        }
-
-                        PressRankingStatus.Failed -> {
-                            LoadErrorContent(
-                                onRetry = onRetry,
-                                modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 96.dp),
-                            )
-                        }
-
-                        PressRankingStatus.Ready -> {
-                            val myGroups = uiState.groups.filter(PressGroupRank::isMyGroup)
-                            if (myGroups.isNotEmpty()) {
-                                MyPressRankList(
-                                    groups = myGroups,
-                                    emotion = uiState.selectedEmotion,
-                                    onGroupClick = { onGroupClick(it.groupId) },
-                                    modifier = Modifier.padding(horizontal = 24.dp),
-                                )
-                                Spacer(Modifier.height(24.dp))
-                            }
-                            if (uiState.groups.isEmpty()) {
-                                Text(
-                                    text = stringResource(Res.string.ranking_empty_week),
-                                    color = AppColors.RankingSecondaryContent,
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.fillMaxWidth().padding(top = 96.dp),
-                                )
-                            } else {
-                                PressGroupRankList(
-                                    groups = uiState.groups,
-                                    onGroupClick = { onGroupClick(it.groupId) },
-                                    modifier = Modifier.padding(horizontal = 24.dp),
-                                )
-                            }
-                        }
-                    }
-                    Spacer(Modifier.height(28.dp))
-                    Spacer(Modifier.navigationBarsPadding().height(AppBottomNavigationBarOverlaySpace))
-                }
-                RankingTopBarOverlay(
-                    title = stringResource(Res.string.ranking_press_title),
-                    behavior = topBarBehavior,
-                    modifier = Modifier.align(Alignment.TopCenter),
+            IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
+                Icon(
+                    painterResource(Res.drawable.ic_arrow_back),
+                    contentDescription = backLabel,
+                    modifier = Modifier.size(24.dp),
                 )
             }
+            Column(
+                Modifier.weight(1f).padding(horizontal = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    stringResource(Res.string.press_daily_ranking_title),
+                    fontSize = 20.sp,
+                    lineHeight = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                )
+                if (dailyDate != null) {
+                    Text(
+                        dailyDate,
+                        fontSize = 12.sp,
+                        lineHeight = 18.sp,
+                        color = Color(0xFF767D78),
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+            Spacer(Modifier.size(48.dp))
         }
-    }
-}
+        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+            val compact = maxHeight < 600.dp
+            Column(Modifier.fillMaxSize().padding(horizontal = 26.dp)) {
+                PressRankingOverview(
+                    uiState,
+                    dailyDate,
+                    encouragementMessage,
+                    rankWidth,
+                    countWidth,
+                    onBack,
+                    onRetry,
+                    onRefresh,
+                    compact,
+                )
+                PullToRefreshBox(
+                    isRefreshing = uiState.isRefreshing,
+                    onRefresh = onRefresh,
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                ) {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        state = listState,
+                        contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
+                    ) {
+                        when (uiState.status) {
+                            PressRankingStatus.Loading -> {
+                                item {
+                                    Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
+                                        CircularLoadingIndicator(color = Color(0xFF202323))
+                                    }
+                                }
+                            }
 
-@Preview(name = "프레스 주간 랭킹", widthDp = 360, heightDp = 800)
-@Composable
-private fun PressRankingScreenPreview() {
-    AppTheme {
-        PressRankingScreen(
-            uiState =
-                PressRankingUiState(
-                    weekLabel = samplePressWeeks.last(),
-                    hasPrevious = true,
-                    groups = samplePressGroupRanks,
-                    status = PressRankingStatus.Ready,
-                ),
-            onEmotionSelected = {},
-            onPreviousWeek = {},
-            onNextWeek = {},
-            onRetry = {},
-            onRefresh = {},
-            onGroupClick = {},
-        )
+                            PressRankingStatus.Failed -> {
+                                item {
+                                    LoadErrorContent(onRetry, Modifier.padding(top = 48.dp))
+                                }
+                            }
+
+                            PressRankingStatus.Ready -> {
+                                if (rows.isEmpty()) {
+                                    item {
+                                        Text(
+                                            stringResource(Res.string.press_daily_ranking_empty),
+                                            Modifier.padding(vertical = 48.dp),
+                                        )
+                                    }
+                                }
+                                itemsIndexed(rows, key = { index, row ->
+                                    "${uiState.date}:${row.publicId ?: "preview-$index"}"
+                                }) { _, row ->
+                                    PressRaceRow(
+                                        row,
+                                        rankWidth,
+                                        countWidth,
+                                        Modifier.animateItem(
+                                            fadeInSpec = if (reducedMotion) null else tween(150),
+                                            placementSpec =
+                                                if (reducedMotion) {
+                                                    null
+                                                } else {
+                                                    tween(
+                                                        300,
+                                                        easing = CubicBezierEasing(0.22f, 0.7f, 0.25f, 1f),
+                                                    )
+                                                },
+                                            fadeOutSpec = if (reducedMotion) null else tween(150),
+                                        ),
+                                    )
+                                }
+                            }
+                        }
+                        item { Spacer(Modifier.navigationBarsPadding()) }
+                    }
+                }
+            }
+        }
     }
 }

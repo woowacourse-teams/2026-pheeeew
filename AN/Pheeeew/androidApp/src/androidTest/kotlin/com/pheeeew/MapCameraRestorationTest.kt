@@ -1,6 +1,7 @@
 package com.pheeeew
 
 import android.app.Activity
+import android.content.ComponentCallbacks2
 import android.content.Intent
 import android.os.SystemClock
 import android.view.View
@@ -9,6 +10,8 @@ import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNotSame
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.maplibre.android.camera.CameraPosition
@@ -20,7 +23,7 @@ class MapCameraRestorationTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
 
     @Test
-    fun cameraAndCompassSurviveTabRoundTrips() {
+    fun cameraAndCompassSurvivePressTabRoundTrips() {
         val activity =
             instrumentation.startActivitySync(
                 Intent(instrumentation.targetContext, MainActivity::class.java)
@@ -47,21 +50,48 @@ class MapCameraRestorationTest {
         SystemClock.sleep(1000)
         val expected = onMain { initial.second.cameraPosition }
         val compassPosition = onMain { compassPosition(initial.first) }
-        for (destination in listOf("그룹", "랭킹", "그룹", "랭킹")) {
-            clickText(destination)
-            SystemClock.sleep(1000)
-            assertTrue("Map should leave composition", onMain { findMap(activity.window.decorView) == null })
+        for (releaseMap in listOf(false, true)) {
+            clickText("프레스")
+            if (releaseMap) {
+                SystemClock.sleep(1000)
+                onMain {
+                    activity.application.onTrimMemory(ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW)
+                }
+                awaitMapReleased(activity)
+            } else {
+                SystemClock.sleep(31000)
+                assertSame(
+                    "Map stays mounted while another tab is open",
+                    initial.first,
+                    onMain { findMap(activity.window.decorView) },
+                )
+            }
             clickText("지도")
             val restored = awaitMap(activity)
+            if (releaseMap) {
+                assertNotSame("Memory pressure releases the hidden map", initial.first, restored.first)
+            } else {
+                assertSame("Tab round trip retains the map", initial.first, restored.first)
+            }
             SystemClock.sleep(1000)
             val actual = onMain { restored.second.cameraPosition }
-            assertEquals("$destination latitude", expected.target!!.latitude, actual.target!!.latitude, 0.00001)
-            assertEquals("$destination longitude", expected.target!!.longitude, actual.target!!.longitude, 0.00001)
-            assertEquals("$destination zoom", expected.zoom, actual.zoom, 0.001)
-            assertEquals("$destination bearing", expected.bearing, actual.bearing, 0.001)
-            assertEquals("$destination tilt", expected.tilt, actual.tilt, 0.001)
-            assertEquals("$destination compass position", compassPosition, onMain { compassPosition(restored.first) })
+            val scenario = if (releaseMap) "released map" else "retained map"
+            assertEquals("$scenario latitude", expected.target!!.latitude, actual.target!!.latitude, 0.00001)
+            assertEquals("$scenario longitude", expected.target!!.longitude, actual.target!!.longitude, 0.00001)
+            assertEquals("$scenario zoom", expected.zoom, actual.zoom, 0.001)
+            assertEquals("$scenario bearing", expected.bearing, actual.bearing, 0.001)
+            assertEquals("$scenario tilt", expected.tilt, actual.tilt, 0.001)
+            assertEquals("$scenario compass position", compassPosition, onMain { compassPosition(restored.first) })
         }
+    }
+
+    private fun awaitMapReleased(activity: Activity) {
+        val deadline = SystemClock.uptimeMillis() + 10000
+        while (SystemClock.uptimeMillis() < deadline) {
+            if (onMain { findMap(activity.window.decorView) == null }) return
+            SystemClock.sleep(100)
+        }
+        error("Hidden map did not leave composition after memory pressure")
     }
 
     private fun awaitMap(activity: Activity): Pair<MapView, MapLibreMap> {

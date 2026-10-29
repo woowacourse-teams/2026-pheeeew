@@ -1,5 +1,8 @@
 PRODUCT_NAME=Pheeeew
 PRODUCT_BUNDLE_IDENTIFIER=com.itda.pheeeew
 
-CURRENT_PROJECT_VERSION=11
-MARKETING_VERSION=2.3.0
+CURRENT_PROJECT_VERSION=13
+MARKETING_VERSION=2.5.0
+
+// Development WS verification is opt-in via an explicit build setting.
+PRESS_INPUT_MODE = http

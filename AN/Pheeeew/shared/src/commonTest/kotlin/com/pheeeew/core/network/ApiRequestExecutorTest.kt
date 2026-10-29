@@ -11,6 +11,7 @@ import io.ktor.http.headersOf
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
+import kotlinx.io.IOException
 import kotlinx.serialization.Serializable
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -95,7 +96,7 @@ class ApiRequestExecutorTest {
             try {
                 val result =
                     client.requests.executeNoContent(
-                        ApiRequest(HttpMethod.Delete, "/groups/1", RequestKind.WRITE),
+                        ApiRequest(HttpMethod.Delete, "/test-items/1", RequestKind.WRITE),
                     )
 
                 assertEquals(ApiResult.Success(Unit), result)
@@ -168,7 +169,7 @@ class ApiRequestExecutorTest {
             try {
                 val result =
                     client.requests.execute(
-                        ApiRequest(HttpMethod.Post, "/groups", RequestKind.WRITE),
+                        ApiRequest(HttpMethod.Post, "/test-items", RequestKind.WRITE),
                     ) { it.body<PingResponse>() }
 
                 val failure = assertIs<NetworkFailure.HttpStatus>(assertIs<ApiResult.Failure>(result).reason)
@@ -236,7 +237,7 @@ class ApiRequestExecutorTest {
             try {
                 val result =
                     client.requests.execute(
-                        ApiRequest(HttpMethod.Post, "/groups", RequestKind.WRITE),
+                        ApiRequest(HttpMethod.Post, "/test-items", RequestKind.WRITE),
                     ) { it.body<PingResponse>() }
 
                 assertEquals(
@@ -248,6 +249,20 @@ class ApiRequestExecutorTest {
                     ),
                     result,
                 )
+            } finally {
+                client.close()
+            }
+        }
+
+    @Test
+    fun `연결 실패는 쓰기 반영 여부를 불확실하게 보고한다`() =
+        runTest {
+            val client = createClient(MockEngine { throw IOException("Connection failed") })
+            try {
+                val result = client.requests.executeNoContent(ApiRequest(HttpMethod.Post, "/write", RequestKind.WRITE))
+                val failure = assertIs<NetworkFailure.Transport>(assertIs<ApiResult.Failure>(result).reason)
+                assertEquals(TransportFailureReason.CONNECTION, failure.reason)
+                assertEquals(MutationCertainty.UNKNOWN, failure.mutationCertainty)
             } finally {
                 client.close()
             }

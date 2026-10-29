@@ -1,10 +1,18 @@
 package com.pheeeew.support;
 
+import com.pheeeew.collection.domain.repository.DeviceDailyStampRepository;
 import com.pheeeew.auth.infra.jwt.AccessTokenJwtValidator;
 import com.pheeeew.auth.infra.jwt.JwtConfig;
 import com.pheeeew.auth.infra.jwt.JwtTokenEncoder;
 import com.pheeeew.common.config.ClockConfig;
 import com.pheeeew.common.config.JpaAuditingConfig;
+import com.pheeeew.emotion.application.mapcache.MapCacheConfiguration;
+import com.pheeeew.emotion.application.mapcache.MapCacheMaintenance;
+import com.pheeeew.emotion.application.mapcache.EmotionMapCacheCoordinator;
+import com.pheeeew.emotion.application.mapcache.RegionSummaryCache;
+import com.pheeeew.emotion.application.mapcache.PinCandidateCache;
+import com.pheeeew.emotion.domain.repository.EmotionMapReadRepository;
+import com.pheeeew.emotion.application.query.EmotionMapDbQueryService;
 import com.pheeeew.device.application.DeviceAttestationBudgetService;
 import com.pheeeew.device.application.DeviceChallengeMetrics;
 import com.pheeeew.device.application.DeviceChallengeService;
@@ -51,10 +59,18 @@ import org.springframework.test.context.ActiveProfiles;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Import({
         SharedPostgisTestConfiguration.class,
+        DeviceDailyStampRepository.class,
         SharedJwtTestConfiguration.class,
         SharedMetricsTestConfiguration.class,
         ClockConfig.class,
         JpaAuditingConfig.class,
+        MapCacheConfiguration.class,
+        MapCacheMaintenance.class,
+        EmotionMapCacheCoordinator.class,
+        RegionSummaryCache.class,
+        PinCandidateCache.class,
+        EmotionMapReadRepository.class,
+        EmotionMapDbQueryService.class,
         AccessTokenJwtValidator.class,
         JwtConfig.class,
         JwtTokenEncoder.class,
@@ -81,6 +97,8 @@ import org.springframework.test.context.ActiveProfiles;
         DeviceBlockService.class,
         EmotionPressMetrics.class,
         EmotionPressService.class,
+        com.pheeeew.pressrace.application.PressRaceService.class,
+        com.pheeeew.pressrace.infra.PressRaceRepository.class,
         EmotionPressQueryService.class,
         EmotionPressRankingService.class,
         DeviceDailyPressRepository.class,

@@ -2,6 +2,8 @@ package com.pheeeew.emotion.application.query;
 
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static com.pheeeew.emotion.fixture.EmotionFixture.기본_한숨_빌더;
+import static com.pheeeew.groups.fixture.GroupFixture.기본_그룹_빌더;
+import static com.pheeeew.groups.fixture.GroupFixture.기본_스탬프_빌더;
 import static com.pheeeew.region.fixture.RegionFixture.검증용_지역_계층을_저장한다;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -12,12 +14,18 @@ import com.pheeeew.emotion.application.dto.EmotionMapPageView;
 import com.pheeeew.emotion.domain.Emotion;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchFilter;
+import com.pheeeew.emotion.domain.repository.query.EmotionContentFilter;
+import com.pheeeew.emotion.domain.repository.query.EmotionSearchScope;
 import com.pheeeew.emotion.exception.EmotionException;
+import com.pheeeew.groups.domain.Group;
+import com.pheeeew.groups.domain.GroupStamp;
 import com.pheeeew.region.domain.RegionLevel;
 import com.pheeeew.support.PostgisDataJpaTest;
 import com.pheeeew.support.SharedTestContainers;
 import jakarta.persistence.EntityManager;
 import java.sql.SQLException;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +34,8 @@ import org.hibernate.resource.jdbc.spi.StatementInspector;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.hibernate.autoconfigure.HibernatePropertiesCustomizer;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -46,7 +56,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @TestPropertySource(properties = {
         "spring.datasource.hikari.maximum-pool-size=1",
-        "spring.datasource.hikari.minimum-idle=1"
+        "spring.datasource.hikari.minimum-idle=1",
+        "spring.datasource.hikari.data-source-properties.prepareThreshold=1"
 })
 class EmotionMapPlanScopeIntegrationTest {
 
@@ -61,6 +72,9 @@ class EmotionMapPlanScopeIntegrationTest {
 
     private Device viewer;
     private Emotion emotion;
+    private Group group;
+    private Group otherGroup;
+    private GroupStamp stamp;
     private Map<String, Object> previousReadiness;
     private int backendPid;
 
@@ -80,6 +94,12 @@ class EmotionMapPlanScopeIntegrationTest {
                     """).update();
             viewer = 기본_기기_빌더().build();
             entityManager.persist(viewer);
+            group = 기본_그룹_빌더().build();
+            entityManager.persist(group);
+            otherGroup = 기본_그룹_빌더().name("다른모임").build();
+            entityManager.persist(otherGroup);
+            stamp = 기본_스탬프_빌더(group).build();
+            entityManager.persist(stamp);
             emotion = 기본_한숨_빌더().deviceId(viewer.getId()).memo("지도 계획 범위 검증").build();
             entityManager.persist(emotion);
         });
@@ -93,6 +113,9 @@ class EmotionMapPlanScopeIntegrationTest {
         observer.stop();
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
             jdbc.sql("DELETE FROM emotions WHERE id = :id").param("id", emotion.getId()).update();
+            jdbc.sql("DELETE FROM group_stamps WHERE id = :id").param("id", stamp.getId()).update();
+            jdbc.sql("DELETE FROM groups WHERE id = :id").param("id", group.getId()).update();
+            jdbc.sql("DELETE FROM groups WHERE id = :id").param("id", otherGroup.getId()).update();
             jdbc.sql("DELETE FROM devices WHERE id = :id").param("id", viewer.getId()).update();
             jdbc.sql("DELETE FROM regions WHERE code IN ('11010530', '11010', '11')").update();
             jdbc.sql("""
@@ -105,7 +128,7 @@ class EmotionMapPlanScopeIntegrationTest {
     }
 
     @Test
-    void v2_지도는_custom으로_조회하고_정상_종료_후_동일_연결의_지역_조회에_전파하지_않는다() {
+    void v2_필터_지도는_custom으로_조회하고_정상_종료_후_동일_연결의_지역_조회에_전파하지_않는다() {
         // when
         var page = findMap(viewer.getPublicId());
 
@@ -183,7 +206,7 @@ class EmotionMapPlanScopeIntegrationTest {
             assertThat(currentMode()).isEqualTo("force_custom_plan");
             observer.start();
             assertThat(service.findRegionMap(BOUNDS, RegionLevel.SIDO, viewer.getPublicId(),
-                    EmotionSearchFilter.of(null, null, null, null, null))).hasSize(1);
+                    EmotionSearchFilter.from(null))).hasSize(1);
             assertObservedMode("force_custom_plan");
         });
 
@@ -191,8 +214,94 @@ class EmotionMapPlanScopeIntegrationTest {
         assertRestoredAndRegionsUnaffected();
     }
 
+    @ParameterizedTest
+    @CsvSource({"SIDO,force_custom_plan", "SIDO,force_generic_plan",
+            "SIGUNGU,force_custom_plan", "SIGUNGU,force_generic_plan"})
+    void 전국_집계는_JDBC가_준비한_custom_generic_계획에서_같은_결과를_반환한다(RegionLevel level, String mode) {
+        // given: SQL PREPARE를 만들지 않고 실제 서비스 호출로 준비된 statement를 관찰한다.
+        new TransactionTemplate(transactionManager).executeWithoutResult(status ->
+                jdbc.sql("UPDATE emotions SET group_stamp_id = :stamp WHERE id = :id")
+                        .param("stamp", stamp.getId()).param("id", emotion.getId()).update());
+        var day = emotion.getCreatedAt().atZone(ZoneId.of("Asia/Seoul")).toLocalDate();
+        var filters = List.of(
+                EmotionSearchFilter.of(null, null, null, null, null),
+                EmotionSearchFilter.of(day, day, null, null, null),
+                EmotionSearchFilter.of(null, null, EmotionContentFilter.MEMO, EmotionSearchScope.MY, null),
+                EmotionSearchFilter.of(null, null, EmotionContentFilter.MEMO, EmotionSearchScope.GROUP,
+                        List.of(group.getPublicId())),
+                EmotionSearchFilter.of(null, null, EmotionContentFilter.MEMO, EmotionSearchScope.GROUP,
+                        List.of(group.getPublicId(), otherGroup.getPublicId())));
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        transaction.setReadOnly(true);
+
+        // when / then
+        transaction.executeWithoutResult(status -> {
+            jdbc.sql("SELECT set_config('plan_cache_mode', :mode, true)").param("mode", mode).query(String.class).single();
+            for (EmotionSearchFilter filter : filters) {
+                observer.start();
+                var expected = service.findRegionMap(BOUNDS, level, viewer.getPublicId(), filter);
+                assertThat(expected).singleElement().satisfies(item -> assertThat(item.summary().totalCount()).isEqualTo(1));
+                var arguments = nationalQueryArguments(filter);
+                String sql = observer.queries.stream().map(ObservedQuery::sql)
+                        .filter(query -> query.contains("AS region_code")).findFirst().orElseThrow();
+                for (int index = 0; index < arguments.size(); index++) {
+                    sql = sql.replaceFirst("\\?", "\\$" + (index + 1));
+                }
+                Map<String, Object> before = preparedQuery(sql);
+                for (int repeat = 0; repeat < 5; repeat++) {
+                    assertThat(service.findRegionMap(BOUNDS, level, viewer.getPublicId(), filter)).isEqualTo(expected);
+                }
+                Map<String, Object> after = preparedQuery(sql);
+                assertThat(after.get("name")).isEqualTo(before.get("name"));
+                assertThat(after.get("from_sql")).isEqualTo(false);
+                assertThat(after.get("parameter_count")).isEqualTo(arguments.size());
+                assertThat((Long) after.get("custom_plans") - (Long) before.get("custom_plans"))
+                        .isEqualTo(mode.equals("force_custom_plan") ? 5L : 0L);
+                assertThat((Long) after.get("generic_plans") - (Long) before.get("generic_plans"))
+                        .isEqualTo(mode.equals("force_generic_plan") ? 5L : 0L);
+                String root = "left(e.region_code, " + (level == RegionLevel.SIDO ? 2 : 5) + ")";
+                assertThat(sql).contains(root)
+                        .doesNotContain("JOIN regions", root + " IN (", "e.region_code IN (");
+                assertObservedMode(mode);
+                String name = (String) after.get("name");
+                assertThat(name).matches("S_\\d+");
+                // 실행 시간은 이 작은 fixture의 관측값이며 성능 임계값으로 사용하지 않는다.
+                List<String> plan = jdbc.sql("EXPLAIN (ANALYZE, BUFFERS) EXECUTE \"" + name + "\"("
+                        + String.join(", ", arguments) + ")").query(String.class).list();
+                System.out.printf("NATIONAL_JDBC_PLAN level=%s mode=%s content=%s scope=%s date=%s params=%d %s%n",
+                        level, mode, filter.contentType(), filter.scope(), filter.startDate(), arguments.size(),
+                        plan.stream().filter(line -> line.startsWith("Execution Time:")).findFirst().orElseThrow());
+            }
+        });
+        assertThat(currentMode()).isEqualTo("auto");
+        assertThat(jdbc.sql("SELECT pg_backend_pid()").query(Integer.class).single()).isEqualTo(backendPid);
+    }
+
+    private Map<String, Object> preparedQuery(String sql) {
+        return jdbc.sql("""
+                SELECT name, from_sql, cardinality(parameter_types) AS parameter_count, custom_plans, generic_plans
+                FROM pg_prepared_statements WHERE statement = :sql
+                """).param("sql", sql).query().singleRow();
+    }
+
+    private List<String> nationalQueryArguments(EmotionSearchFilter filter) {
+        List<String> arguments = new ArrayList<>();
+        arguments.add("'" + Instant.now() + "'::timestamptz");
+        if (filter.startInclusive() != null) {
+            arguments.add("'" + filter.startInclusive() + "'::timestamptz");
+            arguments.add("'" + filter.endExclusive() + "'::timestamptz");
+        }
+        switch (filter.scope()) {
+            case ALL -> { }
+            case MY -> arguments.add(viewer.getId().toString());
+            case GROUP -> filter.groupIds().forEach(groupId -> arguments.add("'" + groupId + "'::uuid"));
+        }
+        return arguments;
+    }
+
     private EmotionMapPageView findMap(UUID deviceId) {
-        return service.findContentMapWithinBounds(BOUNDS, deviceId, null, null, null, null, null, null);
+        // SQL 계획 범위 검증은 캐시 대상이 아닌 MEMO 조회에서 수행한다.
+        return service.findContentMapWithinBounds(BOUNDS, deviceId, null, null, null, EmotionContentFilter.MEMO, null, null);
     }
 
     private String currentMode() {
@@ -222,7 +331,7 @@ class EmotionMapPlanScopeIntegrationTest {
         assertThat(jdbc.sql("SELECT pg_backend_pid()").query(Integer.class).single()).isEqualTo(backendPid);
         observer.start();
         var regions = service.findRegionMap(BOUNDS, RegionLevel.SIDO, viewer.getPublicId(),
-                EmotionSearchFilter.of(null, null, null, null, null));
+                EmotionSearchFilter.from(null));
         assertThat(regions).singleElement().satisfies(item -> {
             assertThat(item.region().code()).isEqualTo("11");
             assertThat(item.summary().totalCount()).isEqualTo(1);

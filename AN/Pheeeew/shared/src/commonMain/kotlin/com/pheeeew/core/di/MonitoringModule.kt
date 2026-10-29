@@ -3,6 +3,7 @@ package com.pheeeew.core.di
 import com.pheeeew.core.monitoring.ClassificationSource
 import com.pheeeew.core.monitoring.CollectionMetadata
 import com.pheeeew.core.monitoring.CollectionState
+import com.pheeeew.core.monitoring.DailyActivity
 import com.pheeeew.core.monitoring.DataSource
 import com.pheeeew.core.monitoring.EventEnvelope
 import com.pheeeew.core.monitoring.EventRegistry
@@ -10,7 +11,9 @@ import com.pheeeew.core.monitoring.MeaningfulActivity
 import com.pheeeew.core.monitoring.MonitoringConfig
 import com.pheeeew.core.monitoring.MonitoringRuntime
 import com.pheeeew.core.monitoring.monitoringJson
+import com.pheeeew.core.time.koreaCalendarDate
 import com.pheeeew.feature.monitoring.compat.MonitoringTicker
+import com.pheeeew.feature.monitoring.product.ProductEvents
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -27,17 +30,18 @@ import com.pheeeew.feature.monitoring.compat.MonitoringState as CompatibilitySta
 
 fun appMonitoringRegistry(): EventRegistry =
     EventRegistry(
-        listOf(MeaningfulActivity.definition),
+        listOf(
+            MeaningfulActivity.definition,
+            ProductEvents.definition(ProductEvents.COLLECTION_CLAIM_CLICKED),
+        ) + DailyActivity.definitions + ProductEvents.collectionCardDefinitions,
         setOf(
             "splash",
             "map",
             "settings",
             "legaldocument",
             "onboarding",
-            "group_home",
-            "group_create",
-            "group_detail",
             "ranking",
+            "collection",
             "network",
         ),
     )
@@ -79,7 +83,11 @@ fun decodeAppMonitoringState(raw: String): CollectionState {
             }
         }
     return loaded.copy(
-        pending = loaded.pending.filter { it.name == MeaningfulActivity.NAME },
+        pending =
+            loaded.pending.filter {
+                DailyActivity.isDaily(it.name) || it.name == ProductEvents.COLLECTION_CLAIM_CLICKED ||
+                    ProductEvents.collectionCardDefinitions.any { definition -> definition.name == it.name }
+            },
         extensions = loaded.extensions - "sigh_v2",
     )
 }
@@ -181,11 +189,7 @@ class AppMonitoring(
 }
 
 /** The application's active-day policy; reusable core defaults to UTC. */
-fun monitoringActiveDay(timestamp: Long): String =
-    kotlin.time.Instant
-        .fromEpochMilliseconds(timestamp + 9 * 60 * 60 * 1000)
-        .toString()
-        .substringBefore('T')
+fun monitoringActiveDay(timestamp: Long): String = koreaCalendarDate(timestamp)
 
 /** Release builds may still be used by QA; production membership stays unknown until classified. */
 fun appCollectionMetadata(environment: String) =

@@ -12,21 +12,41 @@ import kotlin.time.TimeSource
 
 /** App feature events. Only fixed labels and opaque identifiers belong in these properties. */
 object ProductEvents {
+    const val COLLECTION_CLAIM_CLICKED = "collection_claim_clicked"
+    const val COLLECTION_CARD_VIEWED = "collection_card_viewed"
+    const val COLLECTION_CARD_SAVE_CLICKED = "collection_card_save_clicked"
+    const val COLLECTION_CARD_SHARE_CLICKED = "collection_card_share_clicked"
+
+    val collectionCardDefinitions =
+        listOf(
+            COLLECTION_CARD_VIEWED,
+            COLLECTION_CARD_SAVE_CLICKED,
+            COLLECTION_CARD_SHARE_CLICKED,
+        ).map { name ->
+            EventDefinition(
+                name,
+                properties =
+                    mapOf(
+                        "view_id" to PropertyRule(ValueType.TEXT, required = true),
+                        "activity_date" to PropertyRule(ValueType.TEXT, maxLength = 10),
+                    ),
+                preserveOnOverflow = true,
+                oncePerDay = true,
+            )
+        }
+
     private val names =
         """
         emotion_record_closed emotion_record_location_changed emotion_record_location_confirmed
-        emotion_record_group_options_finished emotion_record_group_changed
         emotion_item_impression emotion_content_viewed nearby_filter_applied
         emotion_reaction_started emotion_reaction_finished emotion_block_finished
         emotion_report_finished emotion_delete_finished
         voice_recording_finished voice_preview_finished emotion_audio_load_finished
         emotion_audio_playback_started emotion_audio_playback_finished
-        group_list_load_finished group_create_form_viewed group_create_validation_failed
-        group_create_confirmation_resolved group_join_started group_lookup_finished
-        group_join_submit_started group_join_finished group_flow_closed group_detail_load_finished
-        group_invite_copy_finished group_leave_finished ranking_viewed ranking_load_finished ranking_week_changed
+        ranking_viewed ranking_load_finished ranking_week_changed
+        app_startup_finished app_startup_step_finished
         device_session_prepare_finished location_acquire_finished map_load_finished map_location_requested
-        onboarding_step_viewed onboarding_finished operation_reconciled
+        onboarding_step_viewed onboarding_finished operation_reconciled collection_claim_clicked
         settings_action_selected settings_external_open_finished
         """.trimIndent().split(Regex("\\s+"))
     private val properties =
@@ -38,8 +58,6 @@ object ProductEvents {
             "impression_id",
             "entry_key",
             "entry_source",
-            "group_key",
-            "group_selection",
             "action",
             "outcome",
             "step",
@@ -48,7 +66,6 @@ object ProductEvents {
             "operation_kind",
             "playback_id",
             "recording_id",
-            "group_operation_key",
         ).associateWith { PropertyRule(ValueType.TEXT, maxLength = 128) } +
             listOf(
                 "duration_ms",
@@ -73,7 +90,7 @@ object ProductEvents {
                 }
             EventDefinition(name, properties = rules)
         }
-    private val byName = definitions.associateBy { it.name }
+    private val byName = (definitions + collectionCardDefinitions).associateBy { it.name }
 
     fun definition(name: String) = byName.getValue(name)
 }

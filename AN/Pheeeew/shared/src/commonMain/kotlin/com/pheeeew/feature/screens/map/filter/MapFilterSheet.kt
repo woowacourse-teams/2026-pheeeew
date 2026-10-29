@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -22,7 +21,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.material3.RippleConfiguration
 import androidx.compose.material3.Text
@@ -30,7 +28,6 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,11 +49,7 @@ import com.pheeeew.core.designsystem.component.SheetDragHandle
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.core.designsystem.theme.AppTheme
-import com.pheeeew.feature.screens.map.record.group.GroupSelectionStamp
 import kotlinx.coroutines.launch
-import org.jetbrains.compose.resources.painterResource
-import pheeeew.shared.generated.resources.Res
-import pheeeew.shared.generated.resources.ic_arrow_forward
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,8 +62,6 @@ fun MapFilterSheet(
     onScope: (FilterScope) -> Unit,
     onOpenDate: (Boolean) -> Unit,
     onConfirmDate: (FilterDate) -> Unit,
-    onOpenGroups: () -> Unit,
-    onToggleGroup: (String) -> Unit,
     onClosePage: () -> Unit,
     onApply: () -> Unit,
 ) {
@@ -106,7 +97,7 @@ fun MapFilterSheet(
         ) {
             when (state.page) {
                 FilterPage.Filters -> {
-                    MapFilterContent(state, onReset, onPeriod, onContent, onScope, onOpenDate, onOpenGroups, onApply)
+                    MapFilterContent(state, onReset, onPeriod, onContent, onScope, onOpenDate, onApply)
                 }
 
                 FilterPage.StartDate, FilterPage.EndDate -> {
@@ -114,10 +105,6 @@ fun MapFilterSheet(
                         initial = if (state.page == FilterPage.StartDate) state.startDate else state.endDate,
                         onConfirm = onConfirmDate,
                     )
-                }
-
-                FilterPage.Groups -> {
-                    FilterGroupsContent(state, onToggleGroup, onClosePage)
                 }
             }
         }
@@ -132,7 +119,6 @@ internal fun MapFilterContent(
     onContent: (FilterContent) -> Unit,
     onScope: (FilterScope) -> Unit,
     onOpenDate: (Boolean) -> Unit,
-    onOpenGroups: () -> Unit,
     onApply: () -> Unit,
 ) {
     Row(
@@ -192,13 +178,11 @@ internal fun MapFilterContent(
     FilterLabel(label = "조회 범위")
     Spacer(Modifier.height(8.dp))
     FilterChoices(
-        listOf("전체", "내 기록만", "그룹 선택"),
+        listOf("전체", "내 기록만"),
         state.scope.ordinal,
         enabled = !state.applying,
     ) { onScope(FilterScope.entries[it]) }
-    if (state.scope == FilterScope.Groups) {
-        SelectedGroups(state, enabled = !state.applying, onOpenGroups = onOpenGroups)
-    }
+
     state.applyError?.let { error ->
         Text(error, modifier = Modifier.padding(top = 12.dp), color = AppColors.Error, fontSize = 13.sp)
     }
@@ -305,51 +289,6 @@ private fun DateField(
 }
 
 @Composable
-private fun SelectedGroups(
-    state: MapFilterUiModel,
-    enabled: Boolean = true,
-    onOpenGroups: () -> Unit,
-) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .heightIn(
-                min = 56.dp,
-            ).clickable(enabled = enabled, interactionSource = null, indication = null, onClick = onOpenGroups)
-            .padding(top = 10.dp),
-        horizontalArrangement = Arrangement.End,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        val selected =
-            remember(state.groups, state.selectedGroupIds) {
-                state.groups.filter { it.id in state.selectedGroupIds }
-            }
-        if (selected.isEmpty()) {
-            Text("그룹을 선택해주세요", color = AppColors.TextSecondary, fontSize = 14.sp)
-        } else {
-            selected.take(5).forEach { group ->
-                GroupSelectionStamp(
-                    group.stamp,
-                    size = 32.dp,
-                    modifier = Modifier.padding(start = 6.dp),
-                    emptyLabel = group.name,
-                )
-            }
-            val overflow = selected.size - 5
-            if (overflow > 0) {
-                Text("+$overflow", modifier = Modifier.padding(start = 6.dp), fontSize = 12.sp)
-            }
-        }
-        Icon(
-            painter = painterResource(Res.drawable.ic_arrow_forward),
-            contentDescription = null,
-            modifier = Modifier.padding(start = 8.dp).size(12.dp),
-            tint = AppColors.TextSecondary,
-        )
-    }
-}
-
-@Composable
 internal fun FilterActionButton(
     label: String,
     onClick: () -> Unit,
@@ -378,14 +317,12 @@ private fun MapFilterContentPreview() {
                 MapFilterUiModel(
                     visible = true,
                     period = FilterPeriod.Custom,
-                    scope = FilterScope.Groups,
                 ),
                 onReset = {},
                 onPeriod = {},
                 onContent = {},
                 onScope = {},
                 onOpenDate = {},
-                onOpenGroups = {},
                 onApply = {},
             )
         }

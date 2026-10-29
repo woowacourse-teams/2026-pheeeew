@@ -63,12 +63,11 @@ class EmotionPinUiModelTest {
                     createdAt = "2026-09-24T12:00:00Z",
                     state = state,
                     rotationDegrees = 0.0,
-                    groupStamp = null,
                 ).toUiModel()
             assertEquals(mapping.first, pin.emotion)
             assertEquals(mapping.second, pin.emotion.label)
             assertEquals(mapping.third, pin.emotion.icon)
-            assertEquals(null, pin.stamp)
+            assertEquals("emotion-${mapping.first.name.lowercase()}", pin.symbolImageKey())
         }
     }
 }

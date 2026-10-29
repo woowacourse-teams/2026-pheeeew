@@ -25,7 +25,6 @@ object RecordSaveEvents {
             "flow_id" to text(),
             "registration_key" to text(),
             "input_mode" to text("text", "voice", "none"),
-            "group_selection" to text("none", "group"),
         )
     private val duration = PropertyRule(ValueType.INTEGER, required = true, minimum = 0.0)
     private val result =
@@ -126,7 +125,7 @@ class RecordSubmission internal constructor(
     }
 }
 
-/** Attached only to a registration notice; unrelated group notices have no receipt. */
+/** Attached only to a registration notice. */
 class RecordResultReceipt internal constructor(
     private val monitoring: Monitoring,
     private val context: EventContext,

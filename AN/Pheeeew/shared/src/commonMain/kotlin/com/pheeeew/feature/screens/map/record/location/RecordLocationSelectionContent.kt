@@ -49,7 +49,6 @@ import com.pheeeew.core.designsystem.component.raisedButtonBorder
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.domain.model.GeoCoordinate
-import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.screens.map.overlay.MapControlButton
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
 import com.pheeeew.feature.screens.map.record.noRippleClickable
@@ -72,7 +71,6 @@ fun RecordLocationSelectionContent(
     selectedCoordinate: GeoCoordinate?,
     viewport: RecordMapViewport?,
     selectedEmotion: EmotionTypeUiModel,
-    selectedGroupStamp: StampAppearanceUiModel?,
     isSubmitting: Boolean,
     canConfirm: Boolean,
     onCoordinateSelected: (Double, Double) -> Unit,
@@ -86,7 +84,7 @@ fun RecordLocationSelectionContent(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val selectedEmotionLabel = stringResource(selectedEmotion.label)
-    val stampDescription = selectedGroupStamp?.label ?: selectedEmotionLabel
+    val stampDescription = selectedEmotionLabel
     val density = LocalDensity.current.density
     val latestOnSelected by rememberUpdatedState(onCoordinateSelected)
     val latestCanMove by rememberUpdatedState(!isSubmitting)
@@ -309,7 +307,6 @@ private fun RecordLocationPreview(selected: GeoCoordinate) {
             selectedCoordinate = selected,
             viewport = RecordMapViewport(201f, 437f, 153f),
             selectedEmotion = EmotionTypeUiModel.FRUSTRATED,
-            selectedGroupStamp = null,
             isSubmitting = false,
             canConfirm = true,
             onCoordinateSelected = { _, _ -> },

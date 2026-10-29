@@ -2,109 +2,81 @@ package com.pheeeew.data.repository
 
 import com.pheeeew.core.network.ApiResult
 import com.pheeeew.core.network.NetworkFailure
-import com.pheeeew.data.remote.emotion.EmotionDetailApi
-import com.pheeeew.data.remote.emotion.EmotionDetailDto
-import com.pheeeew.data.remote.emotion.EmotionReactionApi
-import com.pheeeew.domain.model.emotion.EmotionDetail
-import com.pheeeew.domain.model.emotion.EmotionDetailResult
-import com.pheeeew.domain.model.emotion.EmotionPlayback
-import com.pheeeew.domain.model.emotion.EmotionReaction
+import com.pheeeew.data.remote.api.EmotionApi
+import com.pheeeew.data.remote.mapper.EmotionResponseMapper
+import com.pheeeew.data.remote.mapper.toModerationResult
+import com.pheeeew.data.remote.mapper.toQueryParameters
+import com.pheeeew.domain.model.emotion.EmotionBounds
 import com.pheeeew.domain.model.emotion.EmotionReactionType
-import com.pheeeew.domain.model.emotion.EmotionState
-import com.pheeeew.domain.model.group.GroupStamp
-import com.pheeeew.domain.model.group.GroupStampFrame
-import com.pheeeew.domain.model.group.StampColor
-import com.pheeeew.domain.repository.EmotionDetailRepository
-import kotlin.time.Instant
+import com.pheeeew.domain.model.emotion.EmotionSearchFilter
+import com.pheeeew.domain.repository.EmotionFailure
+import com.pheeeew.domain.repository.EmotionRepository
+import com.pheeeew.domain.repository.EmotionResult
+import dev.zacsweers.metro.Inject
+import kotlinx.coroutines.CancellationException
 
-class EmotionRepositoryImpl(
-    private val detailApi: EmotionDetailApi,
-    private val reactionApi: EmotionReactionApi,
-) : EmotionDetailRepository {
-    override suspend fun findById(id: Long): EmotionDetailResult {
-        if (id <= 0) return EmotionDetailResult.NotFound
-        return when (val result = detailApi.findById(id)) {
-            is ApiResult.Success -> {
-                runCatching {
-                    require(result.value.id == id)
-                    EmotionDetailResult.Success(result.value.toDomain())
-                }.getOrElse { EmotionDetailResult.InvalidResponse }
+@Inject
+internal class EmotionRepositoryImpl(
+    private val api: EmotionApi,
+) : EmotionRepository {
+    override suspend fun firstPage(bounds: EmotionBounds) =
+        api.listWithoutBounds(emptyMap()).mapped(EmotionResponseMapper::page)
+
+    override suspend fun filteredFirstPage(filter: EmotionSearchFilter) =
+        api.listWithoutBounds(filter.toQueryParameters()).mapped(EmotionResponseMapper::feedPage)
+
+    override suspend fun nextPage(cursor: String) =
+        api.listWithoutBounds(mapOf("cursor" to cursor)).mapped(EmotionResponseMapper::feedPage)
+
+    override suspend fun nextFilteredPage(cursor: String) =
+        api.listWithoutBounds(mapOf("cursor" to cursor)).mapped(EmotionResponseMapper::feedPage)
+
+    override suspend fun detail(id: Long) = api.findById(id).mapped(EmotionResponseMapper::emotion)
+
+    override suspend fun react(
+        id: Long,
+        type: EmotionReactionType,
+        selected: Boolean,
+    ) = api.react(id, type, selected).mapped {
+        it
+    }
+
+    override suspend fun delete(emotionId: Long) = api.delete(emotionId).toModerationResult()
+}
+
+private inline fun <T, R> ApiResult<T>.mapped(transform: (T) -> R): EmotionResult<R> =
+    when (this) {
+        is ApiResult.Success -> {
+            try {
+                EmotionResult.Success(transform(value))
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                EmotionResult.Failure(EmotionFailure.UNAVAILABLE)
             }
+        }
 
-            is ApiResult.Failure -> {
-                when (val reason = result.reason) {
+        is ApiResult.Failure -> {
+            EmotionResult.Failure(
+                when (val failure = reason) {
+                    is NetworkFailure.SessionUnavailable, is NetworkFailure.SessionProviderFailed -> {
+                        EmotionFailure.AUTHENTICATION
+                    }
+
                     is NetworkFailure.HttpStatus -> {
-                        when (reason.statusCode) {
-                            404 -> EmotionDetailResult.NotFound
-                            401 -> EmotionDetailResult.Unauthorized
-                            else -> EmotionDetailResult.Unavailable
+                        when (failure.statusCode) {
+                            404 -> EmotionFailure.NOT_FOUND
+                            400 -> EmotionFailure.INVALID_REQUEST
+                            401 -> EmotionFailure.AUTHENTICATION
+                            403, 409 -> EmotionFailure.FORBIDDEN
+                            else -> EmotionFailure.UNAVAILABLE
                         }
                     }
 
-                    is NetworkFailure.SessionUnavailable, is NetworkFailure.SessionProviderFailed -> {
-                        EmotionDetailResult.Unauthorized
-                    }
-
-                    is NetworkFailure.Contract -> {
-                        EmotionDetailResult.InvalidResponse
-                    }
-
                     else -> {
-                        EmotionDetailResult.Unavailable
+                        EmotionFailure.UNAVAILABLE
                     }
-                }
-            }
+                },
+            )
         }
     }
-
-    override suspend fun setReactionSelected(
-        emotionId: Long,
-        type: EmotionReactionType,
-        selected: Boolean,
-    ): Boolean = reactionApi.setSelected(emotionId, type, selected) is ApiResult.Success
-
-    private fun EmotionDetailDto.toDomain(): EmotionDetail {
-        require(id > 0 && geometry.coordinates.size == 2)
-        require(geometry.coordinates[0].isFinite() && geometry.coordinates[0] in -180.0..180.0)
-        require(geometry.coordinates[1].isFinite() && geometry.coordinates[1] in -90.0..90.0)
-        require(geometry.type == null || geometry.type == "Point")
-        Instant.parse(properties.createdAt)
-        val contentType = properties.contentType
-        require(contentType in setOf("NONE", "MEMO", "AUDIO"))
-        val audio =
-            if (contentType == "AUDIO") {
-                val value = requireNotNull(properties.audio)
-                require(value.playbackUrl.startsWith("https://"))
-                Instant.parse(value.expiresAt)
-                EmotionPlayback(value.playbackUrl, value.expiresAt)
-            } else {
-                null
-            }
-        val reactions =
-            properties.emojis.map {
-                require(it.count >= 0)
-                EmotionReaction(EmotionReactionType.valueOf(it.type), it.count, it.selected)
-            }
-        require(reactions.map { it.type }.toSet() == EmotionReactionType.entries.toSet())
-        require(reactions.size == EmotionReactionType.entries.size)
-        return EmotionDetail(
-            id,
-            EmotionState.valueOf(properties.state),
-            properties.nickname,
-            properties.createdAt,
-            properties.memo.takeIf { contentType == "MEMO" },
-            audio,
-            properties.groupStamp?.let {
-                GroupStamp(
-                    it.text,
-                    requireNotNull(StampColor.parseServerValue(it.textColor)),
-                    requireNotNull(StampColor.parseServerValue(it.backgroundColor)),
-                    GroupStampFrame.valueOf(it.frame),
-                )
-            },
-            properties.groupId,
-            properties.isMine,
-            reactions,
-        )
-    }
-}

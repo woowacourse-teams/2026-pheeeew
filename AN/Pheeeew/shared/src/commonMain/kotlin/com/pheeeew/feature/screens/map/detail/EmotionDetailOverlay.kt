@@ -1,12 +1,5 @@
 package com.pheeeew.feature.screens.map.detail
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -16,18 +9,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.pheeeew.core.audio.rememberAudioPlayback
 import com.pheeeew.core.designsystem.component.ConfirmDialog
-import com.pheeeew.domain.repository.EmotionModerationRepository
+import com.pheeeew.domain.model.emotion.EmotionBounds
+import com.pheeeew.domain.model.emotion.EmotionReactionType
+import com.pheeeew.domain.repository.BlockRepository
+import com.pheeeew.domain.repository.EmotionAudioRepository
 import com.pheeeew.domain.repository.EmotionModerationResult
-import com.pheeeew.domain.repository.audio.EmotionAudioRepository
+import com.pheeeew.domain.repository.EmotionRepository
 import com.pheeeew.domain.usecase.BlockUserUseCase
 import com.pheeeew.domain.usecase.DeleteEmotionUseCase
 import kotlinx.coroutines.CancellationException
@@ -304,23 +296,30 @@ private fun EmotionDetailOverlayPreview() {
         onRetry = {},
         audioRepository = EmotionAudioRepository { error("Preview does not fetch audio") },
         onReactionClick = {},
-        blockUser = BlockUserUseCase(PreviewModerationRepository),
-        deleteEmotion = DeleteEmotionUseCase(PreviewModerationRepository),
+        blockUser = BlockUserUseCase(PreviewActionRepositories),
+        deleteEmotion = DeleteEmotionUseCase(PreviewActionRepositories),
         onReportClick = { _, _ -> },
         onBlockSucceeded = {},
         onDeleteSucceeded = {},
     )
 }
 
-private object PreviewModerationRepository : EmotionModerationRepository {
-    override suspend fun report(
-        emotionId: Long,
-        reason: String,
-    ) = EmotionModerationResult.Success
-
+private object PreviewActionRepositories : BlockRepository, EmotionRepository {
     override suspend fun blockEmotion(emotionId: Long) = EmotionModerationResult.Success
 
     override suspend fun blockUser(emotionId: Long) = EmotionModerationResult.Success
 
     override suspend fun delete(emotionId: Long) = EmotionModerationResult.Success
+
+    override suspend fun firstPage(bounds: EmotionBounds): Nothing = error("Preview does not load data")
+
+    override suspend fun nextPage(cursor: String): Nothing = error("Preview does not load data")
+
+    override suspend fun detail(id: Long): Nothing = error("Preview does not load data")
+
+    override suspend fun react(
+        id: Long,
+        type: EmotionReactionType,
+        selected: Boolean,
+    ): Nothing = error("Preview does not load data")
 }

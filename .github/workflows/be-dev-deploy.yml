@@ -8,6 +8,16 @@ on:
       - 'BE/**'
       - '.github/workflows/be-dev-deploy.yml'
   workflow_dispatch:
+    inputs:
+      image_tag:
+        description: '되돌릴 이미지 태그 (예: dev-0e3c40ec...). 비우면 현재 커밋을 빌드합니다'
+        required: false
+        type: string
+      migrate_legacy_generation:
+        description: '경쟁 OFF인 기존 랜덤 세대 서버를 검증하고 명시적 세대로 최초 이행'
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: deploy-dev
@@ -19,6 +29,7 @@ permissions:
 jobs:
   build:
     name: 이미지 빌드 및 푸시
+    if: github.event.inputs.image_tag == ''
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 20
     steps:
@@ -49,12 +60,20 @@ jobs:
 
   deploy:
     name: 개발 서버 배포
+    if: always() && needs.build.result != 'failure' && needs.build.result != 'cancelled'
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: development
     steps:
       - uses: actions/checkout@v4
+
+      - name: 컬렉션 Secrets 확인
+        env:
+          COLLECTION_CARD_VERSION: ${{ secrets.COLLECTION_CARD_VERSION }}
+        run: |
+          set -eu
+          : "${COLLECTION_CARD_VERSION:?development Secrets에 COLLECTION_CARD_VERSION을 등록해야 합니다.}"
 
       - name: S3 Secrets 확인
         env:
@@ -176,6 +195,10 @@ jobs:
           ssh -F ~/.ssh/config target 'mkdir -p /opt/pheeeew/nginx /opt/pheeeew/alloy'
           ssh -F ~/.ssh/config target 'set -eu; cd /opt/pheeeew; if [ -f compose.yml ]; then cp compose.yml compose.yml.prev; fi'
           scp -F ~/.ssh/config BE/docker/compose.dev.yml target:/opt/pheeeew/compose.yml
+          scp -F ~/.ssh/config BE/docker/press-generation.py target:/opt/pheeeew/press-generation.py
+          scp -F ~/.ssh/config BE/docker/press-operations.py target:/opt/pheeeew/press-operations.py
+          scp -F ~/.ssh/config BE/docker/compose.nginx.dev.yml target:/opt/pheeeew/compose.nginx.yml
+          scp -F ~/.ssh/config BE/docker/compose.postgres.dev.yml target:/opt/pheeeew/compose.postgres.yml
           scp -F ~/.ssh/config BE/docker/nginx/api-dev.conf target:/opt/pheeeew/nginx/api-dev.conf
           scp -F ~/.ssh/config BE/docker/compose.monitoring.dev.yml target:/opt/pheeeew/compose.monitoring.yml
           scp -F ~/.ssh/config BE/docker/alloy/config.dev.alloy target:/opt/pheeeew/alloy/
@@ -188,7 +211,7 @@ jobs:
 
       - name: .env 갱신
         env:
-          APP_IMAGE: ${{ secrets.DOCKERHUB_IMAGE }}:dev-${{ github.sha }}
+          APP_IMAGE: ${{ secrets.DOCKERHUB_IMAGE }}:${{ github.event.inputs.image_tag || format('dev-{0}', github.sha) }}
           DB_URL: ${{ secrets.DB_URL }}
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
@@ -196,9 +219,11 @@ jobs:
           JWT_PUBLIC_KEY_BASE64: ${{ secrets.JWT_PUBLIC_KEY_BASE64 }}
           PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64: ${{ secrets.PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64 }}
           PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER: ${{ secrets.PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER }}
+          FCM_SERVICE_ACCOUNT_BASE64: ${{ secrets.FCM_SERVICE_ACCOUNT_BASE64 }}
           S3_BUCKET: ${{ secrets.S3_BUCKET }}
           S3_KEY_PREFIX: ${{ secrets.S3_KEY_PREFIX }}
           S3_REGION: ${{ secrets.S3_REGION }}
+          COLLECTION_CARD_VERSION: ${{ secrets.COLLECTION_CARD_VERSION }}
         run: |
           set -eu
           umask 077
@@ -211,81 +236,357 @@ jobs:
             echo "JWT_PUBLIC_KEY_BASE64=$JWT_PUBLIC_KEY_BASE64"
             echo "PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64=$PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64"
             echo "PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=$PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER"
+            echo "FCM_SERVICE_ACCOUNT_BASE64=$FCM_SERVICE_ACCOUNT_BASE64"
             printf '%s\n' "S3_BUCKET=$S3_BUCKET" "S3_KEY_PREFIX=$S3_KEY_PREFIX" "S3_REGION=$S3_REGION"
+            printf '%s\n' "COLLECTION_CARD_VERSION=$COLLECTION_CARD_VERSION"
           } > env.tmp
           scp -F ~/.ssh/config env.tmp target:/opt/pheeeew/.env.new
           ssh -F ~/.ssh/config target 'set -eu; umask 077; cd /opt/pheeeew; [ -f .env ] && cp .env .env.prev && chmod 600 .env.prev || true; chmod 600 .env.new; mv .env.new .env'
           rm -f env.tmp
 
-      - name: 배포
-        env:
-          IMAGE: ${{ secrets.DOCKERHUB_IMAGE }}:dev-${{ github.sha }}
+      - name: 배포 전 공유 자원 준비
         run: |
           set -eu
-          ssh -F ~/.ssh/config target "APP_IMAGE='$IMAGE' bash -s" <<'REMOTE'
+          ssh -F ~/.ssh/config target 'bash -s' <<'REMOTE'
+          set -eu
+          docker network inspect pheeeew-dev >/dev/null 2>&1 || docker network create pheeeew-dev
+
+          mkdir -p /opt/pheeeew/nginx/upstream
+          if [ ! -f /opt/pheeeew/nginx/upstream/active.conf ]; then
+            printf 'set $upstream_app app-blue;\n' > /opt/pheeeew/nginx/upstream/active.conf
+            echo "전환 파일을 새로 만들었습니다: app-blue"
+          else
+            echo "현재 전환 대상: $(sed -n 's/.*set \$upstream_app \([a-z-]*\);.*/\1/p' /opt/pheeeew/nginx/upstream/active.conf)"
+          fi
+
+          for color in blue green; do
+            volume="pheeeew-dev_app-logs-$color"
+            docker volume inspect "$volume" >/dev/null 2>&1 || docker volume create "$volume" >/dev/null
+            docker run --rm -v "$volume:/logs" nginx:1.27-alpine \
+              sh -c 'test -f /logs/application.json || : > /logs/application.json'
+          done
+          REMOTE
+
+      - name: nginx 배포
+        run: |
+          set -eu
+          ssh -F ~/.ssh/config target 'bash -s' <<'REMOTE'
           set -eu
           cd /opt/pheeeew
 
-          PREVIOUS=$(docker inspect --format '{{.Config.Image}}' pheeeew-dev-app 2>/dev/null || true)
-          echo "이전 이미지: ${PREVIOUS:-없음}"
+          docker compose -f compose.nginx.yml up -d --wait --wait-timeout 60
 
-          wait_healthy() {
-            for _ in $(seq 1 30); do
-              status=$(docker inspect -f '{{.State.Health.Status}}' pheeeew-dev-app 2>/dev/null || echo none)
-              [ "$status" = healthy ] && return 0
-              sleep 5
+          if ! docker compose -f compose.nginx.yml exec -T nginx nginx -t </dev/null; then
+            echo "nginx 설정이 올바르지 않습니다. reload 를 건너뛰고 앱 배포도 하지 않습니다."
+            echo "엣지는 메모리의 이전 설정으로 계속 동작하므로 서비스는 유지됩니다."
+            exit 1
+          fi
+
+          docker compose -f compose.nginx.yml exec -T nginx nginx -s reload </dev/null
+          echo "nginx 설정을 다시 읽었습니다."
+          REMOTE
+
+      - name: 배포
+        env:
+          IMAGE: ${{ secrets.DOCKERHUB_IMAGE }}:${{ github.event.inputs.image_tag || format('dev-{0}', github.sha) }}
+          ALLOW_LEGACY_GENERATION: ${{ github.event_name == 'workflow_dispatch' && inputs.migrate_legacy_generation && 'true' || 'false' }}
+        run: |
+          set -eu
+          ssh -F ~/.ssh/config target "APP_IMAGE='$IMAGE' ALLOW_LEGACY_GENERATION='$ALLOW_LEGACY_GENERATION' bash -s" <<'REMOTE'
+          set -eu
+          cd /opt/pheeeew
+
+          POINTER=nginx/upstream/active.conf
+          BACKUP=nginx/upstream/active.conf.bak
+          PROBE_HOST=api-dev.pheeeew.com
+          PROBE_PATH="/api/v3/devices/nicknames/availability?nickname=probe"
+          PROBE_URL="https://$PROBE_HOST$PROBE_PATH"
+          NGINX="docker compose -f compose.nginx.yml"
+          APPS="docker compose -f compose.yml"
+          DRAIN_WORKERS=
+
+          if command -v python3 >/dev/null 2>&1; then
+            JSON_TOOL=python3
+          elif command -v jq >/dev/null 2>&1; then
+            JSON_TOOL=jq
+          else
+            echo "JSON 검증 도구(python3, jq)가 없어 전환을 검증할 수 없습니다. 배포하지 않습니다."
+            exit 1
+          fi
+
+          read_pointer() {
+            sed -n 's/.*set \$upstream_app \([a-z-]*\);.*/\1/p' "$POINTER"
+          }
+
+          available_is_boolean() {
+            if [ "$JSON_TOOL" = python3 ]; then
+              python3 -c "import json, sys; body = json.load(open(sys.argv[1])); sys.exit(0 if isinstance(body, dict) and isinstance(body.get('available'), bool) else 1)" "$1" 2>/dev/null
+            else
+              jq -e 'type == "object" and has("available") and (.available | type) == "boolean"' "$1" >/dev/null 2>&1
+            fi
+          }
+
+          served() {
+            code=$(curl -sS --resolve "$PROBE_HOST:443:127.0.0.1" \
+                        --connect-timeout 2 --max-time 5 \
+                        -o /tmp/probe.body -D /tmp/probe.head \
+                        -w '%{http_code}' "$PROBE_URL") || return 1
+            [ "$code" = 200 ] || return 1
+            available_is_boolean /tmp/probe.body || return 1
+            sed -n 's/^[Xx]-[Uu]pstream:[[:space:]]*//p' /tmp/probe.head | tr -d '\r\n'
+          }
+
+          target_answers_api() {
+            $NGINX exec -T nginx \
+                 timeout 5 wget -q -T 5 -O - "http://$TARGET:8080$PROBE_PATH" </dev/null >/tmp/target.body 2>/dev/null \
+              || return 1
+            available_is_boolean /tmp/target.body
+          }
+
+          wait_target_api() {
+            deadline=$(($(date +%s) + 30))
+            while :; do
+              target_answers_api && return 0
+              [ "$(date +%s)" -ge "$deadline" ] && break
+              sleep 1
             done
             return 1
           }
 
-          docker compose -f compose.yml pull app
+          wait_served() {
+            want=$1
+            deadline=$(($(date +%s) + 30))
+            got=
+            while :; do
+              got=$(served) || got=
+              [ "$got" = "$want" ] && return 0
+              [ "$(date +%s)" -ge "$deadline" ] && break
+              sleep 1
+            done
+            echo "엣지가 $want 를 서비스하지 않습니다. 마지막 확인: ${got:-정상 응답 없음}"
+            return 1
+          }
 
-          started=1
-          if ! docker compose -f compose.yml up -d; then
-            started=0
-            echo "===== 컨테이너 기동 실패 — 상태와 로그 ====="
-            docker compose -f compose.yml ps
-            docker compose -f compose.yml logs --tail=100 2>&1 | grep -a -v -F -e 'http_request_failed' -e 'scheduled_task_failed' || true
-          fi
+          read_nginx_processes() {
+            out=$($NGINX exec -T nginx \
+                    sh -c "ps -o pid=,args= || exit 9; echo COUNTED" </dev/null 2>/dev/null) || return 1
+            case "$out" in
+              *COUNTED) ;;
+              *) return 1 ;;
+            esac
+            printf '%s\n' "$out" | awk '$1 ~ /^[0-9]+$/ { seen=1 } END { exit !seen }' || return 1
+            printf '%s\n' "$out"
+          }
 
-          if [ "$started" -eq 1 ]; then
-            if docker compose -f compose.yml exec -T nginx nginx -t; then
-              docker compose -f compose.yml exec -T nginx nginx -s reload
-              echo "nginx 설정을 다시 읽었습니다."
+          capture_workers() {
+            # Reload only acknowledges a signal. Capture workers before their titles can change.
+            DRAIN_WORKERS=
+            if processes=$(read_nginx_processes); then
+              DRAIN_WORKERS=$(printf '%s\n' "$processes" | \
+                awk '$1 ~ /^[0-9]+$/ && $2 == "nginx:" && $3 == "worker" && $4 == "process" { printf "%s ", $1 }')
+            fi
+          }
+
+          count_previous_workers() {
+            # Empty/failed snapshots are unknown, never proof that requests have drained.
+            [ -n "$DRAIN_WORKERS" ] || return 1
+            processes=$(read_nginx_processes) || return 1
+            printf '%s\n' "$processes" | awk -v previous="$DRAIN_WORKERS" '
+              BEGIN { n=split(previous, pids); for (i=1; i<=n; i++) old[pids[i]]=1 }
+              $1 in old { count++ }
+              END { print count+0 }'
+          }
+
+          wait_drained() {
+            deadline=$(($(date +%s) + 60))
+            checked=no
+            while :; do
+              if left=$(count_previous_workers); then
+                case "$left" in
+                  ''|*[!0-9]*) ;;
+                  *)
+                    checked=yes
+                    [ "$left" -eq 0 ] && return 0 ;;
+                esac
+              fi
+              [ "$(date +%s)" -ge "$deadline" ] && break
+              sleep 1
+            done
+            [ "$checked" = yes ] \
+              && echo "   제한 시간 안에 종료 중인 nginx 워커가 사라지지 않았습니다." \
+              || echo "   nginx 워커 상태를 한 번도 확인하지 못했습니다."
+            return 1
+          }
+
+          report_mismatch() {
+            echo "!! 복구에 실패했습니다. 전환 파일과 실제 서비스가 어긋날 수 있습니다."
+            echo "   전환 파일: $(read_pointer)"
+            echo "   엣지 응답: $(served || echo '정상 응답 없음')"
+            echo "   $ACTIVE 와 $TARGET 을 모두 남겨 둡니다. 수동 확인이 필요합니다."
+          }
+
+          restore_pointer() {
+            [ -f "$BACKUP" ] || return 1
+            cat "$BACKUP" > "$POINTER"
+            $NGINX exec -T nginx nginx -t </dev/null || return 1
+            capture_workers
+            $NGINX exec -T nginx nginx -s reload </dev/null || return 1
+            wait_served "$ACTIVE" || return 1
+          }
+
+          rollback() {
+            # A failed psql response may follow a committed UPDATE. Verify restoration before cleanup.
+            if ! python3 press-generation.py restore "pheeeew-dev-$TARGET"; then
+              report_mismatch
+              return 1
+            fi
+            if ! restore_pointer; then
+              report_mismatch
+              return 1
+            fi
+            if ! python3 press-generation.py open-active "pheeeew-dev-$ACTIVE"; then
+              report_mismatch
+              return 1
+            fi
+            echo "$ACTIVE 로 복구했고 정상 응답을 확인했습니다."
+            if wait_drained; then
+              echo "$TARGET 으로 향하던 요청이 모두 끝났습니다."
             else
-              echo "nginx 설정이 올바르지 않아 reload 를 건너뜁니다. 이전 설정으로 계속 동작합니다."
+              echo "$TARGET 으로 향하던 요청이 끝났는지 확인하지 못했습니다."
             fi
-
-            if wait_healthy; then
-              echo "배포 성공: $APP_IMAGE"
-              docker image prune -f
-              exit 0
+            if ! python3 press-generation.py cleanup-target "pheeeew-dev-$TARGET"; then
+              report_mismatch
+              return 1
             fi
+            rm -f .press-deploy.json "$BACKUP"
+            echo "$TARGET 을 정리했습니다."
+          }
 
-            echo "===== 헬스체크 실패 — 앱 로그 ====="
-            docker compose -f compose.yml logs --tail=100 app 2>&1 | grep -a -v -F -e 'http_request_failed' -e 'scheduled_task_failed' || true
+          ACTIVE=$(read_pointer)
+          case "$ACTIVE" in
+            app-blue|app-green) ;;
+            *) echo "전환 파일의 값이 올바르지 않습니다: '${ACTIVE:-빈 값}'. 전환하지 않습니다."; exit 1 ;;
+          esac
+          [ "$ACTIVE" = app-blue ] && TARGET=app-green || TARGET=app-blue
+          echo "현재 $ACTIVE, 새로 띄울 것 $TARGET"
+
+          command -v python3 >/dev/null
+          command -v psql >/dev/null
+          command -v openssl >/dev/null
+          if [ -e "$BACKUP" ] || [ -e .press-deploy.json ]; then
+            echo "미완료 전환 기록이 있습니다. DB와 프록시를 수동 확인하기 전에는 재배포하지 않습니다."
+            exit 1
           fi
+          # Booting a candidate never changes DB ownership or competition activation.
+          wait_served "$ACTIVE" || { echo "현재 트래픽과 전환 파일이 다릅니다. 배포하지 않습니다."; exit 1; }
+          if [ "${ALLOW_LEGACY_GENERATION:-false}" = true ]; then
+            python3 press-generation.py prepare "pheeeew-dev-$ACTIVE" "$TARGET" --allow-legacy
+          else
+            python3 press-generation.py prepare "pheeeew-dev-$ACTIVE" "$TARGET"
+          fi
+          APPS="docker compose --env-file .env --env-file press-generations.env -f compose.yml"
 
-          if [ -z "$PREVIOUS" ]; then
-            echo "롤백할 이전 이미지가 없습니다."
+          if ! $APPS pull "$TARGET"; then
+            echo "새 이미지를 가져오지 못했습니다. 전환하지 않습니다."
+            rm -f .press-deploy.json
+            exit 1
+          fi
+          contract=$(docker image inspect "$APP_IMAGE" --format '{{index .Config.Labels "com.pheeeew.press-generation-contract"}}') || contract=
+          if [ "$contract" != 1 ] && [ "$contract" != 2 ]; then
+            echo "서버 세대 계약을 지원하지 않는 이미지입니다. 별도의 구버전 복귀 절차가 필요합니다."
+            rm -f .press-deploy.json
             exit 1
           fi
 
-          echo "===== 롤백: $PREVIOUS ====="
-          if [ -f compose.yml.prev ]; then
-            cp compose.yml.prev compose.yml
+          if ! $APPS up -d --wait --wait-timeout 180 "$TARGET"; then
+            echo "===== 새 버전 기동 실패 — 로그 ====="
+            $APPS logs --tail=100 "$TARGET" 2>&1 | grep -a -v -F -e 'http_request_failed' -e 'scheduled_task_failed' || true
+            if python3 press-generation.py record-target "pheeeew-dev-$TARGET" \
+                && python3 press-generation.py cleanup-target "pheeeew-dev-$TARGET"; then
+              rm -f .press-deploy.json
+            else
+              report_mismatch
+            fi
+            echo "전환하지 않고 끝냅니다. 트래픽은 $ACTIVE 에 그대로 있습니다."
+            exit 1
           fi
-          if [ -f .env.prev ]; then
-            echo ".env 도 이전 값으로 되돌립니다."
-            cp .env.prev .env
+
+          python3 press-generation.py record-target "pheeeew-dev-$TARGET" || { report_mismatch; exit 1; }
+
+          if ! wait_target_api; then
+            echo "새 버전이 최소 API 를 응답하지 않습니다."
+            $APPS logs --tail=50 "$TARGET" 2>&1 | grep -a -v -F -e 'http_request_failed' -e 'scheduled_task_failed' || true
+            if python3 press-generation.py cleanup-target "pheeeew-dev-$TARGET"; then
+              rm -f .press-deploy.json
+            else
+              report_mismatch
+            fi
+            echo "전환하지 않고 끝냅니다. 트래픽은 $ACTIVE 에 그대로 있습니다."
+            exit 1
           fi
-          APP_IMAGE="$PREVIOUS" docker compose -f compose.yml up -d
-          if wait_healthy; then
-            echo "롤백 완료. 배포는 실패로 처리합니다."
+          echo "$TARGET 이 최소 API 를 응답합니다."
+
+          if [ "$(read_pointer)" != "$ACTIVE" ] || ! wait_served "$ACTIVE"; then
+            report_mismatch
+            exit 1
+          fi
+          cp "$POINTER" "$BACKUP"
+          if ! python3 press-generation.py handoff "pheeeew-dev-$TARGET"; then
+            echo "서버 세대 전환을 확인하지 못했습니다. 실제 DB 상태를 재확인하고 복구합니다."
+            rollback || true
+            exit 1
+          fi
+          if ! python3 press-generation.py close-active "pheeeew-dev-$ACTIVE"; then
+            echo "기존 WS 연결 정리를 확인하지 못했습니다. 검증된 원본 복귀만 시도합니다."
+            rollback || true
+            exit 1
+          fi
+          printf 'set $upstream_app %s;\n' "$TARGET" > "$POINTER"
+
+          if ! $NGINX exec -T nginx nginx -t </dev/null; then
+            echo "전환 설정이 올바르지 않습니다."
+            rollback || true
+            echo "전환하지 않고 끝냅니다. 트래픽은 $ACTIVE 에 그대로 있습니다."
+            exit 1
+          fi
+
+          capture_workers
+          if ! $NGINX exec -T nginx nginx -s reload </dev/null; then
+            echo "reload 가 실패했습니다. 전환 파일을 되돌립니다."
+            rollback || true
+            exit 1
+          fi
+
+          if ! wait_served "$TARGET"; then
+            echo "전환이 반영되지 않았습니다. 전환 파일을 되돌립니다."
+            rollback || true
+            exit 1
+          fi
+          echo "$TARGET 으로 전환했고 정상 응답을 확인했습니다."
+
+          if ! python3 press-generation.py verify "pheeeew-dev-$TARGET"; then
+            report_mismatch
+            exit 1
+          fi
+
+          if ! python3 press-generation.py open-target "pheeeew-dev-$TARGET"; then
+            echo "입력 개방을 확인하지 못했습니다. 개방 시도 전인 경우에만 원본 복귀를 허용합니다."
+            if ! rollback; then
+              python3 press-generation.py emergency-stop "pheeeew-dev-$TARGET" || true
+              report_mismatch
+            fi
+            exit 1
+          fi
+
+          if wait_drained; then
+            echo "이전 요청이 모두 끝났습니다."
           else
-            echo "롤백도 실패했습니다. 수동 개입이 필요합니다."
+            echo "이전 요청이 끝났는지 확인하지 못했습니다. $ACTIVE 를 graceful 하게 내립니다."
+            echo "   종료 유예 30초 안에서 앱이 남은 요청을 스스로 마무리합니다."
           fi
-          exit 1
+          python3 press-generation.py cleanup-active "pheeeew-dev-$ACTIVE" || { report_mismatch; exit 1; }
+          echo "앱 전환 완료: $APP_IMAGE ($TARGET). 모니터링 배포 후 마지막 확인을 기다립니다."
+          docker image prune -f
           REMOTE
 
       - name: Alloy 배포
@@ -304,3 +605,19 @@ jobs:
       - name: Alloy 임시 환경 파일 삭제
         if: always()
         run: rm -f "$RUNNER_TEMP/pheeeew-alloy.env"
+
+      - name: 배포 마무리
+        run: |
+          set -eu
+          ssh -F ~/.ssh/config target 'bash -s' <<'REMOTE'
+          set -eu
+          cd /opt/pheeeew
+          TARGET_CONTAINER=$(python3 -c 'import json; print(json.load(open(".press-deploy.json"))["target_container"])')
+          if ! python3 press-generation.py finalize "$TARGET_CONTAINER"; then
+            echo "배포 마무리를 확인하지 못했습니다. 전환 기록과 현재 서버를 보존합니다."
+            echo "확인 없이 배포나 활성화를 재실행하지 마세요."
+            exit 1
+          fi
+          rm -f .press-deploy.json nginx/upstream/active.conf.bak
+          echo "개발 배포를 마쳤습니다."
+          REMOTE

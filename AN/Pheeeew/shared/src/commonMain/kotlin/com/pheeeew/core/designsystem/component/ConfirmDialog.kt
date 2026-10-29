@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -16,18 +17,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppTheme
 
 @Composable
 fun ConfirmDialog(
     title: String,
     content: String,
     confirmText: String,
-    cancelText: String,
+    cancelText: String? = null,
     onConfirm: () -> Unit,
-    onCancel: () -> Unit,
+    onCancel: () -> Unit = {},
+    properties: DialogProperties = DialogProperties(),
 ) {
-    AppDialog(onDismissRequest = onCancel) {
+    AppDialog(onDismissRequest = onCancel, properties = properties) {
         ConfirmDialogContent(title, content, confirmText, cancelText, onConfirm, onCancel)
     }
 }
@@ -37,7 +41,7 @@ private fun ConfirmDialogContent(
     title: String,
     content: String,
     confirmText: String,
-    cancelText: String,
+    cancelText: String?,
     onConfirm: () -> Unit,
     onCancel: () -> Unit,
 ) {
@@ -46,10 +50,20 @@ private fun ConfirmDialogContent(
             Text(title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = AppColors.GroupInk)
             Text(content, fontSize = 14.sp, lineHeight = 22.sp, color = AppColors.TextSecondary)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                TextButton(onClick = onCancel, modifier = Modifier.weight(1f)) {
-                    Text(cancelText, color = AppColors.TextSecondary)
+                if (cancelText != null) {
+                    TextButton(
+                        onClick = onCancel,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.textButtonColors(contentColor = Color.Gray),
+                    ) {
+                        Text(cancelText, color = AppColors.TextSecondary)
+                    }
                 }
-                TextButton(onClick = onConfirm, modifier = Modifier.weight(1f)) {
+                TextButton(
+                    onClick = onConfirm,
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.textButtonColors(contentColor = Color.Gray),
+                ) {
                     Text(confirmText, color = Color.Red)
                 }
             }
@@ -68,4 +82,19 @@ private fun ConfirmDialogPreview() {
         {},
         {},
     )
+}
+
+@Preview(name = "앱 시작 오류", widthDp = 360, showBackground = true)
+@Composable
+private fun AppEntryErrorDialogPreview() {
+    AppTheme {
+        ConfirmDialogContent(
+            title = "앱을 시작하지 못했어요",
+            content = "네트워크 상태를 확인한 후 다시 시도해주세요.",
+            confirmText = "다시 시도",
+            cancelText = null,
+            onConfirm = {},
+            onCancel = {},
+        )
+    }
 }

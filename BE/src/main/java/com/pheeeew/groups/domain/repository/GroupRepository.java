@@ -14,6 +14,8 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
 
     Optional<Group> findByPublicIdAndDeletedAtIsNull(UUID publicId);
 
+    long countByPublicIdInAndDeletedAtIsNull(List<UUID> publicIds);
+
     Optional<Group> findByInviteCodeAndDeletedAtIsNull(String inviteCode);
 
     boolean existsByNameAndDeletedAtIsNull(String name);

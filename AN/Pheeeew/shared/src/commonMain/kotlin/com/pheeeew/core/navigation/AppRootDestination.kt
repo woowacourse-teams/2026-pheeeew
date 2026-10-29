@@ -6,10 +6,15 @@ import kotlinx.serialization.Serializable
 data object MapRootDestination
 
 @Serializable
-data object GroupRootDestination
-
-@Serializable
 data object PressRootDestination
 
 @Serializable
 data object RankingRootDestination
+
+@Serializable
+data class DailyPressRankingRootDestination(
+    val date: String,
+)
+
+@Serializable
+data object CollectionRootDestination

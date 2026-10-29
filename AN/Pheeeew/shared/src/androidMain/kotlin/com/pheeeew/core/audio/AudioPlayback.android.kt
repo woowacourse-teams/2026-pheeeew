@@ -8,7 +8,7 @@ import android.media.MediaPlayer
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
+import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -27,12 +27,13 @@ import kotlin.coroutines.resumeWithException
 
 @Composable
 actual fun rememberAudioPlayback(): AudioPlayback {
-    val context = LocalContext.current.applicationContext
-    val player = remember(context) { AndroidAudioPlayback(context) }
+    val factory = LocalAudioFactories.current.audioPlayback
+    val player = remember(factory) { factory.create() }
     DisposableEffect(player) { onDispose { player.release() } }
     return player
 }
 
+@Inject
 internal class AndroidAudioPlayback(
     private val context: Context,
 ) : AudioPlayback {

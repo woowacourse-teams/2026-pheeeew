@@ -14,21 +14,21 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LocalTextStyle
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -36,7 +36,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,9 +48,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -62,22 +61,26 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.audio.VoiceRecorder
 import com.pheeeew.core.audio.VoiceRecordingState
-import com.pheeeew.core.designsystem.component.AppModalBottomSheet
+import com.pheeeew.core.designsystem.component.AppNavigableBottomSheet
 import com.pheeeew.core.designsystem.component.ConfirmDialog
 import com.pheeeew.core.designsystem.component.SheetDragHandle
 import com.pheeeew.core.designsystem.component.raisedButtonBorder
+import com.pheeeew.core.designsystem.input.NativeTextEditor
+import com.pheeeew.core.designsystem.input.dismissNativeTextKeyboard
+import com.pheeeew.core.designsystem.input.limitMemoValue
+import com.pheeeew.core.designsystem.input.rememberTextEditor
+import com.pheeeew.core.designsystem.input.usesNativeTextEditor
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
-import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
-import com.pheeeew.feature.screens.map.record.group.GroupSelectionButton
 import com.pheeeew.feature.screens.map.record.noRippleClickable
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.record_anonymous
 import pheeeew.shared.generated.resources.record_audio
 import pheeeew.shared.generated.resources.record_continue_editing
 import pheeeew.shared.generated.resources.record_discard_title
@@ -95,57 +98,45 @@ fun RecordBottomSheet(
     selectedEmotion: EmotionTypeUiModel,
     inputMode: RecordInputModeUiModel,
     memo: String,
-    selectedGroupStamp: StampAppearanceUiModel?,
-    isGroupSelectionLoading: Boolean,
+    isAnonymous: Boolean,
+    onAnonymousChange: (Boolean) -> Unit,
     onDismissRequest: () -> Unit,
     onInputModeChange: (RecordInputModeUiModel) -> Unit,
     onMemoChange: (String) -> Unit,
-    onGroupClick: () -> Unit,
     onNext: () -> Unit,
     modifier: Modifier = Modifier,
     voiceRecorder: VoiceRecorder? = null,
     feedbackContent: @Composable () -> Unit = {},
+    isDismissConfirmationVisible: Boolean = false,
+    dismissConfirmationContent: @Composable () -> Unit = {},
 ) {
-    val keyboardController = LocalSoftwareKeyboardController.current
-    val isKeyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     var showOtherInputDialog by remember { mutableStateOf(false) }
-    val handleDismissRequest by rememberUpdatedState<() -> Unit> {
-        if (isKeyboardVisible) {
-            keyboardController?.hide()
-        } else {
-            onDismissRequest()
-        }
-    }
-    AppModalBottomSheet(
-        onDismissRequest = handleDismissRequest,
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val requestDismiss = { if (!isDismissConfirmationVisible) onDismissRequest() }
+    AppNavigableBottomSheet(
+        onDismissRequest = requestDismiss,
+        onBackOrOutsideClick = requestDismiss,
+        outsideContentDescription = stringResource(Res.string.record_discard_title),
+        sheetState = sheetState,
         modifier = modifier,
-        sheetState =
-            rememberModalBottomSheetState(
-                skipPartiallyExpanded = true,
-                confirmValueChange = { value ->
-                    if (value == SheetValue.Hidden) {
-                        handleDismissRequest()
-                        false
-                    } else {
-                        true
-                    }
-                },
-            ),
+        dismissKeyboardBeforeNavigation = true,
+        dragFromContent = true,
+        restoreOnSwipeDismissRequest = true,
         shape = AppShapes.BottomSheet,
         containerColor = AppColors.Surface,
         scrimColor = Color.Black.copy(alpha = 0.3f),
         dragHandle = { SheetDragHandle() },
     ) {
+        dismissConfirmationContent()
         feedbackContent()
         RecordBottomSheetContent(
             selectedEmotion = selectedEmotion,
             inputMode = inputMode,
             memo = memo,
-            selectedGroupStamp = selectedGroupStamp,
-            isGroupSelectionLoading = isGroupSelectionLoading,
+            isAnonymous = isAnonymous,
+            onAnonymousChange = onAnonymousChange,
             onInputModeChange = onInputModeChange,
             onMemoChange = onMemoChange,
-            onGroupClick = onGroupClick,
             onNext = {
                 val hasOtherInput =
                     when (inputMode) {
@@ -205,11 +196,10 @@ private fun RecordBottomSheetContent(
     selectedEmotion: EmotionTypeUiModel,
     inputMode: RecordInputModeUiModel,
     memo: String,
-    selectedGroupStamp: StampAppearanceUiModel?,
-    isGroupSelectionLoading: Boolean,
+    isAnonymous: Boolean,
+    onAnonymousChange: (Boolean) -> Unit,
     onInputModeChange: (RecordInputModeUiModel) -> Unit,
     onMemoChange: (String) -> Unit,
-    onGroupClick: () -> Unit,
     onNext: () -> Unit,
     modifier: Modifier,
     voiceRecorder: VoiceRecorder? = null,
@@ -239,6 +229,7 @@ private fun RecordBottomSheetContent(
                             inputMode == RecordInputModeUiModel.Memo &&
                                 memoBounds.contains(down.position + sheetPosition)
                         if (!touchedMemo) {
+                            dismissNativeTextKeyboard()
                             focusManager.clearFocus()
                             keyboardController?.hide()
                         }
@@ -247,28 +238,34 @@ private fun RecordBottomSheetContent(
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Start,
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Image(
-                painter = painterResource(selectedEmotion.icon),
-                contentDescription = stringResource(selectedEmotion.label),
-                modifier = Modifier.size(44.dp),
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text =
-                    stringResource(
-                        Res.string.record_emotion_prompt,
-                        stringResource(selectedEmotion.recordPhrase),
-                        stringResource(selectedEmotion.recordPrompt),
-                    ),
+            Row(
                 modifier = Modifier.weight(1f),
-                lineHeight = 22.sp,
-                color = AppColors.TextPrimary,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-            )
+                horizontalArrangement = Arrangement.Start,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Image(
+                    painter = painterResource(selectedEmotion.icon),
+                    contentDescription = stringResource(selectedEmotion.label),
+                    modifier = Modifier.size(44.dp),
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text =
+                        stringResource(
+                            Res.string.record_emotion_prompt,
+                            stringResource(selectedEmotion.recordPhrase),
+                            stringResource(selectedEmotion.recordPrompt),
+                        ),
+                    modifier = Modifier.weight(1f),
+                    lineHeight = 22.sp,
+                    color = AppColors.TextPrimary,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(4.dp))
@@ -281,7 +278,7 @@ private fun RecordBottomSheetContent(
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(40.dp),
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             RecordInputModeToggle(
@@ -289,11 +286,34 @@ private fun RecordBottomSheetContent(
                 onInputModeChange = onInputModeChange,
                 modifier = Modifier.weight(1f),
             )
-            GroupSelectionButton(
-                stamp = selectedGroupStamp,
-                loading = isGroupSelectionLoading,
-                onClick = onGroupClick,
-            )
+            Row(
+                modifier =
+                    Modifier.toggleable(
+                        value = isAnonymous,
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        role = Role.Checkbox,
+                        onValueChange = onAnonymousChange,
+                    ),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(Res.string.record_anonymous),
+                    color = AppColors.TextPrimary,
+                    fontSize = 12.sp,
+                )
+                Checkbox(
+                    checked = isAnonymous,
+                    onCheckedChange = null,
+                    colors =
+                        CheckboxDefaults.colors(
+                            checkedColor = AppColors.RecordSheetAction,
+                            uncheckedColor = AppColors.TextSecondary,
+                            checkmarkColor = AppColors.Surface,
+                        ),
+                    modifier = Modifier.padding(start = 4.dp),
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(4.dp))
@@ -312,16 +332,15 @@ private fun RecordBottomSheetContent(
         RecordSheetActions(
             onNext = onNext,
             enabled =
-                !isGroupSelectionLoading &&
-                    when (inputMode) {
-                        RecordInputModeUiModel.Memo -> {
-                            memo.isNotBlank()
-                        }
+                when (inputMode) {
+                    RecordInputModeUiModel.Memo -> {
+                        memo.isNotBlank()
+                    }
 
-                        RecordInputModeUiModel.Recording -> {
-                            recordingReady
-                        }
-                    },
+                    RecordInputModeUiModel.Recording -> {
+                        recordingReady
+                    }
+                },
         )
     }
 }
@@ -410,53 +429,73 @@ private fun MemoPanel(
     modifier: Modifier,
 ) {
     Column {
-        BasicTextField(
-            value = memo,
-            onValueChange = { value ->
-                if (value.length <= 50) {
-                    onMemoChange(value)
-                }
-            },
-            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-            modifier =
-                modifier
-                    .fillMaxWidth()
-                    .height(105.dp)
-                    .clip(AppShapes.Input)
-                    .border(width = AppBorders.Standard, color = AppColors.Border, shape = AppShapes.Input)
-                    .padding(16.dp),
-            textStyle =
-                LocalTextStyle.current.copy(
-                    color = AppColors.TextPrimary,
-                    fontSize = 14.sp,
-                    lineHeight = 22.sp,
-                ),
-            decorationBox = { innerTextField ->
-                Box(modifier = Modifier.fillMaxSize()) {
-                    if (memo.isEmpty()) {
+        if (usesNativeTextEditor) {
+            Box(
+                modifier =
+                    modifier
+                        .fillMaxWidth()
+                        .height(105.dp)
+                        .clip(AppShapes.Input)
+                        .border(AppBorders.Standard, AppColors.Border, AppShapes.Input)
+                        .padding(16.dp),
+            ) {
+                NativeTextEditor(
+                    memo,
+                    onMemoChange,
+                    Modifier.fillMaxSize(),
+                    stringResource(Res.string.record_memo_prompt),
+                    normalizeText = { it.limitMemoValue() },
+                )
+            }
+        } else {
+            val editor = rememberTextEditor(memo, onMemoChange)
+            BasicTextField(
+                state = editor.state,
+                inputTransformation = { if (length > 50) revertAllChanges() },
+                keyboardOptions =
+                    KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                    ),
+                modifier =
+                    modifier
+                        .fillMaxWidth()
+                        .height(105.dp)
+                        .clip(AppShapes.Input)
+                        .border(width = AppBorders.Standard, color = AppColors.Border, shape = AppShapes.Input)
+                        .padding(16.dp),
+                textStyle =
+                    LocalTextStyle.current.copy(
+                        color = AppColors.TextPrimary,
+                        fontSize = 14.sp,
+                        lineHeight = 22.sp,
+                    ),
+                decorator = { innerTextField ->
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        if (memo.isEmpty()) {
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 20.dp),
+                            ) {
+                                Text(
+                                    text = stringResource(Res.string.record_memo_prompt),
+                                    color = AppColors.Border.copy(alpha = 0.45f),
+                                    fontSize = 16.sp,
+                                )
+                            }
+                        }
                         Box(
                             modifier =
                                 Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 20.dp),
+                                    .fillMaxWidth(),
                         ) {
-                            Text(
-                                text = stringResource(Res.string.record_memo_prompt),
-                                color = AppColors.Border.copy(alpha = 0.45f),
-                                fontSize = 16.sp,
-                            )
+                            innerTextField()
                         }
                     }
-                    Box(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth(),
-                    ) {
-                        innerTextField()
-                    }
-                }
-            },
-        )
+                },
+            )
+        }
         RecordInputSupportingText(
             text = "${memo.length}/50",
             textAlign = TextAlign.End,
@@ -543,11 +582,10 @@ private fun RecordBottomSheetContentPreview() {
         selectedEmotion = EmotionTypeUiModel.ANGRY,
         inputMode = RecordInputModeUiModel.Memo,
         memo = "",
-        selectedGroupStamp = null,
-        isGroupSelectionLoading = false,
+        isAnonymous = false,
+        onAnonymousChange = {},
         onInputModeChange = {},
         onMemoChange = {},
-        onGroupClick = {},
         onNext = {},
         modifier = Modifier,
     )
@@ -560,11 +598,10 @@ private fun RecordBottomSheetRecordingPreview() {
         selectedEmotion = EmotionTypeUiModel.EXHAUSTED,
         inputMode = RecordInputModeUiModel.Recording,
         memo = "",
-        selectedGroupStamp = null,
-        isGroupSelectionLoading = false,
+        isAnonymous = false,
+        onAnonymousChange = {},
         onInputModeChange = {},
         onMemoChange = {},
-        onGroupClick = {},
         onNext = {},
         modifier = Modifier,
     )

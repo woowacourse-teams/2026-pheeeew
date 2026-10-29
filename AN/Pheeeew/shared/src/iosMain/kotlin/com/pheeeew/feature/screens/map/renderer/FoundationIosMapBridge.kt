@@ -9,8 +9,11 @@ object FoundationIosMapBridge {
         this.factory = factory
     }
 
-    internal fun createMapView(eventSink: FoundationIosMapEventSink): UIView =
-        factory?.createMapView(eventSink) ?: UIView().also { eventSink.onRendererUnavailable() }
+    internal fun createMapView(
+        eventSink: FoundationIosMapEventSink,
+        styleUrlOverride: String?,
+    ): UIView =
+        factory?.createMapView(eventSink, styleUrlOverride) ?: UIView().also { eventSink.onRendererUnavailable() }
 
     internal fun updateMapView(
         mapView: UIView,

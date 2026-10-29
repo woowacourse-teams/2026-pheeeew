@@ -1,0 +1,3 @@
+# DB fixture를 완성한 뒤 필요한 테스트에서만 수동 실행기로 유지관리를 시작한다.
+pheeeew.map-cache.maintenance.automatic-start: false
+pheeeew.notification.dispatch.automatic-start: false

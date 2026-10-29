@@ -2,6 +2,7 @@ package com.pheeeew.emotion.presentation;
 
 import com.pheeeew.common.exception.ErrorResponse;
 import com.pheeeew.emotion.domain.EmotionState;
+import com.pheeeew.emotion.presentation.dto.EmotionDailyPressRankingResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionPressRankingResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionStatePressRankingResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -15,10 +16,11 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import java.time.LocalDate;
 import java.util.UUID;
 import org.springframework.http.MediaType;
 
-@Tag(name = "감정 프레스 랭킹", description = "기기별 개인 감정 프레스의 전국 주간 순위를 봅니다.")
+@Tag(name = "감정 프레스 랭킹", description = "기기별 개인 감정 프레스의 전국 순위를 주 단위와 하루 단위로 봅니다.")
 public interface EmotionPressRankingControllerApi {
 
     @Operation(
@@ -80,6 +82,75 @@ public interface EmotionPressRankingControllerApi {
             @Min(value = 0, message = "몇 주 전인지는 0 이상이어야 합니다.")
             @Max(value = 520, message = "몇 주 전인지는 520 이하여야 합니다.")
             int weeksAgo,
+
+            @Parameter(hidden = true) UUID devicePublicId
+    );
+
+    @Operation(
+            summary = "개인 전국 일별 프레스 랭킹",
+            description = """
+                    기기별 개인 감정 프레스를 **전국 기준**으로 하루 단위 합산해 순위를 돌려줍니다.
+                    주 단위는 `GET /api/v2/emotions/press-rankings` 를 씁니다.
+
+                    - **지역별 순위가 아닙니다.** 전국 하나뿐입니다.
+                    - **감정을 구분하지 않습니다.** 다섯 감정을 모두 합친 수가 `pressCount` 입니다.
+                      하루 단위에는 감정별 순위가 없습니다.
+                    - 점수는 `POST /api/v2/emotions/presses` 로 쌓은 개인 프레스입니다.
+                      그룹 화면 감정 버튼(`GET /api/v2/groups/press-rankings`)과는 **다른 원천**이라
+                      같은 날이라도 값이 다릅니다.
+                    - **로그인한 누구나 볼 수 있습니다.** 어느 그룹에도 속하지 않아도 됩니다.
+
+                    `date` 는 **필수**이고 `yyyy-MM-dd` 형식입니다. **KST 기준 하루**를 뜻합니다.
+                    서버가 해석한 구간을 `startAt`, `endAt` 으로 알려주고 `endAt` 은 포함하지 않습니다.
+
+                    - **범위 제한이 없습니다.** 미래 날짜나 아주 오래된 날짜도 오류가 아닙니다.
+                      그런 날짜는 `items` 가 빈 배열이고 `me` 가 `null` 입니다.
+                    - 형식이 올바르지 않거나 `date` 를 빼면 400 입니다.
+                    - **서버의 오늘을 기준으로 하지 않습니다.** 요청한 날짜만으로 구간이 정해집니다.
+
+                    `items` 는 **상위 100명**입니다. 이 수는 고정이고 요청으로 바꿀 수 없습니다.
+
+                    - 점수 내림차순입니다. 그날 한 번도 누르지 않은 기기는 담기지 않습니다.
+                    - 동점은 **공동 순위**입니다. 1, 2, 2, 4 로 매깁니다.
+                    - 그날 아무도 누르지 않았으면 빈 배열입니다.
+
+                    `items`와 `me`의 `representativeState`는 그날 가장 많이 누른 감정입니다.
+                    공동 최다는 `ANGRY → DISCOURAGED → EXHAUSTED → FRUSTRATED → IRRITATED` 순으로 선택합니다.
+                    전체 프레스 합계와 순위에는 영향을 주지 않습니다.
+
+                    `me` 는 **요청한 기기의 순위**입니다.
+
+                    - **상위 100명 안에 있어도 `me` 를 함께 내려줍니다.** `items` 에서 자신을 찾을 필요가 없습니다.
+                    - **100위 밖이어도 실제 순위를 내려줍니다.** 전국 전체를 매긴 뒤 자른 값이라
+                      `items` 와 같은 공동 순위 규칙입니다.
+                    - 그날 한 번도 누르지 않았으면 **`null`** 이고 `items` 에도 나오지 않습니다.
+                    - 기기 식별자는 응답에 담지 않습니다.
+
+                    **프레스 수와 닉네임은 전원 공개입니다.** 랭킹 제외나 익명 표시 선택이 없습니다.
+                    닉네임을 정하지 않은 기기는 `익명` 으로 보냅니다.
+
+                    **순위를 저장해 두지 않고 요청할 때마다 다시 셉니다.** 지난 날짜의 결과가 고정되기를 기대하면 안 됩니다.
+                    """,
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "date 가 없거나 yyyy-MM-dd 형식이 아님",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "COMMON-001", "message": "요청 값이 올바르지 않습니다."}
+                                    """))),
+            @ApiResponse(responseCode = "401", description = "인증할 수 없음",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "AUTH-001", "message": "인증이 필요합니다."}
+                                    """)))
+    })
+    EmotionDailyPressRankingResponse findDailyPressRanking(
+            @Parameter(description = "집계할 날짜. KST 기준입니다.", example = "2026-10-21")
+            LocalDate date,
 
             @Parameter(hidden = true) UUID devicePublicId
     );

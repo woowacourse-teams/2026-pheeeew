@@ -28,4 +28,10 @@ object AppColors {
     val RecordSheetRecording = Color(0xFFE26962)
 
     val Error = Color(0xFFE26962)
+
+    val LightDivider = Color(0xFFE8EAEA)
+
+    val CollectionCardBackground = Color(0xFFFBF7EC)
+
+    val CollectionCardDivider = Color(0xFFD4CDBE)
 }

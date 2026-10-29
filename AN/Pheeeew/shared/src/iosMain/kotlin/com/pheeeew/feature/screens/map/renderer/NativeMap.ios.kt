@@ -10,7 +10,6 @@ import androidx.compose.ui.viewinterop.UIKitInteropInteractionMode
 import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
 import com.pheeeew.domain.model.LocationState
-import com.pheeeew.domain.model.emotion.EmotionMapBounds
 import com.pheeeew.domain.model.emotion.EmotionMapViewport
 import com.pheeeew.feature.screens.map.HighlightedPinPosition
 import com.pheeeew.feature.screens.map.MapCameraActionUiModel
@@ -25,12 +24,14 @@ private const val FALLBACK_LONGITUDE = 127.147538132656
 internal actual fun NativeMap(
     state: MapUiModel,
     isVisible: Boolean,
+    isActive: Boolean,
     isMounted: Boolean,
     savedCamera: MapCameraSnapshotUiModel?,
     onCameraSaved: (MapCameraSnapshotUiModel) -> Unit,
     onMemoryPressure: () -> Unit,
     onMapError: (MapErrorUiModel) -> Unit,
     onMapRecovered: () -> Unit,
+    onFirstFrameReady: () -> Unit,
     onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
     onViewportChanged: (EmotionMapViewport) -> Unit,
     onCameraMovingChanged: (Boolean) -> Unit,
@@ -39,10 +40,12 @@ internal actual fun NativeMap(
     onMapBackgroundClick: () -> Unit,
     onHighlightedPinPositionChanged: (HighlightedPinPosition?) -> Unit,
     onContentPresented: (String, List<String>) -> Unit,
+    styleUrlOverride: String?,
     modifier: Modifier,
 ) {
+    val currentIsVisible by rememberUpdatedState(isVisible)
     val currentOnCameraMovingChanged by rememberUpdatedState(onCameraMovingChanged)
-    DisposableEffect(isVisible, isMounted) {
+    DisposableEffect(isVisible, isActive, isMounted) {
         if (!isVisible || !isMounted) currentOnCameraMovingChanged(false)
         onDispose { currentOnCameraMovingChanged(false) }
     }
@@ -53,6 +56,7 @@ internal actual fun NativeMap(
     val currentOnMapBackgroundClick by rememberUpdatedState(onMapBackgroundClick)
     val currentOnMapError by rememberUpdatedState(onMapError)
     val currentOnMapRecovered by rememberUpdatedState(onMapRecovered)
+    val currentOnFirstFrameReady by rememberUpdatedState(onFirstFrameReady)
     val currentOnCameraSaved by rememberUpdatedState(onCameraSaved)
     val currentOnMemoryPressure by rememberUpdatedState(onMemoryPressure)
     val currentOnRecordViewportChanged by rememberUpdatedState(onRecordViewportChanged)
@@ -84,7 +88,9 @@ internal actual fun NativeMap(
     val eventSink =
         remember {
             object : FoundationIosMapEventSink {
-                override fun onCameraMovingChanged(isMoving: Boolean) = currentOnCameraMovingChanged(isMoving)
+                override fun onCameraMovingChanged(isMoving: Boolean) {
+                    if (currentIsVisible) currentOnCameraMovingChanged(isMoving)
+                }
 
                 override fun onCameraSaved(camera: MapCameraSnapshotUiModel) = currentOnCameraSaved(camera)
 
@@ -109,6 +115,8 @@ internal actual fun NativeMap(
 
                 override fun onMapRecovered() = currentOnMapRecovered()
 
+                override fun onFirstFrameReady() = currentOnFirstFrameReady()
+
                 override fun onMemoryPressure() = currentOnMemoryPressure()
 
                 override fun onRecordViewportChanged(
@@ -128,7 +136,7 @@ internal actual fun NativeMap(
     if (!isMounted) return
 
     UIKitView(
-        factory = { FoundationIosMapBridge.createMapView(eventSink) },
+        factory = { FoundationIosMapBridge.createMapView(eventSink, styleUrlOverride) },
         modifier = modifier,
         update = { mapView ->
             FoundationIosMapBridge.updateMapView(
@@ -136,6 +144,7 @@ internal actual fun NativeMap(
                 state =
                     state.toFoundationIosRenderUiModel(
                         isVisible = isVisible,
+                        isActive = isActive,
                         savedCamera = savedCamera,
                         emotionPinCoordinates = emotionPinCoordinates,
                         regionClusterCoordinates = regionClusterCoordinates,
@@ -146,7 +155,7 @@ internal actual fun NativeMap(
         onRelease = FoundationIosMapBridge::releaseMapView,
         properties =
             UIKitInteropProperties(
-                interactionMode = UIKitInteropInteractionMode.NonCooperative,
+                interactionMode = if (isVisible) UIKitInteropInteractionMode.NonCooperative else null,
                 isNativeAccessibilityEnabled = false,
             ),
     )
@@ -154,6 +163,7 @@ internal actual fun NativeMap(
 
 private fun MapUiModel.toFoundationIosRenderUiModel(
     isVisible: Boolean,
+    isActive: Boolean,
     savedCamera: MapCameraSnapshotUiModel?,
     emotionPinCoordinates: List<FoundationIosEmotionPinCoordinateUiModel>,
     regionClusterCoordinates: List<FoundationIosRegionClusterCoordinateUiModel>,
@@ -164,6 +174,7 @@ private fun MapUiModel.toFoundationIosRenderUiModel(
     val longitude = currentLocation?.longitude ?: FALLBACK_LONGITUDE
     return FoundationIosMapRenderUiModel(
         isVisible = isVisible,
+        isActive = isActive,
         restoredCamera = savedCamera,
         monitoringLoadId = emotionContentLoad?.loadId,
         currentLocation =

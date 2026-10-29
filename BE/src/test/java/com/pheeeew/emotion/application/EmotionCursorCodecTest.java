@@ -13,8 +13,11 @@ import com.pheeeew.emotion.exception.EmotionException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.Base64;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.LongStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
@@ -26,6 +29,8 @@ class EmotionCursorCodecTest {
 
     private static final Instant SNAPSHOT = Instant.parse("2026-10-08T01:00:00.123456Z");
     private static final Instant LAST_CREATED_AT = Instant.parse("2026-10-07T01:00:00.654321Z");
+    private static final UUID GROUP_A = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    private static final UUID GROUP_B = UUID.fromString("22222222-2222-2222-2222-222222222222");
 
     @Test
     void 커서를_인코딩하고_디코딩하면_검색_조건을_복원한다() {
@@ -35,8 +40,7 @@ class EmotionCursorCodecTest {
                 Instant.parse("2026-09-03T03:00:00.123456Z"),
                 Instant.parse("2026-09-01T12:00:00.654321Z"),
                 42L,
-                null
-        );
+                EmotionSearchFilter.from(null));
 
         // when
         String encoded = EmotionCursorCodec.encode(cursor);
@@ -49,6 +53,7 @@ class EmotionCursorCodecTest {
                         + "|2026-09-03T03:00:00.123456Z|2026-09-01T12:00:00.654321Z|42"
         );
         assertThat(decoded).isEqualTo(cursor);
+        assertThat(decoded.groupId()).isNull();
         assertThat(EmotionCursorCodec.decodeFilteredWithinBounds(encoded)).isEqualTo(cursor);
     }
 
@@ -56,8 +61,9 @@ class EmotionCursorCodecTest {
     void 그룹_필터는_인코딩과_다음_페이지에서도_유지된다() {
         // given
         UUID groupId = UUID.randomUUID();
+        EmotionSearchFilter filter = EmotionSearchFilter.from(List.of(groupId));
         var initial = EmotionCursor.initialWithinBounds(EmotionSearchBounds.of(126, 37, 128, 38),
-                Instant.parse("2026-09-25T00:00:00Z"), groupId);
+                Instant.parse("2026-09-25T00:00:00Z"), filter);
 
         // when
         var next = EmotionCursorCodec.decodeWithinBounds(EmotionCursorCodec.encode(initial))
@@ -73,11 +79,37 @@ class EmotionCursorCodecTest {
 
     @Test
     void 기존_커서의_생성_경로는_좌표를_생략할_수_없다() {
-        // given / when / then
-        assertThatThrownBy(() -> EmotionCursor.initialWithinBounds(null, SNAPSHOT, null))
+        // given
+        EmotionSearchFilter filter = EmotionSearchFilter.from(null);
+
+        // when / then
+        assertThatThrownBy(() -> EmotionCursor.initialWithinBounds(null, SNAPSHOT, filter))
                 .isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> EmotionCursor.ofWithinBounds(null, SNAPSHOT, LAST_CREATED_AT, 42L, null))
+        assertThatThrownBy(() -> EmotionCursor.ofWithinBounds(null, SNAPSHOT, LAST_CREATED_AT, 42L, filter))
                 .isInstanceOf(NullPointerException.class);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void 커서를_생성하거나_복원할_때_검색_필터를_생략할_수_없다(boolean withinBounds) {
+        // given
+        EmotionSearchBounds bounds = EmotionSearchBounds.of(126, 37, 128, 38);
+
+        // when / then
+        assertThatThrownBy(() -> {
+            if (withinBounds) {
+                EmotionCursor.initialWithinBounds(bounds, SNAPSHOT, null);
+            } else {
+                EmotionCursor.initialWithoutBounds(SNAPSHOT, null);
+            }
+        }).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> {
+            if (withinBounds) {
+                EmotionCursor.ofWithinBounds(bounds, SNAPSHOT, LAST_CREATED_AT, 42L, null);
+            } else {
+                EmotionCursor.ofWithoutBounds(SNAPSHOT, LAST_CREATED_AT, 42L, null);
+            }
+        }).isInstanceOf(NullPointerException.class);
     }
 
     @ParameterizedTest
@@ -113,7 +145,8 @@ class EmotionCursorCodecTest {
     void 전체와_그룹_범위는_왕복_변환과_다음_커서에서도_유지된다(String group) {
         // given
         UUID groupId = group == null ? null : UUID.fromString(group);
-        EmotionCursor initial = EmotionCursor.initialWithoutBounds(SNAPSHOT, groupId);
+        EmotionSearchFilter filter = EmotionSearchFilter.from(groupId == null ? null : List.of(groupId));
+        EmotionCursor initial = EmotionCursor.initialWithoutBounds(SNAPSHOT, filter);
 
         // when
         EmotionCursor restored = EmotionCursorCodec.decodeFilteredWithoutBounds(EmotionCursorCodec.encode(initial));
@@ -123,9 +156,10 @@ class EmotionCursorCodecTest {
         // then
         assertThat(restored).isEqualTo(initial);
         assertThat(restored.bounds()).isNull();
+        assertThat(restored.groupId()).isEqualTo(groupId);
         assertThat(initial.lastItemCreatedAt()).isEqualTo(SNAPSHOT);
         assertThat(initial.lastId()).isEqualTo(Long.MAX_VALUE);
-        assertThat(next).isEqualTo(EmotionCursor.ofWithoutBounds(SNAPSHOT, LAST_CREATED_AT, 42L, groupId));
+        assertThat(next).isEqualTo(EmotionCursor.ofWithoutBounds(SNAPSHOT, LAST_CREATED_AT, 42L, filter));
         assertThat(EmotionCursorCodec.decodeFilteredWithoutBounds(encoded)).isEqualTo(next);
         assertThat(new String(Base64.getUrlDecoder().decode(encoded), StandardCharsets.UTF_8))
                 .isEqualTo("3|" + SNAPSHOT + "|" + LAST_CREATED_AT + "|42|"
@@ -138,10 +172,11 @@ class EmotionCursorCodecTest {
     void 좌표가_있는_커서와_없는_커서는_양방향으로_혼용할_수_없다(String group) {
         // given
         UUID groupId = group == null ? null : UUID.fromString(group);
+        EmotionSearchFilter filter = EmotionSearchFilter.from(groupId == null ? null : List.of(groupId));
         EmotionCursor legacy = EmotionCursor.initialWithinBounds(EmotionSearchBounds.of(126, 37, 128, 38),
-                SNAPSHOT, groupId);
+                SNAPSHOT, filter);
         String legacyEncoded = EmotionCursorCodec.encode(legacy);
-        String withoutBoundsEncoded = EmotionCursorCodec.encode(EmotionCursor.initialWithoutBounds(SNAPSHOT, groupId));
+        String withoutBoundsEncoded = EmotionCursorCodec.encode(EmotionCursor.initialWithoutBounds(SNAPSHOT, filter));
 
         // when / then
         잘못된_좌표_없는_커서임을_검증한다(legacyEncoded);
@@ -162,10 +197,15 @@ class EmotionCursorCodecTest {
         잘못된_좌표_없는_커서임을_검증한다(encoded);
     }
 
-    @Test
-    void 길이_제한을_초과한_커서를_거부한다() {
+    @ParameterizedTest
+    @ValueSource(strings = {"a", "%"})
+    void 긴_문자열도_잘못된_인코딩이나_필드_형식이면_거부한다(String value) {
         // given / when / then
-        잘못된_좌표_없는_커서임을_검증한다("a".repeat(2_049));
+        for (boolean withinBounds : new boolean[]{true, false}) {
+            assertThatThrownBy(() -> decodeFiltered(withinBounds, value.repeat(4_096)))
+                    .isInstanceOfSatisfying(EmotionException.class,
+                            error -> assertThat(error.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_INVALID_CURSOR));
+        }
     }
 
     @ParameterizedTest
@@ -197,8 +237,8 @@ class EmotionCursorCodecTest {
         // given
         UUID groupId = UUID.randomUUID();
         EmotionSearchFilter filter = EmotionSearchFilter.of(LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 8),
-                EmotionContentFilter.MEMO, EmotionSearchScope.GROUP, groupId);
-        EmotionCursor initial = EmotionCursor.initialWithoutBounds(SNAPSHOT, groupId).withFilter(filter);
+                EmotionContentFilter.MEMO, EmotionSearchScope.GROUP, groupId == null ? null : List.of(groupId));
+        EmotionCursor initial = EmotionCursor.initialWithoutBounds(SNAPSHOT, filter);
 
         // when
         String encoded = EmotionCursorCodec.encode(initial);
@@ -222,8 +262,8 @@ class EmotionCursorCodecTest {
     void 기간을_생략한_녹음_필터도_전체_그룹_본인_범위를_유지한다(EmotionSearchScope scope) {
         // given
         UUID groupId = scope == EmotionSearchScope.GROUP ? UUID.randomUUID() : null;
-        EmotionSearchFilter filter = EmotionSearchFilter.of(null, null, EmotionContentFilter.AUDIO, scope, groupId);
-        EmotionCursor cursor = EmotionCursor.initialWithoutBounds(SNAPSHOT, groupId).withFilter(filter);
+        EmotionSearchFilter filter = EmotionSearchFilter.of(null, null, EmotionContentFilter.AUDIO, scope, groupId == null ? null : List.of(groupId));
+        EmotionCursor cursor = EmotionCursor.initialWithoutBounds(SNAPSHOT, filter);
 
         // when / then
         assertThat(EmotionCursorCodec.decodeFilteredWithoutBounds(EmotionCursorCodec.encode(cursor))).isEqualTo(cursor);
@@ -236,20 +276,20 @@ class EmotionCursorCodecTest {
         LocalDate start = LocalDate.of(2026, 10, 1);
         LocalDate end = LocalDate.of(2026, 10, 8);
         UUID groupId = UUID.randomUUID();
-        EmotionCursor cursor = EmotionCursor.initialWithoutBounds(SNAPSHOT, groupId).withFilter(
-                EmotionSearchFilter.of(start, end, EmotionContentFilter.MEMO, EmotionSearchScope.GROUP, groupId));
+        EmotionSearchFilter filter = EmotionSearchFilter.of(start, end, EmotionContentFilter.MEMO, EmotionSearchScope.GROUP, List.of(groupId));
+        EmotionCursor cursor = EmotionCursor.initialWithoutBounds(SNAPSHOT, filter);
 
         // when / then
         if (change.equals("omit")) {
             cursor.validateRequestedFilter(null, null, null, null, null);
         } else if (change.equals("same")) {
-            cursor.validateRequestedFilter(start, end, EmotionContentFilter.MEMO, EmotionSearchScope.GROUP, groupId);
+            cursor.validateRequestedFilter(start, end, EmotionContentFilter.MEMO, EmotionSearchScope.GROUP, groupId == null ? null : List.of(groupId));
         } else {
             assertThatThrownBy(() -> cursor.validateRequestedFilter(change.equals("start") ? start.plusDays(1) : start,
                     change.equals("partial") ? null : change.equals("end") ? end.plusDays(1) : end,
                     change.equals("content") ? EmotionContentFilter.ALL : EmotionContentFilter.MEMO,
                     change.equals("scope") ? EmotionSearchScope.ALL : EmotionSearchScope.GROUP,
-                    change.equals("group") ? UUID.randomUUID() : groupId))
+                    List.of(change.equals("group") ? UUID.randomUUID() : groupId)))
                     .isInstanceOfSatisfying(EmotionException.class,
                             error -> assertThat(error.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_INVALID_CURSOR));
         }
@@ -290,8 +330,8 @@ class EmotionCursorCodecTest {
     @Test
     void 지도_필터_커서는_영역과_조건을_복원하고_다른_조회에_사용할_수_없다() {
         // given
-        EmotionCursor cursor = EmotionCursor.initialWithinBounds(EmotionSearchBounds.of(126, 37, 128, 38), SNAPSHOT, null)
-                .withFilter(EmotionSearchFilter.of(null, null, EmotionContentFilter.MEMO, EmotionSearchScope.ALL, null));
+        EmotionCursor cursor = EmotionCursor.initialWithinBounds(EmotionSearchBounds.of(126, 37, 128, 38), SNAPSHOT,
+                EmotionSearchFilter.of(null, null, EmotionContentFilter.MEMO, EmotionSearchScope.ALL, null));
 
         // when
         String encoded = EmotionCursorCodec.encode(cursor.next(LAST_CREATED_AT, 42L));
@@ -316,6 +356,270 @@ class EmotionCursorCodecTest {
         assertThatThrownBy(() -> EmotionCursorCodec.decodeFilteredWithinBounds(encoded))
                 .isInstanceOfSatisfying(EmotionException.class,
                         error -> assertThat(error.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_INVALID_CURSOR));
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void 복수_그룹_커서는_영역과_필터를_다음_페이지까지_보존하고_다른_경로와_혼용하지_않는다(boolean withinBounds) {
+        // given
+        EmotionSearchBounds bounds = EmotionSearchBounds.of(126, 37, 128, 38);
+        EmotionSearchFilter filter = EmotionSearchFilter.of(LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 8),
+                EmotionContentFilter.MEMO, null, List.of(GROUP_B, GROUP_A, GROUP_B));
+        EmotionCursor initial = withinBounds ? EmotionCursor.initialWithinBounds(bounds, SNAPSHOT, filter)
+                : EmotionCursor.initialWithoutBounds(SNAPSHOT, filter);
+        EmotionCursor next = initial.next(LAST_CREATED_AT, 42L);
+
+        // when
+        String encoded = EmotionCursorCodec.encode(next);
+        EmotionCursor restored = decodeFiltered(withinBounds, encoded);
+        String payload = new String(Base64.getUrlDecoder().decode(encoded), StandardCharsets.UTF_8);
+
+        // then
+        assertThat(restored).isEqualTo(next);
+        assertThat(restored.groupIds()).containsExactly(GROUP_A, GROUP_B);
+        assertThat(EmotionCursorCodec.encode(restored.next(LAST_CREATED_AT, 41L)))
+                .isEqualTo(EmotionCursorCodec.encode(next.next(LAST_CREATED_AT, 41L)));
+        assertThat(payload).startsWith(withinBounds ? "6|" : "7|");
+        잘못된_커서임을_검증한다(encoded);
+        assertThatThrownBy(() -> decodeFiltered(!withinBounds, encoded)).isInstanceOf(EmotionException.class);
+        String legacy = (withinBounds ? "4" : "5") + payload.substring(1);
+        assertThatThrownBy(() -> decodeFiltered(withinBounds, encodePayload(legacy))).isInstanceOf(EmotionException.class);
+        assertThatThrownBy(restored::groupId).isInstanceOfSatisfying(EmotionException.class,
+                error -> assertThat(error.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_INVALID_CURSOR));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"omit", "same", "reversed", "duplicate", "missing", "other", "empty", "null-item"})
+    void 요청한_그룹_집합을_비교하며_생략은_허용하고_빈_목록과_다른_집합은_거부한다(String request) {
+        // given
+        EmotionCursor cursor = EmotionCursor.initialWithoutBounds(SNAPSHOT,
+                EmotionSearchFilter.from(List.of(GROUP_A, GROUP_B)));
+        List<UUID> requested = switch (request) {
+            case "omit" -> null;
+            case "same" -> List.of(GROUP_A, GROUP_B);
+            case "reversed" -> List.of(GROUP_B, GROUP_A);
+            case "duplicate" -> List.of(GROUP_A, GROUP_B, GROUP_A);
+            case "missing" -> List.of(GROUP_A);
+            case "other" -> List.of(GROUP_A, UUID.randomUUID());
+            case "empty" -> List.of();
+            default -> Arrays.asList(GROUP_A, null);
+        };
+
+        // when / then
+        if (List.of("missing", "other", "empty", "null-item").contains(request)) {
+            assertThatThrownBy(() -> cursor.validateRequestedGroups(requested)).isInstanceOfSatisfying(EmotionException.class,
+                    error -> assertThat(error.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_INVALID_CURSOR));
+        } else {
+            cursor.validateRequestedGroups(requested);
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"empty", "single", "duplicate", "leading", "trailing", "middle", "invalid", "extra"})
+    void 복수_그룹_형식의_빈_원소와_잘못된_ID_및_단일_집합을_거부한다(String invalid) {
+        // given
+        String groups = switch (invalid) {
+            case "empty" -> "";
+            case "single" -> GROUP_A.toString();
+            case "duplicate" -> GROUP_A + "," + GROUP_A;
+            case "leading" -> "," + GROUP_A + "," + GROUP_B;
+            case "trailing" -> GROUP_A + "," + GROUP_B + ",";
+            case "middle" -> GROUP_A + ",," + GROUP_B;
+            case "invalid" -> GROUP_A + ",bad";
+            default -> GROUP_A + "," + GROUP_B + "|extra";
+        };
+        String fields = "|" + SNAPSHOT + "|" + LAST_CREATED_AT + "|42|" + groups + "|||MEMO|GROUP";
+
+        // when / then
+        for (boolean withinBounds : new boolean[]{true, false}) {
+            String payload = (withinBounds ? "6" : "7") + fields + (withinBounds ? "|126|37|128|38" : "");
+            assertThatThrownBy(() -> decodeFiltered(withinBounds, encodePayload(payload)))
+                    .isInstanceOfSatisfying(EmotionException.class,
+                            error -> assertThat(error.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_INVALID_CURSOR));
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "4|2026-10-08T00:00:00Z|2026-10-07T00:00:00Z|42||||MEMO|ALL|126.0|37.0|128.0|38.0",
+            "5|2026-10-08T00:00:00Z|2026-10-07T00:00:00Z|42||||MEMO|ALL"
+    })
+    void 기존_필터_커서의_고정_문자열은_그대로_복원하고_다시_발급한다(String payload) {
+        // given
+        String encoded = encodePayload(payload);
+
+        // when / then
+        assertThat(EmotionCursorCodec.encode(decodeFiltered(payload.startsWith("4|"), encoded))).isEqualTo(encoded);
+    }
+
+    @Test
+    void 기존_길이_경계인_2048자와_그_이상의_커서를_모두_발급하고_복원한다() {
+        // given
+        List<UUID> groups = LongStream.range(0, 39).mapToObj(id -> new UUID(0, id)).toList();
+        Instant last = Instant.parse("2026-10-07T00:00:00Z");
+        EmotionCursor cursor = EmotionCursor.initialWithoutBounds(Instant.parse("2026-10-08T00:00:00Z"),
+                EmotionSearchFilter.of(LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 8),
+                        EmotionContentFilter.MEMO, null, groups)).next(last, 1_000_000_000_000_000L);
+
+        // when
+        String encoded = EmotionCursorCodec.encode(cursor);
+
+        // then
+        assertThat(encoded).hasSize(2_048);
+        assertThat(EmotionCursorCodec.decodeFilteredWithoutBounds(encoded)).isEqualTo(cursor);
+        EmotionCursor next = cursor.next(last, 10_000_000_000_000_000L);
+        String nextEncoded = EmotionCursorCodec.encode(next);
+        assertThat(nextEncoded).hasSize(2_050);
+        assertThat(EmotionCursorCodec.decodeFilteredWithoutBounds(nextEncoded)).isEqualTo(next);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void 많은_그룹을_담은_긴_커서도_기존_형식으로_조건을_모두_복원한다(boolean withinBounds) {
+        // given
+        List<UUID> groups = LongStream.range(0, 1_000).mapToObj(id -> new UUID(0, id)).toList();
+        EmotionSearchFilter filter = EmotionSearchFilter.of(LocalDate.of(2026, 10, 1),
+                LocalDate.of(2026, 10, 8), EmotionContentFilter.MEMO, null, groups);
+        EmotionCursor cursor = withinBounds
+                ? EmotionCursor.ofWithinBounds(EmotionSearchBounds.of(126, 37, 128, 38), SNAPSHOT, LAST_CREATED_AT, 42, filter)
+                : EmotionCursor.ofWithoutBounds(SNAPSHOT, LAST_CREATED_AT, 42, filter);
+
+        // when
+        String encoded = EmotionCursorCodec.encode(cursor);
+
+        // then
+        assertThat(encoded.length()).isGreaterThan(2_048);
+        assertThat(new String(Base64.getUrlDecoder().decode(encoded), StandardCharsets.UTF_8))
+                .startsWith(withinBounds ? "6|" : "7|");
+        assertThat(decodeFiltered(withinBounds, encoded)).isEqualTo(cursor);
+        String malformed = encodePayload(new String(Base64.getUrlDecoder().decode(encoded), StandardCharsets.UTF_8)
+                .replace(groups.getLast().toString(), "invalid"));
+        assertThatThrownBy(() -> decodeFiltered(withinBounds, malformed))
+                .isInstanceOfSatisfying(EmotionException.class,
+                        error -> assertThat(error.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_INVALID_CURSOR));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = EmotionSearchScope.class, names = {"ALL", "MY"})
+    void v4_커서는_조회_종류와_필터와_페이지_위치를_유지한다(EmotionSearchScope scope) {
+        // given
+        var filter = EmotionSearchFilter.of(LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 8),
+                EmotionContentFilter.MEMO, scope, null);
+        var bounds = EmotionSearchBounds.of(170, 37, -170, 39);
+        var map = EmotionCursor.ofWithinBounds(bounds, SNAPSHOT, LAST_CREATED_AT, 42L, filter);
+        var list = EmotionCursor.ofWithoutBounds(SNAPSHOT, LAST_CREATED_AT, 42L, filter);
+
+        // when / then
+        assertThat(EmotionCursorCodec.decodeV4WithinBounds(EmotionCursorCodec.encodeV4(map))).isEqualTo(map);
+        assertThat(EmotionCursorCodec.decodeV4WithoutBounds(EmotionCursorCodec.encodeV4(list))).isEqualTo(list);
+        var next = list.next(LAST_CREATED_AT.minusSeconds(1), 41L);
+        assertThat(EmotionCursorCodec.decodeV4WithoutBounds(EmotionCursorCodec.encodeV4(next))).isEqualTo(next);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void v4는_기존_모든_형식의_커서를_거부한다(boolean withinBounds) {
+        // given: 기본 전체·단일 그룹·필터·다중 그룹으로 기존 1~7 형식을 모두 만든다.
+        var filters = List.of(EmotionSearchFilter.from(null), EmotionSearchFilter.from(List.of(GROUP_A)),
+                EmotionSearchFilter.of(null, null, EmotionContentFilter.MEMO, EmotionSearchScope.ALL, null),
+                EmotionSearchFilter.of(null, null, null, EmotionSearchScope.MY, null),
+                EmotionSearchFilter.from(List.of(GROUP_A, GROUP_B)));
+        for (var filter : filters) {
+            var cursor = withinBounds
+                    ? EmotionCursor.ofWithinBounds(EmotionSearchBounds.of(126, 37, 128, 38), SNAPSHOT, LAST_CREATED_AT, 42L, filter)
+                    : EmotionCursor.ofWithoutBounds(SNAPSHOT, LAST_CREATED_AT, 42L, filter);
+            String legacy = EmotionCursorCodec.encode(cursor);
+
+            // when / then: 기존 API에서는 계속 유효하지만 v4에서는 두 조회 모두 거부한다.
+            assertThat(decodeFiltered(withinBounds, legacy)).isEqualTo(cursor);
+            v4_잘못된_커서를_검증한다(legacy);
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void v4_커서는_다른_조회_종류나_기존_API와_혼용할_수_없다(boolean withinBounds) {
+        // given
+        var filter = EmotionSearchFilter.from(null);
+        var cursor = withinBounds
+                ? EmotionCursor.initialWithinBounds(EmotionSearchBounds.of(126, 37, 128, 38), SNAPSHOT, filter)
+                : EmotionCursor.initialWithoutBounds(SNAPSHOT, filter);
+        String encoded = EmotionCursorCodec.encodeV4(cursor);
+
+        // when / then
+        assertThat(withinBounds ? EmotionCursorCodec.decodeV4WithinBounds(encoded)
+                : EmotionCursorCodec.decodeV4WithoutBounds(encoded)).isEqualTo(cursor);
+        assertThatThrownBy(() -> {
+            if (withinBounds) {
+                EmotionCursorCodec.decodeV4WithoutBounds(encoded);
+            } else {
+                EmotionCursorCodec.decodeV4WithinBounds(encoded);
+            }
+        }).isInstanceOfSatisfying(EmotionException.class,
+                error -> assertThat(error.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_INVALID_CURSOR));
+        잘못된_커서임을_검증한다(encoded);
+        잘못된_좌표_없는_커서임을_검증한다(encoded);
+        assertThatThrownBy(() -> EmotionCursorCodec.decodeFilteredWithinBounds(encoded))
+                .isInstanceOfSatisfying(EmotionException.class,
+                        error -> assertThat(error.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_INVALID_CURSOR));
+    }
+
+    @Test
+    void v4는_그룹_조건이_있는_커서를_발급하지_않는다() {
+        // given / when / then
+        for (var groups : List.of(List.of(GROUP_A), List.of(GROUP_A, GROUP_B))) {
+            var filter = EmotionSearchFilter.from(groups);
+            for (var cursor : List.of(EmotionCursor.initialWithoutBounds(SNAPSHOT, filter),
+                    EmotionCursor.initialWithinBounds(EmotionSearchBounds.of(126, 37, 128, 38), SNAPSHOT, filter))) {
+                assertThatThrownBy(() -> EmotionCursorCodec.encodeV4(cursor))
+                        .isInstanceOfSatisfying(EmotionException.class,
+                                error -> assertThat(error.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_INVALID_CURSOR));
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" ", "%%%", "not-a-cursor"})
+    void v4도_빈_커서와_잘못된_인코딩을_거부한다(String encoded) {
+        // when / then
+        v4_잘못된_커서를_검증한다(encoded);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "10|2026-10-08T00:00:00Z|2026-10-07T00:00:00Z|42||||ALL|ALL",
+            "9|2026-10-08T00:00:00Z|2026-10-07T00:00:00Z|42||||ALL",
+            "9|2026-10-08T00:00:00Z|2026-10-07T00:00:00Z|42|11111111-1111-1111-1111-111111111111|||ALL|ALL",
+            "9|2026-10-08T00:00:00Z|2026-10-07T00:00:00Z|42||||ALL|GROUP",
+            "9|invalid|2026-10-07T00:00:00Z|42||||ALL|ALL",
+            "9|2026-10-08T00:00:00Z|2026-10-09T00:00:00Z|42||||ALL|ALL",
+            "9|2026-10-08T00:00:00Z|2026-10-07T00:00:00Z|0||||ALL|ALL",
+            "9|2026-10-08T00:00:00Z|2026-10-07T00:00:00Z|42||2026-10-01||ALL|ALL",
+            "9|2026-10-08T00:00:00Z|2026-10-07T00:00:00Z|42||||NONE|ALL",
+            "8|2026-10-08T00:00:00Z|2026-10-07T00:00:00Z|42||||ALL|ALL|126|NaN|128|38"
+    })
+    void v4_형식이어도_그룹이나_잘못된_검색_조건이_있으면_거부한다(String payload) {
+        // when / then
+        v4_잘못된_커서를_검증한다(encodePayload(payload));
+    }
+
+    private void v4_잘못된_커서를_검증한다(String encoded) {
+        assertThatThrownBy(() -> EmotionCursorCodec.decodeV4WithinBounds(encoded))
+                .isInstanceOfSatisfying(EmotionException.class,
+                        error -> assertThat(error.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_INVALID_CURSOR));
+        assertThatThrownBy(() -> EmotionCursorCodec.decodeV4WithoutBounds(encoded))
+                .isInstanceOfSatisfying(EmotionException.class,
+                        error -> assertThat(error.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_INVALID_CURSOR));
+    }
+
+    private EmotionCursor decodeFiltered(boolean withinBounds, String encoded) {
+        return withinBounds ? EmotionCursorCodec.decodeFilteredWithinBounds(encoded)
+                : EmotionCursorCodec.decodeFilteredWithoutBounds(encoded);
+    }
+
+    private String encodePayload(String payload) {
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(payload.getBytes(StandardCharsets.UTF_8));
     }
 
     private void 잘못된_좌표_없는_커서임을_검증한다(String encoded) {

@@ -59,7 +59,9 @@ internal fun tapBezier(
     return curve((low + high) / 2, y1, y2)
 }
 
-internal class TapButtonMotion {
+internal class TapButtonMotion(
+    private val buzzer: Boolean = false,
+) {
     private var from = TapTransform()
     private var target = TapTransform()
     private var start = 0.0
@@ -77,7 +79,7 @@ internal class TapButtonMotion {
             if (pressingCurve) {
                 tapBezier(t, .2, .7, .3, 1.0)
             } else {
-                tapBezier(t, .34, 1.35, .64, 1.0)
+                tapBezier(t, .34, if (buzzer) 1.15 else 1.35, .64, 1.0)
             }
         return from.between(target, eased)
     }
@@ -110,7 +112,9 @@ internal class TapButtonMotion {
         pressedAt = now
         if (pressed) return
         pressed = true
-        move(now, TapTransform(y = 4.0, scale = .985), 70.0, true, reduced)
+        val target =
+            if (buzzer && !reduced) TapTransform(y = 3.0) else TapTransform(y = 4.0, scale = .985)
+        move(now, target, if (buzzer) 55.0 else 70.0, true, reduced)
     }
 
     fun release(
@@ -123,8 +127,9 @@ internal class TapButtonMotion {
             if (reduced) move(now, TapTransform(), 0.0, false, true)
             return
         }
-        if (!reduced && now - pressedAt < 60) {
-            releaseAt = pressedAt + 60
+        val minimumPressMillis = if (buzzer) 70 else 60
+        if (!reduced && now - pressedAt < minimumPressMillis) {
+            releaseAt = pressedAt + minimumPressMillis
         } else {
             releaseNow(now, reduced)
         }
@@ -136,7 +141,7 @@ internal class TapButtonMotion {
     ) {
         releaseAt = null
         pressed = false
-        move(now, TapTransform(), 230.0, false, reduced)
+        move(now, TapTransform(), if (buzzer) 180.0 else 230.0, false, reduced)
     }
 
     fun tap(

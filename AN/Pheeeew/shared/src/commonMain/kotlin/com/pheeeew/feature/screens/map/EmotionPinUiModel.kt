@@ -2,9 +2,6 @@ package com.pheeeew.feature.screens.map
 
 import com.pheeeew.domain.model.emotion.EmotionMapPin
 import com.pheeeew.domain.model.emotion.EmotionState
-import com.pheeeew.domain.model.group.GroupStamp
-import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
-import com.pheeeew.feature.component.stamp.toUiShape
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
 
 data class EmotionPinUiModel(
@@ -14,7 +11,6 @@ data class EmotionPinUiModel(
     val createdAt: String,
     val rotationDegrees: Double,
     val emotion: EmotionTypeUiModel,
-    val stamp: StampAppearanceUiModel?,
 )
 
 fun EmotionMapPin.toUiModel() =
@@ -25,7 +21,6 @@ fun EmotionMapPin.toUiModel() =
         createdAt = createdAt,
         rotationDegrees = rotationDegrees,
         emotion = state.toUiEmotion(),
-        stamp = groupStamp?.toAppearance(),
     )
 
 private fun EmotionState.toUiEmotion(): EmotionTypeUiModel =
@@ -36,11 +31,3 @@ private fun EmotionState.toUiEmotion(): EmotionTypeUiModel =
         EmotionState.DISCOURAGED -> EmotionTypeUiModel.DISCOURAGED
         EmotionState.ANGRY -> EmotionTypeUiModel.ANGRY
     }
-
-private fun GroupStamp.toAppearance() =
-    StampAppearanceUiModel(
-        label = text,
-        shape = frame.toUiShape(),
-        fillArgb = backgroundColor.argb,
-        textArgb = textColor.argb,
-    )

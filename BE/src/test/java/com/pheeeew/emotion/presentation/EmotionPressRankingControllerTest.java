@@ -5,19 +5,22 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.pheeeew.appversion.infra.metrics.AppVersionMetricsFilter;
 import com.pheeeew.auth.fixture.AccessTokenFixture;
 import com.pheeeew.auth.infra.security.AuthenticationErrorHandler;
 import com.pheeeew.auth.infra.security.SecurityConfig;
 import com.pheeeew.auth.presentation.config.AuthWebMvcConfig;
 import com.pheeeew.auth.presentation.resolver.CurrentDeviceArgumentResolver;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
+import com.pheeeew.emotion.application.dto.EmotionDailyPressRankingItem;
+import com.pheeeew.emotion.application.dto.EmotionDailyPressRankingResult;
 import com.pheeeew.emotion.application.dto.EmotionPressRankingItem;
 import com.pheeeew.emotion.application.dto.EmotionPressRankingResult;
 import com.pheeeew.emotion.application.dto.EmotionStatePressRankingResult;
 import com.pheeeew.emotion.application.query.EmotionPressRankingService;
 import com.pheeeew.emotion.domain.EmotionState;
+import com.pheeeew.emotion.domain.repository.projection.DeviceDailyPressSum;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,8 +34,6 @@ import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTe
 import org.springframework.boot.security.autoconfigure.web.servlet.SecurityFilterAutoConfiguration;
 import org.springframework.boot.security.autoconfigure.web.servlet.ServletWebSecurityAutoConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.ComponentScan.Filter;
-import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.oauth2.jwt.BadJwtException;
@@ -45,14 +46,15 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 @Import({SecurityConfig.class, AuthenticationErrorHandler.class, AuthWebMvcConfig.class,
         CurrentDeviceArgumentResolver.class, GlobalExceptionHandler.class})
 @WebMvcTest(
-        controllers = EmotionPressRankingController.class,
-        excludeFilters = @Filter(type = FilterType.ASSIGNABLE_TYPE, classes = AppVersionMetricsFilter.class)
+        controllers = EmotionPressRankingController.class
 )
 class EmotionPressRankingControllerTest {
 
     private static final UUID DEVICE_PUBLIC_ID = UUID.fromString("a8ce0347-6f21-4c62-9a7e-1b30d5e0c9aa");
     private static final String RANKING_URI = "/api/v2/emotions/press-rankings";
     private static final String STATE_RANKING_URI = "/api/v2/emotions/press-rankings/states/ANGRY";
+    private static final String DAILY_RANKING_URI = "/api/v2/emotions/press-rankings/daily";
+    private static final LocalDate 조회_날짜 = LocalDate.of(2026, 10, 21);
     private static final Instant 구간_시작 = Instant.parse("2026-10-04T15:00:00Z");
     private static final Instant 구간_종료 = Instant.parse("2026-10-11T15:00:00Z");
     private static final EmotionPressRankingItem 내_항목 =
@@ -254,6 +256,96 @@ class EmotionPressRankingControllerTest {
         }
 
         return 요청.exchange();
+    }
+
+    @Test
+    void date_로_그_날짜의_순위를_조회한다() {
+        // given
+        when(emotionPressRankingService.findDailyPressRanking(DEVICE_PUBLIC_ID, 조회_날짜))
+                .thenReturn(일별_순위표(EmotionDailyPressRankingItem.of(2,
+                        DeviceDailyPressSum.of("지친다람쥐", 388, true, EmotionState.EXHAUSTED))));
+
+        // when
+        RestTestClient.ResponseSpec 응답 = 조회한다(DAILY_RANKING_URI + "?date=2026-10-21", "access-token");
+
+        // then
+        응답.expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.date").isEqualTo("2026-10-21")
+                .jsonPath("$.startAt").isEqualTo("2026-10-20T15:00:00Z")
+                .jsonPath("$.endAt").isEqualTo("2026-10-21T15:00:00Z")
+                .jsonPath("$.items[0].rank").isEqualTo(1)
+                .jsonPath("$.items[0].mine").doesNotExist()
+                .jsonPath("$.items[0].representativeState").isEqualTo("IRRITATED")
+                .jsonPath("$.me.representativeState").isEqualTo("EXHAUSTED")
+                .jsonPath("$.me.rank").isEqualTo(2)
+                .jsonPath("$.me.pressCount").isEqualTo(388);
+        verify(emotionPressRankingService).findDailyPressRanking(DEVICE_PUBLIC_ID, 조회_날짜);
+    }
+
+    @Test
+    void date_를_생략하면_조회하지_않는다() {
+        // when
+        RestTestClient.ResponseSpec 응답 = 조회한다(DAILY_RANKING_URI, "access-token");
+
+        // then
+        응답.expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("COMMON-001");
+        verifyNoInteractions(emotionPressRankingService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"2026-13-01", "20261021", "어제", "2026-10-21T00:00:00"})
+    void date_형식이_올바르지_않으면_조회하지_않는다(String date) {
+        // when
+        RestTestClient.ResponseSpec 응답 = 조회한다(DAILY_RANKING_URI + "?date=" + date, "access-token");
+
+        // then
+        응답.expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("COMMON-001");
+        verifyNoInteractions(emotionPressRankingService);
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"invalid-token"})
+    void 일별_조회도_인증이_없거나_유효하지_않으면_403이_아니라_401이다(String token) {
+        // when
+        RestTestClient.ResponseSpec 응답 = 조회한다(DAILY_RANKING_URI + "?date=2026-10-21", token);
+
+        // then
+        응답.expectStatus().isUnauthorized()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("AUTH-001");
+        verifyNoInteractions(emotionPressRankingService);
+    }
+
+    @Test
+    void 일일_대표_감정_추가_후에도_null_me와_식별자_비노출을_유지한다() {
+        // given
+        when(emotionPressRankingService.findDailyPressRanking(DEVICE_PUBLIC_ID, 조회_날짜))
+                .thenReturn(일별_순위표(null));
+
+        // when
+        String 본문 = 본문을_받는다(DAILY_RANKING_URI + "?date=2026-10-21");
+
+        // then
+        assertThat(본문).contains("\"representativeState\":\"IRRITATED\"")
+                .contains("\"me\":null")
+                .doesNotContain("mine", "deviceId", "publicId", DEVICE_PUBLIC_ID.toString());
+    }
+
+    private EmotionDailyPressRankingResult 일별_순위표(EmotionDailyPressRankingItem me) {
+        return EmotionDailyPressRankingResult.of(
+                조회_날짜,
+                Instant.parse("2026-10-20T15:00:00Z"),
+                Instant.parse("2026-10-21T15:00:00Z"),
+                List.of(EmotionDailyPressRankingItem.of(1,
+                        DeviceDailyPressSum.of("한숨많은곰", 412, false, EmotionState.IRRITATED))),
+                me
+        );
     }
 
     private EmotionStatePressRankingResult 감정별_순위표(EmotionPressRankingItem me) {

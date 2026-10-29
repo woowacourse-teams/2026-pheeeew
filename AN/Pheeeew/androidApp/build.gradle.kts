@@ -10,6 +10,7 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.sentryAndroid)
+    alias(libs.plugins.googleServices)
 }
 
 abstract class ValidateReleaseSentryUpload : DefaultTask() {
@@ -32,17 +33,22 @@ kotlin {
 }
 dependencies {
     implementation(project(":shared"))
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
+    implementation(libs.androidx.work.runtime)
+    debugImplementation(project(":developerTools"))
+    debugImplementation(libs.compose.foundation)
     implementation("androidx.lifecycle:lifecycle-process:2.10.0")
 
     androidTestImplementation(libs.androidx.testExt.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.kotlinx.coroutines.test)
+    androidTestImplementation(libs.ktor.client.mock)
     androidTestImplementation(libs.androidx.security.crypto)
     androidTestImplementation(libs.maplibre.android)
 
     implementation(libs.androidx.activity.compose)
 
-    implementation(libs.compose.uiToolingPreview)
     debugImplementation(libs.compose.uiTooling)
 }
 
@@ -82,6 +88,7 @@ fun quotedConfig(value: String): String =
             .replace("\n", "\\n") + "\""
 
 // Only Debug may opt into proof testing. Release always generates required/prod settings.
+val debugPressInputMode = providers.gradleProperty("pressDebugInputMode").orElse("http")
 val debugDeviceAttestationMode = providers.gradleProperty("deviceDebugAttestationMode").orElse("platform_only")
 val deviceCloudProjectNumber = providers.gradleProperty("deviceCloudProjectNumber").orElse("87715710427")
 val cloudProjectNumberLiteral = "${deviceCloudProjectNumber.get().toLongOrNull() ?: 0L}L"
@@ -108,8 +115,8 @@ android {
             buildConfigField("String", key, quotedConfig(monitoringValue(key)))
         }
         buildConfigField("boolean", "MONITORING_ENABLED", (monitoringValue("MONITORING_ENABLED") == "true").toString())
-        versionCode = 11
-        versionName = "2.3.0"
+        versionCode = 13
+        versionName = "2.5.0"
     }
     packaging {
         resources {
@@ -122,6 +129,8 @@ android {
     }
     buildTypes {
         debug {
+            require(debugPressInputMode.get() in setOf("http", "ws")) { "Unknown Debug press input mode" }
+            buildConfigField("String", "PRESS_INPUT_MODE", quotedConfig(debugPressInputMode.get()))
             buildConfigField("String", "DEVICE_ENVIRONMENT", "\"dev\"")
             buildConfigField("String", "DEVICE_ATTESTATION_MODE", quotedConfig(debugDeviceAttestationMode.get()))
             buildConfigField("String", "MONITORING_ENVIRONMENT", "\"dev\"")
@@ -133,6 +142,7 @@ android {
             buildConfigField("long", "DEVICE_CLOUD_PROJECT_NUMBER", cloudProjectNumberLiteral)
         }
         release {
+            buildConfigField("String", "PRESS_INPUT_MODE", "\"http\"")
             buildConfigField("String", "DEVICE_ENVIRONMENT", "\"prod\"")
             buildConfigField("String", "DEVICE_ATTESTATION_MODE", "\"required\"")
             buildConfigField("String", "MONITORING_ENVIRONMENT", "\"prod\"")
@@ -260,4 +270,51 @@ androidComponents {
                     )
             }.configureEach { dependsOn(validation) }
     }
+}
+
+val verifyDeveloperToolsIsolation by tasks.registering {
+    group = "verification"
+    description = "Verify developerTools is present only in Android Debug compile/runtime graphs."
+    dependsOn(":shared:verifyDeveloperToolsIsolation")
+    listOf("debug", "release").forEach { variant ->
+        listOf("RuntimeClasspath", "CompileClasspath").forEach { classpath ->
+            val graph =
+                configurations
+                    .named("$variant$classpath")
+                    .flatMap { it.incoming.resolutionResult.rootComponent }
+                    .map { root ->
+                        val visited = mutableSetOf<String>()
+
+                        fun visit(component: org.gradle.api.artifacts.result.ResolvedComponentResult) {
+                            if (!visited.add(component.id.displayName)) return
+                            component.dependencies
+                                .filterIsInstance<org.gradle.api.artifacts.result.ResolvedDependencyResult>()
+                                .forEach { visit(it.selected) }
+                        }
+                        visit(root)
+                        visited.sorted()
+                    }
+            inputs.property(if (classpath == "RuntimeClasspath") variant else "$variant.compile", graph)
+        }
+    }
+    doLast {
+        inputs.properties.toSortedMap().forEach { (variant, value) ->
+            val includesTools = (value as List<*>).contains("project :developerTools")
+            check(includesTools == variant.startsWith("debug")) { "Developer tools isolation failed: $variant" }
+            if (variant.startsWith("release")) {
+                val tooling =
+                    (value as List<*>).filter {
+                        Regex(
+                            "^(androidx|org\\.jetbrains)\\.compose\\.ui:ui-tooling(-android)?:",
+                        ).containsMatchIn(it.toString())
+                    }
+                check(tooling.isEmpty()) { "Compose runtime tooling in Release: $tooling" }
+            }
+            println("$variant developerTools=$includesTools")
+        }
+    }
+}
+
+tasks.matching { it.name == "preDebugBuild" || it.name == "preReleaseBuild" }.configureEach {
+    dependsOn(verifyDeveloperToolsIsolation)
 }

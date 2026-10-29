@@ -4,8 +4,8 @@ import UIKit
 final class FoundationMapHostViewController: UIViewController {
     private let renderer: FoundationMapRenderer
 
-    init(eventSink: FoundationIosMapEventSink) {
-        renderer = FoundationMapRenderer(eventSink: eventSink)
+    init(eventSink: FoundationIosMapEventSink, styleURLOverride: String?) {
+        renderer = FoundationMapRenderer(eventSink: eventSink, styleURLOverride: styleURLOverride)
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -35,8 +35,8 @@ final class FoundationMapHostViewController: UIViewController {
 private final class FoundationMapContainerView: UIView {
     private let hostController: FoundationMapHostViewController
 
-    init(eventSink: FoundationIosMapEventSink) {
-        hostController = FoundationMapHostViewController(eventSink: eventSink)
+    init(eventSink: FoundationIosMapEventSink, styleURLOverride: String?) {
+        hostController = FoundationMapHostViewController(eventSink: eventSink, styleURLOverride: styleURLOverride)
         super.init(frame: .zero)
         addSubview(hostController.view)
     }
@@ -52,6 +52,9 @@ private final class FoundationMapContainerView: UIView {
     }
 
     func update(state: FoundationIosMapRenderUiModel) {
+        // A retained, hidden map must not intercept touches intended for another tab.
+        isUserInteractionEnabled = state.isVisible
+        accessibilityElementsHidden = !state.isVisible
         hostController.update(state: state)
     }
 
@@ -61,8 +64,8 @@ private final class FoundationMapContainerView: UIView {
 }
 
 final class FoundationMapFactory: NSObject, FoundationIosMapFactory {
-    func createMapView(eventSink: FoundationIosMapEventSink) -> UIView {
-        FoundationMapContainerView(eventSink: eventSink)
+    func createMapView(eventSink: FoundationIosMapEventSink, styleUrlOverride: String?) -> UIView {
+        FoundationMapContainerView(eventSink: eventSink, styleURLOverride: styleUrlOverride)
     }
 
     func updateMapView(mapView: UIView, state: FoundationIosMapRenderUiModel) {

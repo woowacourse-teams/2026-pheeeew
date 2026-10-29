@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">히유</string>
+    <string name="remote_notification_channel_id">pheeeew.remote.v1</string>
+    <string name="remote_notification_channel_name">컬렉션·순위 알림</string>
+    <string name="remote_notification_channel_description">컬렉션 발급과 순위 변경 알림</string>
+    <string name="revisit_notification_channel_id">pheeeew.revisit.v1</string>
+    <string name="revisit_notification_channel_name">재방문 알림</string>
+    <string name="revisit_notification_channel_description">다시 히유를 방문하도록 알려드려요</string>
 </resources>

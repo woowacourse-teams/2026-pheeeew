@@ -25,20 +25,26 @@ def docker(*args, check=True):
 def verify_metrics(config):
     pattern = re.search(r'regex\s*=\s*"([^"]+)"', config).group(1)
     accepted = ["up", "scrape_duration_seconds", "scrape_samples_scraped",
-                "pheeeew_app_version_checks_total", "jvm_threads_live_threads",
+                "jvm_threads_live_threads",
                 "process_cpu_usage", "process_uptime_seconds", "system_cpu_usage",
                 "hikaricp_connections"]
     families = {
         "http_server_requests_seconds_": "count sum bucket max",
+        "pheeeew_map_read_stage_seconds_": "count sum bucket max",
+        "pheeeew_map_response_write_seconds_": "count sum bucket max",
         "pheeeew_region_query_seconds_": "count sum bucket max",
         "pheeeew_emotion_press_query_seconds_": "count sum bucket max",
-        "pheeeew_activity_": "dau mau last_aggregated_seconds collection_started_seconds "
-                             "record_failures_total aggregation_failures_total",
         "jvm_gc_pause_seconds_": "count sum max",
         "hikaricp_connections_": "active idle pending max min timeout_total "
                                  "acquire_seconds_count acquire_seconds_sum acquire_seconds_max "
                                  "usage_seconds_count usage_seconds_sum usage_seconds_max",
     }
+    accepted.extend(f"pheeeew_map_cache_{kind}_total" for kind in
+                    ("requests", "rebuilds", "failures", "maintenance_failures", "maintenance_busy"))
+    for kind in ("lock_wait", "maintenance", "rebuild", "pin_search"):
+        families[f"pheeeew_map_cache_{kind}_seconds_"] = "count sum max"
+    accepted.extend(["pheeeew_map_cache_pending_age_seconds", "pheeeew_map_cache_candidates"])
+    families["pheeeew_map_cache_pin_scanned_"] = "count sum max"
     for kind in ("list",):
         families[f"pheeeew_sigh_{kind}_query_seconds_"] = "count sum bucket max"
         families[f"pheeeew_sigh_{kind}_results_"] = "count sum max"
@@ -47,7 +53,7 @@ def verify_metrics(config):
     accepted.extend(f"jvm_memory_{kind}_bytes" for kind in ("used", "committed", "max"))
     accepted.extend(f"tomcat_threads_{kind}_threads" for kind in ("busy", "current", "config_max"))
     rejected = ["pheeeew_activity_device_id", "pheeeew_activity_dau_created",
-                "pheeeew_app_version_checks_created", "pheeeew_sigh_list_results_bucket",
+                "pheeeew_app_version_checks_total", "pheeeew_app_version_checks_created", "pheeeew_sigh_list_results_bucket",
                 "pheeeew_unreviewed_total", "unreviewed_metric",
                 "pheeeew_region_query_seconds_created", "pheeeew_region_query_seconds_device_id",
                 "pheeeew_emotion_press_query_seconds_created", "pheeeew_emotion_press_query_seconds_device_id",
@@ -55,6 +61,9 @@ def verify_metrics(config):
                 "hikaricp_connections_usage_seconds_bucket", "hikaricp_connections_usage_seconds_created",
                 "hikaricp_connections_creation_seconds_count", "hikaricp_connections_creation_seconds_sum",
                 "hikaricp_connections_creation_seconds_max"]
+    rejected.extend("pheeeew_activity_" + suffix for suffix in
+                    ("dau", "mau", "last_aggregated_seconds", "collection_started_seconds",
+                     "record_failures_total", "aggregation_failures_total"))
     rejected.extend(name + "_extra" for name in accepted)
     for name, expected in [(name, True) for name in accepted] + [(name, False) for name in rejected]:
         if bool(re.fullmatch(pattern, name)) != expected:
@@ -68,10 +77,10 @@ def verify_logs(config):
     scheduler = "com.pheeeew.activity.infra.DeviceActivityAggregationScheduler"
     task = "com.pheeeew.common.logging.ScheduledTaskErrorHandler"
     contracts = [(http, "http_request_failed", "ERROR"), (http, "http_request_slow", "WARN"),
-                 (recorder, "device_activity_record_failed", "ERROR"),
-                 (scheduler, "device_activity_aggregation_failed", "ERROR"),
                  (task, "scheduled_task_failed", "ERROR")]
-    events = {event for _, event, _ in contracts} | {"unknown", None}
+    # 제거한 활동 logger/event 조합도 전송이 차단되는지 검증한다.
+    events = {event for _, event, _ in contracts} | {
+        "device_activity_record_failed", "device_activity_aggregation_failed", "unknown", None}
     cases = []
     for logger, event in itertools.product((http, recorder, scheduler, task, "unknown", None),
                                            sorted(events, key=str)):

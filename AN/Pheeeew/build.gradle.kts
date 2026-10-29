@@ -1,8 +1,8 @@
 plugins {
+    alias(libs.plugins.metro) apply false
     // this is necessary to avoid the plugins to be loaded multiple times
     // in each subproject's classloader
     alias(libs.plugins.androidApplication) apply false
-    alias(libs.plugins.androidTest) apply false
     alias(libs.plugins.androidMultiplatformLibrary) apply false
     alias(libs.plugins.composeMultiplatform) apply false
     alias(libs.plugins.composeCompiler) apply false
@@ -10,6 +10,7 @@ plugins {
     alias(libs.plugins.kotlinSerialization) apply false
     alias(libs.plugins.ktlint) apply false
     alias(libs.plugins.sentryAndroid) apply false
+    alias(libs.plugins.googleServices) apply false
 }
 
 subprojects {

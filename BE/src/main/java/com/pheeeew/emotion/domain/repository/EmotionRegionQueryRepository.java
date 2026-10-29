@@ -8,6 +8,10 @@ import java.util.List;
 
 public interface EmotionRegionQueryRepository {
 
+    List<RegionEmotionSummaryProjection> findNationalSummaries(
+            RegionLevel level, EmotionSearchFilter filter, Long deviceId, Instant snapshotAt
+    );
+
     List<RegionEmotionSummaryProjection> findSummariesByRegionCodes(
             List<String> regionCodes,
             RegionLevel level,

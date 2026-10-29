@@ -52,9 +52,6 @@ internal object EmotionDetailPreviewData {
 
     fun model(content: EmotionDetailContentUiModel) =
         EmotionDetailUiModel(
-            "우테코 8기 히유",
-            "히유",
-            null,
             "지친 감자",
             EmotionTypeUiModel.IRRITATED,
             "오늘 오후 2:32",

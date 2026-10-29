@@ -127,6 +127,7 @@ class SecurityAuthorizationIntegrationTest {
         emotionReportRepository.deleteAll();
         emotionRepository.deleteAll();
         deviceRefreshTokenRepository.deleteAll();
+        jdbcClient.sql("DELETE FROM device_daily_stamps").update();
         deviceRepository.deleteAll();
         deviceChallengeRepository.deleteAll();
         jdbcClient.sql("DELETE FROM regions").update();
@@ -152,6 +153,26 @@ class SecurityAuthorizationIntegrationTest {
         인증_필요를_검증한다(unauthenticated);
         authenticated.expectStatus().isOk().expectBody()
                 .jsonPath("$.total").isEqualTo(0);
+    }
+
+    @Test
+    void 컬렉션_수령은_인증_후에만_요청_본문을_검증한다() {
+        // given
+        String token = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
+        String body = """
+                {"state":"ANGRY"}
+                """;
+
+        // when
+        var unauthenticated = client.post().uri("/api/v1/collection-cards/claim")
+                .contentType(MediaType.APPLICATION_JSON).body(body).exchange();
+        var authenticated = client.post().uri("/api/v1/collection-cards/claim")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).body(body).exchange();
+
+        // then
+        인증_필요를_검증한다(unauthenticated);
+        authenticated.expectStatus().isBadRequest().expectBody().jsonPath("$.code").isEqualTo("COMMON-001");
     }
 
     @Test
@@ -363,7 +384,7 @@ class SecurityAuthorizationIntegrationTest {
 
         // then
         result.expectStatus().isBadRequest().expectBody().json("""
-                {"code":"DEVICE-008","message":"닉네임은 한글, 영문, 공백으로 1~10자여야 하며 익명은 사용할 수 없습니다."}
+                {"code":"DEVICE-008","message":"닉네임은 한글, 영문, 숫자, 공백으로 1~10자여야 하며 익명은 사용할 수 없습니다."}
                 """, JsonCompareMode.STRICT);
         assertThat(deviceRepository.findAll()).extracting(Device::getNickname).containsExactly("기기 A");
     }
@@ -482,14 +503,14 @@ class SecurityAuthorizationIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"", "   ", " 익명 ", "Star1", "abcdefghijk", "Star\tK"})
+    @ValueSource(strings = {"", "   ", " 익명 ", "Star!", "abcdefghijk", "Star\tK"})
     void 닉네임_규칙을_어긴_등록은_400을_반환하고_기기와_토큰을_남기지_않는다(String nickname) {
         // given / when
         RestTestClient.ResponseSpec result = 닉네임으로_등록한다(UUID.randomUUID(), nickname);
 
         // then
         result.expectStatus().isBadRequest().expectBody().json("""
-                {"code":"DEVICE-008","message":"닉네임은 한글, 영문, 공백으로 1~10자여야 하며 익명은 사용할 수 없습니다."}
+                {"code":"DEVICE-008","message":"닉네임은 한글, 영문, 숫자, 공백으로 1~10자여야 하며 익명은 사용할 수 없습니다."}
                 """, JsonCompareMode.STRICT);
         assertThat(deviceRepository.count()).isZero();
         assertThat(deviceRefreshTokenRepository.count()).isZero();
@@ -627,7 +648,7 @@ class SecurityAuthorizationIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"", "   ", " 익명 ", "Star1", "abcdefghijk", "Star\tK"})
+    @ValueSource(strings = {"", "   ", " 익명 ", "Star!", "abcdefghijk", "Star\tK"})
     void 토큰_없이_잘못된_닉네임을_조회하면_400을_반환한다(String nickname) {
         // given / when
         RestTestClient.ResponseSpec result = client.get()
@@ -636,7 +657,7 @@ class SecurityAuthorizationIntegrationTest {
 
         // then
         result.expectStatus().isBadRequest().expectBody().json("""
-                {"code":"DEVICE-008","message":"닉네임은 한글, 영문, 공백으로 1~10자여야 하며 익명은 사용할 수 없습니다."}
+                {"code":"DEVICE-008","message":"닉네임은 한글, 영문, 숫자, 공백으로 1~10자여야 하며 익명은 사용할 수 없습니다."}
                 """, JsonCompareMode.STRICT);
     }
 
@@ -1131,7 +1152,7 @@ class SecurityAuthorizationIntegrationTest {
         String otherToken = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
         Long id = 한숨을_등록한다(ownerToken);
         String uri = "/api/v1/emotions/" + id;
-        String body = "{\"state\":\"ANGRY\",\"contentType\":\"MEMO\",\"memo\":\"수정한 메모\"}";
+        String body = "{\"state\":\"FRUSTRATED\",\"contentType\":\"MEMO\",\"memo\":\"수정한 메모\"}";
 
         // when / then
         client.put().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer " + otherToken)
@@ -1142,7 +1163,7 @@ class SecurityAuthorizationIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON).body(body).exchange().expectStatus().isNoContent();
         client.get().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
                 .exchange().expectStatus().isOk().expectBody()
-                .jsonPath("$.properties.state").isEqualTo("ANGRY")
+                .jsonPath("$.properties.state").isEqualTo("FRUSTRATED")
                 .jsonPath("$.properties.memo").isEqualTo("수정한 메모");
         for (int retry = 0; retry < 2; retry++) {
             client.delete().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
@@ -1155,6 +1176,32 @@ class SecurityAuthorizationIntegrationTest {
         client.get().uri("/api/v1/emotions" + 지도_영역_질의).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
                 .exchange().expectStatus().isOk().expectBody().jsonPath("$.items").isEmpty();
         assertThat(emotionRepository.findById(id).orElseThrow().getDeletedAt()).isNotNull();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"v1", "v3", "v4"})
+    void 감정_종류_변경은_본인에게만_400을_반환하고_타인과_삭제된_감정은_404를_유지한다(String version) {
+        // given
+        String ownerToken = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
+        String otherToken = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
+        Long id = 한숨을_등록한다(ownerToken);
+        String uri = "/api/" + version + "/emotions/" + id;
+        String body = "{\"state\":\"ANGRY\",\"contentType\":\"AUDIO\",\"audioUploadId\":\"missing-upload\"}";
+
+        // when / then: 존재하지 않는 녹음보다 소유권·삭제 여부와 감정 종류를 먼저 검사한다.
+        client.put().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer " + otherToken)
+                .contentType(MediaType.APPLICATION_JSON).body(body).exchange().expectStatus().isNotFound()
+                .expectBody().jsonPath("$.code").isEqualTo("EMOTION-002");
+        client.put().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+                .contentType(MediaType.APPLICATION_JSON).body(body).exchange().expectStatus().isBadRequest()
+                .expectBody().jsonPath("$.code").isEqualTo("EMOTION-015")
+                .jsonPath("$.message").isEqualTo("등록한 감정의 종류는 변경할 수 없습니다.");
+        assertThat(emotionRepository.findById(id).orElseThrow().getState()).isEqualTo(EmotionState.FRUSTRATED);
+        client.delete().uri("/api/v1/emotions/" + id).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+                .exchange().expectStatus().isNoContent();
+        client.put().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+                .contentType(MediaType.APPLICATION_JSON).body(body).exchange().expectStatus().isNotFound()
+                .expectBody().jsonPath("$.code").isEqualTo("EMOTION-002");
     }
 
     @Test

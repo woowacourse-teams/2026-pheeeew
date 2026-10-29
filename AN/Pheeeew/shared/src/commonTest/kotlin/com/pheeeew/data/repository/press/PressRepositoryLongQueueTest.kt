@@ -3,6 +3,9 @@ package com.pheeeew.data.repository.press
 import com.pheeeew.core.monitoring.ActivityType
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.monitoring.NoOpMonitoring
+import com.pheeeew.data.press.delivery.PressDeliveryPolicy
+import com.pheeeew.data.press.retry.PressRetryPolicy
+import com.pheeeew.data.repository.PressRepositoryImpl
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.press.AllDailyPressSnapshot
 import com.pheeeew.domain.model.press.MyDailyPressSnapshot
@@ -11,9 +14,12 @@ import com.pheeeew.domain.model.press.PressAcceptance
 import com.pheeeew.domain.model.press.PressBatch
 import com.pheeeew.domain.model.press.PressSendResult
 import com.pheeeew.domain.model.press.PressSessionNotice
-import com.pheeeew.domain.repository.press.PressReadResult
-import com.pheeeew.domain.repository.press.PressSender
-import com.pheeeew.domain.repository.press.PressStatisticsDataSource
+import com.pheeeew.domain.press.time.PressDelayMillis
+import com.pheeeew.domain.press.time.PressEpochMillis
+import com.pheeeew.domain.press.time.PressMonotonicMillis
+import com.pheeeew.domain.repository.PressReadResult
+import com.pheeeew.domain.repository.PressSender
+import com.pheeeew.domain.repository.PressStatisticsDataSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -25,7 +31,8 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNotEquals
+import kotlin.test.assertNotSame
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -52,9 +59,9 @@ class PressRepositoryLongQueueTest {
                     server,
                     sender,
                     backgroundScope,
-                    flushDelayMillis = 0,
+                    flushDelayMillis = PressDelayMillis.Zero,
                     monitoring = monitoring,
-                    wallClock = { time },
+                    wallClock = { PressEpochMillis(time) },
                 )
             repository.refreshToday()
             runCurrent()
@@ -83,7 +90,13 @@ class PressRepositoryLongQueueTest {
                     }
                 }
             val repository =
-                PressRepositoryImpl(server, sender, backgroundScope, flushDelayMillis = 0, monitoring = monitoring)
+                PressRepositoryImpl(
+                    server,
+                    sender,
+                    backgroundScope,
+                    flushDelayMillis = PressDelayMillis.Zero,
+                    monitoring = monitoring,
+                )
             repository.refreshToday()
             runCurrent()
             repository.accept(EmotionState.ANGRY)
@@ -124,13 +137,6 @@ class PressRepositoryLongQueueTest {
             )
             assertTrue(server.counts.values.all { it == 2_000L })
             assertTrue(sender.batches.all { it.totalCount <= 100 && it.counts.values.all { count -> count <= 30 } })
-            assertEquals(
-                sender.batches.size,
-                sender.batches
-                    .map { it.requestId }
-                    .distinct()
-                    .size,
-            )
             assertEquals(1, sender.maxConcurrent)
             assertTrue(sender.times.zipWithNext().all { (before, after) -> after - before >= 10L })
         }
@@ -141,7 +147,12 @@ class PressRepositoryLongQueueTest {
             val server = Server()
             val sender = Sender(server, PressSendResult.ContractPending)
             val repository =
-                PressRepositoryImpl(server, sender, backgroundScope, nowMillis = { testScheduler.currentTime })
+                PressRepositoryImpl(
+                    server,
+                    sender,
+                    backgroundScope,
+                    nowMillis = { PressMonotonicMillis(testScheduler.currentTime) },
+                )
             repository.refreshToday()
             runCurrent()
             repository.accept(EmotionState.ANGRY)
@@ -179,7 +190,7 @@ class PressRepositoryLongQueueTest {
         runTest {
             val connection = MutableStateFlow(true)
             val server = Server()
-            val sender = Sender(server, PressSendResult.RetryAfter(5_000L))
+            val sender = Sender(server, PressSendResult.RetryAfter(PressDelayMillis(5_000L)))
             val repository = repository(server, sender, connection)
             runCurrent()
             repository.accept(EmotionState.ANGRY)
@@ -199,8 +210,8 @@ class PressRepositoryLongQueueTest {
             advanceTimeBy(100)
             runCurrent()
             assertEquals(3, sender.batches.size)
-            assertEquals(sender.batches[0], sender.batches[1])
-            assertNotEquals(sender.batches[1].requestId, sender.batches[2].requestId)
+            assertSame(sender.batches[0], sender.batches[1])
+            assertNotSame(sender.batches[1], sender.batches[2])
             assertEquals(mapOf(EmotionState.ANGRY to 1), sender.batches[1].counts)
             assertEquals(mapOf(EmotionState.FRUSTRATED to 2), sender.batches[2].counts)
             assertEquals(3L, server.counts.values.sum())
@@ -208,10 +219,16 @@ class PressRepositoryLongQueueTest {
         }
 
     @Test
-    fun `lost response retries identical id inside server window and applies the batch once`() =
+    fun `configured retry window replays the same pending batch when the first send was not applied`() =
         runTest {
             val server = Server()
-            val sender = Sender(server, PressSendResult.OutcomeUnknown, window = 10_000L, applyBeforeUnknown = false)
+            val sender =
+                Sender(
+                    server,
+                    PressSendResult.OutcomeUnknown,
+                    window = PressDelayMillis(10_000L),
+                    applyBeforeUnknown = false,
+                )
             val repository = repository(server, sender)
             repository.refreshToday()
             runCurrent()
@@ -221,7 +238,7 @@ class PressRepositoryLongQueueTest {
             advanceTimeBy(3_000)
             runCurrent()
             assertEquals(2, sender.batches.size)
-            assertEquals(sender.batches[0], sender.batches[1])
+            assertSame(sender.batches[0], sender.batches[1])
             assertEquals(1L, server.counts.values.sum())
             assertEquals(0L, repository.state.value.pendingPressCount)
             assertFalse(repository.state.value.isOutcomeUnknown)
@@ -241,7 +258,7 @@ class PressRepositoryLongQueueTest {
             repository.retryUnsent()
             advanceTimeBy(120_000)
             runCurrent()
-            assertEquals(1, sender.batches.count { it.requestId == sender.batches.first().requestId })
+            assertEquals(1, sender.batches.count { it === sender.batches.first() })
             assertEquals(0L, repository.state.value.pendingPressCount)
             assertEquals(
                 10_000L,
@@ -291,10 +308,10 @@ class PressRepositoryLongQueueTest {
             server.apply(sender.batches.first())
             repository.refreshToday(force = true)
             runCurrent()
-            advanceTimeBy(100)
+            advanceTimeBy(1_100)
             runCurrent()
             assertEquals(2, sender.batches.size)
-            assertNotEquals(sender.batches[0].requestId, sender.batches[1].requestId)
+            assertNotSame(sender.batches[0], sender.batches[1])
             assertEquals(
                 2L,
                 repository.state.value.myToday
@@ -363,7 +380,7 @@ class PressRepositoryLongQueueTest {
             server.pressDate = "2026-10-09"
             repository.refreshToday(force = true)
             runCurrent()
-            advanceTimeBy(100)
+            advanceTimeBy(1_100)
             runCurrent()
             assertEquals(2, sender.batches.size)
             assertEquals(
@@ -389,7 +406,13 @@ class PressRepositoryLongQueueTest {
     fun `unknown batch is not replayed after server id retention expires`() =
         runTest {
             val server = Server()
-            val sender = Sender(server, PressSendResult.OutcomeUnknown, window = 500L, applyBeforeUnknown = false)
+            val sender =
+                Sender(
+                    server,
+                    PressSendResult.OutcomeUnknown,
+                    window = PressDelayMillis(500L),
+                    applyBeforeUnknown = false,
+                )
             val repository = repository(server, sender)
             repository.refreshToday()
             runCurrent()
@@ -428,7 +451,7 @@ class PressRepositoryLongQueueTest {
             advanceTimeBy(100)
             runCurrent()
             assertEquals(2, sender.batches.size)
-            assertNotEquals(sender.batches[0].requestId, sender.batches[1].requestId)
+            assertNotSame(sender.batches[0], sender.batches[1])
             assertEquals(3L, server.counts.values.sum())
             assertEquals(0L, repository.state.value.pendingPressCount)
         }
@@ -522,10 +545,11 @@ class PressRepositoryLongQueueTest {
         server,
         sender,
         backgroundScope,
-        flushDelayMillis = 0L,
+        flushDelayMillis = PressDelayMillis.Zero,
         connectivity = connectivity,
-        retryPolicy = PressRetryPolicy(minRequestIntervalMillis = 10L, jitter = { 1.0 }),
-        nowMillis = { testScheduler.currentTime },
+        retryPolicy = PressRetryPolicy(jitter = { 1.0 }),
+        deliveryPolicy = PressDeliveryPolicy(minRequestIntervalMillis = PressDelayMillis(10L)),
+        nowMillis = { PressMonotonicMillis(testScheduler.currentTime) },
     )
 
     private class Server : PressStatisticsDataSource {
@@ -557,15 +581,14 @@ class PressRepositoryLongQueueTest {
     private class Sender(
         private val server: Server,
         vararg results: PressSendResult,
-        private val window: Long? = null,
+        private val window: PressDelayMillis? = null,
         private val applyBeforeUnknown: Boolean = true,
         private val time: () -> Long = { 0L },
         private val beforeSend: suspend () -> Unit = {},
         var afterSend: () -> Unit = {},
     ) : PressSender {
-        override val idempotencyWindowMillis: Long? = window
+        override val idempotencyWindowMillis: PressDelayMillis? = window
         private val scripted = ArrayDeque(results.toList())
-        private val applied = mutableSetOf<String>()
         val batches = mutableListOf<PressBatch>()
         val times = mutableListOf<Long>()
         private var concurrent = 0
@@ -579,11 +602,8 @@ class PressRepositoryLongQueueTest {
                 times += time()
                 beforeSend()
                 val result = if (scripted.isEmpty()) acceptedMarker() else scripted.removeFirst()
-                if ((
-                        result is PressSendResult.Accepted ||
-                            (result == PressSendResult.OutcomeUnknown && applyBeforeUnknown)
-                    ) &&
-                    applied.add(batch.requestId)
+                if (result is PressSendResult.Accepted ||
+                    (result == PressSendResult.OutcomeUnknown && applyBeforeUnknown)
                 ) {
                     server.apply(batch)
                 }

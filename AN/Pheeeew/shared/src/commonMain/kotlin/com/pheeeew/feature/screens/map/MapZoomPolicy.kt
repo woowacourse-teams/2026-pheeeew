@@ -4,7 +4,7 @@ import com.pheeeew.domain.model.emotion.EmotionRegionLevel
 
 internal object MapZoomPolicy {
     private const val SIGUNGU_MIN_ZOOM = 9.0
-    const val DETAIL_PIN_MIN_ZOOM = 12.0
+    const val DETAIL_PIN_MIN_ZOOM = 11.0
 
     fun regionLevelForZoom(zoom: Double): EmotionRegionLevel? =
         when {

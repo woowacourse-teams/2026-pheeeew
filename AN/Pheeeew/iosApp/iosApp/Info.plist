@@ -13,6 +13,8 @@
 	<key>SENTRY_DSN</key>
 	<string>$(SENTRY_DSN)</string>
 
+	<key>PRESS_INPUT_MODE</key>
+	<string>$(PRESS_INPUT_MODE)</string>
 	<key>DEVICE_BUILD_CONFIGURATION</key>
 	<string>$(DEVICE_BUILD_CONFIGURATION)</string>
 	<key>DEVICE_ENVIRONMENT</key>
@@ -23,5 +25,7 @@
 	<string>$(API_BASE_URL)</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>컬렉션 카드를 사진 앱에 저장하기 위해 사진 보관함에 추가합니다.</string>
 </dict>
 </plist>

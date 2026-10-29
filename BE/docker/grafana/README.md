@@ -87,7 +87,7 @@ Grafana가 패널별 쿼리로 Cloud에 저장된 데이터를 읽어요
 | 설정 | 역할 |
 | --- | --- |
 | `title`, `uid` | 대시보드 이름과 고유 식별자예요 |
-| `panels` | 데이터 패널 35개와 구역 제목·안내 9개로 구성된 목록이에요 (v2 기준) |
+| `panels` | 데이터 패널과 구역 제목·안내로 구성된 목록이에요 (v2 기준) |
 | `datasource`, `targets[].expr` | 어떤 저장소에서 어떤 쿼리로 데이터를 읽을지 정해요 |
 | `gridPos`, `fieldConfig` | 패널의 위치·크기, 초·바이트·백분율 같은 표시 단위를 정해요 |
 | `time`, `refresh` | 처음 볼 시간 범위와 화면을 새로 조회할 주기를 정해요 |
@@ -100,7 +100,7 @@ Grafana가 패널별 쿼리로 Cloud에 저장된 데이터를 읽어요
 
 ## 대시보드 연결
 
-1. 운영 배포 후 Explore에서 `up{job="pheeeew-api",environment="prod",instance="pheeeew-prod"}`가 `1`인지 확인해요. 연결이 아직 없으면 [Alloy 연결 안내](../alloy/README.md)를 먼저 따라요.
+1. 운영 배포 후 Explore에서 `up{job="pheeeew-api",environment="prod",instance=~"pheeeew-prod(-blue|-green)?"}`가 `1`인지 확인해요. 연결이 아직 없으면 [Alloy 연결 안내](../alloy/README.md)를 먼저 따라요.
 2. Grafana의 `Dashboards → New → Import`에서 `pheeeew-prod-v2.json`을 올려요. 개발 환경이면 `pheeeew-dev-v2.json`을 올리고 3번에서 개발 저장소를 골라요.
 3. `운영 지표 저장소`에는 기존 스택의 Prometheus 데이터 소스를, `운영 로그 저장소`에는 Loki 데이터 소스를 선택해요. Grafana Cloud가 제공하는 저장소를 선택하는 것이며 Prometheus 서버를 설치하는 단계가 아니에요.
 4. [Alloy 설정](../alloy/config.alloy)의 `prometheus.scrape "app"`에서 `scrape_interval = "60s"`인지 확인해요. 이 값이 앱 지표의 실제 수집 주기예요. 가져온 화면에서는 최근 1시간을 보고 새 요청이 발생한 뒤 2~5분 기다려요.
@@ -131,9 +131,9 @@ API 흐름 → 지도 조회 → 앱 자원 → 문제 로그 순서로 구역�
 
 p95·p99는 버킷 기반 추정값이에요. HTTP의 마지막 유한 버킷은 10초, 지도 Repository 조회는 5초이므로 이를 넘는 지연을 정확히 구분할 수 없어요. 요청이 적으면 특히 p99가 불안정해요. HTTP p95와 Repository p95는 서로 다른 분포이므로 두 값을 빼서 서비스 처리 시간을 구하지 않아요.
 
-## 신규 지표의 시계열 수
+## 2026-09-17 신규 지표의 시계열 수 (과거 기록)
 
-시계열 하나는 **지표 이름과 라벨 값 조합 하나**예요. 같은 조합의 값이 바뀌어도 시계열은 늘지 않아요. 현재 설정에서 이번에 추가한 커스텀 지표는 단일 서버 기준 **26개**예요.
+시계열 하나는 **지표 이름과 라벨 값 조합 하나**예요. 같은 조합의 값이 바뀌어도 시계열은 늘지 않아요. 당시 추가한 커스텀 지표는 단일 서버 기준 **26개**였어요. 아래는 과거 측정 기록이며 현재 시계열 수가 아니에요. 이 중 BE 활동 관련 9개 시계열은 #736에서 제거했으며 앱 버전 확인 2개 시계열도 #881의 제거 대상이에요.
 
 | 추가 지표 | 조합과 출력 | 시계열 수 |
 | --- | --- | ---: |
@@ -146,19 +146,21 @@ p95·p99는 버킷 기반 추정값이에요. HTTP의 마지막 유한 버킷은
 
 이는 새 커스텀 지표의 로컬 검증이며 운영 애플리케이션 전체 출력이나 Cloud 사용량 측정은 아니에요. 현재 `application-prod.yml`에는 HTTP·기존 지도 조회에만 SLO 버킷을 설정하고, 새 목록 지표에는 히스토그램을 추가하지 않아요. 버킷·백분위 설정 또는 라벨을 늘리면 다시 측정해야 해요. 단일 값의 공통 `application`, `environment`, `job`, `instance` 라벨은 위 조합 수를 늘리지 않아요.
 
-Alloy가 60초마다 정상 수집하면 이 26개에서 분당 약 26개 샘플이 추가돼요. 집계 주기 5분은 값이 갱신되는 주기이며 지표 전송 주기가 아니에요. 기존 HTTP·지도·JVM·DB 풀 지표와 로그는 이 숫자에서 제외해요. HTTP 시계열은 실제 `method`, `uri`, `status` 등 라벨 조합에 따라 달라지며, 대시보드 패널 추가 자체가 수집 시계열을 늘리지는 않아요.
+당시 설정에서 Alloy가 60초마다 정상 수집하면 이 26개에서 분당 약 26개 샘플이 추가되는 계산이었어요. 당시 집계 주기 5분은 값이 갱신되는 주기였으며 지표 전송 주기가 아니에요. 기존 HTTP·지도·JVM·DB 풀 지표와 로그는 이 숫자에서 제외해요. HTTP 시계열은 실제 `method`, `uri`, `status` 등 라벨 조합에 따라 달라지며, 대시보드 패널 추가 자체가 수집 시계열을 늘리지는 않아요.
 
 배포 후 Grafana Cloud의 실제 활성 시계열·수집량과 로그 사용량을 확인해야 해요. 이 결과만으로 무료 플랜 전체 한도 이내라고 판단하지 않아요.
 
-## 앱 플랫폼 비교
+## 앱 버전 확인 통계 제거
 
-하단 `05 앱 플랫폼`에는 Android와 iOS의 버전 확인 성공 횟수와 호출량 추이가 있어요. `GET /api/v2/app/version`의 2xx 응답을 `platform`별로 나누며 실패 응답은 포함하지 않아요.
+[#881](https://github.com/woowacourse-teams/2026-pheeeew/issues/881)에서 플랫폼별 버전 확인 전용 계측과 Alloy 전송 허용 항목을 제거해요.
+현재 v2 JSON 두 개에서는 선택 기간·호출량 추이 패널(ID `18`, `19`)과 앱 플랫폼 행(ID `123`)을 제거해요.
+`GET /api/v2/app/version`과 버전 정책·강제 업데이트 기능, `app_version` 테이블·데이터·Flyway 파일은 유지해요.
+요청량·상태 코드·응답 시간은 기존 공통 HTTP 지표로 확인해요.
 
-- **선택 기간:** 대시보드 시간 범위의 Counter 증가량을 추정해요. 반복 호출도 각각 포함하며 표시 값은 정수로 반올림해요.
-- **호출량 추이:** 이동 구간의 요청/초를 보여줘요. 요청이 없고 수집은 계속되면 0이며, 계산할 표본이 없으면 데이터 없음이에요.
-- **해석:** 사용자 수나 플랫폼 점유율이 아니에요. 앱 실행·재시도 정책이 다른 경우 호출량 비교에 영향을 줘요. 활성 기기 비교에는 별도 DAU·MAU 지표를 사용해요.
-
-이 두 패널은 JSON을 가져온 뒤 표시돼요. 저장소 변경만으로 기존 Cloud 화면이 바뀌지는 않아요.
+코드 배포와 Alloy 설정 반영 이후 전용 지표의 신규 노출·전송이 중단됐는지 확인해요.
+Cloud 개발·운영 대시보드에서는 해당 패널 두 개와 빈 앱 플랫폼 행만 별도로 제거하고 저장해요.
+현재 Cloud에 추가된 무결성 증명·지도 캐시 등 다른 패널을 저장소 JSON으로 덮어쓰지 않아요.
+이 정리는 Cloud에 이미 저장된 과거 시계열을 삭제하지 않아요.
 
 ## V2 한숨 API
 
@@ -179,43 +181,24 @@ Alloy가 60초마다 정상 수집하면 이 26개에서 분당 약 26개 샘플
 
 실제 빈 목록을 정상 반환하면 평균에 0개로 반영해요. 해당 조합의 호출이 없어서 분모가 0이면 `NaN`이며 데이터 없음으로 해석해요. 평균 반환 개수는 다음 페이지가 존재하는 호출의 비율이나 전체 한숨 수가 아니에요.
 
-## 활성 기기 DAU·MAU
+## BE 활동 지표와 Cloud 대시보드 정리
 
-맨 위의 DAU·MAU 카드 6개는 각각 전체·Android·iOS의 고유 활동 기기 계정 수를 보여줘요. 기존 서버 상태 카드와 같은 크기로 배치하며, `07 활성 기기`에서는 집계 시각과 기록·집계 오류를 확인해요. 인증된 기기가 정상적으로 조회만 해도 활동에 포함하며, 한 사람이 여러 기기 계정을 사용하면 여러 개로 집계돼요.
+[#736](https://github.com/woowacourse-teams/2026-pheeeew/issues/736)에서 BE 활동 수집·집계와 전용 지표를 제거했어요.
+현재 v2 JSON 두 개에서 DAU·MAU 카드 6개(ID `24`, `25`, `30`, `31`, `32`, `33`)를 제거했어요.
+앱 버전 호출량 패널(ID `18`, `19`)은 후속 #881에서 제거하며 HTTP·JVM·Hikari·지도 조회·캐시·오류 로그 패널은 유지해요.
 
-- **DAU:** 조회 종료 시점의 KST 날짜 00시부터 마지막 집계 시점까지 활동한 기기 수예요.
-- **MAU:** 그 KST 날짜를 포함한 최근 30일의 고유 활동 기기 수예요. 일별 DAU를 더하지 않아요. **수집 시작 후 30일 전에는 수집된 기간만 반영한 값**이에요.
-- **시점:** DAU·MAU 카드는 조회 종료 시점의 집계값을 표시해요. 선택한 시간 범위의 합계가 아니며 과거 시점은 Cloud에 지표가 남아 있는 기간만 조회할 수 있어요. DB의 날짜별 최종 집계를 직접 읽지는 않아요.
-- **미집계:** 초기 집계 전이나 KST 날짜 전환 후 오늘 집계 전의 `NaN`과 데이터 없음은 `집계 전·확인 필요`로 표시해요. 정상 집계 결과가 0개일 때만 `0`을 표시해요. 당일 집계 실패 시에는 마지막 성공값이 유지되므로 숫자만으로 최신 집계 성공을 판단하지 않아요.
+저장소 JSON을 수정해도 Grafana Cloud는 자동으로 바뀌지 않아요. Cloud 반영은 별도 작업이에요.
+현재 대시보드를 내보내 보관한 뒤 위 카드와 BE 활동 전용 쿼리를 사용하는 패널·알림만 확인해 제거해요.
+팀이 Cloud에서 추가한 다른 패널과 데이터 소스 설정을 전체 JSON으로 덮어쓰지 않아요.
 
-앱은 기본 5분 간격으로 집계하고 Alloy는 60초마다 마지막 결과를 수집해요. 대시보드에서 `rate`나 `increase`로 활성 기기 수를 다시 계산하지 않아요.
-
-활동 원본의 자동 삭제는 적용하지 않아요. 보관량별 로컬 저장 용량·집계 시간과 재현 방법은 [기기 활동 DB 비용 측정](../benchmarks/README.md)에 기록해요. 운영 비용은 배포 후 실제 데이터로 별도 확인해요.
-
-### 집계 시각과 수집 시작 시각
-
-DAU·MAU 아래에 두 시각을 함께 표시해요. 기본 시간대는 대시보드의 `Asia/Seoul`이며, 시간대를 바꾸면 날짜 표시도 바뀌어요.
-
-- **마지막 집계 성공 · 기준 시각:** 마지막으로 성공한 당일 집계 실행에서 사용한 기준 시각이에요. DB 커밋 완료 시각이나 Alloy 수집 시각과는 달라요. 실패하면 이전 값이 유지되므로 조회 종료 시점과 비교해 갱신이 계속 지연되는지 확인해요. 과거 날짜의 최종 집계 완료 여부를 뜻하지는 않아요.
-- **활동 수집 시작 시각:** DB에 저장한 최초 수집 시작 시각이며 서버 재시작 후에도 유지해요. 첫 집계 성공 전에는 두 시각 모두 `집계 전·확인 필요`로 표시해요. 수집 시작 후 30일 경과 여부는 MAU 해석을 위한 정보이며 활동 기록 누락이나 집계 장애가 없었다는 보장은 아니에요.
-
-앱 지표는 epoch 초 단위이고 패널은 1,000을 곱해 날짜 표시용 밀리초로 변환해요. 데이터가 없을 때 0이나 현재 시각으로 대신 채우지 않아요. [Grafana 날짜 표시 단위 안내](https://grafana.com/docs/grafana-cloud/visualizations/panels-visualizations/configure-standard-options/)
-
-### 활동 기록·집계 실패
-
-같은 구역에서 선택 기간의 실패 횟수와 활동 오류 로그를 함께 확인해요. 횟수는 Counter 증가량의 추정치이며 반올림해 표시해요. 계산할 표본이 없으면 0으로 채우지 않아요.
-
-| 표시 | 지표와 범위 |
-| --- | --- |
-| 활동 저장 실패 | `pheeeew_activity_record_failures_total{reason="save_failed"}`: 비동기 DB 저장 실패 |
-| 작업 큐 등록 거절 | `pheeeew_activity_record_failures_total{reason="queue_rejected"}`: 실행기가 활동 기록 작업을 받지 못함 |
-| 집계 실패 | `pheeeew_activity_aggregation_failures_total`: 초기화·당일 집계·과거 날짜 확정 중 실패 |
-
-실패 횟수는 누락된 고유 기기 수가 아니에요. 같은 기기의 후속 요청이나 다음 집계 실행에서 성공할 수 있어요. 과거 날짜 확정만 실패한 경우 오늘 DAU·MAU와 마지막 집계 시각은 이미 갱신됐을 수 있어요.
-
-로그 패널은 `device_activity_record_failed`, `device_activity_aggregation_failed`의 `ERROR`만 조회하고 `verification=true` 합성 검증 로그는 제외해요. 한국어 오류 메시지와 `reason`, 예외 원문을 제거한 `errorStack`을 펼쳐 확인해요. 기록 오류는 두 원인을 합쳐 1분에 최대 1건만 남기지만 실패 Counter는 매번 증가하므로 **실패 횟수와 로그 건수는 다를 수 있어요.** 로그가 비었다는 사실만으로 정상이라고 판단하지 않아요.
+`pheeeew-prod.json`은 과거 패널 링크와 구성을 보존하는 파일이라 수정하지 않아요.
+이 파일의 활동 시각·오류 패널은 현재 앱이 제공하는 기능이 아니에요.
+기존 Cloud 대시보드에서 이를 사용 중이라면 활동 전용 패널과 `07 활성 기기` 구역을 함께 정리해요.
+기존 DB 테이블·과거 데이터는 보존하며, 이 코드 정리가 운영 PostHog 수집이나 DAU·MAU 전환 완료를 뜻하지는 않아요.
 
 ## 최초 알림 세 가지
+
+운영 blue/green 전환 전 Grafana Cloud의 실제 알림 쿼리도 아래와 같이 수정해야 해요. 저장소 문서만 수정하면 Cloud 규칙은 바뀌지 않아요. 기존 단일 서버와 두 색을 모두 포함하는 instance 선택자를 사용하고, 규칙의 다른 설정과 수신처는 유지해요.
 
 아래 값은 **운영에 적용한 초기 기준이며 확정된 서비스 SLO가 아니에요.** 연결 확인 후 적용했으며 24~48시간 관찰해 요청량·평소 지연에 맞게 조정해요. 다른 환경에서 처음 설정할 때도 연결 확인을 먼저 해요.
 
@@ -231,8 +214,10 @@ DAU·MAU 아래에 두 시각을 함께 표시해요. 기본 시간대는 대시
 
 ### 수집 중단 쿼리
 
+이 쿼리는 어느 슬롯이든 하나가 수집되면 정상으로 판단해요. 배포 실패로 두 슬롯이 남은 상태에서 활성 슬롯만 실패하면 감지하지 못할 수 있으므로, 배포 실패 시 공개 API와 실제 활성 슬롯을 별도로 확인해요. 활성 경로를 상시 감시하는 별도 알림은 아직 구성하지 않았어요.
+
 ```promql
-1 - (max(up{job="pheeeew-api",environment="prod",instance="pheeeew-prod"}) or vector(0))
+1 - (max(up{job="pheeeew-api",environment="prod",instance=~"pheeeew-prod(-blue|-green)?"}) or vector(0))
 ```
 
 `up=0`은 Alloy가 앱 지표를 읽지 못한 상태예요. EC2 또는 Alloy 자체가 멈추면 새 `up`을 보내지 못하므로 시계열의 부재도 감지해요. 마지막 값이 조회에서 사라지는 데 걸리는 lookback 지연과 Pending 2분 때문에 즉시 알림은 아니에요. 이는 외부 공개 URL의 가용성 검사가 아니며, Cloudflare·nginx만 고장 났을 때는 `up=1`일 수 있어요.
@@ -242,12 +227,12 @@ DAU·MAU 아래에 두 시각을 함께 표시해요. 기본 시간대는 대시
 ```promql
 (
   (
-    sum(increase(http_server_requests_seconds_count{job="pheeeew-api",environment="prod",instance="pheeeew-prod",uri=~"/api/.*",status=~"5.."}[5m]))
+    sum(increase(http_server_requests_seconds_count{job="pheeeew-api",environment="prod",instance=~"pheeeew-prod(-blue|-green)?",uri=~"/api/.*",status=~"5.."}[5m]))
     /
-    sum(increase(http_server_requests_seconds_count{job="pheeeew-api",environment="prod",instance="pheeeew-prod",uri=~"/api/.*"}[5m]))
+    sum(increase(http_server_requests_seconds_count{job="pheeeew-api",environment="prod",instance=~"pheeeew-prod(-blue|-green)?",uri=~"/api/.*"}[5m]))
   ) > bool 0.05
   and
-  sum(increase(http_server_requests_seconds_count{job="pheeeew-api",environment="prod",instance="pheeeew-prod",uri=~"/api/.*",status=~"5.."}[5m])) >= 5
+  sum(increase(http_server_requests_seconds_count{job="pheeeew-api",environment="prod",instance=~"pheeeew-prod(-blue|-green)?",uri=~"/api/.*",status=~"5.."}[5m])) >= 5
 ) or vector(0)
 ```
 
@@ -256,10 +241,10 @@ DAU·MAU 아래에 두 시각을 함께 표시해요. 기본 시간대는 대시
 ```promql
 (
   histogram_quantile(0.95,
-    sum by (le) (rate(http_server_requests_seconds_bucket{job="pheeeew-api",environment="prod",instance="pheeeew-prod",uri="/api/v1/sighs",method="GET"}[5m]))
+    sum by (le) (rate(http_server_requests_seconds_bucket{job="pheeeew-api",environment="prod",instance=~"pheeeew-prod(-blue|-green)?",uri="/api/v1/sighs",method="GET"}[5m]))
   ) > bool 1
   and
-  sum(increase(http_server_requests_seconds_count{job="pheeeew-api",environment="prod",instance="pheeeew-prod",uri="/api/v1/sighs",method="GET"}[5m])) >= 100
+  sum(increase(http_server_requests_seconds_count{job="pheeeew-api",environment="prod",instance=~"pheeeew-prod(-blue|-green)?",uri="/api/v1/sighs",method="GET"}[5m])) >= 100
 ) or vector(0)
 ```
 
@@ -292,10 +277,10 @@ DAU·MAU 아래에 두 시각을 함께 표시해요. 기본 시간대는 대시
 ```promql
 (
   histogram_quantile(0.95,
-    sum by (le) (rate(http_server_requests_seconds_bucket{job="pheeeew-api",environment="prod",instance="pheeeew-prod",uri="/api/v2/sighs",method="GET"}[5m]))
+    sum by (le) (rate(http_server_requests_seconds_bucket{job="pheeeew-api",environment="prod",instance=~"pheeeew-prod(-blue|-green)?",uri="/api/v2/sighs",method="GET"}[5m]))
   ) > bool 1
   and
-  sum(increase(http_server_requests_seconds_count{job="pheeeew-api",environment="prod",instance="pheeeew-prod",uri="/api/v2/sighs",method="GET"}[5m])) >= 100
+  sum(increase(http_server_requests_seconds_count{job="pheeeew-api",environment="prod",instance=~"pheeeew-prod(-blue|-green)?",uri="/api/v2/sighs",method="GET"}[5m])) >= 100
 ) or vector(0)
 ```
 
@@ -333,7 +318,7 @@ docker stats --no-stream
 로그를 공유할 때 토큰·사용자 입력값이 섞이지 않았는지 확인해요. Grafana Explore에서는 아래처럼 요청 하나를 찾아요. correlationId를 Loki 라벨로 추가하지 않아요.
 
 ```logql
-{job="pheeeew-api",environment="prod",instance="pheeeew-prod"} | json | correlationId="찾을-번호"
+{job="pheeeew-api",environment="prod",instance=~"pheeeew-prod(-blue|-green)?"} | json | correlationId="찾을-번호"
 ```
 
 CPU는 같은 인스턴스의 시계열에 Cloud 부가 라벨이 추가되어도 범례가 중복되지 않도록 시점별 최댓값을 표시해요. 이는 여러 서버의 CPU를 합산하는 쿼리가 아니에요.

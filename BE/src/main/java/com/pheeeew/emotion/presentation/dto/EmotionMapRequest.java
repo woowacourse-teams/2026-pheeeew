@@ -6,9 +6,12 @@ import com.pheeeew.emotion.domain.repository.query.EmotionSearchFilter;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchScope;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.format.annotation.DateTimeFormat;
 
@@ -37,9 +40,10 @@ public record EmotionMapRequest(
         @Schema(description = "다음 페이지 조회에 사용할 서버 발급 커서", example = "opaque-cursor")
         String cursor,
 
-        @Schema(description = "GROUP 범위의 그룹 공개 ID. scope 없이 지정하면 GROUP으로 조회합니다. "
-                + "다음 페이지에서는 생략하거나 커서와 동일한 그룹 ID를 전달합니다.")
-        UUID groupId,
+        @Size(min = 1)
+        @Schema(description = "GROUP 범위의 그룹 공개 ID 목록. groupId=A&groupId=B처럼 반복하여 전달하며 OR로 조회합니다. "
+                + "순서와 중복은 무시합니다. 다음 페이지에는 생략하거나 커서와 동일한 그룹 집합을 전달합니다.")
+        List<@NotNull UUID> groupId,
 
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
         @Schema(description = "KST 기준 시작일(포함). 종료일과 함께 지정하며 둘 다 생략하면 전체 기간입니다.", example = "2026-10-01")

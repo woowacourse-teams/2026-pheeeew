@@ -16,6 +16,10 @@ data class AudioPlaybackState(
 }
 
 interface AudioPlayback {
+    fun interface Factory {
+        fun create(): AudioPlayback
+    }
+
     val state: StateFlow<AudioPlaybackState>
 
     suspend fun prepare(bytes: ByteArray)
