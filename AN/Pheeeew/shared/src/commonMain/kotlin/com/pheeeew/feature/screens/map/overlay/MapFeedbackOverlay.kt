@@ -1,8 +1,11 @@
 package com.pheeeew.feature.screens.map.overlay
 
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.IntOffset
@@ -123,7 +126,7 @@ internal fun MapFeedbackOverlay(
                         else -> false
                     },
                 onDismiss = dismiss,
-                maxLines = if (source == null) 10 else 3,
+                maxLines = if (source == null) Int.MAX_VALUE else 3,
                 presentationKey = mapFeedbackPresentationKey(source, notice?.id, message?.id, text),
                 onShown = { if (source == MapFeedbackSource.Record) notice?.receipt?.shown() },
                 durationMillis = null,
@@ -135,7 +138,16 @@ internal fun MapFeedbackOverlay(
                     },
                 onAction = action,
                 showDismissAction = source == MapFeedbackSource.Detail,
-                modifier = Modifier.widthIn(max = 560.dp).fillMaxWidth().padding(horizontal = 16.dp),
+                modifier =
+                    Modifier.widthIn(max = 560.dp).fillMaxWidth().padding(horizontal = 16.dp).then(
+                        if (source ==
+                            null
+                        ) {
+                            Modifier.heightIn(max = 240.dp).verticalScroll(rememberScrollState())
+                        } else {
+                            Modifier
+                        },
+                    ),
             )
         }
     }
