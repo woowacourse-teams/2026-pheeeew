@@ -6,9 +6,9 @@ import com.pheeeew.core.di.ActivityRetainedGraphOwner
 import com.pheeeew.core.di.AppGraph
 import com.pheeeew.core.notification.NotificationClickInbox
 import com.pheeeew.core.notification.NotificationMessageInbox
-import com.pheeeew.developertools.DeveloperToolsHost
-import com.pheeeew.developertools.DeveloperToolsInfo
-import com.pheeeew.developertools.DeveloperToolsSettingsEntry
+import com.pheeeew.developertools.feature.DeveloperToolsHost
+import com.pheeeew.developertools.feature.DeveloperToolsInfo
+import com.pheeeew.developertools.feature.DeveloperToolsSettingsEntry
 
 @Composable
 internal fun AppEntry(
@@ -30,6 +30,7 @@ internal fun AppEntry(
                 serverEnvironment = build.environment,
                 apiBaseUrl = build.baseUrl,
             ),
+        configRepository = appGraph.apiDependencies.appConfig,
         onClearUiSession = owner::clearUiSession,
         onResetOnboarding = appGraph.onboardingStore::resetCompletion,
     ) { onOpen ->

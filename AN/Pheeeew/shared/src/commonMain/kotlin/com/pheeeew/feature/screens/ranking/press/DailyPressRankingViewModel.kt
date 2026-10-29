@@ -62,6 +62,13 @@ internal class DailyPressRankingViewModel(
         if (generation != null) refresh()
     }
 
+    fun onRouteHidden() {
+        requestId++
+        notificationRefreshPending = false
+        requestJob?.cancel()
+        requestJob = null
+    }
+
     fun onRefresh() {
         if (requestJob?.isActive == true) return
         refresh(showIndicator = true)

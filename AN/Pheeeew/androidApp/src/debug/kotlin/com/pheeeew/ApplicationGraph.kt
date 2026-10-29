@@ -5,7 +5,7 @@ import com.pheeeew.core.di.AndroidAppConfig
 import com.pheeeew.core.di.AndroidAppServiceFactory
 import com.pheeeew.core.di.AppGraph
 import com.pheeeew.core.di.createAndroidAppGraph
-import com.pheeeew.developertools.simulation.DebugAppServiceFactory
+import com.pheeeew.developertools.data.simulation.DebugAppServiceFactory
 
 internal fun createApplicationGraph(
     context: Context,

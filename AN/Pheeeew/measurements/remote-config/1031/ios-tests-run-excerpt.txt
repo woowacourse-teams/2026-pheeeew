@@ -1,0 +1,145 @@
+실제 실행 로그 발췌: Gradle task, Sentry 검증 및 최종 결과 행. 원본: /tmp/1031-ios-tests.log
+> Task :shared:generateExpectResourceCollectorsForCommonMain UP-TO-DATE
+> Task :shared:convertXmlValueResourcesForNativeMain NO-SOURCE
+> Task :shared:convertXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :shared:generateComposeResClass UP-TO-DATE
+> Task :shared:copyNonXmlValueResourcesForIosMain NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForAppleMain NO-SOURCE
+> Task :shared:kmpPartiallyResolvedDependenciesChecker
+> Task :shared:convertXmlValueResourcesForAppleTest NO-SOURCE
+> Task :shared:convertXmlValueResourcesForAppleMain NO-SOURCE
+> Task :shared:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :shared:checkIosSimulatorArm64TestComposeLibrariesCompatibility
+> Task :shared:checkIosSimulatorArm64MainComposeLibrariesCompatibility
+> Task :shared:convertXmlValueResourcesForIosMain NO-SOURCE
+> Task :shared:convertXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForNativeMain NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForAppleMain NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :shared:convertXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :shared:prepareComposeResourcesTaskForIosMain NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForCommonTest NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForAppleTest NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :shared:convertXmlValueResourcesForIosTest NO-SOURCE
+> Task :shared:generateResourceAccessorsForIosMain NO-SOURCE
+> Task :shared:convertXmlValueResourcesForCommonTest NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForNativeMain NO-SOURCE
+> Task :shared:generateResourceAccessorsForAppleMain NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForIosSimulatorArm64Main NO-SOURCE
+> Task :shared:convertXmlValueResourcesForNativeTest NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForIosTest NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForIosSimulatorArm64Test NO-SOURCE
+> Task :shared:generateResourceAccessorsForNativeMain NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForNativeTest NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForAppleTest NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForCommonTest NO-SOURCE
+> Task :shared:generateResourceAccessorsForIosSimulatorArm64Main NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForNativeTest NO-SOURCE
+> Task :shared:generateResourceAccessorsForCommonTest NO-SOURCE
+> Task :shared:generateResourceAccessorsForIosSimulatorArm64Test NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForIosTest NO-SOURCE
+> Task :shared:generateResourceAccessorsForNativeTest NO-SOURCE
+> Task :shared:generateResourceAccessorsForAppleTest NO-SOURCE
+> Task :shared:generateResourceAccessorsForIosTest NO-SOURCE
+> Task :developerTools:kmpPartiallyResolvedDependenciesChecker
+> Task :developerTools:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :developerTools:checkIosSimulatorArm64MainComposeLibrariesCompatibility
+> Task :developerTools:convertXmlValueResourcesForAppleMain NO-SOURCE
+> Task :developerTools:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :developerTools:copyNonXmlValueResourcesForAppleMain NO-SOURCE
+> Task :shared:assembleIosSimulatorArm64TestResources UP-TO-DATE
+> Task :developerTools:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :shared:computeLocalPackageDependencyInputFiles UP-TO-DATE
+> Task :developerTools:convertXmlValueResourcesForIosMain NO-SOURCE
+> Task :developerTools:copyNonXmlValueResourcesForIosMain NO-SOURCE
+> Task :developerTools:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+> Task :developerTools:generateResourceAccessorsForCommonMain SKIPPED
+> Task :developerTools:convertXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :shared:iosSimulatorArm64ResolveResourcesFromDependencies UP-TO-DATE
+> Task :developerTools:copyNonXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :developerTools:prepareComposeResourcesTaskForAppleMain NO-SOURCE
+> Task :developerTools:convertXmlValueResourcesForNativeMain NO-SOURCE
+> Task :developerTools:generateResourceAccessorsForAppleMain SKIPPED
+> Task :developerTools:generateComposeResClass SKIPPED
+> Task :developerTools:generateExpectResourceCollectorsForCommonMain SKIPPED
+> Task :developerTools:prepareComposeResourcesTaskForIosSimulatorArm64Main NO-SOURCE
+> Task :developerTools:generateResourceAccessorsForIosSimulatorArm64Main SKIPPED
+> Task :developerTools:prepareComposeResourcesTaskForIosMain NO-SOURCE
+> Task :developerTools:copyNonXmlValueResourcesForNativeMain NO-SOURCE
+> Task :developerTools:convertXmlValueResourcesForAppleTest NO-SOURCE
+> Task :developerTools:copyNonXmlValueResourcesForAppleTest NO-SOURCE
+> Task :developerTools:generateResourceAccessorsForIosMain SKIPPED
+> Task :developerTools:prepareComposeResourcesTaskForNativeMain NO-SOURCE
+> Task :shared:exportCrossCompilationMetadataForIosSimulatorArm64ApiElements UP-TO-DATE
+> Task :developerTools:convertXmlValueResourcesForCommonTest NO-SOURCE
+> Task :developerTools:prepareComposeResourcesTaskForAppleTest NO-SOURCE
+> Task :developerTools:generateResourceAccessorsForNativeMain SKIPPED
+> Task :developerTools:generateResourceAccessorsForAppleTest SKIPPED
+> Task :developerTools:copyNonXmlValueResourcesForCommonTest NO-SOURCE
+> Task :developerTools:checkIosSimulatorArm64TestComposeLibrariesCompatibility
+> Task :developerTools:convertXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :developerTools:generateActualResourceCollectorsForIosSimulatorArm64Main SKIPPED
+> Task :developerTools:copyNonXmlValueResourcesForIosTest NO-SOURCE
+> Task :developerTools:copyNonXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :developerTools:convertXmlValueResourcesForIosTest NO-SOURCE
+> Task :developerTools:convertXmlValueResourcesForNativeTest NO-SOURCE
+> Task :developerTools:prepareComposeResourcesTaskForCommonTest NO-SOURCE
+> Task :developerTools:prepareComposeResourcesTaskForIosSimulatorArm64Test NO-SOURCE
+> Task :developerTools:generateResourceAccessorsForCommonTest SKIPPED
+> Task :developerTools:copyNonXmlValueResourcesForNativeTest NO-SOURCE
+> Task :developerTools:prepareComposeResourcesTaskForIosTest NO-SOURCE
+> Task :developerTools:generateResourceAccessorsForIosSimulatorArm64Test SKIPPED
+> Task :developerTools:generateResourceAccessorsForIosTest SKIPPED
+> Task :developerTools:prepareComposeResourcesTaskForNativeTest NO-SOURCE
+> Task :developerTools:generateResourceAccessorsForNativeTest SKIPPED
+> Task :developerTools:assembleIosSimulatorArm64MainResources UP-TO-DATE
+> Task :shared:serializeSwiftPMDependenciesMetadataForLockFiles UP-TO-DATE
+> Task :developerTools:serializeSwiftPMDependenciesMetadataForLockFiles UP-TO-DATE
+> Task :shared:copyNonXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :developerTools:computeLocalPackageDependencyInputFiles
+> Task :developerTools:iosSimulatorArm64ResolveSelfResourcesCopyHierarchicalMultiplatformResources UP-TO-DATE
+> Task :shared:prepareComposeResourcesTaskForCommonMain UP-TO-DATE
+> Task :shared:generateResourceAccessorsForCommonMain UP-TO-DATE
+> Task :shared:generateActualResourceCollectorsForIosSimulatorArm64Main UP-TO-DATE
+> Task :shared:generateSyntheticLinkageSwiftPMImportProjectForCinteropsAndLdDump UP-TO-DATE
+> Task :developerTools:assembleIosSimulatorArm64TestResources
+> Task :shared:downloadKotlinNativeDistribution UP-TO-DATE
+> Task :developerTools:downloadKotlinNativeDistribution UP-TO-DATE
+> Task :developerTools:generateSyntheticLinkageSwiftPMImportProjectForCinteropsAndLdDump
+> Task :developerTools:generateUmbrellaPackageIdentifierBasedResolutionForDefault
+> Task :shared:assembleIosSimulatorArm64MainResources UP-TO-DATE
+> Task :shared:iosSimulatorArm64ResolveSelfResourcesCopyHierarchicalMultiplatformResources UP-TO-DATE
+> Task :shared:iosSimulatorArm64AggregateResources UP-TO-DATE
+> Task :shared:copyTestComposeResourcesForIosSimulatorArm64 UP-TO-DATE
+> Task :shared:iosSimulatorArm64ProcessResources UP-TO-DATE
+> Task :shared:compileKotlinIosSimulatorArm64 UP-TO-DATE
+> Task :shared:iosSimulatorArm64MainKlibrary UP-TO-DATE
+> Task :shared:compileTestKotlinIosSimulatorArm64 UP-TO-DATE
+> Task :developerTools:compileKotlinIosSimulatorArm64 UP-TO-DATE
+> Task :shared:iosSimulatorArm64CopyHierarchicalMultiplatformResources
+> Task :shared:iosSimulatorArm64ZipMultiplatformResourcesForPublication
+> Task :developerTools:iosSimulatorArm64ResolveResourcesFromDependencies
+> Task :developerTools:iosSimulatorArm64AggregateResources
+> Task :prepareIosTestFrameworks
+> Task :developerTools:iosSimulatorArm64ProcessResources
+> Task :developerTools:iosSimulatorArm64MainKlibrary
+> Task :developerTools:copyTestComposeResourcesForIosSimulatorArm64
+> Task :developerTools:fetchUmbrellaPackageIdentifierForDefault
+> Task :prepareIosTestFrameworks
+Prepared Sentry 8.58.2 iOS simulator slice (verified SHA-256)
+> Task :developerTools:compileTestKotlinIosSimulatorArm64
+> Task :developerTools:fetchUmbrellaPackageIdentifierForDefault
+> Task :shared:syncPersistedPackageResolvedToSynthetic UP-TO-DATE
+> Task :developerTools:syncPersistedPackageResolvedToSynthetic
+> Task :shared:fetchSyntheticImportProjectPackages UP-TO-DATE
+> Task :shared:convertSyntheticImportProjectIntoDefFileIphonesimulator UP-TO-DATE
+> Task :developerTools:fetchSyntheticImportProjectPackages
+> Task :developerTools:convertSyntheticImportProjectIntoDefFileIphonesimulator
+> Task :shared:linkDebugTestIosSimulatorArm64
+> Task :developerTools:linkDebugTestIosSimulatorArm64
+> Task :developerTools:iosSimulatorArm64Test
+> Task :shared:iosSimulatorArm64Test
+BUILD SUCCESSFUL in 1m 15s
+55 actionable tasks: 26 executed, 29 up-to-date
+Configuration cache entry stored.

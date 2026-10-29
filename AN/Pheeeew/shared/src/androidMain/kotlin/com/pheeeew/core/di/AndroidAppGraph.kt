@@ -23,6 +23,8 @@ import com.pheeeew.core.notification.AndroidNotificationPermissionController
 import com.pheeeew.core.notification.NotificationPermissionController
 import com.pheeeew.core.permission.AndroidAppSettingsLauncher
 import com.pheeeew.core.permission.AppSettingsLauncher
+import com.pheeeew.data.local.config.AndroidAppConfigStore
+import com.pheeeew.data.local.config.AppConfigStore
 import com.pheeeew.data.local.device.AndroidDeviceCredentialStorage
 import com.pheeeew.data.local.device.DeviceCredentialStorage
 import com.pheeeew.data.location.platform.android.AndroidLocationPermissionController
@@ -136,6 +138,17 @@ internal interface AndroidAppGraph :
     @Provides
     @SingleIn(AppScope::class)
     fun settings(context: Context): AppSettingsLauncher = AndroidAppSettingsLauncher(context)
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun configStore(
+        context: Context,
+        build: DeviceSessionBuildConfig,
+    ): AppConfigStore =
+        AndroidAppConfigStore(
+            context,
+            ApiConfig(build.baseUrl).deviceStorageEnvironment(),
+        )
 
     @Provides
     @SingleIn(AppScope::class)
