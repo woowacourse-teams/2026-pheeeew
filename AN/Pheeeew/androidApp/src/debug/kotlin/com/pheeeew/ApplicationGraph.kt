@@ -10,4 +10,15 @@ import com.pheeeew.developertools.data.simulation.DebugAppServiceFactory
 internal fun createApplicationGraph(
     context: Context,
     config: AndroidAppConfig,
-): AppGraph = createAndroidAppGraph(context, config, DebugAppServiceFactory(AndroidAppServiceFactory(context)))
+): AppGraph =
+    createAndroidAppGraph(
+        context,
+        if (config.applicationId.endsWith(".updatetest")) {
+            config.copy(
+                versionRepositoryDecorator = { remote -> UpdateTestRepository(context, remote) },
+            )
+        } else {
+            config
+        },
+        DebugAppServiceFactory(AndroidAppServiceFactory(context)),
+    )

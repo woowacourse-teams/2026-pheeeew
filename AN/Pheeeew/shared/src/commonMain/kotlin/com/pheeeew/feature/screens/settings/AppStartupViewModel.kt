@@ -25,6 +25,8 @@ import kotlin.time.TimeSource
 
 data class AppStartupState(
     val checked: Boolean = false,
+    val policySource: String? = null,
+    val lookupFailed: Boolean = false,
     val decision: AppVersionDecision? = null,
     val minimumSplashElapsed: Boolean = false,
     val splashDismissed: Boolean = false,
@@ -135,17 +137,30 @@ class AppStartupViewModel(
 
     fun checkVersion() {
         if (check?.isActive == true) return
+        if (mutable.value.decision == null) {
+            val cached = runCatching { repository.cachedPolicy()?.let { evaluateAppVersion(version, it) } }.getOrNull()
+            if (cached != null) {
+                mutable.update { it.copy(checked = true, decision = cached, policySource = "cache") }
+            }
+        }
         check =
             viewModelScope.launch {
                 try {
                     val policy = withTimeout(10_000L) { repository.getPolicy() }
-                    mutable.update { it.copy(checked = true, decision = evaluateAppVersion(version, policy)) }
+                    mutable.update {
+                        it.copy(
+                            checked = true,
+                            decision = evaluateAppVersion(version, policy),
+                            policySource = "network",
+                            lookupFailed = false,
+                        )
+                    }
                 } catch (_: TimeoutCancellationException) {
-                    mutable.update { it.copy(checked = true) }
+                    mutable.update { it.copy(checked = true, lookupFailed = true) }
                 } catch (cancellation: CancellationException) {
                     throw cancellation
                 } catch (_: Exception) {
-                    mutable.update { it.copy(checked = true) }
+                    mutable.update { it.copy(checked = true, lookupFailed = true) }
                 }
                 recordStep("version")
                 finishSplashIfReady()

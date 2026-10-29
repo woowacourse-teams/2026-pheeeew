@@ -17,6 +17,7 @@ internal fun AppEntry(
     owner: ActivityRetainedGraphOwner,
     notificationClicks: NotificationClickInbox,
     notificationMessages: NotificationMessageInbox,
+    updates: com.pheeeew.core.update.AppUpdateController,
 ) {
     val build = appGraph.apiDependencies.buildConfig
     DeveloperToolsHost(
@@ -39,6 +40,7 @@ internal fun AppEntry(
             owner,
             notificationClicks,
             notificationMessages,
+            updates,
         ) { DeveloperToolsSettingsEntry(onOpen) }
     }
 }

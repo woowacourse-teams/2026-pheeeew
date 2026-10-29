@@ -31,7 +31,9 @@ import com.pheeeew.data.location.platform.android.AndroidLocationPermissionContr
 import com.pheeeew.data.location.platform.android.AndroidPlatformLocationProvider
 import com.pheeeew.data.remote.attestation.AndroidPlayIntegrityProofProvider
 import com.pheeeew.data.remote.attestation.DeviceAttestationPolicy
+import com.pheeeew.data.repository.AppVersionCacheStorage
 import com.pheeeew.data.repository.AppVersionRepositoryImpl
+import com.pheeeew.data.repository.CachedAppVersionRepository
 import com.pheeeew.data.repository.EmotionMapRepositoryImpl
 import com.pheeeew.data.repository.EmotionRegionMapRepositoryImpl
 import com.pheeeew.domain.model.device.DevicePlatform
@@ -44,13 +46,18 @@ import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.createGraphFactory
 
-class AndroidAppConfig(
+data class AndroidAppConfig(
     val device: DeviceSessionBuildConfig,
     val applicationId: String,
     val cloudProjectNumber: Long,
     val monitoring: MonitoringConfig,
     val version: String,
-)
+    val versionRepositoryDecorator: ((AppVersionRepository) -> AppVersionRepository)? = null,
+) {
+    init {
+        require(device.isDebug || versionRepositoryDecorator == null)
+    }
+}
 
 @DependencyGraph(AppScope::class)
 internal interface AndroidAppGraph :
@@ -143,7 +150,27 @@ internal interface AndroidAppGraph :
             ApiConfig(build.baseUrl).deviceStorageEnvironment(),
         )
 
-    @Provides fun versions(impl: AppVersionRepositoryImpl): AppVersionRepository = impl
+    @Provides
+    @SingleIn(AppScope::class)
+    fun versions(
+        impl: AppVersionRepositoryImpl,
+        context: Context,
+        build: DeviceSessionBuildConfig,
+        config: AndroidAppConfig,
+    ): AppVersionRepository {
+        val preferences = context.getSharedPreferences("app_version_policy", Context.MODE_PRIVATE)
+        val key = "android:${build.baseUrl}"
+        val storage =
+            object : AppVersionCacheStorage {
+                override fun read(): String? = preferences.getString(key, null)
+
+                override fun write(value: String) {
+                    preferences.edit().putString(key, value).apply()
+                }
+            }
+        val cached = CachedAppVersionRepository(impl, storage, "android", build.baseUrl)
+        return config.versionRepositoryDecorator?.invoke(cached) ?: cached
+    }
 
     @Provides
     @SingleIn(AppScope::class)

@@ -370,6 +370,64 @@ class AppStartupViewModelTest {
             }
         }
 
+    @Test
+    fun `cached required policy blocks immediately and successful rollback releases it`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            val owner = Owner()
+            val response = CompletableDeferred<AppVersionPolicy>()
+            val repository =
+                object : AppVersionRepository {
+                    override fun cachedPolicy() = AppVersionPolicy("2.0.0", "2.0.0", "https://example.test/store")
+
+                    override suspend fun getPolicy() = response.await()
+                }
+            try {
+                val vm = owner.create(repository)
+                vm.checkVersion()
+                assertTrue(vm.state.value.checked)
+                assertEquals("cache", vm.state.value.policySource)
+                assertIs<AppVersionDecision.UpdateRequired>(vm.state.value.decision)
+                runCurrent()
+                response.complete(AppVersionPolicy("1.0.0", "1.0.0", "https://example.test/store"))
+                runCurrent()
+                assertEquals(AppVersionDecision.Current, vm.state.value.decision)
+                assertEquals("network", vm.state.value.policySource)
+                assertFalse(vm.state.value.lookupFailed)
+            } finally {
+                owner.viewModelStore.clear()
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `timeout retains cached required policy for this session`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            val owner = Owner()
+            try {
+                val vm =
+                    owner.create(
+                        object : AppVersionRepository {
+                            override fun cachedPolicy() =
+                                AppVersionPolicy("2.0.0", "2.0.0", "https://example.test/store")
+
+                            override suspend fun getPolicy(): AppVersionPolicy = awaitCancellation()
+                        },
+                    )
+                vm.checkVersion()
+                runCurrent()
+                advanceTimeBy(10_000)
+                runCurrent()
+                assertIs<AppVersionDecision.UpdateRequired>(vm.state.value.decision)
+                assertTrue(vm.state.value.lookupFailed)
+                assertEquals("cache", vm.state.value.policySource)
+            } finally {
+                owner.viewModelStore.clear()
+                Dispatchers.resetMain()
+            }
+        }
+
     private fun currentPolicy() =
         AppVersionRepository {
             AppVersionPolicy("1.0.0", "1.0.0", "https://example.test/store")

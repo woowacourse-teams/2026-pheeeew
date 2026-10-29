@@ -33,11 +33,16 @@ kotlin {
 }
 dependencies {
     implementation(project(":shared"))
+    implementation(libs.play.app.update)
+    // Play pulls an old Fragment; Activity Result requires a compatible version.
+    implementation(libs.androidx.fragment)
+    implementation(libs.play.app.update.ktx)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
     implementation(libs.androidx.work.runtime)
     debugImplementation(project(":developerTools"))
     debugImplementation(libs.compose.foundation)
+    debugImplementation(libs.compose.material3)
     implementation("androidx.lifecycle:lifecycle-process:2.10.0")
 
     androidTestImplementation(libs.androidx.testExt.junit)
@@ -93,6 +98,10 @@ val debugDeviceAttestationMode = providers.gradleProperty("deviceDebugAttestatio
 val deviceCloudProjectNumber = providers.gradleProperty("deviceCloudProjectNumber").orElse("87715710427")
 val cloudProjectNumberLiteral = "${deviceCloudProjectNumber.get().toLongOrNull() ?: 0L}L"
 
+val appUpdateTestBuild = providers.gradleProperty("appUpdateTestBuild").map(String::toBoolean).orElse(false)
+val appUpdateTestVersionCode = providers.gradleProperty("appUpdateTestVersionCode").orElse("103201")
+val appUpdateTestVersionName = providers.gradleProperty("appUpdateTestVersionName").orElse("2.5.0")
+
 android {
     namespace = "com.pheeeew"
     compileSdk =
@@ -117,6 +126,7 @@ android {
         buildConfigField("boolean", "MONITORING_ENABLED", (monitoringValue("MONITORING_ENABLED") == "true").toString())
         versionCode = 13
         versionName = "2.5.0"
+        manifestPlaceholders["appLabel"] = "@string/app_name"
     }
     packaging {
         resources {
@@ -129,6 +139,11 @@ android {
     }
     buildTypes {
         debug {
+            if (appUpdateTestBuild.get()) {
+                applicationIdSuffix = ".updatetest"
+                versionNameSuffix = "" // Server version comparison needs major.minor.patch.
+                manifestPlaceholders["appLabel"] = "히유 업데이트 테스트 A/B"
+            }
             require(debugPressInputMode.get() in setOf("http", "ws")) { "Unknown Debug press input mode" }
             buildConfigField("String", "PRESS_INPUT_MODE", quotedConfig(debugPressInputMode.get()))
             buildConfigField("String", "DEVICE_ENVIRONMENT", "\"dev\"")
@@ -209,6 +224,12 @@ tasks.matching { it.name == "preReleaseBuild" || it.name == "generateReleaseBuil
 androidComponents {
     onVariants(selector().all()) { variant ->
         val suffix = variant.name.replaceFirstChar { it.uppercaseChar() }
+        if (variant.buildType == "debug" && appUpdateTestBuild.get()) {
+            variant.outputs.forEach { output ->
+                output.versionCode.set(appUpdateTestVersionCode.map(String::toInt))
+                output.versionName.set(appUpdateTestVersionName)
+            }
+        }
         val release = variant.buildType == "release"
         val fields = checkNotNull(variant.buildConfigFields) { "Device session requires BuildConfig" }
         val debuggable = variant.debuggable
@@ -317,4 +338,9 @@ val verifyDeveloperToolsIsolation by tasks.registering {
 
 tasks.matching { it.name == "preDebugBuild" || it.name == "preReleaseBuild" }.configureEach {
     dependsOn(verifyDeveloperToolsIsolation)
+}
+
+// The isolated update-test package is not registered in the production Firebase project.
+if (appUpdateTestBuild.get()) {
+    tasks.matching { it.name == "processDebugGoogleServices" }.configureEach { enabled = false }
 }
