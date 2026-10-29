@@ -20,4 +20,7 @@ node_modules/
 iosApp/Configuration/TeamID.xcconfig
 
 monitoring.local.properties
+keystore.properties
+*.jks
+*.keystore
 iosApp/Configuration/Monitoring.local.xcconfig

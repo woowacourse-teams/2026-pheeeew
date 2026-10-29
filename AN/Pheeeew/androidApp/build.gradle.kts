@@ -1,4 +1,5 @@
 import org.gradle.api.DefaultTask
+import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
@@ -22,6 +23,33 @@ abstract class ValidateReleaseSentryUpload : DefaultTask() {
         check(!authToken.orNull.isNullOrBlank()) {
             "Set SENTRY_AUTH_TOKEN in the environment or monitoring.local.properties, " +
                 "or sentryAuthToken in user Gradle properties before building release."
+        }
+    }
+}
+
+abstract class ValidateReleaseSigning : DefaultTask() {
+    @get:Internal
+    abstract val propertiesFile: RegularFileProperty
+
+    @TaskAction
+    fun validate() {
+        val local = propertiesFile.get().asFile
+        check(local.isFile) {
+            "Copy keystore.properties.example to keystore.properties and configure the Play upload keystore."
+        }
+        val settings = Properties().apply { local.inputStream().use { load(it) } }
+        listOf("storeFile", "storePassword", "keyAlias", "keyPassword").forEach { key ->
+            check(!settings.getProperty(key).isNullOrBlank()) {
+                "Set $key in keystore.properties before building release."
+            }
+        }
+        val keystore =
+            local.parentFile
+                .toPath()
+                .resolve(settings.getProperty("storeFile"))
+                .toFile()
+        check(keystore.isFile) {
+            "The storeFile in keystore.properties must point to an existing keystore."
         }
     }
 }
@@ -60,6 +88,12 @@ dependencies {
 val monitoringProperties =
     Properties().apply {
         val local = rootProject.file("monitoring.local.properties")
+        if (local.exists()) local.inputStream().use { load(it) }
+    }
+
+val signingProperties =
+    Properties().apply {
+        val local = rootProject.file("keystore.properties")
         if (local.exists()) local.inputStream().use { load(it) }
     }
 
@@ -137,6 +171,18 @@ android {
         compose = true
         buildConfig = true
     }
+    signingConfigs {
+        create("release") {
+            storeFile =
+                signingProperties
+                    .getProperty("storeFile")
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { rootProject.file(it) }
+            storePassword = signingProperties.getProperty("storePassword")
+            keyAlias = signingProperties.getProperty("keyAlias")
+            keyPassword = signingProperties.getProperty("keyPassword")
+        }
+    }
     buildTypes {
         debug {
             if (appUpdateTestBuild.get()) {
@@ -157,6 +203,7 @@ android {
             buildConfigField("long", "DEVICE_CLOUD_PROJECT_NUMBER", cloudProjectNumberLiteral)
         }
         release {
+            signingConfig = signingConfigs.getByName("release")
             buildConfigField("String", "PRESS_INPUT_MODE", "\"http\"")
             buildConfigField("String", "DEVICE_ENVIRONMENT", "\"prod\"")
             buildConfigField("String", "DEVICE_ATTESTATION_MODE", "\"required\"")
@@ -216,8 +263,11 @@ val validateReleaseMonitoring by tasks.registering {
 val validateReleaseSentryUpload by tasks.registering(ValidateReleaseSentryUpload::class) {
     authToken.set(sentryAuthToken)
 }
+val validateReleaseSigning by tasks.registering(ValidateReleaseSigning::class) {
+    propertiesFile.set(rootProject.layout.projectDirectory.file("keystore.properties"))
+}
 tasks.matching { it.name == "preReleaseBuild" || it.name == "generateReleaseBuildConfig" }.configureEach {
-    dependsOn(validateReleaseMonitoring, validateReleaseSentryUpload)
+    dependsOn(validateReleaseMonitoring, validateReleaseSentryUpload, validateReleaseSigning)
 }
 
 // Inspect the actual variant fields used by BuildConfig, including flavor/plugin overrides.
