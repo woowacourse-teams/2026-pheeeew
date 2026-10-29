@@ -6,6 +6,7 @@ import com.pheeeew.domain.model.config.AppConfig
 import com.pheeeew.domain.model.config.AppConfigSnapshot
 import com.pheeeew.domain.model.config.AppConfigSource
 import com.pheeeew.domain.model.config.AppConfigState
+import com.pheeeew.domain.model.config.isValidNotice
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -136,7 +137,7 @@ class AppConfigRepository(
         }
 
     fun setOverride(value: AppConfig?) {
-        require(value == null || value.noticeMessage.count { !it.isLowSurrogate() } <= 200)
+        require(value == null || value.noticeMessage.isValidNotice())
         mutable.update {
             val next = value ?: it.snapshot?.config ?: AppConfig()
             it.copy(override = value, lastAppliedAt = if (next != it.config) now() else it.lastAppliedAt)
@@ -153,15 +154,30 @@ class AppConfigRepository(
                 require(old == null || snapshot.revision != old.revision || snapshot == old)
                 val received = now()
                 var storageFailed = false
+                val previousCache = store.read()
+                currentCoroutineContext().ensureActive()
                 try {
                     store.write(json.encodeToString(CachedAppConfig(1, snapshot, received)))
+                    // A suspended storage write must not publish a cancelled response.
+                    currentCoroutineContext().ensureActive()
                 } catch (cancelled: CancellationException) {
+                    withContext(NonCancellable) {
+                        try {
+                            if (previousCache == null) store.clear() else store.write(previousCache)
+                        } catch (_: Exception) {
+                            mutable.update { it.copy(storageError = true) }
+                            // Prefer no cache over a cancelled response if restoration fails.
+                            try {
+                                store.clear()
+                            } catch (_: Exception) {
+                                mutable.update { it.copy(error = "취소된 설정 캐시 복구 실패") }
+                            }
+                        }
+                    }
                     throw cancelled
                 } catch (_: Exception) {
                     storageFailed = true
                 }
-                // A suspended storage write must not publish a cancelled response.
-                currentCoroutineContext().ensureActive()
                 mutable.update {
                     val next = it.override ?: snapshot.config
                     it.copy(

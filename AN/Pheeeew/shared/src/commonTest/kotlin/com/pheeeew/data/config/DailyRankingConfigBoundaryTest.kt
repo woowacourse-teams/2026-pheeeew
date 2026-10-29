@@ -12,6 +12,8 @@ import com.pheeeew.domain.model.config.AppConfigSnapshot
 import com.pheeeew.domain.repository.DailyPressRankingLoadResult
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
+import io.ktor.http.HttpHeaders
+import io.ktor.http.headersOf
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -43,11 +45,18 @@ class DailyRankingConfigBoundaryTest {
             var requests = 0
             val entered = CompletableDeferred<Unit>()
             var cancelled = false
+            var successful = false
             val client =
                 createApiClient(
                     engine =
                         MockEngine {
                             requests++
+                            if (successful) {
+                                return@MockEngine respond(
+                                    """{"date":"2026-10-29","startAt":"2026-10-28T15:00:00Z","endAt":"2026-10-29T15:00:00Z","items":[],"me":{"rank":150,"nickname":"익명","pressCount":31}}""",
+                                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                                )
+                            }
                             entered.complete(Unit)
                             try {
                                 awaitCancellation()
@@ -76,6 +85,9 @@ class DailyRankingConfigBoundaryTest {
                 assertEquals(DailyPressRankingLoadResult.Unavailable, pending.await())
                 assertTrue(cancelled)
                 assertEquals(1, requests)
+                successful = true
+                config.setOverride(AppConfig(true))
+                assertTrue(repository.findDaily("2026-10-29", null) is DailyPressRankingLoadResult.Loaded)
             } finally {
                 client.close()
             }

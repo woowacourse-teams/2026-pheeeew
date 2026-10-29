@@ -25,6 +25,8 @@ class AppConfigRepositoryTest {
     private class Store : AppConfigStore {
         var raw: String? = null
         var failWrite = false
+        var suspendNextWrite = false
+        var failRestore = false
 
         override suspend fun read() = raw
 
@@ -35,6 +37,14 @@ class AppConfigRepositoryTest {
         override suspend fun write(value: String) {
             check(!failWrite)
             raw = value
+            if (suspendNextWrite) {
+                suspendNextWrite = false
+                try {
+                    delay(10_000)
+                } finally {
+                    if (failRestore) failWrite = true
+                }
+            }
         }
     }
 
@@ -43,6 +53,47 @@ class AppConfigRepositoryTest {
         enabled: Boolean = false,
         notice: String = "점검",
     ) = AppConfigSnapshot(revision, enabled, notice, "2026-10-29T03:00:00Z")
+
+    @Test
+    fun cancelledWriteRestoresPreviousCacheBeforeRestart() =
+        runTest {
+            val store = Store()
+            var next = snapshot(1, true)
+            val repo =
+                AppConfigRepository(store, backgroundScope, { next }, elapsedMillis = { testScheduler.currentTime })
+            repo.refresh()
+            advanceTimeBy(60_000)
+            val original = store.raw
+            next = snapshot(2, false)
+            store.suspendNextWrite = true
+            val foreground = backgroundScope.launch { repo.runForeground() }
+            runCurrent()
+            foreground.cancel()
+            runCurrent()
+            assertEquals(original, store.raw)
+            val restarted = AppConfigRepository(store, backgroundScope, { error("offline") })
+            restarted.initialize()
+            assertTrue(restarted.state.value.config.dailyPressRankingEnabled)
+        }
+
+    @Test
+    fun timeoutRemovesCancelledCacheWhenNoPreviousValueOrRestoreFails() =
+        runTest {
+            for (hasPrevious in listOf(false, true)) {
+                val store = Store()
+                var next = snapshot(1, true)
+                val repo = AppConfigRepository(store, backgroundScope, { next })
+                if (hasPrevious) repo.refresh()
+                next = snapshot(2, false)
+                store.suspendNextWrite = true
+                store.failRestore = hasPrevious
+                repo.refresh()
+                assertNull(store.raw)
+                assertTrue(repo.state.value.config.dailyPressRankingEnabled)
+                assertNotNull(repo.state.value.error)
+                assertEquals(hasPrevious, repo.state.value.storageError)
+            }
+        }
 
     @Test
     fun defaultsSurviveOfflineAndCorruptCache() =

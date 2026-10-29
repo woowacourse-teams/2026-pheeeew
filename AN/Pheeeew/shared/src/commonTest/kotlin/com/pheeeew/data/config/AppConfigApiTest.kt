@@ -44,6 +44,7 @@ class AppConfigApiTest {
                 for (invalid in listOf(
                     """{"revision":1,"noticeMessage":"","updatedAt":"2026-10-29T03:00:00Z"}""",
                     """{"revision":1,"dailyPressRankingEnabled":"false","noticeMessage":"","updatedAt":"2026-10-29T03:00:00Z"}""",
+                    """{"revision":1,"dailyPressRankingEnabled":true,"noticeMessage":"","updatedAt":"bad"}""",
                     """{"revision":0,"dailyPressRankingEnabled":true,"noticeMessage":"","updatedAt":"bad"}""",
                     """{"revision":2,"dailyPressRankingEnabled":true,"noticeMessage":"${"😀".repeat(
                         201,

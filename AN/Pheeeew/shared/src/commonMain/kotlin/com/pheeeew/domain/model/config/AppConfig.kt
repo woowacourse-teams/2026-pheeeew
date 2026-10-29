@@ -24,7 +24,7 @@ data class AppConfigSnapshot(
         apply {
             require(revision > 0)
             // Unicode code points; Android and iOS use the same common implementation.
-            require(noticeMessage.count { !it.isLowSurrogate() } <= 200)
+            require(noticeMessage.isValidNotice())
             require(updatedAt.endsWith("Z"))
             Instant.parse(updatedAt)
         }
@@ -68,4 +68,21 @@ fun JsonObject.toAppConfigSnapshot(): AppConfigSnapshot {
         noticeMessage = field("noticeMessage", true).content,
         updatedAt = field("updatedAt", true).content,
     ).validated()
+}
+
+/** Reject malformed UTF-16 and count supplementary characters once. */
+fun String.isValidNotice(): Boolean {
+    var count = 0
+    var index = 0
+    while (index < length) {
+        val char = this[index]
+        if (char.isLowSurrogate()) return false
+        if (char.isHighSurrogate()) {
+            if (index + 1 >= length || !this[index + 1].isLowSurrogate()) return false
+            index++
+        }
+        index++
+        if (++count > 200) return false
+    }
+    return true
 }

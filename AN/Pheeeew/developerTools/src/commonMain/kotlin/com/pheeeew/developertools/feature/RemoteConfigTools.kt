@@ -27,6 +27,7 @@ import com.pheeeew.domain.model.config.AppConfig
 import com.pheeeew.domain.model.config.AppConfigSnapshot
 import com.pheeeew.domain.model.config.AppConfigSource
 import com.pheeeew.domain.model.config.AppConfigState
+import com.pheeeew.domain.model.config.isValidNotice
 import kotlinx.coroutines.launch
 
 @Composable
@@ -82,7 +83,7 @@ private fun RemoteConfigToolsContent(
     Spacer(Modifier.height(24.dp))
     Button(
         modifier = Modifier.fillMaxWidth(),
-        enabled = notice.count { !it.isLowSurrogate() } <= 200,
+        enabled = notice.isValidNotice(),
         onClick = { onApply(AppConfig(enabled, notice)) },
     ) { Text("적용하기") }
 }
