@@ -46,7 +46,10 @@ subprojects {
                         val sentrySimulatorDirectory =
                             iosTestFrameworkDirectory.get().dir("Sentry.xcframework/ios-arm64_x86_64-simulator")
                         linkerOpts("-F${sentrySimulatorDirectory.asFile.absolutePath}")
-                        linkTaskProvider.configure { dependsOn(prepareIosTestFrameworks) }
+                        linkTaskProvider.configure {
+                            dependsOn(prepareIosTestFrameworks)
+                            inputs.dir(iosTestFrameworkDirectory)
+                        }
                     }
                 }
             }

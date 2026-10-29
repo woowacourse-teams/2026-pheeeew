@@ -25,6 +25,17 @@ class FrameworkPreparationTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "exact Sentry pin"):
                 prepare.check_app_version(project)
 
+    def test_other_package_pin_cannot_match_sentry(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory) / "project.pbxproj"
+            project.write_text(
+                'repositoryURL = "https://github.com/getsentry/sentry-cocoa";'
+                'requirement = { kind = upToNextMajorVersion; minimumVersion = 8.0.0; };'
+                'requirement = { kind = exactVersion; version = ' + prepare.VERSION + '; };'
+            )
+            with self.assertRaises(ValueError):
+                prepare.check_app_version(project)
+
     def test_modified_archive_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             archive = Path(directory) / "corrupt.zip"

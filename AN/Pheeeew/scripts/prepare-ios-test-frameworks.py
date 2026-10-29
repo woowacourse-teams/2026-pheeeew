@@ -20,7 +20,7 @@ def check_app_version(project_file):
     text = project_file.read_text()
     match = re.search(
         r'repositoryURL\s*=\s*"https://github.com/getsentry/sentry-cocoa";'
-        r'.*?kind\s*=\s*exactVersion;\s*version\s*=\s*([0-9.]+);',
+        r'[^}]*?kind\s*=\s*exactVersion;\s*version\s*=\s*([0-9.]+);',
         text,
         re.DOTALL,
     )
