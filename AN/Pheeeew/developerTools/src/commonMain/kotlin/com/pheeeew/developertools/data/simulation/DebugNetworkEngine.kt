@@ -1,4 +1,4 @@
-package com.pheeeew.developertools.simulation
+package com.pheeeew.developertools.data.simulation
 
 import com.pheeeew.data.remote.api.ApiEndpointPaths
 import io.ktor.client.engine.HttpClientEngine

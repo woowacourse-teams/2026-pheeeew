@@ -4,9 +4,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.window.ComposeUIViewController
 import com.pheeeew.core.di.iosDeviceBuildConfig
 import com.pheeeew.core.di.iosOnboardingStore
-import com.pheeeew.developertools.DeveloperToolsHost
-import com.pheeeew.developertools.DeveloperToolsInfo
-import com.pheeeew.developertools.DeveloperToolsSettingsEntry
+import com.pheeeew.developertools.feature.DeveloperToolsHost
+import com.pheeeew.developertools.feature.DeveloperToolsInfo
+import com.pheeeew.developertools.feature.DeveloperToolsSettingsEntry
 import platform.Foundation.NSBundle
 import platform.UIKit.UIViewController
 

@@ -1,4 +1,4 @@
-package com.pheeeew.developertools.simulation
+package com.pheeeew.developertools.data.simulation
 
 import com.pheeeew.core.location.PlatformLocationProvider
 import com.pheeeew.data.repository.LocationRepositoryImpl

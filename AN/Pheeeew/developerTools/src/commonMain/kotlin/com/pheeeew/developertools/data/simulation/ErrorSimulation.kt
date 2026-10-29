@@ -1,4 +1,4 @@
-package com.pheeeew.developertools.simulation
+package com.pheeeew.developertools.data.simulation
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

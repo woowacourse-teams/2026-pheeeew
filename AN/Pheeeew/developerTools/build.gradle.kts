@@ -8,6 +8,10 @@ plugins {
     alias(libs.plugins.composeCompiler)
 }
 
+dependencies {
+    androidRuntimeClasspath(libs.compose.uiTooling)
+}
+
 kotlin {
     android {
         namespace = "com.pheeeew.developertools"

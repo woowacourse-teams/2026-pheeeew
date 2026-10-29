@@ -1,4 +1,4 @@
-package com.pheeeew.developertools.simulation
+package com.pheeeew.developertools.data.simulation
 
 import com.pheeeew.core.di.AppServiceFactory
 import com.pheeeew.core.network.ConnectivityObserver

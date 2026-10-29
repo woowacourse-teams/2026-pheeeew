@@ -1,7 +1,7 @@
-package com.pheeeew.developertools
+package com.pheeeew.developertools.feature
 
-import com.pheeeew.developertools.simulation.ErrorSimulationScenario
-import com.pheeeew.developertools.simulation.ErrorSimulationState
+import com.pheeeew.developertools.data.simulation.ErrorSimulationScenario
+import com.pheeeew.developertools.data.simulation.ErrorSimulationState
 
 /** Untouched fields follow live conditions, including consumed NEXT modes and network recovery. */
 internal data class SimulationDraft(

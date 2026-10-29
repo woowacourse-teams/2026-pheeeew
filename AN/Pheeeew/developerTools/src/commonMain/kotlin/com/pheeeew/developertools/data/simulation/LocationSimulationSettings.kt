@@ -1,4 +1,4 @@
-package com.pheeeew.developertools.simulation
+package com.pheeeew.developertools.data.simulation
 
 import com.pheeeew.domain.permission.LocationPermissionController
 import com.pheeeew.domain.permission.LocationPermissionStatus

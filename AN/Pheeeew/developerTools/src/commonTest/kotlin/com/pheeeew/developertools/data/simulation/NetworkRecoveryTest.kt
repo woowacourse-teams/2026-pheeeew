@@ -1,4 +1,4 @@
-package com.pheeeew.developertools.simulation
+package com.pheeeew.developertools.data.simulation
 
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine

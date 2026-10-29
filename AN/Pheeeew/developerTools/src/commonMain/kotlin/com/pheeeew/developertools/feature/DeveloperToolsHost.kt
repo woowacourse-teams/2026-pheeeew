@@ -1,4 +1,4 @@
-package com.pheeeew.developertools
+package com.pheeeew.developertools.feature
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,8 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pheeeew.core.navigation.PredictiveBackContent
 import com.pheeeew.data.repository.AppConfigRepository
-import com.pheeeew.developertools.simulation.DeveloperToolsMapStyleOverride
-import com.pheeeew.developertools.simulation.NetworkRecovery
+import com.pheeeew.developertools.data.simulation.DeveloperToolsMapStyleOverride
+import com.pheeeew.developertools.data.simulation.NetworkRecovery
 import com.pheeeew.feature.screens.map.renderer.LocalMapStyleOverrideProvider
 
 /** Shared Debug navigation and apply flow; platform hosts own only their UI graph disposal. */
@@ -38,7 +38,7 @@ fun DeveloperToolsHost(
     content: @Composable (onOpenDeveloperTools: () -> Unit) -> Unit,
 ) {
     var visible by rememberSaveable { mutableStateOf(false) }
-    var showErrorScenarios by rememberSaveable { mutableStateOf(false) }
+    var page by rememberSaveable { mutableStateOf(DeveloperToolsPage.HOME) }
     var restartKey by rememberSaveable { mutableStateOf(0) }
     var pendingApply by remember { mutableStateOf<(() -> Unit)?>(null) }
     val applying = pendingApply
@@ -63,26 +63,26 @@ fun DeveloperToolsHost(
     }
 
     val onBack = {
-        if (showErrorScenarios) showErrorScenarios = false else visible = false
+        if (page != DeveloperToolsPage.HOME) page = DeveloperToolsPage.HOME else visible = false
     }
     if (visible) {
         PredictiveBackContent(onBack = onBack, content = {
             DeveloperToolsScreen(
                 info = info,
                 configRepository = configRepository,
-                showErrorScenarios = showErrorScenarios,
-                onOpenErrorScenarios = { showErrorScenarios = true },
+                page = page,
+                onOpenPage = { page = it },
                 onBack = onBack,
                 onResetOnboarding = onResetOnboarding,
                 onRestart = { apply ->
                     NetworkRecovery.controller.stop()
-                    showErrorScenarios = false
+                    page = DeveloperToolsPage.HOME
                     visible = false
                     pendingApply = apply
                 },
                 onStartRecovery = { restoreAfterMillis ->
                     if (NetworkRecovery.controller.start(restoreAfterMillis)) {
-                        showErrorScenarios = false
+                        page = DeveloperToolsPage.HOME
                         visible = false
                     }
                 },

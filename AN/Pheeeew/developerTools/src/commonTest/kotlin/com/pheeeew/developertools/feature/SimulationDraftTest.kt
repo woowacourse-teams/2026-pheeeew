@@ -1,8 +1,8 @@
-package com.pheeeew.developertools
+package com.pheeeew.developertools.feature
 
-import com.pheeeew.developertools.simulation.ErrorSimulationMode
-import com.pheeeew.developertools.simulation.ErrorSimulationScenario
-import com.pheeeew.developertools.simulation.ErrorSimulationState
+import com.pheeeew.developertools.data.simulation.ErrorSimulationMode
+import com.pheeeew.developertools.data.simulation.ErrorSimulationScenario
+import com.pheeeew.developertools.data.simulation.ErrorSimulationState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

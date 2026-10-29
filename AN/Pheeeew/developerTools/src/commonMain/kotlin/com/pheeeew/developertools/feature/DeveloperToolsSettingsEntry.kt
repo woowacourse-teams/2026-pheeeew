@@ -1,4 +1,4 @@
-package com.pheeeew.developertools
+package com.pheeeew.developertools.feature
 
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth

@@ -1,18 +1,15 @@
-package com.pheeeew.developertools
+package com.pheeeew.developertools.feature
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -22,7 +19,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -36,104 +32,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.pheeeew.data.repository.AppConfigRepository
-import com.pheeeew.developertools.simulation.ErrorSimulation
-import com.pheeeew.developertools.simulation.ErrorSimulationMode
-import com.pheeeew.developertools.simulation.ErrorSimulationScenario
-import com.pheeeew.developertools.simulation.ErrorSimulationState
-import com.pheeeew.developertools.simulation.LocationSimulationMode
-import com.pheeeew.developertools.simulation.LocationSimulationSettings
-import com.pheeeew.developertools.simulation.NetworkRecovery
+import com.pheeeew.developertools.data.simulation.ErrorSimulation
+import com.pheeeew.developertools.data.simulation.ErrorSimulationMode
+import com.pheeeew.developertools.data.simulation.ErrorSimulationScenario
+import com.pheeeew.developertools.data.simulation.ErrorSimulationState
+import com.pheeeew.developertools.data.simulation.LocationSimulationMode
+import com.pheeeew.developertools.data.simulation.LocationSimulationSettings
+import com.pheeeew.developertools.data.simulation.NetworkRecovery
 
 @Composable
-fun DeveloperToolsScreen(
-    info: DeveloperToolsInfo,
-    showErrorScenarios: Boolean,
-    onOpenErrorScenarios: () -> Unit,
-    onBack: () -> Unit,
-    onResetOnboarding: () -> Unit,
-    onRestart: (() -> Unit) -> Unit,
-    onStartRecovery: (Long?) -> Unit,
-    configRepository: AppConfigRepository? = null,
-) {
-    MaterialTheme {
-        Surface(modifier = Modifier.fillMaxSize()) {
-            if (showErrorScenarios) {
-                LaunchedEffect(Unit) { ErrorSimulation.enableDeveloperTools() }
-            }
-            Column(
-                Modifier
-                    .safeDrawingPadding()
-                    .verticalScroll(rememberScrollState())
-                    .padding(24.dp),
-            ) {
-                TextButton(onClick = onBack) {
-                    Text(if (showErrorScenarios) "‹ 개발자 도구" else "뒤로")
-                }
-                Spacer(Modifier.height(16.dp))
-                if (showErrorScenarios) {
-                    ErrorSimulationScreen(onRestart = onRestart, onStartRecovery = onStartRecovery)
-                } else {
-                    DeveloperToolsHome(
-                        info = info,
-                        configRepository = configRepository,
-                        onOpenErrorScenarios = onOpenErrorScenarios,
-                        onResetOnboarding = { onRestart(onResetOnboarding) },
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun DeveloperToolsHome(
-    configRepository: AppConfigRepository?,
-    info: DeveloperToolsInfo,
-    onOpenErrorScenarios: () -> Unit,
-    onResetOnboarding: () -> Unit,
-) {
-    configRepository?.let { RemoteConfigTools(it) }
-    Text("개발자 도구", style = MaterialTheme.typography.headlineMedium)
-    Spacer(Modifier.height(24.dp))
-    SelectionContainer {
-        Column(Modifier.fillMaxWidth()) {
-            InfoRow("플랫폼", info.platform)
-            InfoRow("앱 버전", info.version)
-            InfoRow("빌드 번호", info.buildNumber)
-            InfoRow("빌드 구성", info.buildConfiguration)
-            InfoRow("서버 환경", info.serverEnvironment)
-            InfoRow("API base URL", info.apiBaseUrl)
-        }
-    }
-    Spacer(Modifier.height(24.dp))
-    OutlinedButton(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onOpenErrorScenarios,
-    ) {
-        Text("에러 상황 재현")
-        Spacer(Modifier.weight(1f))
-        Text("›")
-    }
-    Spacer(Modifier.height(24.dp))
-    Text("로컬 기록 초기화", style = MaterialTheme.typography.titleLarge)
-    Spacer(Modifier.height(8.dp))
-    Text(
-        "온보딩 열람 기록을 지우고 온보딩 화면으로 돌아갑니다.",
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-    OutlinedButton(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onResetOnboarding,
-    ) {
-        Text("온보딩 열람 기록 초기화")
-    }
-}
-
-@Composable
-private fun ErrorSimulationScreen(
+internal fun ErrorSimulationScreen(
     onRestart: (() -> Unit) -> Unit,
     onStartRecovery: (Long?) -> Unit,
 ) {
@@ -221,16 +131,22 @@ private fun ErrorSimulationScreen(
 
         SimulationRow(title = scenario.title, status = status) {
             if (mode != null) {
-                TextButton(onClick = {
-                    updateDraft(draft.copy(modes = draft.modes - scenario))
-                }) { Text("해제") }
+                TextButton(
+                    onClick = {
+                        updateDraft(draft.copy(modes = draft.modes - scenario))
+                    },
+                ) { Text("해제") }
             } else {
-                TextButton(onClick = {
-                    updateDraft(draft.copy(modes = draft.modes + (scenario to ErrorSimulationMode.NEXT)))
-                }) { Text("다음 1회") }
-                TextButton(onClick = {
-                    updateDraft(draft.copy(modes = draft.modes + (scenario to ErrorSimulationMode.ALWAYS)))
-                }) { Text("계속 실패") }
+                TextButton(
+                    onClick = {
+                        updateDraft(draft.copy(modes = draft.modes + (scenario to ErrorSimulationMode.NEXT)))
+                    },
+                ) { Text("다음 1회") }
+                TextButton(
+                    onClick = {
+                        updateDraft(draft.copy(modes = draft.modes + (scenario to ErrorSimulationMode.ALWAYS)))
+                    },
+                ) { Text("계속 실패") }
             }
         }
     }
@@ -255,11 +171,13 @@ private fun ErrorSimulationScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
-                    val selected = editor.resolve(ErrorSimulation.state.value)
-                    showApplyDialog = false
-                    onRestart { ErrorSimulation.replaceSettings(selected) }
-                }) { Text("완료") }
+                TextButton(
+                    onClick = {
+                        val selected = editor.resolve(ErrorSimulation.state.value)
+                        showApplyDialog = false
+                        onRestart { ErrorSimulation.replaceSettings(selected) }
+                    },
+                ) { Text("완료") }
             },
             dismissButton = {
                 TextButton(onClick = { showApplyDialog = false }) { Text("취소") }
@@ -309,16 +227,20 @@ private fun NetworkRecoveryControls(
             title = { Text("현재 화면에서 복구 시나리오를 실행할까요?") },
             text = {
                 Text(
-                    "강제 오프라인 → ${options.first {
-                        it.first == restoreAfterMillis
-                    }.second} 실제 연결 사용으로 복귀합니다. 화면·입력·진행 중 요청은 초기화하지 않습니다. 실제 기기가 오프라인이면 복귀 후에도 연결되지 않습니다.",
+                    "강제 오프라인 → ${
+                        options.first {
+                            it.first == restoreAfterMillis
+                        }.second
+                    } 실제 연결 사용으로 복귀합니다. 화면·입력·진행 중 요청은 초기화하지 않습니다. 실제 기기가 오프라인이면 복귀 후에도 연결되지 않습니다.",
                 )
             },
             confirmButton = {
-                TextButton(onClick = {
-                    showDialog = false
-                    onStart(restoreAfterMillis)
-                }) { Text("실행") }
+                TextButton(
+                    onClick = {
+                        showDialog = false
+                        onStart(restoreAfterMillis)
+                    },
+                ) { Text("실행") }
             },
             dismissButton = { TextButton(onClick = { showDialog = false }) { Text("취소") } },
         )
@@ -623,15 +545,12 @@ private val LocationSimulationMode.label: String
             LocationSimulationMode.UNAVAILABLE -> "위치 확인 실패"
         }
 
+@Preview
 @Composable
-private fun InfoRow(
-    label: String,
-    value: String,
-) {
-    Column(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
-        Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.height(4.dp))
-        Text(value, style = MaterialTheme.typography.bodyLarge)
+private fun ErrorSimulationScreenPreview() {
+    MaterialTheme {
+        Column(Modifier.verticalScroll(rememberScrollState()).padding(24.dp)) {
+            ErrorSimulationScreen(onRestart = {}, onStartRecovery = {})
+        }
     }
-    HorizontalDivider()
 }

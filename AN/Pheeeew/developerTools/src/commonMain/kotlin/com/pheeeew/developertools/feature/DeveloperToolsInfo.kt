@@ -1,4 +1,4 @@
-package com.pheeeew.developertools
+package com.pheeeew.developertools.feature
 
 /** Supplied by the platform entry point using the active network configuration. */
 data class DeveloperToolsInfo(
