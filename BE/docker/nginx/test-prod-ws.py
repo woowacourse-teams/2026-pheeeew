@@ -55,11 +55,34 @@ Path('/fixture/status-app').write_text('503')
 assert health('10.0.10.3', '10.0.10.2') == 503
 assert health('10.0.11.3', '10.0.11.2') == 503
 Path('/fixture/status-app').write_text('200')
-with ctx.wrap_socket(socket.create_connection(('proxy', 443), timeout=3),
-                     server_hostname='api.pheeeew.com') as public:
-    public.sendall(b'GET /actuator/health HTTP/1.1\r\nHost: api.pheeeew.com\r\nConnection: close\r\n\r\n')
-    assert public.recv(1024).startswith(b'HTTP/1.1 404 ')
-print('PASS: ALB-only health path propagates backend health')
+def public_health(path='/actuator/health', method='GET'):
+    public_ctx = ssl.create_default_context(cafile='/fixture/fullchain.pem')
+    public_ctx.check_hostname = False  # 연결 이름은 Docker 별칭이고 HTTP Host는 운영 도메인이다.
+    conn = http.client.HTTPSConnection('proxy', 443, context=public_ctx, timeout=5)
+    conn.request(method, path, headers={'Host': 'api.pheeeew.com'})
+    response = conn.getresponse()
+    result = (response.status, response.read())
+    conn.close()
+    return result
+
+if sys.argv[1] == 'bluegreen':
+    code, body = public_health()
+    assert code == 200 and json.loads(body)['target'] == 'app', (code, body)
+    Path('/fixture/status-app').write_text('503')
+    assert public_health()[0] == 503
+    Path('/fixture/status-app').write_text('200')
+    for method in ('POST', 'HEAD', 'OPTIONS'):
+        assert public_health(method=method)[0] == 405, method
+    for path in ('/actuator', '/actuator/prometheus', '/actuator/health/readiness',
+                 '/actuator/health/', '/actuator/health;other', '/actuator/health%3bother',
+                 '/actuator/%68ealth', '/actuator%2fhealth', '/actuator//health',
+                 '/actuator/./health', '/api/../actuator/health',
+                 '/%61ctuator/prometheus', '/actuator/health?probe=1'):
+        assert public_health(path=path)[0] == 404, path
+    print('PASS: public exact health propagates backend status and blocks other Actuator paths')
+else:
+    assert public_health()[0] == 404
+print('PASS: existing ALB health path propagates backend health')
 
 def request(source, target, forwarded, path='/identity', method='GET'):
     conn = socket.create_connection((target, 443), timeout=5, source_address=(source, 0))
@@ -170,7 +193,8 @@ def main():
                 time.sleep(.2)
             else:
                 raise RuntimeError('nginx did not start')
-            result = run('docker', 'exec', client, 'python', '/fixture/client.py', check=False)
+            result = run('docker', 'exec', client, 'python', '/fixture/client.py',
+                         'bluegreen' if bluegreen else 'single', check=False)
             print(result.stdout, end='')
             if result.returncode:
                 raise RuntimeError(result.stderr.strip())
@@ -183,15 +207,25 @@ def main():
                     "time.sleep(1); c=http.client.HTTPConnection('10.0.10.2',80,timeout=10,"
                     "source_address=('10.0.10.3',0)); c.request('GET','/actuator/health',"
                     "headers={'Host':'10.0.10.2'}); r=c.getresponse(); assert r.status == 503, r.status")
+                run('docker', 'exec', client, 'python', '-c',
+                    "import http.client,ssl; ctx=ssl.create_default_context(cafile='/fixture/fullchain.pem'); ctx.check_hostname=False; "
+                    "c=http.client.HTTPSConnection('proxy',443,timeout=10,context=ctx); "
+                    "c.request('GET','/actuator/health',headers={'Host':'api.pheeeew.com'}); "
+                    "r=c.getresponse(); assert r.status == 503, r.status")
                 (root / 'status-green').write_text('200')
                 run('docker', 'exec', client, 'python', '-c',
-                    "import http.client,json,ssl; ctx=ssl.create_default_context(cafile='/fixture/fullchain.pem'); "
+                    "import http.client,json,ssl; ctx=ssl.create_default_context(cafile='/fixture/fullchain.pem'); ctx.check_hostname=False; "
                     "ctx.check_hostname=False; "
                     "c=http.client.HTTPSConnection('proxy',443,timeout=10,"
                     "context=ctx); "
                     "c.request('GET','/identity',headers={'Host':'api.pheeeew.com'}); r=c.getresponse(); "
                     "assert r.status == 200 and r.getheader('X-Upstream') == 'app-green'; "
                     "assert json.loads(r.read())['target'] == 'green'")
+                run('docker', 'exec', client, 'python', '-c',
+                    "import http.client,json,ssl; ctx=ssl.create_default_context(cafile='/fixture/fullchain.pem'); ctx.check_hostname=False; "
+                    "c=http.client.HTTPSConnection('proxy',443,timeout=10,context=ctx); "
+                    "c.request('GET','/actuator/health',headers={'Host':'api.pheeeew.com'}); "
+                    "r=c.getresponse(); body=json.loads(r.read()); assert r.status == 200 and body['target'] == 'green'")
                 print('PASS: API and ALB health follow the switched production upstream')
                 return
             run('docker', 'stop', '--time', '1', app)
