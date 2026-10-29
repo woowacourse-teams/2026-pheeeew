@@ -714,6 +714,44 @@ class SecurityAuthorizationIntegrationTest {
         인증_필요를_검증한다(result);
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"android", "ios"})
+    void 기기_등록과_토큰_없이_앱_설정을_조회할_수_있다(String platform) {
+        // given
+        assertThat(deviceRepository.count()).isZero();
+
+        // when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri("/api/v2/app/config?platform=" + platform).exchange();
+
+        // then
+        result.expectStatus().isOk()
+                .expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
+                .expectBody()
+                .jsonPath("$.revision").isEqualTo(1)
+                .jsonPath("$.dailyPressRankingEnabled").isEqualTo(true)
+                .jsonPath("$.noticeMessage").isEqualTo("")
+                .jsonPath("$.updatedAt").exists();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "POST, /api/v2/app/config", "PUT, /api/v2/app/config",
+            "PATCH, /api/v2/app/config", "DELETE, /api/v2/app/config",
+            "GET, /api/v1/app/config", "GET, /api/v2/app/config/other"
+    })
+    void 앱_설정_조회_외의_메서드와_경로는_유효한_토큰으로도_접근할_수_없다(String method, String uri) {
+        // given
+        String accessToken = AccessTokenFixture.유효한_토큰(기기_공개_식별자);
+
+        // when
+        RestTestClient.ResponseSpec result = client.method(HttpMethod.valueOf(method))
+                .uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken).exchange();
+
+        // then
+        result.expectStatus().isForbidden().expectBody().json(권한_없음_응답, JsonCompareMode.STRICT);
+    }
+
     @Test
     void 토큰_없이_활성_앱_버전을_조회할_수_있다() {
         // given
