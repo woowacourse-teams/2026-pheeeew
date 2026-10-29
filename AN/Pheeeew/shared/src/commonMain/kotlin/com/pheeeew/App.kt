@@ -86,6 +86,7 @@ import com.pheeeew.feature.component.AppDestination
 import com.pheeeew.feature.monitoring.product.LocalProductMonitoringVisible
 import com.pheeeew.feature.notification.NotificationClickEffect
 import com.pheeeew.feature.screens.collection.CollectionRoute
+import com.pheeeew.feature.screens.config.DailyRankingConfigGate
 import com.pheeeew.feature.screens.map.EmotionPinUiModel
 import com.pheeeew.feature.screens.map.HighlightedPinPosition
 import com.pheeeew.feature.screens.map.MapContentRenderState
@@ -233,6 +234,13 @@ private fun AppContent(
         remember(onboardingStore) { InitialNotificationPermissionRequest(onboardingStore) }
     val uriHandler = LocalUriHandler.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val configRepository = apiDependencies.appConfig
+    val appConfig by configRepository.state.collectAsStateWithLifecycle()
+    LaunchedEffect(configRepository, lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            configRepository.runForeground()
+        }
+    }
     val connectivityObserver = apiDependencies.connectivityObserver
     val startupViewModel: AppStartupViewModel = metroViewModel()
     val startupState by startupViewModel.state.collectAsStateWithLifecycle()
@@ -757,6 +765,7 @@ private fun AppContent(
                     Box(modifier = Modifier.fillMaxSize()) {
                         MapScreen(
                             viewModel = mapViewModel,
+                            remoteNotice = appConfig.config.noticeMessage,
                             featuresEnabled = mainFeaturesReady && !shouldPrepareMapDuringSplash,
                             recordViewModel = mapRecordViewModel,
                             highlightedEmotion = highlightedEmotion,
@@ -890,13 +899,21 @@ private fun AppContent(
                 composable<DailyPressRankingRootDestination> { entry ->
                     if (!mainFeaturesReady) return@composable
                     val destination = entry.toRoute<DailyPressRankingRootDestination>()
-                    DailyPressRankingRoute(
-                        date = destination.date,
-                        sessionGeneration = sessionGeneration,
-                        refreshRevision = dailyRankingRefreshRevision,
-                        onBack = { navController.popBackStack() },
-                        modifier = Modifier.fillMaxSize(),
-                    )
+                    DailyRankingConfigGate(
+                        state = appConfig,
+                        onRetry = { coroutineScope.launch { configRepository.refresh() } },
+                        onBack = {
+                            if (!navController.popBackStack()) navController.navigate(MapRootDestination)
+                        },
+                    ) {
+                        DailyPressRankingRoute(
+                            date = destination.date,
+                            sessionGeneration = sessionGeneration,
+                            refreshRevision = dailyRankingRefreshRevision,
+                            onBack = { navController.popBackStack() },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
                 }
             }
             reportTarget?.let { (id, stamp, source) ->

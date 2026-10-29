@@ -101,6 +101,7 @@ fun MapScreen(
     nearbyMapControlHeight: Dp = 0.dp,
     isMapCameraMoving: Boolean = false,
     featuresEnabled: Boolean = true,
+    remoteNotice: String = "",
 ) {
     LaunchedEffect(viewModel, featuresEnabled) {
         if (featuresEnabled) {
@@ -453,6 +454,7 @@ fun MapScreen(
                         recording = recordUiModel.step != RecordFlowStepUiModel.Closed,
                         connectionMessage = connectionMessage,
                         top = feedbackTop,
+                        remoteNotice = remoteNotice,
                         notice = notice,
                         onDismissNotice = { notice?.let { recordViewModel.dismissNotice(it.id) } },
                         message = message,

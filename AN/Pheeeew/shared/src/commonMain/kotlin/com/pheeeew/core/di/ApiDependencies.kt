@@ -5,6 +5,7 @@ import com.pheeeew.core.network.ApiClient
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.ConnectivityObserver
 import com.pheeeew.core.session.DeviceSessionManager
+import com.pheeeew.data.repository.AppConfigRepository
 import com.pheeeew.data.repository.DeviceNicknameRepositoryImpl
 import com.pheeeew.domain.model.device.DeviceSessionResult
 import dev.zacsweers.metro.Inject
@@ -23,6 +24,7 @@ class ApiDependencies(
     val nicknameRepository: DeviceNicknameRepositoryImpl,
     val connectivityObserver: ConnectivityObserver,
     val appSession: AppSession,
+    val appConfig: AppConfigRepository,
     @SessionWork private val scope: CoroutineScope,
 ) {
     init {

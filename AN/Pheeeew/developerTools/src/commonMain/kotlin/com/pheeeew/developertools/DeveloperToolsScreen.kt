@@ -37,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.pheeeew.data.repository.AppConfigRepository
 import com.pheeeew.developertools.simulation.ErrorSimulation
 import com.pheeeew.developertools.simulation.ErrorSimulationMode
 import com.pheeeew.developertools.simulation.ErrorSimulationScenario
@@ -54,6 +55,7 @@ fun DeveloperToolsScreen(
     onResetOnboarding: () -> Unit,
     onRestart: (() -> Unit) -> Unit,
     onStartRecovery: (Long?) -> Unit,
+    configRepository: AppConfigRepository? = null,
 ) {
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
@@ -75,6 +77,7 @@ fun DeveloperToolsScreen(
                 } else {
                     DeveloperToolsHome(
                         info = info,
+                        configRepository = configRepository,
                         onOpenErrorScenarios = onOpenErrorScenarios,
                         onResetOnboarding = { onRestart(onResetOnboarding) },
                     )
@@ -86,10 +89,12 @@ fun DeveloperToolsScreen(
 
 @Composable
 private fun DeveloperToolsHome(
+    configRepository: AppConfigRepository?,
     info: DeveloperToolsInfo,
     onOpenErrorScenarios: () -> Unit,
     onResetOnboarding: () -> Unit,
 ) {
+    configRepository?.let { RemoteConfigTools(it) }
     Text("개발자 도구", style = MaterialTheme.typography.headlineMedium)
     Spacer(Modifier.height(24.dp))
     SelectionContainer {

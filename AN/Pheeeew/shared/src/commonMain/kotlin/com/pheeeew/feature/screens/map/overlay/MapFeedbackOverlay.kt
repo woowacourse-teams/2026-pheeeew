@@ -74,6 +74,7 @@ internal fun MapFeedbackOverlay(
     recording: Boolean,
     connectionMessage: String?,
     top: Int,
+    remoteNotice: String = "",
 ) {
     val source = selectMapFeedback(uiModel, recording, connectionMessage, notice, message?.message, detailError)
     val mapFeedback = uiModel.primaryFeedback()
@@ -84,7 +85,7 @@ internal fun MapFeedbackOverlay(
             MapFeedbackSource.Message -> message?.message
             MapFeedbackSource.Detail -> detailError?.message
             MapFeedbackSource.Map -> mapFeedback?.message
-            null -> null
+            null -> remoteNotice.takeIf { !recording && it.isNotEmpty() }
         }
     val dismiss =
         when (source) {
@@ -122,7 +123,7 @@ internal fun MapFeedbackOverlay(
                         else -> false
                     },
                 onDismiss = dismiss,
-                maxLines = 3,
+                maxLines = if (source == null) 10 else 3,
                 presentationKey = mapFeedbackPresentationKey(source, notice?.id, message?.id, text),
                 onShown = { if (source == MapFeedbackSource.Record) notice?.receipt?.shown() },
                 durationMillis = null,

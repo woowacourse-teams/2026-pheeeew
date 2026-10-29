@@ -11,12 +11,14 @@ import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.ConnectivityObserver
 import com.pheeeew.core.permission.AppSettingsLauncher
 import com.pheeeew.core.permission.IosAppSettingsLauncher
+import com.pheeeew.data.local.config.AppConfigStore
 import com.pheeeew.data.local.device.DeviceCredentialStorage
 import com.pheeeew.data.local.device.IosDeviceCredentialStorage
 import com.pheeeew.data.location.platform.ios.IosLocationPermissionController
 import com.pheeeew.data.location.platform.ios.IosPlatformLocationProvider
 import com.pheeeew.data.remote.attestation.DeviceAttestationPolicy
 import com.pheeeew.data.remote.attestation.IosAppAttestProofProvider
+import com.pheeeew.data.repository.AppConfigRepository
 import com.pheeeew.data.repository.AppVersionRepositoryImpl
 import com.pheeeew.data.repository.EmotionMapRepositoryImpl
 import com.pheeeew.data.repository.EmotionRegionMapRepositoryImpl
@@ -101,6 +103,12 @@ internal interface IosAppGraph :
     @Provides
     @SingleIn(AppScope::class)
     fun settings(): AppSettingsLauncher = IosAppSettingsLauncher()
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun configStore(build: DeviceSessionBuildConfig): AppConfigStore =
+        com.pheeeew.data.local.config
+            .IosAppConfigStore(ApiConfig(build.baseUrl).deviceStorageEnvironment())
 
     @Provides fun versions(impl: AppVersionRepositoryImpl): AppVersionRepository = impl
 
@@ -198,3 +206,5 @@ private class IosOnboardingStore : OnboardingStore {
 fun iosDeviceBuildConfig(): DeviceSessionBuildConfig = IosGraphs.app.apiDependencies.buildConfig
 
 fun iosOnboardingStore(): OnboardingStore = IosGraphs.app.onboardingStore
+
+fun iosAppConfigRepository(): AppConfigRepository = IosGraphs.app.apiDependencies.appConfig

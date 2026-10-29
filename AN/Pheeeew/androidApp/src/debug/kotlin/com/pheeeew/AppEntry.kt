@@ -29,6 +29,7 @@ internal fun AppEntry(
                 serverEnvironment = build.environment,
                 apiBaseUrl = build.baseUrl,
             ),
+        configRepository = appGraph.apiDependencies.appConfig,
         onClearUiSession = owner::clearUiSession,
         onResetOnboarding = appGraph.onboardingStore::resetCompletion,
     ) { onOpen ->

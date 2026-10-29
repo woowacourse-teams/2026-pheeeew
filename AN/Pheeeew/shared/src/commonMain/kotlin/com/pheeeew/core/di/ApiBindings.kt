@@ -11,6 +11,7 @@ import com.pheeeew.core.network.ApiRequestExecutor
 import com.pheeeew.core.network.ApiResponseObserver
 import com.pheeeew.core.network.ConnectivityObserver
 import com.pheeeew.core.session.DeviceSessionManager
+import com.pheeeew.data.local.config.AppConfigStore
 import com.pheeeew.data.local.device.DeviceCredentialStorage
 import com.pheeeew.data.local.mapfilter.InMemoryMapFilterSettingsRepository
 import com.pheeeew.data.press.race.PressRaceDiagnostics
@@ -21,12 +22,14 @@ import com.pheeeew.data.press.race.PressRaceRankings
 import com.pheeeew.data.press.race.PressRaceSession
 import com.pheeeew.data.press.race.transport.PressRaceTransport
 import com.pheeeew.data.press.race.transport.createPlatformPressRaceTransport
+import com.pheeeew.data.remote.api.AppConfigApi
 import com.pheeeew.data.remote.api.DeviceNicknameApi
 import com.pheeeew.data.remote.api.DeviceSessionApi
 import com.pheeeew.data.remote.api.KtorDeviceSessionApi
 import com.pheeeew.data.remote.attestation.DeviceAttestationPolicy
 import com.pheeeew.data.remote.datasource.PressApiSender
 import com.pheeeew.data.remote.datasource.PressApiStatisticsDataSource
+import com.pheeeew.data.repository.AppConfigRepository
 import com.pheeeew.data.repository.DeviceNicknameRepositoryImpl
 import com.pheeeew.data.repository.DeviceSessionRepositoryImpl
 import com.pheeeew.data.repository.PressRepositoryImpl
@@ -51,6 +54,14 @@ import kotlinx.coroutines.SupervisorJob
 import kotlin.time.Clock
 
 internal interface ApiBindings {
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideAppConfig(
+        store: AppConfigStore,
+        api: AppConfigApi,
+        @SessionWork scope: CoroutineScope,
+    ): AppConfigRepository = AppConfigRepository(store, scope, api::get)
+
     @Provides
     @SingleIn(AppScope::class)
     fun provideApiConfig(build: DeviceSessionBuildConfig): ApiConfig = ApiConfig(build.baseUrl)
@@ -199,8 +210,10 @@ internal interface ApiBindings {
         nickname: DeviceNicknameRepositoryImpl,
         connectivity: ConnectivityObserver,
         appSession: AppSession,
+        appConfig: AppConfigRepository,
         @SessionWork scope: CoroutineScope,
-    ): ApiDependencies = ApiDependencies(build, bootstrap, client, session, nickname, connectivity, appSession, scope)
+    ): ApiDependencies =
+        ApiDependencies(build, bootstrap, client, session, nickname, connectivity, appSession, appConfig, scope)
 
     @Provides
     @SingleIn(AppScope::class)

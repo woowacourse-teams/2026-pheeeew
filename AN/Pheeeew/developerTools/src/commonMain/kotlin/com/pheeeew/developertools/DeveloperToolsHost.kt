@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pheeeew.core.navigation.PredictiveBackContent
+import com.pheeeew.data.repository.AppConfigRepository
 import com.pheeeew.developertools.simulation.DeveloperToolsMapStyleOverride
 import com.pheeeew.developertools.simulation.NetworkRecovery
 import com.pheeeew.feature.screens.map.renderer.LocalMapStyleOverrideProvider
@@ -33,6 +34,7 @@ fun DeveloperToolsHost(
     info: DeveloperToolsInfo,
     onClearUiSession: () -> Unit,
     onResetOnboarding: () -> Unit,
+    configRepository: AppConfigRepository? = null,
     content: @Composable (onOpenDeveloperTools: () -> Unit) -> Unit,
 ) {
     var visible by rememberSaveable { mutableStateOf(false) }
@@ -67,6 +69,7 @@ fun DeveloperToolsHost(
         PredictiveBackContent(onBack = onBack, content = {
             DeveloperToolsScreen(
                 info = info,
+                configRepository = configRepository,
                 showErrorScenarios = showErrorScenarios,
                 onOpenErrorScenarios = { showErrorScenarios = true },
                 onBack = onBack,

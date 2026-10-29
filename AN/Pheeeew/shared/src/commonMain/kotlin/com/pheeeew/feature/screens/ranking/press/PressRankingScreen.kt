@@ -97,6 +97,8 @@ internal fun DailyPressRankingRoute(
             create(date, sessionGeneration)
         }
     LaunchedEffect(viewModel, sessionGeneration) { viewModel.onSessionChanged(sessionGeneration) }
+    LaunchedEffect(viewModel) { viewModel.onResumed() }
+    DisposableEffect(viewModel) { onDispose { viewModel.onRouteHidden() } }
     LaunchedEffect(viewModel, refreshRevision) {
         if (refreshRevision > 0L) viewModel.onNotificationReceived()
     }

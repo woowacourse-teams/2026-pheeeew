@@ -28,6 +28,9 @@ fun DebugMainViewController(): UIViewController {
             }
         DeveloperToolsHost(
             info = info,
+            configRepository =
+                com.pheeeew.core.di
+                    .iosAppConfigRepository(),
             onClearUiSession = {},
             onResetOnboarding = iosOnboardingStore()::resetCompletion,
         ) { onOpen ->
