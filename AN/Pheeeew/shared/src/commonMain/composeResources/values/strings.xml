@@ -9,6 +9,7 @@
     <string name="app_update_required_title">앱 업데이트가 필요해요</string>
     <string name="app_update_store_error">스토어를 열 수 없어요. 다시 시도하거나 앱 버전을 확인해 주세요.</string>
     <string name="app_update_required_message">현재 버전은 더 이상 지원되지 않아요. 최신 버전으로 업데이트한 뒤 이용해 주세요.</string>
+    <string name="app_update_ready_title">업데이트 준비가 끝났어요</string>
     <string name="app_update_downloaded">업데이트 다운로드가 완료됐어요. 설치하면 앱이 다시 시작돼요.</string>
     <string name="app_update_progress">업데이트를 진행하고 있어요.</string>
     <string name="app_update_failed">업데이트를 완료하지 못했어요. 다시 시도하거나 스토어에서 설치해 주세요.</string>

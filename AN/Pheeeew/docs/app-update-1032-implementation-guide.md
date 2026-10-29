@@ -144,7 +144,7 @@ A/B의 versionName·versionCode, 커밋, applicationId, 서명 식별자, 배포
 
 - 공통 `DefaultAppUpdateController`와 Activity 수명의 Android Play 어댑터를 추가했다. 정책 판단과 설치 상태는 분리한다.
 - Android/iOS 마지막 정상 정책 캐시를 추가했다. 24시간 만료, 환경·플랫폼·스키마 검증, 실패 시 세션 판단 유지, 정상 하향 복구를 적용했다.
-- 권장 안내의 나중에 선택은 최신 버전 정책에 연결한다. 필수 업데이트의 기존 흰색 차단 화면을 유지하며 취소·실패 뒤 재시도와 스토어 경로를 제공한다.
+- 권장 안내의 나중에 선택은 최신 버전 정책에 연결한다. 기존 닉네임 다이얼로그의 흰색 22dp 모서리, Noto Sans KR, 노란색 기본 버튼을 재사용하며 취소·실패 뒤 재시도와 스토어 경로를 제공한다.
 - `-PappUpdateTestBuild=true`로만 `com.pheeeew.updatetest`와 테스트 앱 이름을 사용한다. 일반 Debug/Release 식별자·버전은 유지한다. 테스트 패키지는 Firebase 프로젝트에 등록되지 않았으므로 Google Services 처리를 생략하고 토큰 요청을 실행하지 않는다.
 - 테스트 앱 A는 기본 `2.5.0 / 103201`이다. B는 `-PappUpdateTestVersionName=2.6.0 -PappUpdateTestVersionCode=103202`로 빌드한다.
 - 테스트 패키지의 Debug 전용 `AppUpdateTestActivity`에서 현재/권장/필수/조회 실패와 Play 실제/Fake 취소/실패/다운로드/불가를 선택한다. Fake 정책은 실제 정책 캐시에 저장되지 않는다.
