@@ -256,3 +256,11 @@ iOS 테스트는 루트 prepareIosTestFrameworks 작업이 앱과 같은 Sentry 
 - [Firebase 로딩 전략](https://firebase.google.com/docs/remote-config/loading): 기본값과 UI 변화에 따른 수신/적용 분리. 팀 서버에도 원리를 적용하며 Firebase SDK는 추가하지 않는다.
 - [지식베이스: HTTP 캐시와 앱 캐시](https://github.com/katie0109/knowledge-base/blob/main/foundations/networking/cache-keys-and-invalidation.md): 환경/플랫폼별 캐시 키와 갱신·보존 분리. 문서 초안의 원리를 적용하며 수치는 이 이슈 결정이다.
 - [지식베이스: 비동기 상태와 오래된 응답](https://github.com/katie0109/knowledge-base/blob/main/foundations/state-and-concurrency/async-state-and-ownership.md): 취소와 별개로 세대/환경 검사, 수신값과 현재 UI 상태의 소유권 구분.
+
+
+## 리뷰 후 저장·표시 보완
+
+- 응답 저장 직전에 취소를 확인한다. 저장 도중 취소되면 취소 불가능한 정리 구간에서 이전 캐시를 복원한다. 복원 실패 시 캐시 삭제를 시도하고 저장 오류를 기록한다. 삭제까지 실패한 저장 장치 오류에서는 디스크 상태를 보장하지 못하며 진단 오류를 남긴다. 초기화는 진행 중 요청의 취소·복원 완료를 기다린다.
+- iOS NSUserDefaults의 쓰기 반환은 디스크 기록 완료 확인이 아니다. 일반적인 저장 후 재실행과 달리, 기록 직후 강제 종료·전원 손실 구간의 최신 스냅샷 내구성은 보장하지 않는다. RC-04는 기록이 보존된 정상 재실행과 이 강제 종료 구간을 구분해 검증해야 하며 후자는 아직 미검증이다. 정상 캐시의 오프라인 사용 정책은 유지한다. synchronize()는 내구성 보장 수단으로 추가하지 않는다.
+- 원격 공지는 최대 높이 240dp 영역에서 스크롤하여 전체 내용을 읽을 수 있다. 좁은 화면·큰 글꼴의 실제 UI 검증은 별도로 수행한다.
+- 공지 길이 검사는 유효한 UTF-16만 허용하며 surrogate pair를 한 코드 포인트로 센다. 잘못된 surrogate는 응답과 임시 설정 모두에서 거부한다.
