@@ -17,7 +17,9 @@ import com.pheeeew.data.location.platform.ios.IosLocationPermissionController
 import com.pheeeew.data.location.platform.ios.IosPlatformLocationProvider
 import com.pheeeew.data.remote.attestation.DeviceAttestationPolicy
 import com.pheeeew.data.remote.attestation.IosAppAttestProofProvider
+import com.pheeeew.data.repository.AppVersionCacheStorage
 import com.pheeeew.data.repository.AppVersionRepositoryImpl
+import com.pheeeew.data.repository.CachedAppVersionRepository
 import com.pheeeew.data.repository.EmotionMapRepositoryImpl
 import com.pheeeew.data.repository.EmotionRegionMapRepositoryImpl
 import com.pheeeew.domain.model.device.DevicePlatform
@@ -102,7 +104,23 @@ internal interface IosAppGraph :
     @SingleIn(AppScope::class)
     fun settings(): AppSettingsLauncher = IosAppSettingsLauncher()
 
-    @Provides fun versions(impl: AppVersionRepositoryImpl): AppVersionRepository = impl
+    @Provides
+    @SingleIn(AppScope::class)
+    fun versions(
+        impl: AppVersionRepositoryImpl,
+        build: DeviceSessionBuildConfig,
+    ): AppVersionRepository {
+        val key = "app_version_policy:ios:${build.baseUrl}"
+        val storage =
+            object : AppVersionCacheStorage {
+                override fun read(): String? = NSUserDefaults.standardUserDefaults.stringForKey(key)
+
+                override fun write(value: String) {
+                    NSUserDefaults.standardUserDefaults.setObject(value, key)
+                }
+            }
+        return CachedAppVersionRepository(impl, storage, "ios", build.baseUrl)
+    }
 
     @Provides
     @SingleIn(AppScope::class)

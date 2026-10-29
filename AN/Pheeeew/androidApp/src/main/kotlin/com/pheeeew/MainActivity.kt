@@ -24,7 +24,8 @@ class MainActivity :
         val owner = ActivityRetainedGraphOwner.get(this, appGraph)
         owner.attach(this)
         val notifications = (application as PheeeewApplication).notificationRuntime
-        setContent { AppEntry(this, appGraph, owner, notifications.clickInbox, notifications.messageInbox) }
+        val updates = createAppUpdateController(this)
+        setContent { AppEntry(this, appGraph, owner, notifications.clickInbox, notifications.messageInbox, updates) }
     }
 
     override fun onNewIntent(intent: Intent) {

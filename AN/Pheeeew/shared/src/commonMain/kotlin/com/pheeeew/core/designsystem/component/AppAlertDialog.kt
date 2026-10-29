@@ -11,8 +11,12 @@ internal fun AppAlertDialog(
     dismissButton: @Composable (() -> Unit)? = null,
     title: @Composable (() -> Unit)? = null,
     text: @Composable (() -> Unit)? = null,
+    properties: androidx.compose.ui.window.DialogProperties =
+        androidx.compose.ui.window
+            .DialogProperties(),
 ) {
     AlertDialog(
+        properties = properties,
         onDismissRequest = onDismissRequest,
         confirmButton = { AppFontScale(confirmButton) },
         dismissButton = dismissButton?.let { button -> { AppFontScale(button) } },

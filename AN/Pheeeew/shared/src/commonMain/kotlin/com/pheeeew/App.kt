@@ -8,16 +8,11 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -28,6 +23,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,11 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -54,8 +46,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.pheeeew.core.audio.LocalAudioFactories
-import com.pheeeew.core.designsystem.component.AppAlertDialog
-import com.pheeeew.core.designsystem.component.AppDialog
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
@@ -76,6 +66,8 @@ import com.pheeeew.core.notification.NotificationClickInbox
 import com.pheeeew.core.notification.NotificationMessageInbox
 import com.pheeeew.core.notification.NotificationPermissionController
 import com.pheeeew.core.notification.NotificationPreferencesStore
+import com.pheeeew.core.update.AppUpdateController
+import com.pheeeew.core.update.AppUpdateState
 import com.pheeeew.data.press.race.PressRaceView
 import com.pheeeew.domain.model.device.DeviceSessionResult
 import com.pheeeew.domain.model.version.AppVersionDecision
@@ -119,6 +111,7 @@ import com.pheeeew.feature.screens.settings.AppEntryPhase
 import com.pheeeew.feature.screens.settings.AppEntryUiState
 import com.pheeeew.feature.screens.settings.AppEntryViewModel
 import com.pheeeew.feature.screens.settings.AppStartupViewModel
+import com.pheeeew.feature.screens.settings.AppUpdatePrompt
 import com.pheeeew.feature.screens.settings.SettingsScreen
 import com.pheeeew.feature.screens.splash.SplashScreen
 import com.pheeeew.feature.screens.splash.rememberSplashProgress
@@ -126,19 +119,10 @@ import dev.zacsweers.metrox.viewmodel.LocalMetroViewModelFactory
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
-import org.jetbrains.compose.resources.stringResource
-import pheeeew.shared.generated.resources.Res
-import pheeeew.shared.generated.resources.app_update
-import pheeeew.shared.generated.resources.app_update_later
-import pheeeew.shared.generated.resources.app_update_required_message
-import pheeeew.shared.generated.resources.app_update_required_title
-import pheeeew.shared.generated.resources.app_update_retry
-import pheeeew.shared.generated.resources.app_update_store_error
-import pheeeew.shared.generated.resources.app_update_suggested_message
-import pheeeew.shared.generated.resources.app_update_suggested_title
 
 internal fun shouldShowMapFeedback(
     mainFeaturesReady: Boolean,
@@ -194,6 +178,7 @@ fun App(
     notificationPermissionController: NotificationPermissionController? = null,
     notificationPreferencesStore: NotificationPreferencesStore? = null,
     notificationMessages: NotificationMessageInbox? = null,
+    updateController: AppUpdateController? = null,
 ) {
     val factory = remember(uiGraph) { uiGraph.viewModelFactory }
     CompositionLocalProvider(
@@ -209,6 +194,7 @@ fun App(
                 notificationPermissionController,
                 notificationPreferencesStore,
                 notificationMessages,
+                updateController,
             )
         }
     }
@@ -223,6 +209,7 @@ private fun AppContent(
     notificationPermissionController: NotificationPermissionController?,
     notificationPreferencesStore: NotificationPreferencesStore?,
     notificationMessages: NotificationMessageInbox?,
+    updateController: AppUpdateController?,
 ) {
     val apiDependencies = appGraph.apiDependencies
     val appVersion = appGraph.appVersion
@@ -249,8 +236,18 @@ private fun AppContent(
     val initialVersionCheckComplete = startupState.checked
     val versionDecision = startupState.decision
     val checkedForResume by rememberUpdatedState(initialVersionCheckComplete)
-    var suggestionDismissed by remember { mutableStateOf(false) }
-    var storeOpenError by remember { mutableStateOf(false) }
+    var suggestionDismissed by rememberSaveable(
+        versionDecision,
+    ) { mutableStateOf(false) }
+    val updateState by (
+        updateController?.state
+            ?: remember { MutableStateFlow(AppUpdateState.IDLE) }
+    ).collectAsStateWithLifecycle()
+    var installationDeferred by remember { mutableStateOf(false) }
+    LaunchedEffect(updateState) {
+        if (updateState == AppUpdateState.DOWNLOADED) installationDeferred = false
+    }
+    var storeOpenError by remember(versionDecision) { mutableStateOf(false) }
     var onboardingCompleted by remember { mutableStateOf(onboardingStore.isCompleted()) }
     var appResumed by remember(lifecycleOwner) {
         mutableStateOf(lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))
@@ -278,6 +275,7 @@ private fun AppContent(
             LifecycleEventObserver { owner, event ->
                 appResumed = owner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
                 if (event == Lifecycle.Event.ON_RESUME) {
+                    installationDeferred = false
                     startupViewModel.refreshSplashDeadline()
                     if (checkedForResume) startupViewModel.checkVersion()
                 }
@@ -327,12 +325,22 @@ private fun AppContent(
     if (startupPresentation == AppStartupPresentation.REQUIRED_UPDATE) {
         val update = requireNotNull(requiredUpdate)
         Box(Modifier.fillMaxSize()) {
-            RequiredUpdateDialog(
+            AppUpdatePrompt(
+                required = true,
+                state = updateState,
                 storeOpenError = storeOpenError,
-                onOpenStore = {
-                    storeOpenError = runCatching { uriHandler.openUri(update.storeUrl) }.isFailure
+                onUpdate = {
+                    if (updateState == AppUpdateState.DOWNLOADED) {
+                        updateController?.complete()
+                    } else if (updateController != null) {
+                        updateController.request(true)
+                    } else {
+                        storeOpenError = runCatching { uriHandler.openUri(update.storeUrl) }.isFailure
+                    }
                 },
+                onOpenStore = { storeOpenError = runCatching { uriHandler.openUri(update.storeUrl) }.isFailure },
                 onRetry = { startupViewModel.checkVersion() },
+                onLater = {},
             )
         }
         return
@@ -547,24 +555,31 @@ private fun AppContent(
         }
 
         val suggestedUpdate = versionDecision as? AppVersionDecision.UpdateSuggested
-        if (mainFeaturesReady && !shouldPrepareMapDuringSplash && suggestedUpdate != null && !suggestionDismissed) {
-            AppAlertDialog(
-                onDismissRequest = { suggestionDismissed = true },
-                title = { Text(stringResource(Res.string.app_update_suggested_title)) },
-                text = { Text(stringResource(Res.string.app_update_suggested_message)) },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            if (runCatching { uriHandler.openUri(suggestedUpdate.storeUrl) }.isSuccess) {
-                                suggestionDismissed = true
-                            }
-                        },
-                    ) { Text(stringResource(Res.string.app_update)) }
+        val downloaded = updateState == AppUpdateState.DOWNLOADED && !installationDeferred
+        if (mainFeaturesReady && !shouldPrepareMapDuringSplash &&
+            ((suggestedUpdate != null && !suggestionDismissed) || downloaded)
+        ) {
+            AppUpdatePrompt(
+                required = false,
+                state = updateState,
+                storeOpenError = storeOpenError,
+                onUpdate = {
+                    if (updateState == AppUpdateState.DOWNLOADED) {
+                        updateController?.complete()
+                    } else if (updateController != null) {
+                        updateController.request(false)
+                    } else if (suggestedUpdate != null) {
+                        storeOpenError = runCatching { uriHandler.openUri(suggestedUpdate.storeUrl) }.isFailure
+                        if (!storeOpenError) suggestionDismissed = true
+                    }
                 },
-                dismissButton = {
-                    TextButton(
-                        onClick = { suggestionDismissed = true },
-                    ) { Text(stringResource(Res.string.app_update_later)) }
+                onOpenStore = {
+                    suggestedUpdate?.let { storeOpenError = runCatching { uriHandler.openUri(it.storeUrl) }.isFailure }
+                },
+                onRetry = { startupViewModel.checkVersion() },
+                onLater = {
+                    suggestionDismissed = true
+                    installationDeferred = true
                 },
             )
         }
@@ -1016,45 +1031,4 @@ private fun AppContent(
         }
     }
     FlowBackHandler(enabled = shouldPrepareMapDuringSplash, onBack = {})
-}
-
-@Composable
-private fun RequiredUpdateDialog(
-    storeOpenError: Boolean,
-    onOpenStore: () -> Unit,
-    onRetry: () -> Unit,
-) {
-    AppDialog(
-        onDismissRequest = {},
-        properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
-    ) {
-        Surface(
-            color = Color.White,
-            shape =
-                RoundedCornerShape(20.dp),
-        ) {
-            Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    stringResource(Res.string.app_update_required_title),
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text =
-                        if (storeOpenError) {
-                            stringResource(Res.string.app_update_store_error)
-                        } else {
-                            stringResource(Res.string.app_update_required_message)
-                        },
-                    fontSize = 14.sp,
-                    lineHeight = 22.sp,
-                    textAlign = TextAlign.Center,
-                )
-                Spacer(Modifier.height(16.dp))
-                TextButton(onClick = onOpenStore) { Text(stringResource(Res.string.app_update)) }
-                TextButton(onClick = onRetry) { Text(stringResource(Res.string.app_update_retry)) }
-            }
-        }
-    }
 }
