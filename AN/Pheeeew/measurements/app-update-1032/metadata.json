@@ -1,0 +1,36 @@
+{
+  "sourceCommit": "3c3203520b2dd5e21384bfd8b95ae238b6a84416",
+  "verifiedDateKst": "2026-10-29",
+  "device": {
+    "model": "SM-G977N",
+    "android": "12"
+  },
+  "package": "com.pheeeew.updatetest",
+  "installation": "USB adb install -r",
+  "certificateSha256": "973cce6340f6ab493f7901765334e00bb0e893aa23107090f19ef00c02a930f2",
+  "builds": {
+    "A": {
+      "versionName": "2.5.0",
+      "versionCode": 103201,
+      "apkSha256": "0ad13b682980c1a0f0bb9aef01308ed0fd303aba240f6d5201a64af929013bbf"
+    },
+    "B": {
+      "versionName": "2.6.0",
+      "versionCode": 103202,
+      "apkSha256": "cfdea186895f41a86dfd99f05605c99d6964ffd8d87a35e1416567318cde0bb7"
+    }
+  },
+  "serverObservation": {
+    "observedAtKst": "2026-10-29T12:18:45+09:00",
+    "production": {
+      "minSupportedVersion": "2.4.0",
+      "latestVersion": "2.4.0",
+      "storeUrl": "https://play.google.com/store/apps/details?id=com.pheeeew"
+    },
+    "development": {
+      "code": "APP_VERSION-002",
+      "message": "활성 앱 버전 정책을 찾을 수 없습니다."
+    },
+    "mutation": false
+  }
+}

@@ -6,6 +6,13 @@ data class AppVersionPolicy(
     val storeUrl: String,
 )
 
+fun validateAppVersionPolicy(policy: AppVersionPolicy) {
+    val minimum = parseVersion(policy.minSupportedVersion)
+    val latest = parseVersion(policy.latestVersion)
+    require(compareVersions(minimum, latest) <= 0) { "앱 버전 정책의 순서가 올바르지 않습니다." }
+    validStoreUrl(policy.storeUrl)
+}
+
 sealed interface AppVersionDecision {
     data object Current : AppVersionDecision
 
@@ -15,6 +22,7 @@ sealed interface AppVersionDecision {
 
     data class UpdateSuggested(
         val storeUrl: String,
+        val latestVersion: String = "",
     ) : AppVersionDecision
 }
 
@@ -22,14 +30,19 @@ fun evaluateAppVersion(
     installedVersion: String,
     policy: AppVersionPolicy,
 ): AppVersionDecision {
+    validateAppVersionPolicy(policy)
     val installed = parseVersion(installedVersion)
     val minimum = parseVersion(policy.minSupportedVersion)
     val latest = parseVersion(policy.latestVersion)
-    require(compareVersions(minimum, latest) <= 0) { "앱 버전 정책의 순서가 올바르지 않습니다." }
 
     return when {
         compareVersions(installed, minimum) < 0 -> AppVersionDecision.UpdateRequired(validStoreUrl(policy.storeUrl))
-        compareVersions(installed, latest) < 0 -> AppVersionDecision.UpdateSuggested(validStoreUrl(policy.storeUrl))
+
+        compareVersions(
+            installed,
+            latest,
+        ) < 0 -> AppVersionDecision.UpdateSuggested(validStoreUrl(policy.storeUrl), policy.latestVersion)
+
         else -> AppVersionDecision.Current
     }
 }
@@ -57,7 +70,7 @@ private fun compareVersions(
 }
 
 private fun validStoreUrl(url: String): String {
-    require(url.startsWith("https://") && url.length > "https://".length) {
+    require(Regex("https://[^\\s/?#]+(?:[/?#][^\\s]*)?").matches(url)) {
         "앱 스토어 URL이 올바르지 않습니다."
     }
     return url
