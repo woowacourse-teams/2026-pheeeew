@@ -31,6 +31,6 @@ public class JwtConfig {
                 JwtValidators.createDefaultWithIssuer(AccessTokenContract.ISSUER),
                 accessTokenJwtValidator
         ));
-        return jwtDecoder;
+        return new TimedMapJwtDecoder(jwtDecoder);
     }
 }
