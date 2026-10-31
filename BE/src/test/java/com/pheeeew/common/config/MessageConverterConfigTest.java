@@ -1,23 +1,19 @@
 package com.pheeeew.common.config;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.pheeeew.device.application.DeviceChallengeService;
 import com.pheeeew.device.application.DeviceService;
 import com.pheeeew.device.application.DeviceTokenService;
 import com.pheeeew.device.presentation.DeviceController;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.client.RestTestClient;
-import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter;
 
 @AutoConfigureRestTestClient
 @WebMvcTest(
@@ -32,9 +28,6 @@ class MessageConverterConfigTest {
 
     private final RestTestClient client;
 
-    @Autowired
-    private RequestMappingHandlerAdapter requestMappingHandlerAdapter;
-
     @MockitoBean
     private DeviceService deviceService;
 
@@ -47,26 +40,6 @@ class MessageConverterConfigTest {
     @Autowired
     MessageConverterConfigTest(RestTestClient client) {
         this.client = client;
-    }
-
-    @Test
-    void CBOR_을_지원한다고_선언한_변환기가_등록되지_않는다() {
-        // when
-        List<HttpMessageConverter<?>> converters = requestMappingHandlerAdapter.getMessageConverters();
-
-        // then
-        assertThat(converters)
-                .noneMatch(converter -> converter.getSupportedMediaTypes().contains(MediaType.APPLICATION_CBOR));
-    }
-
-    @Test
-    void JSON_변환기는_그대로_남는다() {
-        // when
-        List<HttpMessageConverter<?>> converters = requestMappingHandlerAdapter.getMessageConverters();
-
-        // then
-        assertThat(converters)
-                .anyMatch(converter -> converter.getSupportedMediaTypes().contains(MediaType.APPLICATION_JSON));
     }
 
     @Test

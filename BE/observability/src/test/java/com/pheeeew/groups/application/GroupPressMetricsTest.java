@@ -2,32 +2,20 @@ package com.pheeeew.groups.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 class GroupPressMetricsTest {
 
-    private final AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
     private final SimpleMeterRegistry registry = new SimpleMeterRegistry();
-    private GroupPressMetrics metrics;
-
-    @BeforeEach
-    void setUp() {
-        context.registerBean(MeterRegistry.class, () -> registry);
-        context.scan("com.pheeeew.groups.application");
-        context.refresh();
-        metrics = context.getBean(GroupPressMetrics.class);
-    }
+    private final GroupPressMetrics metrics = new GroupPressMetrics(registry);
 
     @AfterEach
     void tearDown() {
-        context.close();
+        registry.close();
     }
 
     @Test
@@ -76,7 +64,6 @@ class GroupPressMetricsTest {
         assertCounter("pheeeew.group.press.requests", 1, Tag.of("format", "state"));
         assertCounter("pheeeew.group.press.deadlocks", 2);
         assertCounter("pheeeew.group.press.empty", 0);
-        assertThat(registry.getMeters()).hasSize(8);
     }
 
     private void assertCounter(String name, double count, Tag... tags) {

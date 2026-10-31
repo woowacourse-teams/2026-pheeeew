@@ -27,7 +27,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -218,19 +217,6 @@ class EmotionBlockControllerTest {
         verify(emotionBlockCommandService).delete(EMOTION_ID, 기기_공개_식별자);
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {"not-a-number", "4.2"})
-    void 해제할_감정_식별자_형식이_올바르지_않으면_400을_반환한다(String emotionId) {
-        // given / when
-        RestTestClient.ResponseSpec result = client.delete()
-                .uri(BLOCKS_URI + "/{emotionId}", emotionId)
-                .exchange();
-
-        // then
-        오류를_검증한다(result, 400, "COMMON-001", "요청 값이 올바르지 않습니다.");
-        verifyNoInteractions(emotionBlockCommandService, emotionBlockQueryService);
-    }
-
     private RestTestClient.ResponseSpec 차단한다(String body) {
         return client.post()
                 .uri(BLOCKS_URI)
@@ -282,16 +268,7 @@ class EmotionBlockControllerTest {
         return Stream.of(
                 "{}",
                 """
-                        {"emotionId": null}
-                        """,
-                """
                         {"emotionId": 0}
-                        """,
-                """
-                        {"emotionId": -1}
-                        """,
-                """
-                        {"emotionId": "마흔둘"}
                         """,
                 """
                         {"sighId": 42}

@@ -35,32 +35,7 @@ class JwtTokenCodecTest {
     );
 
     @Test
-    void 발급한_액세스_토큰의_대상은_기기_공개_식별자다() {
-        // given
-        AccessTokenResult result = accessTokenIssuer.issue(기기_공개_식별자);
-
-        // when
-        AccessTokenClaims claims = AccessTokenClaims.from(jwtDecoder.decode(result.accessToken()));
-
-        // then
-        assertThat(claims.devicePublicId()).isEqualTo(기기_공개_식별자);
-    }
-
-    @Test
-    void 액세스_토큰의_대상에_순번_기본_키가_들어가지_않는다() {
-        // given
-        AccessTokenResult result = accessTokenIssuer.issue(기기_공개_식별자);
-
-        // when
-        String subject = jwtDecoder.decode(result.accessToken()).getSubject();
-
-        // then
-        assertThat(subject).isEqualTo(기기_공개_식별자.toString());
-        assertThatThrownBy(() -> Long.parseLong(subject)).isInstanceOf(NumberFormatException.class);
-    }
-
-    @Test
-    void 액세스_토큰의_유효_시간은_30분이다() {
+    void 발급한_액세스_토큰은_공개_식별자와_30분_만료_및_최소_클레임을_갖는다() {
         // given
         AccessTokenResult result = accessTokenIssuer.issue(기기_공개_식별자);
 
@@ -68,20 +43,11 @@ class JwtTokenCodecTest {
         Jwt jwt = jwtDecoder.decode(result.accessToken());
 
         // then
+        assertThat(AccessTokenClaims.from(jwt).devicePublicId()).isEqualTo(기기_공개_식별자);
+        assertThat(jwt.getSubject()).isEqualTo(기기_공개_식별자.toString());
         assertThat(result.expiresIn()).isEqualTo(액세스_토큰_만료_초);
         assertThat(Duration.between(jwt.getIssuedAt(), jwt.getExpiresAt()).toSeconds())
                 .isEqualTo(액세스_토큰_만료_초);
-    }
-
-    @Test
-    void 액세스_토큰_페이로드에는_약속한_클레임만_들어간다() {
-        // given
-        AccessTokenResult result = accessTokenIssuer.issue(기기_공개_식별자);
-
-        // when
-        Jwt jwt = jwtDecoder.decode(result.accessToken());
-
-        // then
         assertThat(jwt.getClaims()).containsOnlyKeys("iss", "sub", "iat", "exp", "use");
         assertThat(jwt.getClaimAsString("iss")).isEqualTo("https://pheeeew.com");
         assertThat(jwt.getClaimAsString("use")).isEqualTo("ACCESS");

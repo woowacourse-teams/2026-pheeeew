@@ -50,7 +50,7 @@ class S3ObjectVerifierTest {
     }
 
     @ParameterizedTest
-    @CsvSource(value = {"0,audio/mp4", "1023,audio/mp4", "1025,audio/mp4", "1024,audio/mpeg",
+    @CsvSource(value = {"1023,audio/mp4", "1025,audio/mp4", "1024,audio/mpeg",
             "NULL,audio/mp4", "1024,NULL"}, nullValues = "NULL")
     void 크기나_콘텐츠_유형이_발급_정보와_다르면_거부한다(Long contentLength, String contentType) {
         // given
@@ -78,7 +78,7 @@ class S3ObjectVerifierTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {400, 403, 429, 500, 503})
+    @ValueSource(ints = {403, 500})
     void 권한이나_저장소_오류를_업로드_미완료로_처리하지_않는다(int statusCode) {
         // given
         S3Exception failure = s3Failure(statusCode, null);

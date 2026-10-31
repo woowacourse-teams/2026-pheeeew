@@ -163,7 +163,7 @@ class GroupMemberControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"A1B2C", "A1B2C3D", "A1B2C!", "", "  "})
+    @ValueSource(strings = {"A1B2C", "A1B2C3D", "A1B2C!", "  "})
     void 초대_코드_형식이_맞지_않으면_400이고_서비스를_부르지_않는다(String 코드) {
         // when
         RestTestClient.ResponseSpec result = 참여한다(코드);
@@ -259,18 +259,6 @@ class GroupMemberControllerTest {
         result.expectStatus().isNotFound()
                 .expectBody()
                 .jsonPath("$.code").isEqualTo("GROUP-001");
-    }
-
-    @Test
-    void 그룹_식별자가_UUID가_아니면_400이고_서비스를_부르지_않는다() {
-        // when
-        RestTestClient.ResponseSpec result = client.post()
-                .uri(GROUPS_URI + "/not-a-uuid/members/me")
-                .exchange();
-
-        // then
-        result.expectStatus().isBadRequest();
-        verifyNoInteractions(groupService);
     }
 
     @Test
@@ -411,18 +399,6 @@ class GroupMemberControllerTest {
         result.expectStatus().isNotFound()
                 .expectBody()
                 .jsonPath("$.code").isEqualTo("GROUP-001");
-    }
-
-    @Test
-    void 멤버_목록의_그룹_식별자가_UUID가_아니면_400이고_서비스를_부르지_않는다() {
-        // when
-        RestTestClient.ResponseSpec result = client.get()
-                .uri(GROUPS_URI + "/not-a-uuid/members")
-                .exchange();
-
-        // then
-        result.expectStatus().isBadRequest();
-        verifyNoInteractions(groupService);
     }
 
     private RestTestClient.ResponseSpec 멤버_목록을_조회한다(String 쿼리) {

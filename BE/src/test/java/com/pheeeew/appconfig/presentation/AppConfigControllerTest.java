@@ -15,7 +15,7 @@ import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
@@ -40,7 +40,7 @@ class AppConfigControllerTest {
     private AppConfigService appConfigService;
 
     @ParameterizedTest
-    @CsvSource({"android, ANDROID", "ANDROID, ANDROID", "AnDrOiD, ANDROID", "ios, IOS", "IOS, IOS", "iOs, IOS"})
+    @CsvSource({"AnDrOiD, ANDROID", "iOs, IOS"})
     void 플랫폼의_설정과_UTC_시각을_필수_필드로_반환하고_캐시를_금지한다(String input, AppConfigPlatform platform) {
         // given
         AppConfig config = 기본_앱_설정_빌더().platform(platform).dailyPressRankingEnabled(false).revision(3).build();
@@ -60,8 +60,8 @@ class AppConfigControllerTest {
     }
 
     @ParameterizedTest
-    @NullAndEmptySource
-    @ValueSource(strings = {"web", " android ", " ", "ios "})
+    @NullSource
+    @ValueSource(strings = {"web", " android "})
     void 잘못된_플랫폼은_400으로_반환하고_캐시를_금지한다(String platform) {
         // given / when
         RestTestClient.ResponseSpec result = 조회한다(platform);

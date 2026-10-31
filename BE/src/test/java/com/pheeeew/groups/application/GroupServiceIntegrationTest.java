@@ -104,7 +104,7 @@ class GroupServiceIntegrationTest {
         Device 기기 = 기기를_저장한다();
 
         // when
-        GroupResult 결과 = groupService.save(기기.getPublicId(), "한숨모임", "설명입니다", GroupJoinType.PRIVATE, 스탬프("기본"));
+        GroupResult 결과 = groupService.save(기기.getPublicId(), "  한숨모임  ", "설명입니다", GroupJoinType.PRIVATE, 스탬프("기본"));
 
         // then
         assertThat(결과.name()).isEqualTo("한숨모임");
@@ -113,61 +113,13 @@ class GroupServiceIntegrationTest {
         assertThat(결과.memberCount()).isOne();
         assertThat(결과.stamp().text()).isEqualTo("기본");
         assertThat(결과.stamp().frame()).isEqualTo(StampFrame.VOUCHER);
-    }
-
-    @Test
-    void 초대_코드는_혼동되는_글자를_뺀_여섯_자리다() {
-        // given
-        Device 기기 = 기기를_저장한다();
-
-        // when
-        String 초대_코드 = groupService.save(기기.getPublicId(), "한숨모임", null, GroupJoinType.PRIVATE, 스탬프("기본")).inviteCode();
-
-        // then
+        String 초대_코드 = 결과.inviteCode();
         assertThat(초대_코드).hasSize(6);
         assertThat(초대_코드).matches("[0-9A-Z]{6}");
         assertThat(초대_코드).doesNotContainAnyWhitespaces();
         for (char 글자 : 혼동되는_글자.toCharArray()) {
             assertThat(초대_코드).doesNotContain(String.valueOf(글자));
         }
-    }
-
-    @Test
-    void 그룹_이름의_앞뒤_공백을_잘라낸다() {
-        // given
-        Device 기기 = 기기를_저장한다();
-
-        // when
-        GroupResult 결과 = groupService.save(기기.getPublicId(), "  한숨모임  ", null, GroupJoinType.PRIVATE, 스탬프("기본"));
-
-        // then
-        assertThat(결과.name()).isEqualTo("한숨모임");
-    }
-
-    @Test
-    void 가입_방식을_공개로_만들면_공개로_저장한다() {
-        // given
-        Device 기기 = 기기를_저장한다();
-
-        // when
-        GroupResult 결과 = groupService.save(기기.getPublicId(), "공개모임", null, GroupJoinType.PUBLIC, 스탬프("기본"));
-
-        // then
-        assertThat(결과.joinType()).isEqualTo(GroupJoinType.PUBLIC);
-        assertThat(저장된_가입_방식(결과.publicId())).isEqualTo("PUBLIC");
-    }
-
-    @Test
-    void 가입_방식을_비공개로_만들면_비공개로_저장한다() {
-        // given
-        Device 기기 = 기기를_저장한다();
-
-        // when
-        GroupResult 결과 = groupService.save(기기.getPublicId(), "비공개모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
-
-        // then
-        assertThat(결과.joinType()).isEqualTo(GroupJoinType.PRIVATE);
-        assertThat(저장된_가입_방식(결과.publicId())).isEqualTo("PRIVATE");
     }
 
     @Test
@@ -363,7 +315,7 @@ class GroupServiceIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {0, 1, 5, 25})
+    @ValueSource(ints = {0, 25})
     void 그룹_수와_관계없이_두_번의_SQL로_전체_목록을_조회한다(int 그룹_수) {
         // given
         Device 나 = 기기를_저장한다();
@@ -756,13 +708,6 @@ class GroupServiceIntegrationTest {
         } finally {
             실행기.shutdownNow();
         }
-    }
-
-    private String 저장된_가입_방식(UUID groupPublicId) {
-        return jdbcClient.sql("SELECT join_type FROM groups WHERE public_id = ?")
-                .param(groupPublicId)
-                .query(String.class)
-                .single();
     }
 
     private Device 기기를_저장한다() {

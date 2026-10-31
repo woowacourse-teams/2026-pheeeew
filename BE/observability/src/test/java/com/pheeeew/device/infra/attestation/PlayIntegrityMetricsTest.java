@@ -3,16 +3,13 @@ package com.pheeeew.device.infra.attestation;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.micrometer.core.instrument.Meter;
-import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
 import java.util.List;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 class PlayIntegrityMetricsTest {
 
@@ -20,20 +17,11 @@ class PlayIntegrityMetricsTest {
     private static final String 거절_지표 = "pheeeew.device.attestation.rejected";
 
     private final SimpleMeterRegistry registry = new SimpleMeterRegistry();
-    private final AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
-    private PlayIntegrityMetrics metrics;
-
-    @BeforeEach
-    void setUp() {
-        context.registerBean(MeterRegistry.class, () -> registry);
-        context.scan("com.pheeeew.device.infra.attestation");
-        context.refresh();
-        metrics = context.getBean(PlayIntegrityMetrics.class);
-    }
+    private final PlayIntegrityMetrics metrics = new PlayIntegrityMetrics(registry);
 
     @AfterEach
     void tearDown() {
-        context.close();
+        registry.close();
     }
 
     @Test
@@ -71,12 +59,13 @@ class PlayIntegrityMetricsTest {
         for (PlayIntegrityRejection reason : PlayIntegrityRejection.values()) {
             metrics.recordRejected(reason);
         }
+        metrics.recordRejected(PlayIntegrityRejection.CHALLENGE_INVALID);
 
         // then
         assertThat(지표_계열_수(거절_지표)).isEqualTo(14);
         for (PlayIntegrityRejection reason : PlayIntegrityRejection.values()) {
             var rejected = registry.get(거절_지표).tag("reason", reason.name()).counter();
-            assertThat(rejected.count()).isOne();
+            assertThat(rejected.count()).isEqualTo(reason == PlayIntegrityRejection.CHALLENGE_INVALID ? 2 : 1);
             assertThat(rejected.getId().getTags()).containsExactly(Tag.of("reason", reason.name()));
         }
     }
@@ -117,23 +106,6 @@ class PlayIntegrityMetricsTest {
     }
 
     @Test
-    void 거절은_사유별로_분해되고_사유_종류만큼만_계열이_생긴다() {
-        // given / when
-        metrics.recordRejected(PlayIntegrityRejection.PACKAGE_MISMATCH);
-        metrics.recordRejected(PlayIntegrityRejection.CHALLENGE_INVALID);
-        metrics.recordRejected(PlayIntegrityRejection.CHALLENGE_INVALID);
-        metrics.recordRejected(PlayIntegrityRejection.CREDENTIALS_MISSING);
-        metrics.recordRejected(PlayIntegrityRejection.GOOGLE_UNAVAILABLE);
-
-        // then
-        assertThat(거절_수("PACKAGE_MISMATCH")).isOne();
-        assertThat(거절_수("CHALLENGE_INVALID")).isEqualTo(2);
-        assertThat(거절_수("CREDENTIALS_MISSING")).isOne();
-        assertThat(거절_수("GOOGLE_UNAVAILABLE")).isOne();
-        assertThat(지표_계열_수(거절_지표)).isEqualTo(4);
-    }
-
-    @Test
     void 어떤_지표도_기기_식별자나_challenge_를_담을_태그를_갖지_않는다() {
         // given
         metrics.recordVerdict("PLAY_RECOGNIZED", true);
@@ -157,10 +129,6 @@ class PlayIntegrityMetricsTest {
                 .tag("deviceIntegrity", deviceIntegrity)
                 .counter()
                 .count();
-    }
-
-    private double 거절_수(String reason) {
-        return registry.get(거절_지표).tag("reason", reason).counter().count();
     }
 
     private long 지표_계열_수(String name) {

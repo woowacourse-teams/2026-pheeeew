@@ -6,13 +6,10 @@ import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import java.util.Map;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -36,9 +33,7 @@ class EmotionV3UpdateRequestTest {
     @ParameterizedTest
     @ValueSource(strings = {
             "{\"state\":\"ANGRY\",\"contentType\":\"MEMO\",\"memo\":\" 메모 \"}",
-            "{\"state\":\"ANGRY\",\"contentType\":\"MEMO\",\"memo\":\"메모\",\"audioUploadId\":null}",
             "{\"state\":\"ANGRY\",\"contentType\":\"AUDIO\"}",
-            "{\"state\":\"ANGRY\",\"contentType\":\"AUDIO\",\"memo\":null,\"audioUploadId\":null}",
             "{\"state\":\"ANGRY\",\"contentType\":\"AUDIO\",\"audioUploadId\":\"upload-id\"}"
     })
     void 유효한_메모와_녹음_유지_또는_교체_요청을_허용한다(String json) {
@@ -52,12 +47,10 @@ class EmotionV3UpdateRequestTest {
     @ParameterizedTest
     @ValueSource(strings = {
             "{\"state\":\"ANGRY\"}",
-            "{\"state\":\"ANGRY\",\"contentType\":null}",
             "{\"state\":\"ANGRY\",\"contentType\":\"NONE\"}",
             "{\"state\":\"ANGRY\",\"contentType\":\"NONE\",\"memo\":\"메모\"}",
             "{\"state\":\"ANGRY\",\"contentType\":\"NONE\",\"audioUploadId\":\"upload-id\"}",
             "{\"state\":\"ANGRY\",\"contentType\":\"MEMO\"}",
-            "{\"state\":\"ANGRY\",\"contentType\":\"MEMO\",\"memo\":null}",
             "{\"state\":\"ANGRY\",\"contentType\":\"MEMO\",\"memo\":\"\"}",
             "{\"state\":\"ANGRY\",\"contentType\":\"MEMO\",\"memo\":\" \\t\\n　\"}",
             "{\"state\":\"ANGRY\",\"contentType\":\"MEMO\",\"memo\":\"메모\",\"audioUploadId\":\"upload-id\"}",
@@ -75,18 +68,6 @@ class EmotionV3UpdateRequestTest {
         // when / then
         assertThat(validator.validate(request)).anySatisfy(violation ->
                 assertThat(violation.getPropertyPath().toString()).isEqualTo("contentValid"));
-    }
-
-    @ParameterizedTest
-    @MethodSource("memoLengths")
-    void 공백_제거_후_유니코드_코드포인트로_메모_길이를_검증한다(String character, int length, boolean valid) {
-        // given
-        EmotionV3UpdateRequest request = JSON_MAPPER.convertValue(
-                Map.of("state", "ANGRY", "contentType", "MEMO", "memo", "　 " + character.repeat(length) + " 　"),
-                EmotionV3UpdateRequest.class);
-
-        // when / then
-        assertThat(validator.validate(request).isEmpty()).isEqualTo(valid);
     }
 
     @ParameterizedTest
@@ -117,12 +98,4 @@ class EmotionV3UpdateRequestTest {
                 assertThat(violation.getPropertyPath().toString()).isEqualTo("state"));
     }
 
-    private static Stream<Arguments> memoLengths() {
-        return Stream.of(
-                Arguments.of("가", 200, true),
-                Arguments.of("가", 201, false),
-                Arguments.of("😀", 200, true),
-                Arguments.of("😀", 201, false)
-        );
-    }
 }

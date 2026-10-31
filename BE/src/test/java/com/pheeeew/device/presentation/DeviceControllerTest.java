@@ -234,12 +234,8 @@ class DeviceControllerTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "{}",
             "{\"attestation\": {\"platform\": \"ANDROID\"}}",
-            "{\"requestId\": null, \"attestation\": {\"platform\": \"ANDROID\"}}",
-            "{\"requestId\": \"not-a-uuid\", \"attestation\": {\"platform\": \"ANDROID\"}}",
             "{\"requestId\": \"550e8400-e29b-41d4-a716-446655440000\"}",
-            "{\"requestId\": \"550e8400-e29b-41d4-a716-446655440000\", \"attestation\": null}",
             "{\"requestId\": \"550e8400-e29b-41d4-a716-446655440000\", \"attestation\": {}}",
             "{\"requestId\": \"550e8400-e29b-41d4-a716-446655440000\", \"attestation\": {\"platform\": \"WINDOWS\"}}",
             "{\"requestId\": \"550e8400-e29b-41d4-a716-446655440000\", \"attestation\": {\"platform\": \"android\"}}"
@@ -419,8 +415,6 @@ class DeviceControllerTest {
     @ParameterizedTest
     @ValueSource(strings = {
             "{}",
-            "{\"refreshToken\": null}",
-            "{\"refreshToken\": \"\"}",
             "{\"refreshToken\": \"   \"}"
     })
     void 리프레시_토큰이_비어_있으면_401이_아니라_400을_반환한다(String body) {

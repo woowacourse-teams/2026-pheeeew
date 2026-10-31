@@ -34,7 +34,8 @@ class MapReadMetricsTest {
                     .filter(line -> line.contains("stage=\"map_blocks_lookup\""))
                     .filter(line -> line.contains("outcome=\"success\""))
                     .filter(line -> line.contains("le=\"0.01\""))).singleElement().asString().endsWith(" 1");
-            assertThat(success.getId().getTags()).hasSize(2);
+            assertThat(success.getId().getTags()).hasSize(3);
+            assertThat(success.getId().getTag("api_version")).isEqualTo("unscoped");
         } finally {
             registry.close();
         }

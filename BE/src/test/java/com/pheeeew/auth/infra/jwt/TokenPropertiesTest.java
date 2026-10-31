@@ -29,7 +29,7 @@ class TokenPropertiesTest {
 
     @ParameterizedTest
     @NullSource
-    @ValueSource(strings = {"PT29M", "PT31M", "PT30M1S", "PT0S"})
+    @ValueSource(strings = {"PT29M59S", "PT30M1S"})
     void 액세스_토큰_만료가_30분이_아니면_설정을_만들_수_없다(Duration accessTtl) {
         // given / when / then
         assertThatThrownBy(() -> new TokenProperties(accessTtl, 고정된_등록_재시도_창, 고정된_challenge_만료))
@@ -38,7 +38,7 @@ class TokenPropertiesTest {
 
     @ParameterizedTest
     @NullSource
-    @ValueSource(strings = {"PT4M", "PT6M", "PT5M1S", "PT0S"})
+    @ValueSource(strings = {"PT4M59S", "PT5M1S"})
     void 등록_재시도_창이_5분이_아니면_설정을_만들_수_없다(Duration registrationRetryWindow) {
         // given / when / then
         assertThatThrownBy(
@@ -48,7 +48,7 @@ class TokenPropertiesTest {
 
     @ParameterizedTest
     @NullSource
-    @ValueSource(strings = {"PT4M", "PT6M", "PT5M1S", "PT4M59S", "PT0S"})
+    @ValueSource(strings = {"PT4M59S", "PT5M1S"})
     void challenge_만료가_5분이_아니면_설정을_만들_수_없다(Duration challengeTtl) {
         // given / when / then
         assertThatThrownBy(

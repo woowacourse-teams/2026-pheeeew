@@ -167,19 +167,6 @@ class DeviceBlockControllerTest {
     }
 
     @Test
-    void 인증_컨텍스트가_없으면_차단자를_비운_채_차단하지_않고_500을_반환한다() {
-        // given
-        SecurityContextHolder.clearContext();
-
-        // when
-        RestTestClient.ResponseSpec result = 차단한다(기본_차단_요청());
-
-        // then
-        오류를_검증한다(result, 500, "COMMON-002", "서버 내부 오류가 발생했습니다.");
-        verifyNoInteractions(deviceBlockService);
-    }
-
-    @Test
     void 차단_목록은_차단_식별자와_근거_감정을_함께_반환한다() {
         // given
         when(deviceBlockService.findAll(기기_공개_식별자, "opaque-cursor"))

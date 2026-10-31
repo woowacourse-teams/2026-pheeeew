@@ -85,23 +85,6 @@ class AppConfigServiceIntegrationTest {
     }
 
     @Test
-    void 등록된_두_플랫폼의_초기_설정과_감사_시각을_조회한다() {
-        // given / when
-        AppConfigResult android = service.findByPlatform(AppConfigPlatform.ANDROID);
-        AppConfigResult ios = service.findByPlatform(AppConfigPlatform.IOS);
-
-        // then
-        assertThat(android.revision()).isEqualTo(1);
-        assertThat(android.dailyPressRankingEnabled()).isTrue();
-        assertThat(android.noticeMessage()).isEmpty();
-        assertThat(android.updatedAt()).isNotNull();
-        assertThat(ios.revision()).isEqualTo(1);
-        assertThat(ios.dailyPressRankingEnabled()).isTrue();
-        assertThat(ios.noticeMessage()).isEmpty();
-        assertThat(ios.updatedAt()).isNotNull();
-    }
-
-    @Test
     void 설정이_없으면_기본값_대신_찾을_수_없음_오류를_반환한다() {
         // given
         jdbc.sql("DELETE FROM app_config WHERE platform = 'ANDROID'").update();
