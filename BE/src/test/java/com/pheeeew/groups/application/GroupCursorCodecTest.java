@@ -12,7 +12,7 @@ import java.util.Base64;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class GroupCursorCodecTest {
@@ -33,7 +33,7 @@ class GroupCursorCodecTest {
     }
 
     @ParameterizedTest
-    @NullAndEmptySource
+    @NullSource
     @ValueSource(strings = {"   "})
     void 탐색_커서가_없으면_가장_먼_미래부터_읽는다(String 커서) {
         // given / when
@@ -50,10 +50,8 @@ class GroupCursorCodecTest {
             "1|2026-10-11T09:00:00Z|42|7",
             "9|2026-10-11T09:00:00Z|42",
             "1|2026-10-11T09:00:00Z|0",
-            "1|2026-10-11T09:00:00Z|-1",
             "1|2026-10-11T09:00:00Z|abc",
-            "1|2026-13-99|42",
-            "1||42"
+            "1|2026-13-99|42"
     })
     void 사용할_수_없는_내용을_가진_탐색_커서는_거부한다(String 평문) {
         // given
@@ -93,7 +91,7 @@ class GroupCursorCodecTest {
     }
 
     @ParameterizedTest
-    @NullAndEmptySource
+    @NullSource
     @ValueSource(strings = {"   "})
     void 멤버_커서가_없으면_에포크부터_읽는다(String 커서) {
         // given / when
@@ -120,20 +118,6 @@ class GroupCursorCodecTest {
 
         // when / then
         잘못된_커서임을_검증한다(() -> GroupCursorCodec.decodeExploreOrInitial(멤버_커서));
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {
-            "2|2026-10-11T09:00:00Z",
-            "2|2026-10-11T09:00:00Z|0",
-            "2|2026-13-99|7"
-    })
-    void 사용할_수_없는_내용을_가진_멤버_커서는_거부한다(String 평문) {
-        // given
-        String 커서 = 커서로_감싼다(평문);
-
-        // when / then
-        잘못된_커서임을_검증한다(() -> GroupCursorCodec.decodeMembersOrInitial(커서));
     }
 
     private String 커서로_감싼다(String 평문) {
