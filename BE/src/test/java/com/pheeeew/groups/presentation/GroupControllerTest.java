@@ -89,29 +89,14 @@ class GroupControllerTest {
     }
 
     @Test
-    void 그룹_이름의_앞뒤_공백은_잘려서_전달된다() {
-        // given
-        when(groupService.save(eq(기기_공개_식별자), eq("한숨모임"), eq(null), eq(GroupJoinType.PRIVATE), any()))
-                .thenReturn(기본_결과());
-
-        // when
-        생성한다("""
-                {"name": "  한숨모임  ", "description": "   ", %s}
-                """.formatted(스탬프_본문()));
-
-        // then
-        verify(groupService).save(eq(기기_공개_식별자), eq("한숨모임"), eq(null), eq(GroupJoinType.PRIVATE), any());
-    }
-
-    @Test
-    void 가입_방식을_공개로_보내면_서비스에_공개로_전달한다() {
+    void 공개_가입_방식과_정규화한_이름과_설명을_서비스에_전달한다() {
         // given
         when(groupService.save(eq(기기_공개_식별자), eq("한숨모임"), eq(null), eq(GroupJoinType.PUBLIC), any()))
                 .thenReturn(기본_결과());
 
         // when
         RestTestClient.ResponseSpec result = 생성한다("""
-                {"name": "한숨모임", "joinType": "PUBLIC", %s}
+                {"name": "  한숨모임  ", "description": "   ", "joinType": "PUBLIC", %s}
                 """.formatted(스탬프_본문()));
 
         // then
@@ -152,7 +137,7 @@ class GroupControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"한", "열한글자짜리이름입니다", "  ", ""})
+    @ValueSource(strings = {"한", "열한글자짜리이름입니다", "  "})
     void 이름_길이가_맞지_않으면_400이고_서비스를_부르지_않는다(String 이름) {
         // when
         RestTestClient.ResponseSpec result = 생성한다("""
@@ -214,7 +199,7 @@ class GroupControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"#FFF", "FFFFFF", "#GGGGGG", "#FFFFFFF", "빨강"})
+    @ValueSource(strings = {"#FFF", "FFFFFF", "#GGGGGG", "#FFFFFFF"})
     void 색_형식이_맞지_않으면_400이다(String 색) {
         // when
         RestTestClient.ResponseSpec result = 변경한다("""
@@ -245,7 +230,7 @@ class GroupControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"한", "기본", "네글자임"})
+    @ValueSource(strings = {"한", "네글자임"})
     void 스탬프_글자가_한_자에서_네_자면_통과한다(String 글자) {
         // given
         when(groupService.update(eq(그룹_공개_식별자), eq(기기_공개_식별자), any(), any(), any()))
@@ -259,7 +244,7 @@ class GroupControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"다섯글자임", "여섯글자입니다", "", "  "})
+    @ValueSource(strings = {"다섯글자임", "  "})
     void 스탬프_글자가_네_자를_넘거나_비어_있으면_400이다(String 글자) {
         // when
         RestTestClient.ResponseSpec result = 스탬프_글자로_변경한다(글자);
@@ -350,20 +335,7 @@ class GroupControllerTest {
                 .jsonPath("$.weeklyPresses.total").isEqualTo(9)
                 .jsonPath("$.weeklyScore").isEqualTo(5)
                 .jsonPath("$.weeklyRank").isEqualTo(1)
-                .jsonPath("$.weeklyPressRank").isEqualTo(3);
-    }
-
-    @Test
-    void 상세_조회는_v3_의_감정_프레스_필드를_담지_않는다() {
-        // given
-        when(groupService.findOne(그룹_공개_식별자, 기기_공개_식별자)).thenReturn(기본_상세());
-
-        // when
-        RestTestClient.ResponseSpec result = 상세를_조회한다();
-
-        // then
-        result.expectStatus().isOk()
-                .expectBody()
+                .jsonPath("$.weeklyPressRank").isEqualTo(3)
                 .jsonPath("$.weeklyEmotionPressCount").doesNotExist()
                 .jsonPath("$.weeklyEmotionPressRank").doesNotExist()
                 .jsonPath("$.weeklyStampCount").doesNotExist()

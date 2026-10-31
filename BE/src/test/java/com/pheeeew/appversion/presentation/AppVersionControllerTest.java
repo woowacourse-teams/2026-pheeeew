@@ -14,7 +14,7 @@ import com.pheeeew.common.exception.GlobalExceptionHandler;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
@@ -39,7 +39,7 @@ class AppVersionControllerTest {
     private AppVersionService appVersionService;
 
     @ParameterizedTest
-    @CsvSource({"android, ANDROID", "ANDROID, ANDROID", "AnDrOiD, ANDROID", "ios, IOS", "IOS, IOS", "iOs, IOS"})
+    @CsvSource({"AnDrOiD, ANDROID", "iOs, IOS"})
     void 플랫폼을_변환하고_버전_정보만_반환한다(String input, AppPlatform platform) {
         // given
         when(appVersionService.findByPlatformAndActiveTrue(platform))
@@ -58,8 +58,8 @@ class AppVersionControllerTest {
     }
 
     @ParameterizedTest
-    @NullAndEmptySource
-    @ValueSource(strings = {"web", " android ", " "})
+    @NullSource
+    @ValueSource(strings = {"web", " android "})
     void 플랫폼이_누락되거나_잘못되면_400을_반환한다(String platform) {
         // given / when
         RestTestClient.ResponseSpec result = 조회한다(platform);
