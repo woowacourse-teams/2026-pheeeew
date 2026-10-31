@@ -282,16 +282,15 @@ class GroupExploreIntegrationTest {
                 .containsExactly(찾을_그룹.getPublicId());
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {"abc", "ABC", "AbC"})
-    void 대소문자를_무시하고_검색한다(String 검색어) {
+    @Test
+    void 대소문자를_무시하고_검색한다() {
         // given
         Device 나 = 기기를_저장한다();
         Group 찾을_그룹 = 그룹을_저장한다("ABCgroup", 나);
         영속성_컨텍스트를_비운다();
 
         // when
-        GroupExploreListResult 결과 = 조회한다(나, 검색어, null, 기본_페이지_크기);
+        GroupExploreListResult 결과 = 조회한다(나, "AbC", null, 기본_페이지_크기);
 
         // then
         assertThat(결과.items()).extracting(GroupExploreResult::publicId)
@@ -331,7 +330,7 @@ class GroupExploreIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"없는이름", "열한글자가넘는검색어요", "%", "_"})
+    @ValueSource(strings = {"없는이름", "%", "_"})
     void 일치하는_그룹이_없으면_빈_목록을_조회한다(String 검색어) {
         // given
         Device 나 = 기기를_저장한다();

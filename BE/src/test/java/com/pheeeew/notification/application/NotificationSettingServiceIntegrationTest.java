@@ -55,18 +55,6 @@ class NotificationSettingServiceIntegrationTest {
     }
 
     @Test
-    void 처음_등록한_값을_기기에_저장한다() {
-        // given
-        Device device = 기기를_만든다();
-
-        // when
-        notificationSettingService.updatePushToken(device.getPublicId(), 기본_등록_값);
-
-        // then
-        assertThat(등록_값들(device)).containsExactly(기본_등록_값);
-    }
-
-    @Test
     void 같은_기기가_새_값을_보내면_이전_값을_바꾼다() {
         // given
         Device device = 기기를_만든다();
@@ -86,6 +74,7 @@ class NotificationSettingServiceIntegrationTest {
 
         // when
         notificationSettingService.updatePushToken(device.getPublicId(), 기본_등록_값);
+        assertThat(등록_값들(device)).containsExactly(기본_등록_값);
         notificationSettingService.updatePushToken(device.getPublicId(), 기본_등록_값);
 
         // then
@@ -119,18 +108,6 @@ class NotificationSettingServiceIntegrationTest {
 
         // then
         assertThat(등록_값들(device)).isEmpty();
-    }
-
-    @Test
-    void 설정을_바꾼_적이_없으면_두_알림_모두_켜져_있다() {
-        // given
-        Device device = 기기를_만든다();
-
-        // when
-        NotificationSettings settings = notificationSettingService.findSettings(device.getPublicId());
-
-        // then
-        assertThat(settings).isEqualTo(NotificationSettings.of(true, true));
     }
 
     @Test

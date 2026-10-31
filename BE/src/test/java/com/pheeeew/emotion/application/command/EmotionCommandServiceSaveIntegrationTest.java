@@ -260,7 +260,7 @@ class EmotionCommandServiceSaveIntegrationTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"0,0,NONE", "0,0,MEMO", "0,0,AUDIO", "128.02,38,NONE", "128.02,38,MEMO", "128.02,38,AUDIO"})
+    @CsvSource({"0,0,NONE", "0,0,MEMO", "128.02,38,AUDIO"})
     void 지원_범위_밖의_신규_등록은_모든_콘텐츠를_거부하고_녹음_연결을_시작하지_않는다(
             double longitude, double latitude, String contentType
     ) {

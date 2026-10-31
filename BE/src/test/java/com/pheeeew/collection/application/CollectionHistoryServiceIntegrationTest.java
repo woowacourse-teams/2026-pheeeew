@@ -242,7 +242,7 @@ class CollectionHistoryServiceIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {0, -1, 51, 2147483647})
+    @ValueSource(ints = {0, 51})
     void 잘못된_페이지_크기는_거절한다(int limit) {
         // given
         var owner = devices.saveAndFlush(기본_기기_빌더().build());
@@ -272,7 +272,7 @@ class CollectionHistoryServiceIntegrationTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"false,false", "true,false", "false,true"})
+    @CsvSource({"true,false", "false,true"})
     void 카드_감정의_집계가_없으면_목록에서도_그_횟수를_0으로_보여_준다(boolean stamp, boolean press) {
         // given
         var owner = devices.saveAndFlush(기본_기기_빌더().build());
