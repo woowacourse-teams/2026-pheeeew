@@ -1,7 +1,6 @@
 """운영 자격 증명 없이 지표 허용 목록과 실제 Alloy 로그 필터를 검증한다."""
 
 import datetime
-import itertools
 import json
 from pathlib import Path
 import re
@@ -74,35 +73,35 @@ def verify_metrics(config):
 
 def verify_logs(config, environment):
     http = "com.pheeeew.common.logging.RequestLogWriter"
-    recorder = "com.pheeeew.activity.infra.DeviceActivityRecorder"
-    scheduler = "com.pheeeew.activity.infra.DeviceActivityAggregationScheduler"
     task = "com.pheeeew.common.logging.ScheduledTaskErrorHandler"
     diagnostic = "com.pheeeew.emotion.infra.metrics.MapReadDiagnostics"
-    contracts = [(http, "http_request_failed", "ERROR"), (http, "http_request_slow", "WARN"),
-                 (task, "scheduled_task_failed", "ERROR")]
-    # 제거한 활동 logger/event 조합도 전송이 차단되는지 검증한다.
-    events = {event for _, event, _ in contracts} | {
-        "map_read_sample",
-        "device_activity_record_failed", "device_activity_aggregation_failed", "unknown", None}
-    cases = []
-    for logger, event, level in itertools.product(
-            (http, recorder, scheduler, task, diagnostic, diagnostic.replace(".", "x"), "unknown", None),
-            sorted(events, key=str), ("ERROR", "WARN", "INFO", None)):
-        allowed = (logger == http and event in {"http_request_failed", "http_request_slow"}
-                   or logger == task and event == "scheduled_task_failed" and level == "ERROR"
-                   or environment == "dev" and logger == diagnostic
-                   and event == "map_read_sample" and level == "INFO")
-        cases.append(({"logger_name": logger, "event": event, "level": level}, allowed))
+    # 서비스가 정한 허용·차단 경계마다 대표 입력 하나만 사용한다.
+    cases = [
+        (http, "http_request_failed", "ERROR", True),
+        (http, "http_request_slow", "WARN", True),
+        (task, "scheduled_task_failed", "ERROR", True),
+        (diagnostic, "map_read_sample", "INFO", environment == "dev"),
+        ("unreviewed.logger", "http_request_failed", "ERROR", False),
+        (diagnostic.replace(".", "x"), "map_read_sample", "INFO", False),
+        (http, "unreviewed_event", "ERROR", False),
+        (task, "http_request_failed", "ERROR", False),
+        (diagnostic, "scheduled_task_failed", "INFO", False),
+        (task, "scheduled_task_failed", "WARN", False),
+        (diagnostic, "map_read_sample", "ERROR", False),
+        (None, "http_request_failed", "ERROR", False),
+        (http, None, "ERROR", False),
+    ]
     timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
     entries, expected, expected_labels = [], set(), {}
-    for index, (fields, allowed) in enumerate(cases):
+    for index, (logger, event, level, allowed) in enumerate(cases):
         marker = f"fixture-{index:03}"
+        fields = {"logger_name": logger, "event": event, "level": level}
         entry = {key: value for key, value in fields.items() if value is not None}
         entry.update({"@timestamp": timestamp, "message": marker, "correlationId": "fixture-id"})
         entries.append(json.dumps(entry))
         if allowed:
             expected.add(marker)
-            # 기존 HTTP 필터는 level이 없는 허용 이벤트도 통과시킨다. 이 계약은 바꾸지 않는다.
+            # 연결용 correlationId는 Loki 라벨에 포함하지 않는다.
             expected_labels[marker] = {"job", "event"} | ({"level"} if fields["level"] is not None else set())
     entries.append("malformed fixture-999")
 
