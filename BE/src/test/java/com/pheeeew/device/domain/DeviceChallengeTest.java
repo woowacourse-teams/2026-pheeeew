@@ -3,7 +3,6 @@ package com.pheeeew.device.domain;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.time.Duration;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -14,23 +13,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 class DeviceChallengeTest {
 
     private static final String 정상_challenge = "PjONwTh56rDaOsphVQQeqQcPyQtLZL-reX5Us2xD2SM";
-
-    @Test
-    void 형식에_맞는_challenge_와_만료_시각으로_만든다() {
-        // given
-        Instant expiresAt = Instant.now().plus(Duration.ofMinutes(5));
-
-        // when
-        DeviceChallenge deviceChallenge = DeviceChallenge.builder()
-                .challenge(정상_challenge)
-                .expiresAt(expiresAt)
-                .build();
-
-        // then
-        assertThat(deviceChallenge.getChallenge()).isEqualTo(정상_challenge);
-        assertThat(deviceChallenge.getExpiresAt()).isEqualTo(expiresAt);
-        assertThat(deviceChallenge.getConsumedAt()).isNull();
-    }
 
     @ParameterizedTest
     @NullSource

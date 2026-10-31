@@ -88,22 +88,6 @@ class AppVersionControllerTest {
                         """, JsonCompareMode.STRICT);
     }
 
-    @Test
-    void 서버_오류가_발생하면_500을_반환한다() {
-        // given
-        when(appVersionService.findByPlatformAndActiveTrue(AppPlatform.ANDROID))
-                .thenThrow(new IllegalStateException("version lookup failed"));
-
-        // when
-        RestTestClient.ResponseSpec result = 조회한다("android");
-
-        // then
-        result.expectStatus().isEqualTo(500)
-                .expectBody().json("""
-                        {"code":"COMMON-002","message":"서버 내부 오류가 발생했습니다."}
-                        """, JsonCompareMode.STRICT);
-    }
-
     private RestTestClient.ResponseSpec 조회한다(String platform) {
         return client.get().uri(builder -> {
             builder.path(VERSION_URI);

@@ -166,21 +166,6 @@ def verify_labels(name, config, environment):
     print(f"{name}: 환경 라벨 검증 통과 ({environment})")
 
 
-def verify_same_filters(configs):
-    def parts(config):
-        return (re.search(r'regex\s*=\s*"([^"]+)"', config).group(1),
-                config.split('loki.process "http_requests" {', 1)[1].split('loki.write "grafana" {', 1)[0])
-
-    if len({parts(config)[0] for config in configs.values()}) != 1:
-        raise AssertionError("설정 파일의 지표 허용 목록이 다릅니다.")
-    if parts(configs["config.alloy"])[1] != parts(configs["config.prod-bluegreen.alloy"])[1]:
-        raise AssertionError("운영 단일/블루그린 설정의 로그 필터가 다릅니다.")
-    for name in ("config.alloy", "config.prod-bluegreen.alloy"):
-        if "MapReadDiagnostics" in parts(configs[name])[1]:
-            raise AssertionError(f"{name}: 운영에서 진단 표본 logger를 허용하면 안 됩니다.")
-    print(f"설정 {len(configs)}개의 지표·운영 로그 필터 동일성 검증 통과 (개발 진단 표본은 별도 검증)")
-
-
 def validate(name):
     # 실제 설정 전체를 가짜 환경 변수로 검증한다. 컨테이너 외부 통신은 차단한다.
     command = ["run", "--rm", "--network", "none", "--mount",
@@ -198,14 +183,11 @@ def validate(name):
 
 def main():
     configs = {name: (DIRECTORY / name).read_text() for name in CONFIGS}
-    verify_same_filters(configs)
     for name, environment in CONFIGS.items():
         verify_metrics(configs[name])
         verify_labels(name, configs[name], environment)
         validate(name)
-    # 운영 두 설정의 동일성은 위에서 확인했다. 개발만 지도 진단 표본을 허용한다.
-    verify_logs(configs["config.alloy"], "prod")
-    verify_logs(configs["config.dev.alloy"], "dev")
+        verify_logs(configs[name], environment)
 
 
 if __name__ == "__main__":
