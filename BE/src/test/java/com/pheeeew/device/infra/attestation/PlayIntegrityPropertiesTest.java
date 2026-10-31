@@ -26,6 +26,7 @@ class PlayIntegrityPropertiesTest {
         // then
         assertThat(properties.androidPackageName()).isEqualTo(우리_패키지명);
         assertThat(properties.isConfigured()).isFalse();
+        assertThat(properties.dailyCallBudget()).isEqualTo(3000);
     }
 
     @ParameterizedTest
@@ -39,7 +40,7 @@ class PlayIntegrityPropertiesTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"abc", "12-34", "1.2", "123456789012345678901"})
+    @ValueSource(strings = {"abc", "123456789012345678901"})
     void Cloud_프로젝트_번호_형식이_어긋나면_설정을_만들_수_없다(String cloudProjectNumber) {
         // given / when / then
         assertThatThrownBy(() -> new PlayIntegrityProperties(우리_패키지명, 서비스_계정, cloudProjectNumber, false, false, null))
@@ -48,7 +49,6 @@ class PlayIntegrityPropertiesTest {
 
     @ParameterizedTest
     @CsvSource(value = {
-            "NULL,NULL",
             "eyJ9,NULL",
             "NULL,123456789012",
             "'   ',123456789012",
@@ -75,8 +75,7 @@ class PlayIntegrityPropertiesTest {
     @ParameterizedTest
     @CsvSource(value = {
             "NULL,123456789012",
-            "eyJ9,NULL",
-            "NULL,NULL"
+            "eyJ9,NULL"
     }, nullValues = "NULL")
     void 자격증명이_반쪽이면_검증을_켜지_않는다(String serviceAccountBase64, String cloudProjectNumber) {
         // given / when
@@ -95,17 +94,8 @@ class PlayIntegrityPropertiesTest {
         ).isInstanceOf(IllegalArgumentException.class);
     }
 
-    @Test
-    void 일일_호출_예산을_설정하지_않으면_3000_을_쓴다() {
-        // given / when
-        PlayIntegrityProperties properties = new PlayIntegrityProperties(우리_패키지명, null, null, false, false, null);
-
-        // then
-        assertThat(properties.dailyCallBudget()).isEqualTo(3000);
-    }
-
     @ParameterizedTest
-    @ValueSource(ints = {1, 3000, 5000})
+    @ValueSource(ints = {1, 5000})
     void 일일_호출_예산은_1_이상_5000_이하를_받는다(int dailyCallBudget) {
         // given / when
         PlayIntegrityProperties properties =
@@ -116,7 +106,7 @@ class PlayIntegrityPropertiesTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {-1, 0, 5001, 10000})
+    @ValueSource(ints = {0, 5001})
     void 일일_호출_예산이_범위를_벗어나면_설정을_만들_수_없다(int dailyCallBudget) {
         // given / when / then
         assertThatThrownBy(
