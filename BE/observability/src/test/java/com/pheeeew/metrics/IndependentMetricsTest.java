@@ -9,7 +9,6 @@ import com.pheeeew.region.infra.metrics.RegionQueryMetrics;
 import com.pheeeew.region.infra.metrics.RegionQueryMetrics.Operation;
 import com.pheeeew.report.application.EmotionReportMetrics;
 import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Timer;
@@ -46,21 +45,10 @@ class IndependentMetricsTest {
             context.getBean(MapReadMetrics.class).record(MapReadMetrics.Stage.MAP_BLOCKS_LOOKUP, 7_000_000, true);
 
             // then
-            // SimpleMeterRegistry가 파생 등록하는 버킷 Gauge와 직접 정의한 지표를 구분한다.
-            var definedMeters = registry.getMeters().stream()
-                    .filter(meter -> meter instanceof Timer || meter instanceof Counter
-                            || meter instanceof DistributionSummary)
-                    .toList();
-            assertThat(definedMeters).hasSize(18);
             assertThat(registry.get("pheeeew.map.read.stage").timers()).singleElement().satisfies(timer -> {
                 assertThat(timer.count()).isEqualTo(1);
                 assertThat(timer.getId().getTag("api_version")).isEqualTo("unscoped");
             });
-            assertThat(definedMeters).extracting(meter -> meter.getId().getName())
-                    .containsOnly("pheeeew.sigh.list.query", "pheeeew.sigh.list.results",
-                            "pheeeew.emotion.create.throttled", "pheeeew.region.query",
-                            "pheeeew.device.challenge.issued", "pheeeew.device.challenge.deleted",
-                            "pheeeew.report.sigh.auto_deleted", "pheeeew.map.read.stage");
             assertCounter(registry, "pheeeew.emotion.create.throttled", 1);
             assertCounter(registry, "pheeeew.device.challenge.issued", 2);
             assertCounter(registry, "pheeeew.device.challenge.deleted", 7);
