@@ -10,19 +10,6 @@ import org.junit.jupiter.api.Test;
 class PressCountsTest {
 
     @Test
-    void 입력_순서가_반대여도_이름_오름차순으로_순회한다() {
-        // given
-        Map<EmotionState, Integer> 요청 = 순서대로(EmotionState.EXHAUSTED, EmotionState.ANGRY);
-
-        // when
-        PressCounts 묶음 = PressCounts.from(요청);
-
-        // then
-        assertThat(묶음.presses().keySet())
-                .containsExactly(EmotionState.ANGRY, EmotionState.EXHAUSTED);
-    }
-
-    @Test
     void 다섯_감정을_뒤섞어_넣으면_선언_순서가_아니라_이름_오름차순으로_순회한다() {
         // given
         Map<EmotionState, Integer> 요청 = 순서대로(

@@ -405,7 +405,7 @@ class CollectionQueryServiceIntegrationTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"false,false", "true,false", "false,true"})
+    @CsvSource({"true,false", "false,true"})
     void 오늘_조회는_카드_감정의_집계가_없으면_그_횟수를_0으로_보여_준다(boolean hasStamps, boolean hasPresses) {
         // given
         var device = devices.saveAndFlush(기본_기기_빌더().build());

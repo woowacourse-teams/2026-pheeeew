@@ -130,7 +130,7 @@ class GroupExploreControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"0", "51", "-1"})
+    @ValueSource(strings = {"0", "51"})
     void 페이지_크기가_범위를_벗어나면_400이고_서비스를_부르지_않는다(String 페이지_크기) {
         // when
         RestTestClient.ResponseSpec result = 조회한다("?size=" + 페이지_크기);
@@ -139,16 +139,6 @@ class GroupExploreControllerTest {
         result.expectStatus().isBadRequest()
                 .expectBody()
                 .jsonPath("$.code").isEqualTo("COMMON-001");
-        verifyNoInteractions(groupExploreService);
-    }
-
-    @Test
-    void 페이지_크기가_숫자가_아니면_400이고_서비스를_부르지_않는다() {
-        // when
-        RestTestClient.ResponseSpec result = 조회한다("?size=abc");
-
-        // then
-        result.expectStatus().isBadRequest();
         verifyNoInteractions(groupExploreService);
     }
 

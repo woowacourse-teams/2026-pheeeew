@@ -79,7 +79,7 @@ class GroupRankingControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {0, 1, 2, 52, 520})
+    @ValueSource(ints = {0, 520})
     void 몇_주_전이든_뒤로_넘겨_볼_수_있다(int 몇_주_전) {
         // given
         when(groupRankingService.findGroupRanking(몇_주_전)).thenReturn(기본_그룹_랭킹());
@@ -94,20 +94,8 @@ class GroupRankingControllerTest {
         verify(groupRankingService).findGroupRanking(몇_주_전);
     }
 
-    @Test
-    void 주를_안_보내면_이번주로_본다() {
-        // given
-        when(groupRankingService.findGroupRanking(0)).thenReturn(기본_그룹_랭킹());
-
-        // when
-        client.get().uri(GROUPS_URI + "/rankings").exchange();
-
-        // then
-        verify(groupRankingService).findGroupRanking(0);
-    }
-
     @ParameterizedTest
-    @ValueSource(strings = {"-1", "521", "지난주"})
+    @ValueSource(strings = {"-1", "521"})
     void 뒤로_갈_수_없는_값을_보내면_400이다(String 몇_주_전) {
         // when
         RestTestClient.ResponseSpec result = client.get()

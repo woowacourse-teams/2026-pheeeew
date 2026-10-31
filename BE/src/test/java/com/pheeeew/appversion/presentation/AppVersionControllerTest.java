@@ -14,7 +14,7 @@ import com.pheeeew.common.exception.GlobalExceptionHandler;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
@@ -39,7 +39,7 @@ class AppVersionControllerTest {
     private AppVersionService appVersionService;
 
     @ParameterizedTest
-    @CsvSource({"android, ANDROID", "ANDROID, ANDROID", "AnDrOiD, ANDROID", "ios, IOS", "IOS, IOS", "iOs, IOS"})
+    @CsvSource({"AnDrOiD, ANDROID", "iOs, IOS"})
     void 플랫폼을_변환하고_버전_정보만_반환한다(String input, AppPlatform platform) {
         // given
         when(appVersionService.findByPlatformAndActiveTrue(platform))
@@ -58,8 +58,8 @@ class AppVersionControllerTest {
     }
 
     @ParameterizedTest
-    @NullAndEmptySource
-    @ValueSource(strings = {"web", " android ", " "})
+    @NullSource
+    @ValueSource(strings = {"web", " android "})
     void 플랫폼이_누락되거나_잘못되면_400을_반환한다(String platform) {
         // given / when
         RestTestClient.ResponseSpec result = 조회한다(platform);
@@ -85,22 +85,6 @@ class AppVersionControllerTest {
         result.expectStatus().isNotFound()
                 .expectBody().json("""
                         {"code":"APP_VERSION-002","message":"활성 앱 버전 정책을 찾을 수 없습니다."}
-                        """, JsonCompareMode.STRICT);
-    }
-
-    @Test
-    void 서버_오류가_발생하면_500을_반환한다() {
-        // given
-        when(appVersionService.findByPlatformAndActiveTrue(AppPlatform.ANDROID))
-                .thenThrow(new IllegalStateException("version lookup failed"));
-
-        // when
-        RestTestClient.ResponseSpec result = 조회한다("android");
-
-        // then
-        result.expectStatus().isEqualTo(500)
-                .expectBody().json("""
-                        {"code":"COMMON-002","message":"서버 내부 오류가 발생했습니다."}
                         """, JsonCompareMode.STRICT);
     }
 

@@ -2,32 +2,20 @@ package com.pheeeew.emotion.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 class EmotionPressMetricsTest {
 
-    private final AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
     private final SimpleMeterRegistry registry = new SimpleMeterRegistry();
-    private EmotionPressMetrics metrics;
-
-    @BeforeEach
-    void setUp() {
-        context.registerBean(MeterRegistry.class, () -> registry);
-        context.scan("com.pheeeew.emotion.application");
-        context.refresh();
-        metrics = context.getBean(EmotionPressMetrics.class);
-    }
+    private final EmotionPressMetrics metrics = new EmotionPressMetrics(registry);
 
     @AfterEach
     void tearDown() {
-        context.close();
+        registry.close();
     }
 
     @Test

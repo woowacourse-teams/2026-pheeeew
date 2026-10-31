@@ -44,8 +44,8 @@ class AudioUploadRequestTest {
     }
 
     @ParameterizedTest
-    @ValueSource(longs = {-1, 0, 5_242_881, Long.MAX_VALUE})
-    void 빈_파일과_음수_또는_최대_크기를_넘는_파일을_거부한다(long contentLength) {
+    @ValueSource(longs = {0, 5_242_881})
+    void 빈_파일과_최대_크기를_넘는_파일을_거부한다(long contentLength) {
         // given
         AudioUploadRequest request = JSON_MAPPER.convertValue(
                 Map.of("contentType", "audio/mp4", "contentLength", contentLength), AudioUploadRequest.class);

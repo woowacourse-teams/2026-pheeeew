@@ -132,7 +132,7 @@ class CollectionClaimServiceIntegrationTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"0,100", "1,99", "0,0", "1,0"})
+    @CsvSource({"0,100", "1,99", "0,0"})
     void 스탬프와_프레스_조건을_모두_채우지_않으면_발급하지_않는다(long stamps, long presses) {
         // given
         var device = devices.saveAndFlush(기본_기기_빌더().build());

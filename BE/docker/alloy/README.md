@@ -142,7 +142,7 @@ SSH를 위한 Cloudflare 터널은 그대로 사용해요. 수집은 `Alloy → 
 python3 docker/alloy/verify.py
 ```
 
-검증 스크립트는 전체 Alloy 설정 문법, 지표 이름 허용·차단, 실제 Loki 파이프라인의 로그 허용·차단과 최종 라벨을 확인해요. logger와 event의 잘못된 조합, 필수 필드 누락, 삭제한 활동 로그 조합, 예약 작업 로그의 잘못된 수준, 잘못된 JSON도 검사해요. 가짜 로그와 자격 증명만 사용하고 컨테이너 외부 네트워크를 차단해요. 지표 이름 검사는 정규식 검사이며 실제 scrape·remote write나 Cloud 수신을 검증하지 않아요.
+검증 스크립트는 운영 단일·개발 블루그린·운영 블루그린 설정 전체의 문법, 지표 이름 허용·차단, 실제 Loki 파이프라인의 로그 허용·차단과 최종 라벨을 확인해요. 로그는 설정마다 14개 대표 사례로 오류·느린 요청·예약 작업 허용, 미허용 logger/event와 유사 logger 이름 차단, 수준 제한, 필수 필드 누락과 잘못된 JSON 차단을 검사해요. 추가 지도 진단 표본은 정확한 `MapReadDiagnostics` logger·`map_read_sample`·INFO 조합만 개발에서 허용하며 운영 두 설정은 차단해요. 연결용 correlationId가 Loki 라벨이 되지 않는지도 확인해요. 가짜 로그와 자격 증명만 사용하고 컨테이너 외부 네트워크를 차단해요. 지표 이름 검사는 정규식 검사이며 실제 scrape·remote write나 Cloud 수신을 검증하지 않아요.
 
 2026-09-11, ARM64의 Alloy v1.19.2와 격리된 Docker 가짜 앱·수신 서버로 아래를 확인했어요. 실제 토큰과 Grafana Cloud는 사용하지 않았어요.
 
