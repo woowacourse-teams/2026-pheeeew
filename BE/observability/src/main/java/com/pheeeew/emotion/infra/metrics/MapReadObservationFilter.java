@@ -50,7 +50,7 @@ public final class MapReadObservationFilter extends OncePerRequestFilter {
         try (observation) {
             try {
                 chain.doFilter(request, response);
-            } catch (IOException | ServletException | RuntimeException exception) {
+            } catch (IOException | ServletException | RuntimeException | Error exception) {
                 failed = true;
                 throw exception;
             } finally {

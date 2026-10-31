@@ -13,9 +13,11 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
@@ -120,13 +122,13 @@ class MapReadObservationTest {
         assertThat(registry.find("pheeeew.map.read.requests").counters()).isEmpty();
     }
 
-    @Test
-    void 출력_예외를_그대로_전파하고_필터의_이전_문맥을_복원한다() throws Exception {
+    @ParameterizedTest
+    @MethodSource("출력_실패_원인")
+    void 출력_실패를_그대로_전파하고_필터의_이전_문맥을_복원한다(Throwable original) throws Exception {
         // given
         var registry = new SimpleMeterRegistry();
         var filter = new MapReadObservationFilter(registry, new MapReadMetrics(registry),
                 new MapReadDiagnostics(false, 0, 100, 5, registry));
-        var original = new IOException("output failed");
         var called = new AtomicLong();
 
         // when / then
@@ -134,13 +136,23 @@ class MapReadObservationTest {
             assertThatThrownBy(() -> filter.doFilter(new MockHttpServletRequest("GET", "/api/v4/emotions/map"),
                     new MockHttpServletResponse(), (request, response) -> {
                         called.incrementAndGet();
-                        throw original;
+                        if (original instanceof Error error) {
+                            throw error;
+                        }
+                        throw (IOException) original;
                     })).isSameAs(original);
             assertThat(MapReadObservation.apiVersion()).isEqualTo("v2");
         }
         assertThat(MapReadObservation.active()).isFalse();
         assertThat(registry.get("pheeeew.map.read.requests").tags("api_version", "v4", "outcome", "server_error")
                 .counter().count()).isEqualTo(1);
+        assertThat(registry.get("pheeeew.map.read.stage")
+                .tags("api_version", "v4", "stage", "map_filter_total", "outcome", "error")
+                .timer().count()).isEqualTo(1);
+        assertThat(registry.find("pheeeew.map.read.requests").tags("api_version", "v4", "outcome", "success")
+                .counter()).isNull();
+        assertThat(registry.find("pheeeew.map.read.stage")
+                .tags("api_version", "v4", "stage", "map_filter_total", "outcome", "success").timer()).isNull();
 
         filter.doFilter(new MockHttpServletRequest("GET", "/api/v4/emotions/map"), new MockHttpServletResponse(),
                 (request, response) -> called.incrementAndGet());
@@ -154,5 +166,9 @@ class MapReadObservationTest {
         Timer timer = registry.get("pheeeew.map.read.stage").tags("api_version", "v4", "stage", stage).timer();
         assertThat(timer.count()).isEqualTo(1);
         assertThat(timer.totalTime(TimeUnit.MILLISECONDS)).isEqualTo(millis);
+    }
+
+    private static Stream<Throwable> 출력_실패_원인() {
+        return Stream.of(new IOException("output failed"), new AssertionError("output failed"));
     }
 }
