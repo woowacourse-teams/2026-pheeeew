@@ -2,9 +2,12 @@ package com.pheeeew.emotion.infra.metrics;
 
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static com.pheeeew.emotion.fixture.EmotionFixture.기본_한숨_빌더;
+import static com.pheeeew.groups.fixture.GroupFixture.기본_그룹_빌더;
+import static com.pheeeew.groups.fixture.GroupFixture.기본_스탬프_빌더;
 import static com.pheeeew.region.fixture.RegionFixture.검증용_지역_계층을_저장한다;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 import com.pheeeew.device.application.token.AccessTokenIssuer;
 import com.pheeeew.device.domain.repository.DeviceRepository;
@@ -13,6 +16,8 @@ import com.pheeeew.emotion.application.mapcache.PinCandidateCache;
 import com.pheeeew.emotion.application.mapcache.RegionSummaryCache;
 import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.emotion.domain.repository.EmotionRepository;
+import com.pheeeew.groups.domain.repository.GroupRepository;
+import com.pheeeew.groups.domain.repository.GroupStampRepository;
 import com.pheeeew.support.SharedJwtTestConfiguration;
 import com.pheeeew.support.SharedPostgisTestConfiguration;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -24,6 +29,8 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -65,11 +72,16 @@ class MapReadHttpIntegrationTest {
     private PinCandidateCache pins;
     @Autowired
     private RegionSummaryCache regions;
+    @Autowired
+    private GroupRepository groups;
+    @Autowired
+    private GroupStampRepository stamps;
     @LocalServerPort
     private int port;
 
     private HttpClient client;
     private String token;
+    private UUID groupId;
 
     @BeforeEach
     void setUp() {
@@ -79,8 +91,12 @@ class MapReadHttpIntegrationTest {
                 .update();
         var device = devices.save(기본_기기_빌더().build());
         token = tokens.issue(device.getPublicId()).accessToken();
+        var group = groups.save(기본_그룹_빌더().build());
+        groupId = group.getPublicId();
+        var stamp = stamps.save(기본_스탬프_빌더(group).build());
         for (int index = 0; index < 3; index++) {
-            emotions.save(기본_한숨_빌더().deviceId(device.getId()).memo("HTTP 계측 검증").state(EmotionState.ANGRY).build());
+            emotions.save(기본_한숨_빌더().deviceId(device.getId()).memo("HTTP 계측 검증")
+                    .state(EmotionState.ANGRY).groupStamp(stamp).build());
         }
         coordinator.invalidate();
         pins.rebuild();
@@ -92,6 +108,8 @@ class MapReadHttpIntegrationTest {
         client.close();
         coordinator.invalidate();
         emotions.deleteAllInBatch();
+        stamps.deleteAllInBatch();
+        groups.deleteAllInBatch();
         jdbc.sql("DELETE FROM device_daily_stamps").update();
         devices.deleteAllInBatch();
         jdbc.sql("DELETE FROM regions").update();
@@ -104,9 +122,12 @@ class MapReadHttpIntegrationTest {
         // given
         String path = "/api/" + version + "/emotions/map" + (level == null ? "" : "/regions")
                 + BOUNDS + (level == null ? "" : "&level=" + level);
-        List<String> stages = List.of("map_filter_total", "map_jwt_decode", "map_pre_mvc", "map_mvc_pre_controller",
+        List<String> stages = new ArrayList<>(List.of("map_filter_total", "map_jwt_decode", "map_pre_mvc", "map_mvc_pre_controller",
                 "map_" + route + "_controller", "map_" + route + "_service", "map_json_write",
-                "map_response_processing", "map_filter_return");
+                "map_response_processing", "map_filter_return"));
+        if (level == null) {
+            stages.addAll(List.of("map_pins_device", "map_pins_cache", "map_blocks_lookup", "map_pins_response"));
+        }
         double[] before = stages.stream().mapToDouble(stage -> stageCount(version, stage)).toArray();
         double requests = requestCount(version, route, "all_default", "cache_hit", "success");
         double writes = writeCount(version, route);
@@ -123,6 +144,12 @@ class MapReadHttpIntegrationTest {
             assertThat(body.get("items").size()).isEqualTo(3);
             assertThat(body.get("hasNext").asBoolean()).isFalse();
             assertThat(body.get("items").get(0).get("properties").has("groupId")).isEqualTo(version.equals("v2"));
+            var properties = body.get("items").get(0).get("properties");
+            assertThat(properties.has("groupStamp")).isEqualTo(version.equals("v2"));
+            if (version.equals("v2")) {
+                assertThat(properties.get("groupId").asString()).isEqualTo(groupId.toString());
+                assertThat(properties.get("groupStamp").get("text").asString()).isEqualTo("기본");
+            }
         } else {
             assertThat(body.size()).isEqualTo(1);
         }
@@ -131,6 +158,35 @@ class MapReadHttpIntegrationTest {
         }
         assertThat(writeCount(version, route) - writes).isEqualTo(1);
         assertThat(requestCount(version, route, "all_default", "cache_hit", "success") - requests).isEqualTo(1);
+    }
+
+    @Test
+    void v4_캐시_최초_적재와_SQL_fallback도_서비스와_응답_단계를_중복_없이_계측한다() throws Exception {
+        // given
+        pins.invalidate();
+        double services = stageCount("v4", "map_pins_service");
+        double responses = stageCount("v4", "map_pins_response");
+        double db = stageCount("v4", "map_pins_db_path");
+        double loads = requestCount("v4", "pins", "all_default", "cache_load", "success");
+        double fallbacks = requestCount("v4", "pins", "all_default", "cache_fallback", "success");
+
+        // when
+        var loaded = send("/api/v4/emotions/map" + BOUNDS, token);
+        var fallback = coordinator.serialized(() -> {
+            pins.invalidate();
+            // HTTP 처리 스레드는 최초 적재 잠금을 획득할 수 없어 기존 SQL 경로로 진행한다.
+            return assertDoesNotThrow(() -> send("/api/v4/emotions/map" + BOUNDS, token));
+        });
+
+        // then
+        assertThat(loaded.statusCode()).isEqualTo(200);
+        assertThat(fallback.statusCode()).isEqualTo(200);
+        assertThat(mapper.readTree(loaded.body()).get("items")).isEqualTo(mapper.readTree(fallback.body()).get("items"));
+        assertThat(stageCount("v4", "map_pins_service") - services).isEqualTo(2);
+        assertThat(stageCount("v4", "map_pins_response") - responses).isEqualTo(1);
+        assertThat(stageCount("v4", "map_pins_db_path") - db).isEqualTo(1);
+        assertThat(requestCount("v4", "pins", "all_default", "cache_load", "success") - loads).isEqualTo(1);
+        assertThat(requestCount("v4", "pins", "all_default", "cache_fallback", "success") - fallbacks).isEqualTo(1);
     }
 
     @Test
