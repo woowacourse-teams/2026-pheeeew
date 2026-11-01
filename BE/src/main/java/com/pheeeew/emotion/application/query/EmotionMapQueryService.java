@@ -164,11 +164,27 @@ public class EmotionMapQueryService {
                 : EmotionCursorCodec.decodeV4WithinBounds(encodedCursor);
         cursor.validateSnapshotAt(Instant.now(clock));
         cursor.validateRequestedFilter(startDate, endDate, contentType, scope, null);
-        return findContentMap(cursor, devicePublicId, encodedCursor == null, pageSize, EmotionCursorCodec::encodeV4);
+        PinCandidateCache.Page cached = findCachedPins(cursor, devicePublicId, encodedCursor == null, pageSize);
+        if (cached != null) {
+            return dbQueries.findPinPageV4(cached, pageSize);
+        }
+
+        return dbQueries.findMapV4(cursor, devicePublicId, pageSize);
     }
 
     private EmotionMapPageView findContentMap(
             EmotionCursor cursor, UUID devicePublicId, boolean firstPage, int pageSize, Function<EmotionCursor, String> encoder
+    ) {
+        PinCandidateCache.Page cached = findCachedPins(cursor, devicePublicId, firstPage, pageSize);
+        if (cached != null) {
+            return dbQueries.findPinPage(cached, pageSize, encoder);
+        }
+
+        return dbQueries.findMap(cursor, devicePublicId, true, pageSize, encoder);
+    }
+
+    private PinCandidateCache.Page findCachedPins(
+            EmotionCursor cursor, UUID devicePublicId, boolean firstPage, int pageSize
     ) {
         EmotionSearchFilter filter = cursor.filter();
         MapReadObservation.query(filter.startDate(), filter.endDate(), firstPage, defaultFilter(filter), clock);
@@ -181,14 +197,14 @@ public class EmotionMapQueryService {
             MapReadObservation.decision(Decision.CACHE_ATTEMPT);
             PinCandidateCache.Page cached = pinCandidateCache.find(cursor, firstPage, deviceId, pageSize);
             if (cached != null) {
-                return dbQueries.findPinPage(cached, pageSize, encoder);
+                return cached;
             }
             MapReadObservation.decision(Decision.CACHE_FALLBACK);
         } else {
             MapReadObservation.decision(bypass);
         }
 
-        return dbQueries.findMap(cursor, devicePublicId, true, pageSize, encoder);
+        return null;
     }
 
     private Decision bypassReason(RegionLevel level, EmotionSearchFilter filter) {

@@ -35,6 +35,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.hibernate.autoconfigure.HibernatePropertiesCustomizer;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -126,10 +127,12 @@ class EmotionMapPlanScopeIntegrationTest {
         });
     }
 
-    @Test
-    void v2_필터_지도는_custom으로_조회하고_정상_종료_후_동일_연결의_지역_조회에_전파하지_않는다() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void v2와_v4_필터_지도는_custom으로_조회하고_정상_종료_후_동일_연결의_지역_조회에_전파하지_않는다(boolean v4) {
         // when
-        var page = findMap(viewer.getPublicId());
+        var page = v4 ? service.findContentMapWithinBoundsV4(BOUNDS, viewer.getPublicId(), null, null,
+                EmotionContentFilter.MEMO, null, null) : findMap(viewer.getPublicId());
 
         // then
         assertThat(page.items()).singleElement().satisfies(item -> assertThat(item.id()).isEqualTo(emotion.getId()));
@@ -148,13 +151,21 @@ class EmotionMapPlanScopeIntegrationTest {
         assertRestoredAndRegionsUnaffected();
     }
 
-    @Test
-    void 설정_후_DB_쿼리가_실패해도_롤백으로_복원하고_동일_연결을_재사용한다() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void 설정_후_DB_쿼리가_실패해도_롤백으로_복원하고_동일_연결을_재사용한다(boolean v4) {
         // given
         observer.failNextMapQuery = true;
 
         // when / then: 실제 PostgreSQL 오류로 트랜잭션을 중단시킨다.
-        assertThatThrownBy(() -> findMap(viewer.getPublicId()))
+        assertThatThrownBy(() -> {
+            if (v4) {
+                service.findContentMapWithinBoundsV4(BOUNDS, viewer.getPublicId(), null, null,
+                        EmotionContentFilter.MEMO, null, null);
+            } else {
+                findMap(viewer.getPublicId());
+            }
+        })
                 .isInstanceOfSatisfying(DataAccessException.class, exception ->
                         assertThat(exception.getMostSpecificCause()).isInstanceOfSatisfying(SQLException.class,
                                 sqlException -> assertThat(sqlException.getSQLState()).isEqualTo("22012")));
