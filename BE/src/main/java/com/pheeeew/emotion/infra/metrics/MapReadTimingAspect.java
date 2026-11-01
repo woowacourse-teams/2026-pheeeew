@@ -38,13 +38,15 @@ public class MapReadTimingAspect {
             execution(public * com.pheeeew.emotion.application.query.EmotionMapDbQueryService.findValidatedDeviceId(..)) ||
             execution(public * com.pheeeew.emotion.application.query.EmotionMapDbQueryService.findRegionRequest(..)) ||
             execution(public * com.pheeeew.emotion.application.query.EmotionMapDbQueryService.findMap(..)) ||
+            execution(public * com.pheeeew.emotion.application.query.EmotionMapDbQueryService.findMapV4(..)) ||
             execution(public * com.pheeeew.emotion.application.query.EmotionMapDbQueryService.findRegionMapSql(..)) ||
             execution(public * com.pheeeew.emotion.application.query.EmotionMapDbQueryService.findSummariesByRegionCodes(..)) ||
             execution(public * com.pheeeew.emotion.application.mapcache.PinCandidateCache.find(..)) ||
             execution(public * com.pheeeew.emotion.application.mapcache.RegionSummaryCache.summaries(..)) ||
             execution(public * com.pheeeew.emotion.domain.repository.EmotionMapReadRepository.findBlockedTargets(..)) ||
             execution(public * com.pheeeew.region.domain.repository.RegionRepository.findByLevel(..)) ||
-            execution(public * com.pheeeew.emotion.application.query.EmotionMapDbQueryService.findPinPage(..))
+            execution(public * com.pheeeew.emotion.application.query.EmotionMapDbQueryService.findPinPage(..)) ||
+            execution(public * com.pheeeew.emotion.application.query.EmotionMapDbQueryService.findPinPageV4(..))
             """)
     public Object record(ProceedingJoinPoint joinPoint) throws Throwable {
         Stage stage = stage(joinPoint);
@@ -89,14 +91,16 @@ public class MapReadTimingAspect {
             case "com.pheeeew.emotion.application.query.EmotionMapQueryService.findRegionMap" -> Stage.MAP_REGIONS_SERVICE;
             case "com.pheeeew.emotion.application.query.EmotionMapDbQueryService.findValidatedDeviceId" -> Stage.MAP_PINS_DEVICE;
             case "com.pheeeew.emotion.application.query.EmotionMapDbQueryService.findRegionRequest" -> Stage.MAP_REGIONS_PREPARE;
-            case "com.pheeeew.emotion.application.query.EmotionMapDbQueryService.findMap" -> Stage.MAP_PINS_DB_PATH;
+            case "com.pheeeew.emotion.application.query.EmotionMapDbQueryService.findMap",
+                 "com.pheeeew.emotion.application.query.EmotionMapDbQueryService.findMapV4" -> Stage.MAP_PINS_DB_PATH;
             case "com.pheeeew.emotion.application.query.EmotionMapDbQueryService.findRegionMapSql",
                  "com.pheeeew.emotion.application.query.EmotionMapDbQueryService.findSummariesByRegionCodes" -> Stage.MAP_REGIONS_DB_PATH;
             case "com.pheeeew.emotion.application.mapcache.PinCandidateCache.find" -> Stage.MAP_PINS_CACHE;
             case "com.pheeeew.emotion.application.mapcache.RegionSummaryCache.summaries" -> Stage.MAP_REGIONS_CACHE;
             case "com.pheeeew.emotion.domain.repository.EmotionMapReadRepository.findBlockedTargets" -> Stage.MAP_BLOCKS_LOOKUP;
             case "com.pheeeew.region.domain.repository.RegionRepository.findByLevel" -> Stage.MAP_REGION_LIST;
-            case "com.pheeeew.emotion.application.query.EmotionMapDbQueryService.findPinPage" -> Stage.MAP_PINS_RESPONSE;
+            case "com.pheeeew.emotion.application.query.EmotionMapDbQueryService.findPinPage",
+                 "com.pheeeew.emotion.application.query.EmotionMapDbQueryService.findPinPageV4" -> Stage.MAP_PINS_RESPONSE;
             default -> throw new IllegalStateException("계측 대상이 아닌 지도 조회 메서드입니다.");
         };
     }

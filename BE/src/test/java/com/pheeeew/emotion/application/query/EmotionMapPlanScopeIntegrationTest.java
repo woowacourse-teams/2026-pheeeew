@@ -35,6 +35,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.hibernate.autoconfigure.HibernatePropertiesCustomizer;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -126,10 +127,12 @@ class EmotionMapPlanScopeIntegrationTest {
         });
     }
 
-    @Test
-    void v2_필터_지도는_custom으로_조회하고_정상_종료_후_동일_연결의_지역_조회에_전파하지_않는다() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void v2와_v4_필터_지도는_custom으로_조회하고_정상_종료_후_동일_연결의_지역_조회에_전파하지_않는다(boolean v4) {
         // when
-        var page = findMap(viewer.getPublicId());
+        var page = v4 ? service.findContentMapWithinBoundsV4(BOUNDS, viewer.getPublicId(), null, null,
+                EmotionContentFilter.MEMO, null, null) : findMap(viewer.getPublicId());
 
         // then
         assertThat(page.items()).singleElement().satisfies(item -> assertThat(item.id()).isEqualTo(emotion.getId()));
