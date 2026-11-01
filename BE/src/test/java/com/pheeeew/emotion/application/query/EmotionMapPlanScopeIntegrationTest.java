@@ -151,13 +151,21 @@ class EmotionMapPlanScopeIntegrationTest {
         assertRestoredAndRegionsUnaffected();
     }
 
-    @Test
-    void 설정_후_DB_쿼리가_실패해도_롤백으로_복원하고_동일_연결을_재사용한다() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void 설정_후_DB_쿼리가_실패해도_롤백으로_복원하고_동일_연결을_재사용한다(boolean v4) {
         // given
         observer.failNextMapQuery = true;
 
         // when / then: 실제 PostgreSQL 오류로 트랜잭션을 중단시킨다.
-        assertThatThrownBy(() -> findMap(viewer.getPublicId()))
+        assertThatThrownBy(() -> {
+            if (v4) {
+                service.findContentMapWithinBoundsV4(BOUNDS, viewer.getPublicId(), null, null,
+                        EmotionContentFilter.MEMO, null, null);
+            } else {
+                findMap(viewer.getPublicId());
+            }
+        })
                 .isInstanceOfSatisfying(DataAccessException.class, exception ->
                         assertThat(exception.getMostSpecificCause()).isInstanceOfSatisfying(SQLException.class,
                                 sqlException -> assertThat(sqlException.getSQLState()).isEqualTo("22012")));

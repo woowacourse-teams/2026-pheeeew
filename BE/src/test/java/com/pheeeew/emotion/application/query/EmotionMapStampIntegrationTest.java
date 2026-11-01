@@ -132,6 +132,8 @@ class EmotionMapStampIntegrationTest {
         assertThat(capture.queries).noneMatch(SqlCapture::readsGroupDisplay);
         if (path.equals("month") || path.equals("fallback")) {
             assertThat(capture.queries).anyMatch(sql -> sql.contains("st_intersects"));
+        } else if (path.equals("hit")) {
+            assertThat(capture.queries).noneMatch(sql -> sql.contains("st_intersects"));
         }
     }
 
