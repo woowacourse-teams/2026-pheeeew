@@ -57,11 +57,11 @@ internal fun LocalDataSettingsScreen(
             Column {
                 Text("알림 권한 테스트 상태")
                 Text(
-                    "앱 요청 이력을 초기화합니다. 허용 상태면 Android가 권한을 회수하고 앱을 종료하므로 다시 열어 주세요.",
+                    "앱 요청 이력을 지웁니다. 허용 상태의 OS 권한 회수는 앱이 백그라운드에 있을 때 시스템이 안전하다고 판단하면 적용됩니다. 권한 회수 후 앱을 다시 열어 주세요.",
                     style = MaterialTheme.typography.bodySmall,
                 )
                 Text(
-                    "반복 거부로 시스템이 요청을 막으면 ADB에서 권한 거부 기록도 초기화해야 합니다.",
+                    "이전에 거부했다면 시스템 거부 이력이 남을 수 있습니다. 최초 요청을 다시 확인하려면 권한을 회수하고 ADB에서 user-set·user-fixed 기록도 초기화하세요.",
                     style = MaterialTheme.typography.bodySmall,
                 )
             }

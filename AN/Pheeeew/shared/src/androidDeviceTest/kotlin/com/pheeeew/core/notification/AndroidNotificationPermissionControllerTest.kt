@@ -29,6 +29,40 @@ import kotlin.test.assertTrue
 
 /** Run on an emulator with POST_NOTIFICATIONS revoked and its user-set/user-fixed flags cleared. */
 class AndroidNotificationPermissionControllerTest {
+    @Test
+    fun resetClearsAppHistoryAndDefersGrantedHistoryUntilPermissionIsRevoked() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val preferences = context.getSharedPreferences("foundation-notification-permission", 0)
+        val rationaleKey = "has-observed-notification-rationale"
+        val authorizedKey = "has-been-authorized"
+        val resetPendingKey = "notification-permission-reset-pending"
+        val store = AndroidNotificationPermissionStore(context)
+        try {
+            preferences
+                .edit()
+                .putBoolean("has-requested-post-notifications", true)
+                .putBoolean(rationaleKey, true)
+                .putBoolean(authorizedKey, true)
+                .apply()
+
+            store.reset(permissionGranted = true)
+
+            assertFalse(preferences.contains("has-requested-post-notifications"))
+            assertFalse(preferences.contains(rationaleKey))
+            assertFalse(preferences.contains(authorizedKey))
+            assertTrue(preferences.getBoolean(resetPendingKey, false))
+
+            store.update(permissionGranted = true) { it.onResult(granted = true, showsRationale = false) }
+            assertFalse(preferences.getBoolean(authorizedKey, false))
+
+            store.update(permissionGranted = false) { it.authorization(granted = false, showsRationale = false) }
+            assertFalse(preferences.getBoolean(resetPendingKey, false))
+            assertFalse(preferences.getBoolean(authorizedKey, false))
+        } finally {
+            store.reset(permissionGranted = false)
+        }
+    }
+
     /** Run separately after granting POST_NOTIFICATIONS to the isolated test package. */
     @Test
     fun blockedRemoteChannelDoesNotChangeAppAuthorization() {
@@ -70,6 +104,11 @@ class AndroidNotificationPermissionControllerTest {
         assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val device = UiDevice.getInstance(instrumentation)
+        val context = instrumentation.targetContext
+        val permissionGranted =
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        assumeTrue("Requires revoked notification permission", !permissionGranted)
+        AndroidNotificationPermissionController.resetRequestHistory(context)
         val denySelector = By.res(Pattern.compile(".*:id/permission_deny.*_button"))
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
         val activity =

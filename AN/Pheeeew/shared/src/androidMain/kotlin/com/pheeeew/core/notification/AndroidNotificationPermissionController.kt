@@ -58,7 +58,7 @@ class AndroidNotificationPermissionController(
                 activityResultKey,
                 ActivityResultContracts.RequestPermission(),
             ) { granted ->
-                permissionStore.update { it.onResult(granted, shouldShowRationale()) }
+                permissionStore.update(permissionGranted = granted) { it.onResult(granted, shouldShowRationale()) }
                 requests.complete()
                 (activityReference.get() as? NotificationPermissionResultListener)?.onNotificationPermissionResult()
             }
@@ -80,7 +80,9 @@ class AndroidNotificationPermissionController(
                     return@request
                 }
                 val launcher = permissionLauncher ?: error("Notification permission request is unavailable")
-                permissionStore.update { it.observeRationale(shouldShowRationale()) }
+                permissionStore.update(permissionGranted = hasPostNotificationsPermission()) {
+                    it.observeRationale(shouldShowRationale())
+                }
                 launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
@@ -116,8 +118,11 @@ class AndroidNotificationPermissionController(
 
     private fun authorizationNow(): NotificationAuthorization {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val permissionGranted = hasPostNotificationsPermission()
             val authorization =
-                permissionStore.update { it.authorization(hasPostNotificationsPermission(), shouldShowRationale()) }
+                permissionStore.update(permissionGranted) {
+                    it.authorization(permissionGranted, shouldShowRationale())
+                }
             if (authorization != NotificationAuthorization.AUTHORIZED) return authorization
         }
         if (!NotificationManagerCompat.from(applicationContext).areNotificationsEnabled()) {
@@ -145,12 +150,13 @@ class AndroidNotificationPermissionController(
         /** Clears app-side request history for Debug permission prompt scenarios. */
         fun resetRequestHistory(context: Context) {
             val applicationContext = context.applicationContext
-            AndroidNotificationPermissionStore(applicationContext).reset()
+            val permissionGranted =
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                    applicationContext.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
+                    PackageManager.PERMISSION_GRANTED
+            AndroidNotificationPermissionStore(applicationContext).reset(permissionGranted)
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                applicationContext.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
-                PackageManager.PERMISSION_GRANTED
-            ) {
+            if (permissionGranted) {
                 applicationContext.revokeSelfPermissionOnKill(Manifest.permission.POST_NOTIFICATIONS)
             }
         }

@@ -15,12 +15,13 @@ class AndroidNotificationPermissionReader(
 
     override suspend fun authorization(): NotificationAuthorization {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val permissionGranted =
+                applicationContext.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
+                    PackageManager.PERMISSION_GRANTED
             val authorization =
-                permissionStore.update { history ->
+                permissionStore.update(permissionGranted) { history ->
                     history.authorization(
-                        granted =
-                            applicationContext.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
-                                PackageManager.PERMISSION_GRANTED,
+                        granted = permissionGranted,
                         showsRationale = false,
                     )
                 }
