@@ -1,0 +1,15 @@
+{
+  "experiment": "Swift/UIKit prepare=true; 600 target calls; idle pause after index 300; debugger-only lifecycle trace, not timing trial",
+  "lastLoggedIndex": "300",
+  "pauseObserved": true,
+  "releasePath": [
+    "UIKit internal teardown block",
+    "NSMutableSet removeAllObjects",
+    "_UIFeedbackCoreHapticsPlayer .cxx_destruct",
+    "PatternPlayer dealloc",
+    "CHHapticEngine releaseChannel:"
+  ],
+  "releaseArgumentNonNull": true,
+  "stackFile": "lifetime-stack.log",
+  "scope": "Observed on iPhone 17 Pro iOS 26.6 23G71; not an Apple-public lifetime contract or proof across OS versions."
+}

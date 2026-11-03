@@ -1,0 +1,42 @@
+(lldb) command source -s 0 'capture-exact-pid.lldb'
+Executing commands in 'capture-exact-pid.lldb'.
+(lldb) script lldb.debugger.SetAsync(False)
+(lldb) device select <DEVICE_IDENTIFIER>
+(lldb) device process attach -p 88698
+(lldb) script exec("import time\np = lldb.debugger.GetSelectedTarget().GetProcess()\nfor _ in range(25):\n if p.GetState() in (lldb.eStateStopped, lldb.eStateCrashed, lldb.eStateExited): break\n time.sleep(1)\nprint(\"attach state:\",p.GetState())")
+Process 88698 stopped
+* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGSTOP
+    frame #0: 0x0000000234511cd4 libsystem_kernel.dylib`mach_msg2_trap + 8
+libsystem_kernel.dylib`mach_msg2_trap:
+->  0x234511cd4 <+8>: ret
+
+libsystem_kernel.dylib`macx_swapon:
+    0x234511cd8 <+0>: mov    x16, #-0x30               ; =-48
+    0x234511cdc <+4>: svc    #0x80
+    0x234511ce0 <+8>: ret
+Target 0: (Pheeeew) stopped.
+attach state: 5
+(lldb) process status
+Process 88698 stopped
+* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGSTOP
+    frame #0: 0x0000000234511cd4 libsystem_kernel.dylib`mach_msg2_trap + 8
+libsystem_kernel.dylib`mach_msg2_trap:
+->  0x234511cd4 <+8>: ret
+
+libsystem_kernel.dylib`macx_swapon:
+    0x234511cd8 <+0>: mov    x16, #-0x30               ; =-48
+    0x234511cdc <+4>: svc    #0x80
+    0x234511ce0 <+8>: ret
+(lldb) target list
+Current targets:
+* target #0: /private/var/containers/Bundle/Application/BA00AF9B-9F4C-41A4-A84E-5702CE70C033/Pheeeew.app/Pheeeew ( arch=arm64-apple-ios, platform=remote-ios, pid=88698, state=stopped )
+(lldb) command script import ${PROJECT_ROOT}/AN/Pheeeew/scripts/haptic_channel_exact_1060.py
+[HapticChannelFailure] Exact error branch breakpoint 1 0x21b852fb4
+Only the error branch stops; ordinary log calls are not intercepted.
+(lldb) continue
+Process 88698 resuming
+Process 88698 stopped
+* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGKILL
+Target 0: (Pheeeew) stopped.
+
+... Interrupted.

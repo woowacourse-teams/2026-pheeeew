@@ -1,0 +1,53 @@
+14:47:36  Acquired tunnel connection to device.
+14:47:36  Enabling developer disk image services.
+14:47:36  Acquired usage assertion.
+Launched application with com.itda.pheeeew bundle identifier.
+Waiting for the application to terminate…
+2026-11-03 14:47:46.317828+0900 Pheeeew[88715:48518204] [PreviewsAgentExecutorLibrary] Looking up debug dylib relative path
+2026-11-03 14:47:46.318320+0900 Pheeeew[88715:48518204] [PreviewsAgentExecutorLibrary] Found debug dylib relative path string `Pheeeew.debug.dylib`
+2026-11-03 14:47:46.318325+0900 Pheeeew[88715:48518204] [PreviewsAgentExecutorLibrary] Looking up debug dylib entry point name
+2026-11-03 14:47:46.318328+0900 Pheeeew[88715:48518204] [PreviewsAgentExecutorLibrary] No debug dylib entry point name defined.
+2026-11-03 14:47:46.318330+0900 Pheeeew[88715:48518204] [PreviewsAgentExecutorLibrary] Looking up debug dylib install name
+2026-11-03 14:47:46.318332+0900 Pheeeew[88715:48518204] [PreviewsAgentExecutorLibrary] Found debug dylib install name string `@rpath/Pheeeew.debug.dylib`
+2026-11-03 14:47:46.318334+0900 Pheeeew[88715:48518204] [PreviewsAgentExecutorLibrary] Looking for Previews JIT link entry point.
+2026-11-03 14:47:46.318520+0900 Pheeeew[88715:48518204] [PreviewsAgentExecutorLibrary] No Previews JIT entry point found.
+2026-11-03 14:47:46.318527+0900 Pheeeew[88715:48518204] [PreviewsAgentExecutorLibrary] Gave PreviewsInjection a chance to run and it returned, continuing with debug dylib.
+2026-11-03 14:47:46.318529+0900 Pheeeew[88715:48518204] [PreviewsAgentExecutorLibrary] Looking for main entry point.
+2026-11-03 14:47:46.318531+0900 Pheeeew[88715:48518204] [PreviewsAgentExecutorLibrary] Opening debug dylib with '@rpath/Pheeeew.debug.dylib'
+2026-11-03 14:47:46.318559+0900 Pheeeew[88715:48518204] [PreviewsAgentExecutorLibrary] Debug dylib handle: 0x83475418
+2026-11-03 14:47:46.318577+0900 Pheeeew[88715:48518204] [PreviewsAgentExecutorLibrary] No entry point found. Checking for alias.
+2026-11-03 14:47:46.318581+0900 Pheeeew[88715:48518204] [PreviewsAgentExecutorLibrary] Calling provided entry point.
+2026-11-03 14:47:46.569816+0900 Pheeeew[88715:48518401] [[FirebaseMessaging]] 13.1.1 - [FirebaseMessaging][I-FCM001000] FIRMessaging Remote Notifications proxy enabled, will swizzle remote notification receiver handlers. If you'd prefer to manually integrate Firebase Messaging, add "FirebaseAppDelegateProxyEnabled" to your Info.plist, and set it to NO. Follow the instructions at:
+https://firebase.google.com/docs/cloud-messaging/ios/client#method_swizzling_in_firebase_messaging
+to ensure proper integration.
+2026-11-03 14:47:47.567776+0900 Pheeeew[88715:48518204] [MC] Reading from public effective user settings.
+2026-11-03 14:47:48.037818+0900 Pheeeew[88715:48518392] [Common] unable to decode "ShellSceneKit.ProfileActivation" because this class does not exist
+2026-11-03 14:47:48.037831+0900 Pheeeew[88715:48518392] [Common] -[BSSettings initWithXPCDictionary:]_block_invoke Could not decode object for setting 17456962218540468756
+2026-11-03 14:47:48.037835+0900 Pheeeew[88715:48518392] [Common] No value decoded for key "profileActivation" (17456962218540468756). Ignoring.
+2026-11-03 14:47:48.071493+0900 Pheeeew[88715:48518204] MLNMapView WARNING UIViewController.automaticallyAdjustsScrollViewInsets is deprecated use MLNMapView.automaticallyAdjustContentInset instead.
+[PushTokenSync] state=WAITING
+APNs 등록 성공
+2026-11-03 14:47:48.088958+0900 Pheeeew[88715:48518392] [connection] nw_connection_copy_protocol_metadata_internal_block_invoke [C6] Client called nw_connection_copy_protocol_metadata_internal on unconnected nw_connection
+2026-11-03 14:47:48.088976+0900 Pheeeew[88715:48518392] [connection] nw_connection_copy_protocol_metadata_internal_block_invoke [C6] Client called nw_connection_copy_protocol_metadata_internal on unconnected nw_connection
+2026-11-03 14:47:48.088982+0900 Pheeeew[88715:48518392] [connection] nw_connection_copy_protocol_metadata_internal_block_invoke [C6] Client called nw_connection_copy_protocol_metadata_internal on unconnected nw_connection
+2026-11-03 14:47:48.088986+0900 Pheeeew[88715:48518392] [connection] nw_connection_copy_connected_local_endpoint_block_invoke [C6] Client called nw_connection_copy_connected_local_endpoint on unconnected nw_connection
+2026-11-03 14:47:48.088990+0900 Pheeeew[88715:48518392] [connection] nw_connection_copy_connected_remote_endpoint_block_invoke [C6] Client called nw_connection_copy_connected_remote_endpoint on unconnected nw_connection
+[PushTokenSync] state=SYNCING
+[PushTokenSync] method=PUT env=dev http=204
+[HapticExperiment] event=armed prepare=true count=2000 intervalMs=20 startDelayMs=5000
+2026-11-03 14:47:48.313569+0900 Pheeeew[88715:48518204] [CoreLocation] __delegate_identifier__:Performance Diagnostics__:::____message__: This method can cause UI unresponsiveness if invoked on the main thread. Instead, consider waiting for the `-locationManagerDidChangeAuthorization:` callback and checking `authorizationStatus` first.
+2026-11-03 14:47:48.314239+0900 Pheeeew[88715:48518204] [CoreLocation] __delegate_identifier__:Performance Diagnostics__:::____message__: This method can cause UI unresponsiveness if invoked on the main thread. Instead, consider waiting for the `-locationManagerDidChangeAuthorization:` callback and checking `authorizationStatus` first.
+2026-11-03 14:47:48.314480+0900 Pheeeew[88715:48518204] [CoreLocation] __delegate_identifier__:Performance Diagnostics__:::____message__: This method can cause UI unresponsiveness if invoked on the main thread. Instead, consider waiting for the `-locationManagerDidChangeAuthorization:` callback and checking `authorizationStatus` first.
+[PushTokenSync] method=PUT env=dev http=204
+[PushTokenSync] state=SYNCED
+[Revisit test] firstIntervalSeconds=172799.816 lastIntervalSeconds=2678399.194
+[Revisit test] alerts=2 lockScreen=2 notificationCenter=2 sound=2 scheduledDelivery=1
+[Revisit test] delivered=0
+[Revisit test] reason=foreground permission=2 pending=30 repeating=0 minuteSpacing=false
+[Revisit test] first=2026-11-05T05:47:48Z last=2026-12-04T05:47:48Z
+[Revisit test] firstRequestId=pheeeew.revisit.1793684868079.0
+[HapticExperiment] event=start prepare=true category=AVAudioSessionCategoryAmbient mode=AVAudioSessionModeDefault mainThread=true
+[HapticExperiment] event=impact index=1 prepare=true elapsedMs=1 latenessMs=1
+[HapticExperiment] event=invalid reason=missedDeadline index=2 latenessMs=127; restart trial
+[HapticExperiment] event=finished prepare=true impacts=1 prepares=1; fewerThan=2000 means incomplete
+App terminated due to signal 15.
