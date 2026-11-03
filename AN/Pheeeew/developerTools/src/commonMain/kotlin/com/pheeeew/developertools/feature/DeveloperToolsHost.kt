@@ -34,6 +34,7 @@ fun DeveloperToolsHost(
     info: DeveloperToolsInfo,
     onClearUiSession: () -> Unit,
     onResetOnboarding: () -> Unit,
+    onResetNotificationPermission: (() -> Unit)? = null,
     configRepository: AppConfigRepository? = null,
     content: @Composable (onOpenDeveloperTools: () -> Unit) -> Unit,
 ) {
@@ -74,6 +75,7 @@ fun DeveloperToolsHost(
                 onOpenPage = { page = it },
                 onBack = onBack,
                 onResetOnboarding = onResetOnboarding,
+                onResetNotificationPermission = onResetNotificationPermission,
                 onRestart = { apply ->
                     NetworkRecovery.controller.stop()
                     page = DeveloperToolsPage.HOME

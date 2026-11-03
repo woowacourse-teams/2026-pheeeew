@@ -32,10 +32,8 @@ class AndroidNotificationPermissionController(
 ) : NotificationPermissionController,
     AutoCloseable {
     private val applicationContext = activity.applicationContext
-    private val preferences = applicationContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+    private val permissionStore = AndroidNotificationPermissionStore(applicationContext)
     private val requests = AndroidNotificationPermissionRequest()
-    private val history =
-        AndroidNotificationPermissionHistory(preferences.getBoolean(KEY_HAS_OBSERVED_RATIONALE, false))
     private val activityResultKey = "foundation-post-notifications-${UUID.randomUUID()}"
     private var activityReference = WeakReference(activity)
     private var permissionLauncher: ActivityResultLauncher<String>? = null
@@ -60,8 +58,7 @@ class AndroidNotificationPermissionController(
                 activityResultKey,
                 ActivityResultContracts.RequestPermission(),
             ) { granted ->
-                history.onResult(granted, shouldShowRationale())
-                preferences.edit().putBoolean(KEY_HAS_OBSERVED_RATIONALE, history.hasObservedRationale).apply()
+                permissionStore.update { it.onResult(granted, shouldShowRationale()) }
                 requests.complete()
                 (activityReference.get() as? NotificationPermissionResultListener)?.onNotificationPermissionResult()
             }
@@ -83,9 +80,7 @@ class AndroidNotificationPermissionController(
                     return@request
                 }
                 val launcher = permissionLauncher ?: error("Notification permission request is unavailable")
-                history.observeRationale(shouldShowRationale())
-                preferences.edit().putBoolean(KEY_HAS_OBSERVED_RATIONALE, history.hasObservedRationale).apply()
-                preferences.edit().putBoolean(KEY_HAS_REQUESTED, true).apply()
+                permissionStore.update { it.observeRationale(shouldShowRationale()) }
                 launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
@@ -120,12 +115,10 @@ class AndroidNotificationPermissionController(
     }
 
     private fun authorizationNow(): NotificationAuthorization {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasPostNotificationsPermission()) {
-            return if (preferences.getBoolean(KEY_HAS_REQUESTED, false)) {
-                NotificationAuthorization.DENIED
-            } else {
-                NotificationAuthorization.NOT_DETERMINED
-            }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val authorization =
+                permissionStore.update { it.authorization(hasPostNotificationsPermission(), shouldShowRationale()) }
+            if (authorization != NotificationAuthorization.AUTHORIZED) return authorization
         }
         if (!NotificationManagerCompat.from(applicationContext).areNotificationsEnabled()) {
             return NotificationAuthorization.DENIED
@@ -141,16 +134,25 @@ class AndroidNotificationPermissionController(
     private fun canRequestNow(): Boolean =
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             !hasPostNotificationsPermission() && activityReference.get() != null &&
-            history.canRequest(shouldShowRationale())
+            permissionStore.read().canRequest(shouldShowRationale())
 
     private fun hasPostNotificationsPermission(): Boolean =
         applicationContext.checkSelfPermission(
             Manifest.permission.POST_NOTIFICATIONS,
         ) == PackageManager.PERMISSION_GRANTED
 
-    private companion object {
-        private const val PREFERENCES_NAME = "foundation-notification-permission"
-        private const val KEY_HAS_REQUESTED = "has-requested-post-notifications"
-        private const val KEY_HAS_OBSERVED_RATIONALE = "has-observed-notification-rationale"
+    companion object {
+        /** Clears app-side request history for Debug permission prompt scenarios. */
+        fun resetRequestHistory(context: Context) {
+            val applicationContext = context.applicationContext
+            AndroidNotificationPermissionStore(applicationContext).reset()
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                applicationContext.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
+                PackageManager.PERMISSION_GRANTED
+            ) {
+                applicationContext.revokeSelfPermissionOnKill(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
     }
 }

@@ -22,12 +22,14 @@ import androidx.compose.ui.unit.dp
 @Composable
 internal fun LocalDataSettingsScreen(
     canClearConfig: Boolean,
+    canResetNotificationPermission: Boolean,
     applying: Boolean,
     error: String?,
-    onApply: (Boolean, Boolean) -> Unit,
+    onApply: (Boolean, Boolean, Boolean) -> Unit,
 ) {
     var onboarding by rememberSaveable { mutableStateOf(false) }
     var config by rememberSaveable { mutableStateOf(false) }
+    var notificationPermission by rememberSaveable { mutableStateOf(false) }
     Text("로컬 데이터 설정", style = MaterialTheme.typography.headlineMedium)
     Spacer(Modifier.height(16.dp))
     Text("초기화할 항목을 선택해 주세요.")
@@ -45,10 +47,30 @@ internal fun LocalDataSettingsScreen(
             Text("저장된 설정을 지웁니다. 임시 덮어쓰기는 유지됩니다.", style = MaterialTheme.typography.bodySmall)
         }
     }
+    if (canResetNotificationPermission) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(
+                checked = notificationPermission,
+                onCheckedChange = { notificationPermission = it },
+                enabled = !applying,
+            )
+            Column {
+                Text("알림 권한 테스트 상태")
+                Text(
+                    "앱 요청 이력을 초기화합니다. 허용 상태면 Android가 권한을 회수하고 앱을 종료하므로 다시 열어 주세요.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Text(
+                    "반복 거부로 시스템이 요청을 막으면 ADB에서 권한 거부 기록도 초기화해야 합니다.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+    }
     Spacer(Modifier.height(16.dp))
     Text("다른 로컬 데이터", style = MaterialTheme.typography.titleMedium)
     Text(
-        "기기 인증 정보, 알림 토큰·동기화 기록, 권한 요청 이력, 알림 클릭·재방문 기록은 " +
+        "기기 인증 정보, 알림 토큰·동기화 기록, 알림 클릭·재방문 기록은 " +
             "앱에서 관리 중이며 이 화면에서 초기화할 수 없습니다.",
         style = MaterialTheme.typography.bodySmall,
     )
@@ -56,8 +78,8 @@ internal fun LocalDataSettingsScreen(
     Spacer(Modifier.height(24.dp))
     Button(
         modifier = Modifier.fillMaxWidth(),
-        enabled = (onboarding || config) && !applying,
-        onClick = { onApply(onboarding, config) },
+        enabled = (onboarding || config || notificationPermission) && !applying,
+        onClick = { onApply(onboarding, config, notificationPermission) },
     ) { Text(if (applying) "적용 중" else "적용하기") }
 }
 
@@ -65,6 +87,14 @@ internal fun LocalDataSettingsScreen(
 @Composable
 private fun LocalDataSettingsScreenPreview() {
     MaterialTheme {
-        Column { LocalDataSettingsScreen(canClearConfig = true, applying = false, error = null, onApply = { _, _ -> }) }
+        Column {
+            LocalDataSettingsScreen(
+                canClearConfig = true,
+                canResetNotificationPermission = true,
+                applying = false,
+                error = null,
+                onApply = { _, _, _ -> },
+            )
+        }
     }
 }

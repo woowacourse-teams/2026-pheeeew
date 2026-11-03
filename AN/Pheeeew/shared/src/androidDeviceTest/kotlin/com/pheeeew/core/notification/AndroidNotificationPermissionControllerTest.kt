@@ -92,14 +92,31 @@ class AndroidNotificationPermissionControllerTest {
             device.pressBack()
             runBlocking { withTimeout(10_000) { dismissed.await() } }
             assertTrue(runBlocking { controller.canRequestAuthorization() })
+            assertEquals(NotificationAuthorization.NOT_DETERMINED, runBlocking { controller.authorization() })
+            instrumentation.runOnMainSync {
+                controller.close()
+                controller = AndroidNotificationPermissionController(activity, UnavailableSettingsFallback)
+            }
+            assertEquals(NotificationAuthorization.NOT_DETERMINED, runBlocking { controller.authorization() })
+            val reader = AndroidNotificationPermissionReader(instrumentation.targetContext)
+            assertEquals(NotificationAuthorization.NOT_DETERMINED, runBlocking { reader.authorization() })
 
             repeat(2) { attempt ->
-                val denied = scope.async { controller.requestAuthorization() }
+                val denied =
+                    scope.async {
+                        if (attempt == 0) {
+                            InitialNotificationPermissionRequest().requestIfNeeded(controller)
+                        } else {
+                            controller.requestAuthorization()
+                        }
+                    }
                 val deny =
                     device.wait(Until.findObject(denySelector), 5_000)
                 val visibleResources = device.findObjects(By.clickable(true)).map { it.resourceName }
                 assertNotNull(deny, "attempt=$attempt: $visibleResources").click()
                 runBlocking { withTimeout(10_000) { denied.await() } }
+                assertEquals(NotificationAuthorization.DENIED, runBlocking { controller.authorization() })
+                assertEquals(NotificationAuthorization.DENIED, runBlocking { reader.authorization() })
                 if (attempt == 0) assertTrue(runBlocking { controller.canRequestAuthorization() })
             }
             assertFalse(runBlocking { controller.canRequestAuthorization() })

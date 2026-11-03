@@ -305,18 +305,6 @@ private class AndroidOnboardingStore(
             .remove("onboarding_completed")
             .apply()
     }
-
-    override fun isInitialNotificationPermissionHandled(): Boolean {
-        if (!preferences.contains("initial_notification_permission_handled")) {
-            // Existing installs must not receive a new automatic prompt after updating.
-            preferences.edit().putBoolean("initial_notification_permission_handled", isCompleted()).apply()
-        }
-        return preferences.getBoolean("initial_notification_permission_handled", false)
-    }
-
-    override fun completeInitialNotificationPermission() {
-        preferences.edit().putBoolean("initial_notification_permission_handled", true).apply()
-    }
 }
 
 internal class AttachedLocationPermission(
