@@ -93,6 +93,7 @@ import com.pheeeew.feature.emotion.model.EmotionType
 import com.pheeeew.feature.screens.collection.card.CollectionCard
 import com.pheeeew.feature.screens.collection.card.CollectionCardUiModel
 import com.pheeeew.feature.screens.collection.card.CollectionProgressCard
+import com.pheeeew.feature.screens.collection.card.CollectionTomorrowCard
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
@@ -109,7 +110,6 @@ import pheeeew.shared.generated.resources.collection_refresh_failed
 import pheeeew.shared.generated.resources.collection_subtitle
 import pheeeew.shared.generated.resources.collection_title
 import pheeeew.shared.generated.resources.collection_unissued_label
-import pheeeew.shared.generated.resources.collection_unissued_label_compact
 import pheeeew.shared.generated.resources.ic_collection_album
 import pheeeew.shared.generated.resources.ic_collection_cover_flow
 import pheeeew.shared.generated.resources.ic_emotion_frustrated
@@ -141,9 +141,19 @@ fun CollectionScreen(
     val viewMode = CollectionViewMode.valueOf(viewModeName)
     val coverFlowItems =
         buildList {
-            uiModel.pendingProgress?.let { add(CollectionCarouselItem(id = "pending", progress = it)) }
+            when {
+                uiModel.pendingProgress != null -> {
+                    add(CollectionCarouselItem(id = "pending", progress = uiModel.pendingProgress))
+                }
+
+                uiModel.hasClaimedToday -> {
+                    add(CollectionCarouselItem(id = "tomorrow", isTomorrow = true))
+                }
+            }
             uiModel.cards.forEach { card -> add(CollectionCarouselItem(id = card.id, card = card)) }
         }
+    val todayCardIndex =
+        uiModel.todayCardId?.let { todayCardId -> coverFlowItems.indexOfFirst { it.id == todayCardId } } ?: -1
     val pagerState = rememberPagerState { coverFlowItems.size.coerceAtLeast(1) }
     val albumStateHolder = rememberSaveableStateHolder()
     // Forward vertical drags to the refresh connection when content only scrolls horizontally.
@@ -171,6 +181,7 @@ fun CollectionScreen(
         )
     val hasVisibleContent =
         uiModel.cards.isNotEmpty() ||
+            uiModel.hasClaimedToday ||
             (
                 uiModel.pendingProgress != null &&
                     (viewMode == CollectionViewMode.COVER_FLOW || uiModel.selectedFilter == null)
@@ -182,8 +193,8 @@ fun CollectionScreen(
             selectedCardId = null
         }
     }
-    LaunchedEffect(uiModel.scrollToTopRequestId) {
-        pagerState.scrollToPage(0)
+    LaunchedEffect(uiModel.scrollToTopRequestId, uiModel.todayCardId, todayCardIndex) {
+        pagerState.scrollToPage(todayCardIndex.takeIf { it >= 0 } ?: 0)
     }
 
     Column(
@@ -655,6 +666,7 @@ private data class CollectionCarouselItem(
     val id: String,
     val card: CollectionCardUiModel? = null,
     val progress: CollectionProgressUiModel? = null,
+    val isTomorrow: Boolean = false,
 )
 
 @Composable
@@ -690,7 +702,8 @@ private fun CollectionCoverFlow(
     Column(modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
             val paginationHeight = 56.dp
-            val cardHeight = (maxHeight - paginationHeight).coerceAtLeast(0.dp)
+            val actionHintHeight = 64.dp
+            val cardHeight = (maxHeight - paginationHeight - actionHintHeight).coerceAtLeast(0.dp)
             val availableWidth = maxWidth
             val cardWidth = minOf(availableWidth * 0.76f, cardHeight * 0.75f)
             val actualCardHeight = cardWidth / 0.75f
@@ -737,6 +750,8 @@ private fun CollectionCoverFlow(
                         }
                     if (issuedCard != null) {
                         CollectionCard(uiModel = issuedCard, modifier = cardModifier)
+                    } else if (item.isTomorrow) {
+                        CollectionTomorrowCard(modifier = animatedModifier)
                     } else {
                         val unissuedProgress = requireNotNull(progress)
                         CollectionProgressCard(
@@ -752,58 +767,50 @@ private fun CollectionCoverFlow(
                 val selectedIndex = collectionCardIndex(pagerState.currentPage, items.size)
                 val selectedItem = items[selectedIndex]
                 val selectedEmotion = selectedItem.card?.emotion ?: selectedItem.progress?.emotion
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(actionHintHeight),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (selectedItem.card != null) {
+                        Text(
+                            text = stringResource(Res.string.collection_card_action_hint),
+                            color = AppColors.TextSecondary,
+                            fontSize = 12.sp,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
                 val visibleDotCount = minOf(items.size, 7)
                 val firstVisibleDot =
                     (selectedIndex - visibleDotCount / 2).coerceIn(0, items.size - visibleDotCount)
                 val lastVisibleDot = firstVisibleDot + visibleDotCount - 1
-                Text(
-                    text =
-                        if (selectedItem.progress != null) {
-                            stringResource(Res.string.collection_unissued_label_compact)
-                        } else {
-                            stringResource(requireNotNull(selectedEmotion).label)
-                        },
-                    color = selectedEmotion?.representativeColor ?: AppColors.TextSecondary,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 20.dp),
-                )
-                Row(
-                    Modifier.padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(paginationHeight),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    for (index in firstVisibleDot..lastVisibleDot) {
-                        val isTruncatedEdge =
-                            (index == firstVisibleDot && firstVisibleDot > 0) ||
-                                (index == lastVisibleDot && lastVisibleDot < items.lastIndex)
-                        Box(
-                            Modifier
-                                .size(if (isTruncatedEdge) 4.dp else 6.dp)
-                                .background(
-                                    if (index == selectedIndex) {
-                                        selectedEmotion?.representativeColor ?: AppColors.TextSecondary
-                                    } else {
-                                        AppColors.Gray100
-                                    },
-                                    CircleShape,
-                                ),
-                        )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        for (index in firstVisibleDot..lastVisibleDot) {
+                            val isTruncatedEdge =
+                                (index == firstVisibleDot && firstVisibleDot > 0) ||
+                                    (index == lastVisibleDot && lastVisibleDot < items.lastIndex)
+                            Box(
+                                Modifier
+                                    .size(if (isTruncatedEdge) 4.dp else 6.dp)
+                                    .background(
+                                        if (index == selectedIndex) {
+                                            selectedEmotion?.representativeColor ?: AppColors.Primary
+                                        } else {
+                                            AppColors.Gray100
+                                        },
+                                        CircleShape,
+                                    ),
+                            )
+                        }
                     }
                 }
-            }
-        }
-        Box(
-            modifier = Modifier.fillMaxWidth().height(64.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (items.getOrNull(pagerState.currentPage)?.card != null) {
-                Text(
-                    text = stringResource(Res.string.collection_card_action_hint),
-                    color = AppColors.TextSecondary,
-                    fontSize = 12.sp,
-                    textAlign = TextAlign.Center,
-                )
             }
         }
     }
@@ -966,6 +973,31 @@ private fun CollectionCoverFlowComponentPreview() {
                     initialPage = 1,
                     pageCount = { items.size },
                 ),
+            isLoadingToday = false,
+            todayError = null,
+            onClaim = {},
+            onRetryToday = {},
+            hasNext = false,
+            isLoadingNext = false,
+            onLoadMore = {},
+            onCardClick = {},
+        )
+    }
+}
+
+@Preview(name = "컬렉션 · 내일 카드 안내", showBackground = true)
+@Composable
+private fun CollectionCoverFlowTomorrowPreview() {
+    CollectionPreviewTheme {
+        val items =
+            buildList {
+                add(CollectionCarouselItem("tomorrow", isTomorrow = true))
+                collectionPreviewCards().forEach { add(CollectionCarouselItem(it.id, card = it)) }
+            }
+        CollectionCoverFlow(
+            items = items,
+            unavailableState = null,
+            pagerState = rememberPagerState(pageCount = { items.size }),
             isLoadingToday = false,
             todayError = null,
             onClaim = {},
