@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,6 +33,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.feature.component.PressRankBadge
+import com.pheeeew.feature.component.rememberCountUp
 import com.pheeeew.feature.emotion.component.formatCount
 import com.pheeeew.feature.screens.press.PressActivityUiState
 import com.pheeeew.feature.screens.press.PressNearbyRankRow
@@ -131,7 +133,8 @@ internal fun NearbyRankRow(
 ) {
     val shape = RoundedCornerShape(12.dp)
     val name = if (row.isMe) stringResource(Res.string.press_nearby_me) else row.nickname
-    val count = stringResource(Res.string.press_nearby_count, formatCount(row.count))
+    val displayedCount by rememberCountUp(row.count, reducedMotion)
+    val count = stringResource(Res.string.press_nearby_count, formatCount(displayedCount))
     val description =
         stringResource(Res.string.press_nearby_row_description, row.rank.toString(), name, formatCount(row.count))
     Row(
@@ -161,17 +164,15 @@ internal fun NearbyRankRow(
             fontWeight = if (row.isMe) FontWeight.Bold else FontWeight.Medium,
         )
         Box(Modifier.widthIn(max = 120.dp)) {
-            Crossfade(count, animationSpec = tween(if (reducedMotion) 0 else 140), label = "nearby count") { label ->
-                Text(
-                    label,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.End,
-                    color = RankingInk,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
+            Text(
+                count,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.End,
+                color = RankingInk,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+            )
         }
     }
 }

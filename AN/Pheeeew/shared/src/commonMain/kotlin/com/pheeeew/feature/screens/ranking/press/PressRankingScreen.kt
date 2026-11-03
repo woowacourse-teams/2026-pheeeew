@@ -245,6 +245,7 @@ internal fun PressRankingScreen(
                                                 },
                                             fadeOutSpec = if (reducedMotion) null else tween(150),
                                         ),
+                                        reducedMotion = reducedMotion,
                                     )
                                 }
                             }
