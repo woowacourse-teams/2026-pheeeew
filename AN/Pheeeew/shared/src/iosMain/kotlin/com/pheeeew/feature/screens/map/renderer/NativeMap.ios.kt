@@ -155,7 +155,9 @@ internal actual fun NativeMap(
         onRelease = FoundationIosMapBridge::releaseMapView,
         properties =
             UIKitInteropProperties(
-                interactionMode = if (isVisible) UIKitInteropInteractionMode.NonCooperative else null,
+                // Compose 1.11.1 keys UIKitView by properties; changing them recreates the map.
+                // The native container controls interaction with isVisible instead.
+                interactionMode = UIKitInteropInteractionMode.NonCooperative,
                 isNativeAccessibilityEnabled = false,
             ),
     )
