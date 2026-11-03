@@ -9,6 +9,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import kotlin.math.roundToLong
 
@@ -20,8 +21,9 @@ internal fun rememberCountUp(
 ): State<Long> {
     val displayed = remember { mutableLongStateOf(count) }
     var previousTarget by remember { mutableLongStateOf(count) }
+    val shouldAnimate = remember(count, reducedMotion) { !reducedMotion && count > previousTarget }
+    val immediateCount = rememberUpdatedState(count)
     LaunchedEffect(count, reducedMotion) {
-        val shouldAnimate = !reducedMotion && count > previousTarget
         previousTarget = count
         if (shouldAnimate) {
             val start = displayed.longValue
@@ -32,5 +34,5 @@ internal fun rememberCountUp(
         }
         displayed.longValue = count
     }
-    return displayed
+    return if (shouldAnimate) displayed else immediateCount
 }
