@@ -1,0 +1,135 @@
+(lldb) target create "/Users/USER/Library/Developer/Xcode/iOS DeviceSupport/iPhone18,1 26.6 (23G71)/Symbols/System/Library/Frameworks/CoreHaptics.framework/CoreHaptics"
+Current executable set to '/Users/USER/Library/Developer/Xcode/iOS DeviceSupport/iPhone18,1 26.6 (23G71)/Symbols/System/Library/Frameworks/CoreHaptics.framework/CoreHaptics' (arm64e).
+(lldb) image lookup -r -n "(PatternPlayer.*dealloc|CHHapticEngine.*Channel)"
+4 matches found in /Users/USER/Library/Developer/Xcode/iOS DeviceSupport/iPhone18,1 26.6 (23G71)/Symbols/System/Library/Frameworks/CoreHaptics.framework/CoreHaptics:
+        Address: CoreHaptics[0x000000021a25eee4] (CoreHaptics.__TEXT.__text + 81300)
+        Summary: CoreHaptics`-[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]
+        Address: CoreHaptics[0x000000021a265d14] (CoreHaptics.__TEXT.__text + 109508)
+        Summary: CoreHaptics`-[PatternPlayer dealloc]
+        Address: CoreHaptics[0x000000021a26acc4] (CoreHaptics.__TEXT.__text + 129908)
+        Summary: CoreHaptics`-[AdvancedPatternPlayer dealloc]
+        Address: CoreHaptics[0x000000021a298058] (CoreHaptics.__TEXT.__text + 315144)
+        Summary: CoreHaptics`-[CHHapticEngine(CHHapticEngineInternal) releaseChannel:]
+(lldb) disassemble -n "-[PatternPlayer dealloc]"
+CoreHaptics`-[PatternPlayer dealloc]:
+CoreHaptics[0x21a265d14] <+0>:   pacibsp
+CoreHaptics[0x21a265d18] <+4>:   sub    sp, sp, #0x80
+CoreHaptics[0x21a265d1c] <+8>:   stp    x22, x21, [sp, #0x50]
+CoreHaptics[0x21a265d20] <+12>:  stp    x20, x19, [sp, #0x60]
+CoreHaptics[0x21a265d24] <+16>:  stp    x29, x30, [sp, #0x70]
+CoreHaptics[0x21a265d28] <+20>:  add    x29, sp, #0x70
+CoreHaptics[0x21a265d2c] <+24>:  mov    x19, x0
+CoreHaptics[0x21a265d30] <+28>:  adrp   x8, 385527
+CoreHaptics[0x21a265d34] <+32>:  ldr    x8, [x8, #0x478]
+CoreHaptics[0x21a265d38] <+36>:  ldr    x8, [x8]
+CoreHaptics[0x21a265d3c] <+40>:  stur   x8, [x29, #-0x28]
+CoreHaptics[0x21a265d40] <+44>:  adrp   x8, 419431
+CoreHaptics[0x21a265d44] <+48>:  add    x8, x8, #0x1e0            ; kHAPIScope
+CoreHaptics[0x21a265d48] <+52>:  ldr    x8, [x8]
+CoreHaptics[0x21a265d4c] <+56>:  cbz    x8, 0x21a265d60           ; <+76>
+CoreHaptics[0x21a265d50] <+60>:  ldr    x20, [x8]
+CoreHaptics[0x21a265d54] <+64>:  bl     0x21f446c20
+CoreHaptics[0x21a265d58] <+68>:  cbnz   x20, 0x21a265d6c          ; <+88>
+CoreHaptics[0x21a265d5c] <+72>:  b      0x21a265dec               ; <+216>
+CoreHaptics[0x21a265d60] <+76>:  adrp   x20, 385527
+CoreHaptics[0x21a265d64] <+80>:  ldr    x20, [x20, #0x8e0]
+CoreHaptics[0x21a265d68] <+84>:  bl     0x21f446c20
+CoreHaptics[0x21a265d6c] <+88>:  mov    x0, x20
+CoreHaptics[0x21a265d70] <+92>:  mov    w1, #0x2                  ; =2
+CoreHaptics[0x21a265d74] <+96>:  bl     0x21f446d50
+CoreHaptics[0x21a265d78] <+100>: cbz    w0, 0x21a265de8           ; <+212>
+CoreHaptics[0x21a265d7c] <+104>: adrp   x8, 64
+CoreHaptics[0x21a265d80] <+108>: ldr    d0, [x8, #0x4d8]
+CoreHaptics[0x21a265d84] <+112>: str    s0, [sp, #0x20]
+CoreHaptics[0x21a265d88] <+116>: adrp   x8, 74
+CoreHaptics[0x21a265d8c] <+120>: add    x8, x8, #0x552            ; "CHHapticPatternPlayer.mm"
+CoreHaptics[0x21a265d90] <+124>: stur   x8, [sp, #0x24]
+CoreHaptics[0x21a265d94] <+128>: mov    w8, #0x400                ; =1024
+CoreHaptics[0x21a265d98] <+132>: strh   w8, [sp, #0x2c]
+CoreHaptics[0x21a265d9c] <+136>: mov    w8, #0xa8                 ; =168
+CoreHaptics[0x21a265da0] <+140>: stur   w8, [sp, #0x2e]
+CoreHaptics[0x21a265da4] <+144>: mov    w8, #0x820                ; =2080
+CoreHaptics[0x21a265da8] <+148>: strh   w8, [sp, #0x32]
+CoreHaptics[0x21a265dac] <+152>: adrp   x8, 74
+CoreHaptics[0x21a265db0] <+156>: add    x8, x8, #0x62c            ; "-[PatternPlayer dealloc]"
+CoreHaptics[0x21a265db4] <+160>: stur   x8, [sp, #0x34]
+CoreHaptics[0x21a265db8] <+164>: mov    w8, #0x800                ; =2048
+CoreHaptics[0x21a265dbc] <+168>: strh   w8, [sp, #0x3c]
+CoreHaptics[0x21a265dc0] <+172>: stur   x19, [sp, #0x3e]
+CoreHaptics[0x21a265dc4] <+176>: adrp   x0, -27
+CoreHaptics[0x21a265dc8] <+180>: add    x0, x0, #0x0
+CoreHaptics[0x21a265dcc] <+184>: adrp   x3, 81
+CoreHaptics[0x21a265dd0] <+188>: add    x3, x3, #0x317            ; "%25s:%-5d %s: destroying player %p"
+CoreHaptics[0x21a265dd4] <+192>: add    x4, sp, #0x20
+CoreHaptics[0x21a265dd8] <+196>: mov    x1, x20
+CoreHaptics[0x21a265ddc] <+200>: mov    w2, #0x2                  ; =2
+CoreHaptics[0x21a265de0] <+204>: mov    w5, #0x26                 ; =38
+CoreHaptics[0x21a265de4] <+208>: bl     0x21f4467b0
+CoreHaptics[0x21a265de8] <+212>: bl     0x21f446b00
+CoreHaptics[0x21a265dec] <+216>: adrp   x8, 403625
+CoreHaptics[0x21a265df0] <+220>: ldrsw  x21, [x8, #0xd68]
+CoreHaptics[0x21a265df4] <+224>: ldr    x0, [x19, x21]
+CoreHaptics[0x21a265df8] <+228>: bl     0x21a2c9b80               ; objc_msgSend$invalidated
+CoreHaptics[0x21a265dfc] <+232>: adrp   x22, 403625
+CoreHaptics[0x21a265e00] <+236>: add    x22, x22, #0xde4          ; PatternPlayerBase._engine
+CoreHaptics[0x21a265e04] <+240>: tbnz   w0, #0x0, 0x21a265e28     ; <+276>
+CoreHaptics[0x21a265e08] <+244>: ldrsw  x8, [x22]
+CoreHaptics[0x21a265e0c] <+248>: add    x0, x19, x8
+CoreHaptics[0x21a265e10] <+252>: bl     0x21f446a80
+CoreHaptics[0x21a265e14] <+256>: mov    x20, x0
+CoreHaptics[0x21a265e18] <+260>: mov    x0, x19
+CoreHaptics[0x21a265e1c] <+264>: mov    x2, x20
+CoreHaptics[0x21a265e20] <+268>: bl     0x21a2c8240               ; objc_msgSend$clearExternalResources:
+CoreHaptics[0x21a265e24] <+272>: bl     0x21f446b00
+CoreHaptics[0x21a265e28] <+276>: ldr    x8, [x19, x21]
+CoreHaptics[0x21a265e2c] <+280>: cbz    x8, 0x21a265e4c           ; <+312>
+CoreHaptics[0x21a265e30] <+284>: ldrsw  x8, [x22]
+CoreHaptics[0x21a265e34] <+288>: add    x0, x19, x8
+CoreHaptics[0x21a265e38] <+292>: bl     0x21f446a80
+CoreHaptics[0x21a265e3c] <+296>: mov    x20, x0
+CoreHaptics[0x21a265e40] <+300>: ldr    x2, [x19, x21]
+CoreHaptics[0x21a265e44] <+304>: bl     0x21a2ca8e0               ; objc_msgSend$releaseChannel:
+CoreHaptics[0x21a265e48] <+308>: bl     0x21f446b00
+CoreHaptics[0x21a265e4c] <+312>: adrp   x8, 386757
+CoreHaptics[0x21a265e50] <+316>: ldr    x8, [x8, #0x570]
+CoreHaptics[0x21a265e54] <+320>: stp    x19, x8, [sp, #0x10]
+CoreHaptics[0x21a265e58] <+324>: adrp   x8, -127305
+CoreHaptics[0x21a265e5c] <+328>: add    x1, x8, #0x120
+CoreHaptics[0x21a265e60] <+332>: add    x0, sp, #0x10
+CoreHaptics[0x21a265e64] <+336>: bl     0x21f446aa0
+CoreHaptics[0x21a265e68] <+340>: ldur   x8, [x29, #-0x28]
+CoreHaptics[0x21a265e6c] <+344>: adrp   x9, 385527
+CoreHaptics[0x21a265e70] <+348>: ldr    x9, [x9, #0x478]
+CoreHaptics[0x21a265e74] <+352>: ldr    x9, [x9]
+CoreHaptics[0x21a265e78] <+356>: cmp    x9, x8
+CoreHaptics[0x21a265e7c] <+360>: b.ne   0x21a265e94               ; <+384>
+CoreHaptics[0x21a265e80] <+364>: ldp    x29, x30, [sp, #0x70]
+CoreHaptics[0x21a265e84] <+368>: ldp    x20, x19, [sp, #0x60]
+CoreHaptics[0x21a265e88] <+372>: ldp    x22, x21, [sp, #0x50]
+CoreHaptics[0x21a265e8c] <+376>: add    sp, sp, #0x80
+CoreHaptics[0x21a265e90] <+380>: retab
+CoreHaptics[0x21a265e94] <+384>: bl     0x21f446770
+CoreHaptics[0x21a265e98] <+388>: mov    x8, x20
+CoreHaptics[0x21a265e9c] <+392>: mov    x20, x0
+CoreHaptics[0x21a265ea0] <+396>: bl     0x21f446b90
+CoreHaptics[0x21a265ea4] <+400>: b      0x21a265ebc               ; <+424>
+CoreHaptics[0x21a265ea8] <+404>: mov    x8, x20
+CoreHaptics[0x21a265eac] <+408>: mov    x20, x0
+CoreHaptics[0x21a265eb0] <+412>: bl     0x21f446b90
+CoreHaptics[0x21a265eb4] <+416>: b      0x21a265ebc               ; <+424>
+CoreHaptics[0x21a265eb8] <+420>: mov    x20, x0
+CoreHaptics[0x21a265ebc] <+424>: adrp   x8, 386757
+CoreHaptics[0x21a265ec0] <+428>: ldr    x8, [x8, #0x570]
+CoreHaptics[0x21a265ec4] <+432>: stp    x19, x8, [sp]
+CoreHaptics[0x21a265ec8] <+436>: adrp   x8, -127305
+CoreHaptics[0x21a265ecc] <+440>: add    x1, x8, #0x120
+CoreHaptics[0x21a265ed0] <+444>: mov    x0, sp
+CoreHaptics[0x21a265ed4] <+448>: bl     0x21f446aa0
+CoreHaptics[0x21a265ed8] <+452>: b      0x21a265ef0               ; <+476>
+CoreHaptics[0x21a265edc] <+456>: mov    x20, x0
+CoreHaptics[0x21a265ee0] <+460>: cbz    w1, 0x21a265ef0           ; <+476>
+CoreHaptics[0x21a265ee4] <+464>: mov    x0, x20
+CoreHaptics[0x21a265ee8] <+468>: bl     0x21a265ef8               ; __clang_call_terminate
+CoreHaptics[0x21a265eec] <+472>: mov    x20, x0
+CoreHaptics[0x21a265ef0] <+476>: mov    x0, x20
+CoreHaptics[0x21a265ef4] <+480>: bl     0x21f4464d0

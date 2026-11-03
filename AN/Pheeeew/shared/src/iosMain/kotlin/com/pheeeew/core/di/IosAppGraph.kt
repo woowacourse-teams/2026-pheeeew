@@ -6,6 +6,7 @@ import com.pheeeew.core.audio.IosAudioPlayer
 import com.pheeeew.core.audio.IosVoiceRecorder
 import com.pheeeew.core.di.device.DeviceSessionBuildConfig
 import com.pheeeew.core.di.device.PressInputMode
+import com.pheeeew.core.haptics.IosEmotionHapticController
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.ConnectivityObserver
@@ -43,6 +44,11 @@ internal interface IosAppGraph :
     AppGraph,
     ApiBindings {
     val controllerFactory: ViewControllerGraph.Factory
+    val emotionHaptics: IosEmotionHapticController
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun haptics(): IosEmotionHapticController = IosEmotionHapticController()
 
     @DependencyGraph.Factory
     interface Factory {

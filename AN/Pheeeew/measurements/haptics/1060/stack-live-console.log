@@ -1,0 +1,234 @@
+14:36:53  Acquired tunnel connection to device.
+14:36:53  Enabling developer disk image services.
+14:36:53  Acquired usage assertion.
+Launched application with com.itda.pheeeew bundle identifier.
+Waiting for the application to terminate…
+2026-11-03 14:36:51.740902+0900 Pheeeew[88688:48508170] [[FirebaseMessaging]] 13.1.1 - [FirebaseMessaging][I-FCM001000] FIRMessaging Remote Notifications proxy enabled, will swizzle remote notification receiver handlers. If you'd prefer to manually integrate Firebase Messaging, add "FirebaseAppDelegateProxyEnabled" to your Info.plist, and set it to NO. Follow the instructions at:
+https://firebase.google.com/docs/cloud-messaging/ios/client#method_swizzling_in_firebase_messaging
+to ensure proper integration.
+2026-11-03 14:36:51.751940+0900 Pheeeew[88688:48508123] [MC] Reading from public effective user settings.
+2026-11-03 14:36:51.912553+0900 Pheeeew[88688:48508160] [Common] unable to decode "ShellSceneKit.ProfileActivation" because this class does not exist
+2026-11-03 14:36:51.912566+0900 Pheeeew[88688:48508160] [Common] -[BSSettings initWithXPCDictionary:]_block_invoke Could not decode object for setting 17456962218540468756
+2026-11-03 14:36:51.912571+0900 Pheeeew[88688:48508160] [Common] No value decoded for key "profileActivation" (17456962218540468756). Ignoring.
+2026-11-03 14:36:51.947988+0900 Pheeeew[88688:48508123] MLNMapView WARNING UIViewController.automaticallyAdjustsScrollViewInsets is deprecated use MLNMapView.automaticallyAdjustContentInset instead.
+APNs 등록 성공
+2026-11-03 14:36:51.962632+0900 Pheeeew[88688:48508167] [connection] nw_connection_copy_protocol_metadata_internal_block_invoke [C5] Client called nw_connection_copy_protocol_metadata_internal on unconnected nw_connection
+2026-11-03 14:36:51.962643+0900 Pheeeew[88688:48508167] [connection] nw_connection_copy_protocol_metadata_internal_block_invoke [C5] Client called nw_connection_copy_protocol_metadata_internal on unconnected nw_connection
+2026-11-03 14:36:51.962645+0900 Pheeeew[88688:48508167] [connection] nw_connection_copy_protocol_metadata_internal_block_invoke [C5] Client called nw_connection_copy_protocol_metadata_internal on unconnected nw_connection
+2026-11-03 14:36:51.962647+0900 Pheeeew[88688:48508167] [connection] nw_connection_copy_connected_local_endpoint_block_invoke [C5] Client called nw_connection_copy_connected_local_endpoint on unconnected nw_connection
+2026-11-03 14:36:51.962649+0900 Pheeeew[88688:48508167] [connection] nw_connection_copy_connected_remote_endpoint_block_invoke [C5] Client called nw_connection_copy_connected_remote_endpoint on unconnected nw_connection
+[PushTokenSync] state=WAITING
+[PushTokenSync] state=SYNCING
+[PushTokenSync] method=PUT env=dev http=204
+[PushTokenSync] state=SYNCED
+[HapticExperiment] event=armed prepare=true count=2000 intervalMs=20 startDelayMs=5000
+2026-11-03 14:36:53.388892+0900 Pheeeew[88688:48508123] [CoreLocation] __delegate_identifier__:Performance Diagnostics__:::____message__: This method can cause UI unresponsiveness if invoked on the main thread. Instead, consider waiting for the `-locationManagerDidChangeAuthorization:` callback and checking `authorizationStatus` first.
+[Revisit test] firstIntervalSeconds=172799.979 lastIntervalSeconds=2678399.835
+2026-11-03 14:36:53.390634+0900 Pheeeew[88688:48508123] [CoreLocation] __delegate_identifier__:Performance Diagnostics__:::____message__: This method can cause UI unresponsiveness if invoked on the main thread. Instead, consider waiting for the `-locationManagerDidChangeAuthorization:` callback and checking `authorizationStatus` first.
+[Revisit test] alerts=2 lockScreen=2 notificationCenter=2 sound=2 scheduledDelivery=1
+[Revisit test] delivered=0
+[Revisit test] reason=foreground permission=2 pending=30 repeating=0 minuteSpacing=false
+[Revisit test] first=2026-11-05T05:36:53Z last=2026-12-04T05:36:53Z
+[Revisit test] firstRequestId=pheeeew.revisit.1793684212116.0
+2026-11-03 14:36:53.390938+0900 Pheeeew[88688:48508123] [CoreLocation] __delegate_identifier__:Performance Diagnostics__:::____message__: This method can cause UI unresponsiveness if invoked on the main thread. Instead, consider waiting for the `-locationManagerDidChangeAuthorization:` callback and checking `authorizationStatus` first.
+[HapticExperiment] event=start prepare=true category=AVAudioSessionCategoryAmbient mode=AVAudioSessionModeDefault mainThread=true
+[HapticExperiment] event=impact index=1 prepare=true elapsedMs=0 latenessMs=0
+[HapticExperiment] event=impact index=2 prepare=true elapsedMs=21 latenessMs=1
+[HapticExperiment] event=impact index=3 prepare=true elapsedMs=40 latenessMs=0
+[HapticExperiment] event=impact index=4 prepare=true elapsedMs=63 latenessMs=3
+[HapticExperiment] event=impact index=5 prepare=true elapsedMs=81 latenessMs=1
+[HapticExperiment] event=impact index=6 prepare=true elapsedMs=101 latenessMs=1
+[HapticExperiment] event=impact index=7 prepare=true elapsedMs=130 latenessMs=10
+[HapticExperiment] event=impact index=8 prepare=true elapsedMs=143 latenessMs=3
+[HapticExperiment] event=impact index=9 prepare=true elapsedMs=162 latenessMs=2
+[HapticExperiment] event=impact index=10 prepare=true elapsedMs=181 latenessMs=1
+[HapticExperiment] event=impact index=11 prepare=true elapsedMs=201 latenessMs=1
+[HapticExperiment] event=impact index=12 prepare=true elapsedMs=221 latenessMs=1
+[HapticExperiment] event=impact index=13 prepare=true elapsedMs=240 latenessMs=0
+[HapticExperiment] event=impact index=14 prepare=true elapsedMs=261 latenessMs=1
+[HapticExperiment] event=impact index=15 prepare=true elapsedMs=282 latenessMs=2
+[HapticExperiment] event=impact index=16 prepare=true elapsedMs=301 latenessMs=1
+[HapticExperiment] event=impact index=17 prepare=true elapsedMs=321 latenessMs=1
+[HapticExperiment] event=impact index=18 prepare=true elapsedMs=340 latenessMs=0
+[HapticExperiment] event=impact index=19 prepare=true elapsedMs=361 latenessMs=1
+[HapticExperiment] event=impact index=20 prepare=true elapsedMs=381 latenessMs=1
+[HapticExperiment] event=impact index=21 prepare=true elapsedMs=401 latenessMs=1
+[HapticExperiment] event=impact index=22 prepare=true elapsedMs=421 latenessMs=1
+[HapticExperiment] event=impact index=23 prepare=true elapsedMs=440 latenessMs=0
+[HapticExperiment] event=impact index=24 prepare=true elapsedMs=460 latenessMs=0
+[HapticExperiment] event=impact index=25 prepare=true elapsedMs=481 latenessMs=1
+[HapticExperiment] event=impact index=26 prepare=true elapsedMs=501 latenessMs=1
+[HapticExperiment] event=impact index=27 prepare=true elapsedMs=522 latenessMs=2
+[HapticExperiment] event=impact index=28 prepare=true elapsedMs=540 latenessMs=0
+[HapticExperiment] event=impact index=29 prepare=true elapsedMs=561 latenessMs=1
+[HapticExperiment] event=impact index=30 prepare=true elapsedMs=581 latenessMs=1
+[HapticExperiment] event=impact index=31 prepare=true elapsedMs=602 latenessMs=2
+[HapticExperiment] event=impact index=32 prepare=true elapsedMs=621 latenessMs=1
+[HapticExperiment] event=impact index=33 prepare=true elapsedMs=641 latenessMs=1
+[HapticExperiment] event=impact index=34 prepare=true elapsedMs=661 latenessMs=1
+[HapticExperiment] event=impact index=35 prepare=true elapsedMs=681 latenessMs=1
+[HapticExperiment] event=impact index=36 prepare=true elapsedMs=701 latenessMs=1
+[HapticExperiment] event=impact index=37 prepare=true elapsedMs=722 latenessMs=2
+[HapticExperiment] event=impact index=38 prepare=true elapsedMs=740 latenessMs=0
+[HapticExperiment] event=impact index=39 prepare=true elapsedMs=760 latenessMs=0
+[HapticExperiment] event=impact index=40 prepare=true elapsedMs=781 latenessMs=1
+[HapticExperiment] event=impact index=41 prepare=true elapsedMs=800 latenessMs=0
+[HapticExperiment] event=impact index=42 prepare=true elapsedMs=822 latenessMs=2
+[HapticExperiment] event=impact index=43 prepare=true elapsedMs=840 latenessMs=0
+[HapticExperiment] event=impact index=44 prepare=true elapsedMs=861 latenessMs=1
+[HapticExperiment] event=impact index=45 prepare=true elapsedMs=881 latenessMs=1
+[HapticExperiment] event=impact index=46 prepare=true elapsedMs=901 latenessMs=1
+[HapticExperiment] event=impact index=47 prepare=true elapsedMs=921 latenessMs=1
+[HapticExperiment] event=impact index=48 prepare=true elapsedMs=941 latenessMs=1
+[HapticExperiment] event=impact index=49 prepare=true elapsedMs=960 latenessMs=0
+[HapticExperiment] event=impact index=50 prepare=true elapsedMs=981 latenessMs=1
+[HapticExperiment] event=impact index=51 prepare=true elapsedMs=1001 latenessMs=1
+[HapticExperiment] event=impact index=52 prepare=true elapsedMs=1021 latenessMs=1
+[HapticExperiment] event=impact index=53 prepare=true elapsedMs=1042 latenessMs=2
+[HapticExperiment] event=impact index=54 prepare=true elapsedMs=1061 latenessMs=1
+[HapticExperiment] event=impact index=55 prepare=true elapsedMs=1080 latenessMs=0
+[HapticExperiment] event=impact index=56 prepare=true elapsedMs=1101 latenessMs=1
+[HapticExperiment] event=impact index=57 prepare=true elapsedMs=1121 latenessMs=1
+[HapticExperiment] event=impact index=58 prepare=true elapsedMs=1142 latenessMs=2
+[HapticExperiment] event=impact index=59 prepare=true elapsedMs=1160 latenessMs=0
+[HapticExperiment] event=impact index=60 prepare=true elapsedMs=1180 latenessMs=0
+[HapticExperiment] event=impact index=61 prepare=true elapsedMs=1202 latenessMs=2
+[HapticExperiment] event=impact index=62 prepare=true elapsedMs=1221 latenessMs=1
+[HapticExperiment] event=impact index=63 prepare=true elapsedMs=1240 latenessMs=0
+[HapticExperiment] event=impact index=64 prepare=true elapsedMs=1261 latenessMs=1
+[HapticExperiment] event=impact index=65 prepare=true elapsedMs=1281 latenessMs=1
+[HapticExperiment] event=impact index=66 prepare=true elapsedMs=1301 latenessMs=1
+[HapticExperiment] event=impact index=67 prepare=true elapsedMs=1321 latenessMs=1
+[HapticExperiment] event=impact index=68 prepare=true elapsedMs=1341 latenessMs=1
+[HapticExperiment] event=impact index=69 prepare=true elapsedMs=1361 latenessMs=1
+[HapticExperiment] event=impact index=70 prepare=true elapsedMs=1381 latenessMs=1
+[HapticExperiment] event=impact index=71 prepare=true elapsedMs=1401 latenessMs=1
+[HapticExperiment] event=impact index=72 prepare=true elapsedMs=1421 latenessMs=1
+[HapticExperiment] event=impact index=73 prepare=true elapsedMs=1442 latenessMs=2
+[HapticExperiment] event=impact index=74 prepare=true elapsedMs=1461 latenessMs=1
+[HapticExperiment] event=impact index=75 prepare=true elapsedMs=1482 latenessMs=2
+[HapticExperiment] event=impact index=76 prepare=true elapsedMs=1501 latenessMs=1
+[HapticExperiment] event=impact index=77 prepare=true elapsedMs=1521 latenessMs=1
+[HapticExperiment] event=impact index=78 prepare=true elapsedMs=1540 latenessMs=0
+[HapticExperiment] event=impact index=79 prepare=true elapsedMs=1560 latenessMs=0
+[HapticExperiment] event=impact index=80 prepare=true elapsedMs=1581 latenessMs=1
+[HapticExperiment] event=impact index=81 prepare=true elapsedMs=1601 latenessMs=1
+[HapticExperiment] event=impact index=82 prepare=true elapsedMs=1621 latenessMs=1
+[HapticExperiment] event=impact index=83 prepare=true elapsedMs=1642 latenessMs=2
+[HapticExperiment] event=impact index=84 prepare=true elapsedMs=1660 latenessMs=0
+[HapticExperiment] event=impact index=85 prepare=true elapsedMs=1682 latenessMs=2
+[HapticExperiment] event=impact index=86 prepare=true elapsedMs=1701 latenessMs=1
+[HapticExperiment] event=impact index=87 prepare=true elapsedMs=1722 latenessMs=2
+[HapticExperiment] event=impact index=88 prepare=true elapsedMs=1740 latenessMs=0
+[HapticExperiment] event=impact index=89 prepare=true elapsedMs=1761 latenessMs=1
+[HapticExperiment] event=impact index=90 prepare=true elapsedMs=1781 latenessMs=1
+[HapticExperiment] event=impact index=91 prepare=true elapsedMs=1801 latenessMs=1
+[HapticExperiment] event=impact index=92 prepare=true elapsedMs=1821 latenessMs=1
+[HapticExperiment] event=impact index=93 prepare=true elapsedMs=1840 latenessMs=0
+[HapticExperiment] event=impact index=94 prepare=true elapsedMs=1861 latenessMs=1
+[HapticExperiment] event=impact index=95 prepare=true elapsedMs=1881 latenessMs=1
+[HapticExperiment] event=impact index=96 prepare=true elapsedMs=1901 latenessMs=1
+[HapticExperiment] event=impact index=97 prepare=true elapsedMs=1921 latenessMs=1
+[HapticExperiment] event=impact index=98 prepare=true elapsedMs=1940 latenessMs=0
+[HapticExperiment] event=impact index=99 prepare=true elapsedMs=1961 latenessMs=1
+[HapticExperiment] event=impact index=100 prepare=true elapsedMs=1981 latenessMs=1
+[HapticExperiment] event=impact index=101 prepare=true elapsedMs=2001 latenessMs=1
+[HapticExperiment] event=impact index=102 prepare=true elapsedMs=2022 latenessMs=2
+[HapticExperiment] event=impact index=103 prepare=true elapsedMs=2040 latenessMs=0
+[HapticExperiment] event=impact index=104 prepare=true elapsedMs=2061 latenessMs=1
+[HapticExperiment] event=impact index=105 prepare=true elapsedMs=2081 latenessMs=1
+[HapticExperiment] event=impact index=106 prepare=true elapsedMs=2101 latenessMs=1
+[HapticExperiment] event=impact index=107 prepare=true elapsedMs=2122 latenessMs=2
+[HapticExperiment] event=impact index=108 prepare=true elapsedMs=2141 latenessMs=1
+[HapticExperiment] event=impact index=109 prepare=true elapsedMs=2162 latenessMs=2
+[HapticExperiment] event=impact index=110 prepare=true elapsedMs=2181 latenessMs=1
+[HapticExperiment] event=impact index=111 prepare=true elapsedMs=2200 latenessMs=0
+[HapticExperiment] event=impact index=112 prepare=true elapsedMs=2221 latenessMs=1
+[HapticExperiment] event=impact index=113 prepare=true elapsedMs=2240 latenessMs=0
+[HapticExperiment] event=impact index=114 prepare=true elapsedMs=2261 latenessMs=1
+[HapticExperiment] event=impact index=115 prepare=true elapsedMs=2281 latenessMs=1
+[HapticExperiment] event=impact index=116 prepare=true elapsedMs=2300 latenessMs=0
+[HapticExperiment] event=impact index=117 prepare=true elapsedMs=2322 latenessMs=2
+[HapticExperiment] event=impact index=118 prepare=true elapsedMs=2340 latenessMs=0
+[HapticExperiment] event=impact index=119 prepare=true elapsedMs=2361 latenessMs=1
+[HapticExperiment] event=impact index=120 prepare=true elapsedMs=2381 latenessMs=1
+[HapticExperiment] event=impact index=121 prepare=true elapsedMs=2401 latenessMs=1
+[HapticExperiment] event=impact index=122 prepare=true elapsedMs=2421 latenessMs=1
+[HapticExperiment] event=impact index=123 prepare=true elapsedMs=2440 latenessMs=0
+[HapticExperiment] event=impact index=124 prepare=true elapsedMs=2461 latenessMs=1
+[HapticExperiment] event=impact index=125 prepare=true elapsedMs=2481 latenessMs=1
+[HapticExperiment] event=impact index=126 prepare=true elapsedMs=2502 latenessMs=2
+[HapticExperiment] event=impact index=127 prepare=true elapsedMs=2521 latenessMs=1
+[HapticExperiment] event=impact index=128 prepare=true elapsedMs=2542 latenessMs=2
+[HapticExperiment] event=impact index=129 prepare=true elapsedMs=2561 latenessMs=1
+[HapticExperiment] event=impact index=130 prepare=true elapsedMs=2581 latenessMs=1
+[HapticExperiment] event=impact index=131 prepare=true elapsedMs=2601 latenessMs=1
+[HapticExperiment] event=impact index=132 prepare=true elapsedMs=2621 latenessMs=1
+[HapticExperiment] event=impact index=133 prepare=true elapsedMs=2640 latenessMs=0
+[HapticExperiment] event=impact index=134 prepare=true elapsedMs=2661 latenessMs=1
+[HapticExperiment] event=impact index=135 prepare=true elapsedMs=2680 latenessMs=0
+[HapticExperiment] event=impact index=136 prepare=true elapsedMs=2702 latenessMs=2
+[HapticExperiment] event=impact index=137 prepare=true elapsedMs=2721 latenessMs=1
+[HapticExperiment] event=impact index=138 prepare=true elapsedMs=2741 latenessMs=1
+[HapticExperiment] event=impact index=139 prepare=true elapsedMs=2762 latenessMs=2
+[HapticExperiment] event=impact index=140 prepare=true elapsedMs=2781 latenessMs=1
+[HapticExperiment] event=impact index=141 prepare=true elapsedMs=2802 latenessMs=2
+[HapticExperiment] event=impact index=142 prepare=true elapsedMs=2821 latenessMs=1
+[HapticExperiment] event=impact index=143 prepare=true elapsedMs=2842 latenessMs=2
+[HapticExperiment] event=impact index=144 prepare=true elapsedMs=2861 latenessMs=1
+[HapticExperiment] event=impact index=145 prepare=true elapsedMs=2881 latenessMs=1
+[HapticExperiment] event=impact index=146 prepare=true elapsedMs=2902 latenessMs=2
+[HapticExperiment] event=impact index=147 prepare=true elapsedMs=2921 latenessMs=1
+[HapticExperiment] event=impact index=148 prepare=true elapsedMs=2941 latenessMs=1
+[HapticExperiment] event=impact index=149 prepare=true elapsedMs=2961 latenessMs=1
+[HapticExperiment] event=impact index=150 prepare=true elapsedMs=2981 latenessMs=1
+[HapticExperiment] event=impact index=151 prepare=true elapsedMs=3000 latenessMs=0
+[HapticExperiment] event=impact index=152 prepare=true elapsedMs=3021 latenessMs=1
+[HapticExperiment] event=impact index=153 prepare=true elapsedMs=3040 latenessMs=0
+[HapticExperiment] event=impact index=154 prepare=true elapsedMs=3061 latenessMs=1
+[HapticExperiment] event=impact index=155 prepare=true elapsedMs=3081 latenessMs=1
+[HapticExperiment] event=impact index=156 prepare=true elapsedMs=3101 latenessMs=1
+[HapticExperiment] event=impact index=157 prepare=true elapsedMs=3121 latenessMs=1
+[HapticExperiment] event=impact index=158 prepare=true elapsedMs=3141 latenessMs=1
+[HapticExperiment] event=impact index=159 prepare=true elapsedMs=3161 latenessMs=1
+[HapticExperiment] event=impact index=160 prepare=true elapsedMs=3181 latenessMs=1
+[HapticExperiment] event=impact index=161 prepare=true elapsedMs=3201 latenessMs=1
+[HapticExperiment] event=impact index=162 prepare=true elapsedMs=3221 latenessMs=1
+[HapticExperiment] event=impact index=163 prepare=true elapsedMs=3242 latenessMs=2
+[HapticExperiment] event=impact index=164 prepare=true elapsedMs=3261 latenessMs=1
+[HapticExperiment] event=impact index=165 prepare=true elapsedMs=3281 latenessMs=1
+[HapticExperiment] event=impact index=166 prepare=true elapsedMs=3301 latenessMs=1
+[HapticExperiment] event=impact index=167 prepare=true elapsedMs=3321 latenessMs=1
+[HapticExperiment] event=impact index=168 prepare=true elapsedMs=3340 latenessMs=0
+[HapticExperiment] event=impact index=169 prepare=true elapsedMs=3361 latenessMs=1
+[HapticExperiment] event=impact index=170 prepare=true elapsedMs=3381 latenessMs=1
+[HapticExperiment] event=impact index=171 prepare=true elapsedMs=3401 latenessMs=1
+[HapticExperiment] event=impact index=172 prepare=true elapsedMs=3421 latenessMs=1
+[HapticExperiment] event=impact index=173 prepare=true elapsedMs=3442 latenessMs=2
+[HapticExperiment] event=impact index=174 prepare=true elapsedMs=3461 latenessMs=1
+[HapticExperiment] event=impact index=175 prepare=true elapsedMs=3482 latenessMs=2
+[HapticExperiment] event=impact index=176 prepare=true elapsedMs=3501 latenessMs=1
+[HapticExperiment] event=impact index=177 prepare=true elapsedMs=3522 latenessMs=2
+[HapticExperiment] event=impact index=178 prepare=true elapsedMs=3541 latenessMs=1
+[HapticExperiment] event=impact index=179 prepare=true elapsedMs=3561 latenessMs=1
+[HapticExperiment] event=impact index=180 prepare=true elapsedMs=3581 latenessMs=1
+[HapticExperiment] event=impact index=181 prepare=true elapsedMs=3602 latenessMs=2
+[HapticExperiment] event=impact index=182 prepare=true elapsedMs=3621 latenessMs=1
+[HapticExperiment] event=impact index=183 prepare=true elapsedMs=3641 latenessMs=1
+[HapticExperiment] event=impact index=184 prepare=true elapsedMs=3661 latenessMs=1
+[HapticExperiment] event=impact index=185 prepare=true elapsedMs=3680 latenessMs=0
+[HapticExperiment] event=impact index=186 prepare=true elapsedMs=3702 latenessMs=2
+[HapticExperiment] event=impact index=187 prepare=true elapsedMs=3721 latenessMs=1
+[HapticExperiment] event=impact index=188 prepare=true elapsedMs=3741 latenessMs=1
+[HapticExperiment] event=impact index=189 prepare=true elapsedMs=3761 latenessMs=1
+[HapticExperiment] event=impact index=190 prepare=true elapsedMs=3780 latenessMs=0
+[HapticExperiment] event=impact index=191 prepare=true elapsedMs=3802 latenessMs=2
+[HapticExperiment] event=impact index=192 prepare=true elapsedMs=3820 latenessMs=0
+[HapticExperiment] event=impact index=193 prepare=true elapsedMs=3842 latenessMs=2
+[HapticExperiment] event=impact index=194 prepare=true elapsedMs=3861 latenessMs=1
+[HapticExperiment] event=impact index=195 prepare=true elapsedMs=3881 latenessMs=1
+[HapticExperiment] event=impact index=196 prepare=true elapsedMs=3901 latenessMs=1
+[HapticExperiment] event=impact index=197 prepare=true elapsedMs=3921 latenessMs=1
+[HapticExperiment] event=impact index=198 prepare=true elapsedMs=3942 latenessMs=2
+[HapticExperiment] event=impact index=199 prepare=true elapsedMs=3961 latenessMs=1
+[HapticExperiment] event=impact index=200 prepare=true elapsedMs=3981 latenessMs=1

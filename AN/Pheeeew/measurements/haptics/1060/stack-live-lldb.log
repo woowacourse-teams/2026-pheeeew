@@ -1,0 +1,15 @@
+(lldb) command source -s 0 'capture-live.lldb'
+Executing commands in 'capture-live.lldb'.
+(lldb) device select <DEVICE_IDENTIFIER>
+(lldb) device process attach -n Pheeeew
+(lldb) process status
+Process 88688 is running.
+(lldb) target list
+Current targets:
+* target #0: <none> ( arch=arm64e-apple-ios, platform=host, pid=88688, state=attaching )
+(lldb) command script import ${PROJECT_ROOT}/AN/Pheeeew/scripts/haptic_channel_breakpoint_1060.py
+[HapticChannelFailure] breakpoint 1 _os_log_error_impl locations= 0
+[HapticChannelFailure] breakpoint 2 _os_log_fault_impl locations= 0
+First matching error stops. Other logs auto-continue. Delete these breakpoints for timing-only trials.
+(lldb) continue
+error: Process must be launched.

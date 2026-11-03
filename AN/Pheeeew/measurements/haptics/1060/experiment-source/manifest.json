@@ -1,0 +1,42 @@
+[
+  {
+    "path": "AN/Pheeeew/iosApp/iosApp/ContentView.swift",
+    "sha256": "0e2e9fa46b2131b09e0c948e4065173671db0f3f3c42f014f2433ed23269411c"
+  },
+  {
+    "path": "AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/App.kt",
+    "sha256": "e9dabf11fdb75d0d565b03c868da2beccb34ae17466028170c7c333126f68be3"
+  },
+  {
+    "path": "AN/Pheeeew/shared/src/iosMain/kotlin/com/pheeeew/MainViewController.kt",
+    "sha256": "3ebaf7f54ffbcce76d320e72cc9e5ba293eb2c98181d5e8dc0d47aa78208449a"
+  },
+  {
+    "path": "AN/Pheeeew/shared/src/iosMain/kotlin/com/pheeeew/feature/emotion/component/EmotionHapticFeedback.ios.kt",
+    "sha256": "748f768a761677faa7bcbb34585fa080c85b11f730b2303a132e6654896b808e"
+  },
+  {
+    "path": "AN/Pheeeew/iosApp/iosApp/NativeHapticExperiment.swift",
+    "sha256": "7ff72da053429762764a47ace25b6950493d6cdbef66aa85beda91c08c31ef5d"
+  },
+  {
+    "path": "AN/Pheeeew/shared/src/iosMain/kotlin/com/pheeeew/feature/emotion/component/PressHapticExperiment.ios.kt",
+    "sha256": "ba4351ea313ba8548264e7effaf73fc9a092f0ba61de9257463047fcef591019"
+  },
+  {
+    "path": "AN/Pheeeew/scripts/haptic_channel_breakpoint_1060.py",
+    "sha256": "fd0303a3a5c87f7fbe00324ae27573a63cee08863ce25be541d657684131ff5e"
+  },
+  {
+    "path": "AN/Pheeeew/scripts/haptic_channel_exact_1060.py",
+    "sha256": "4956e64440b6f62d1f50b05fac6e2b7cda9c35b975b46a346bd9aed80966ff38"
+  },
+  {
+    "path": "AN/Pheeeew/iosApp/iosApp.xcodeproj/xcshareddata/xcschemes/Haptic1060-A-impact-only.xcscheme",
+    "sha256": "e8568cd190109b9fe46509c1eaf912b1011dbb31320ae9c59f15467e86277701"
+  },
+  {
+    "path": "AN/Pheeeew/iosApp/iosApp.xcodeproj/xcshareddata/xcschemes/Haptic1060-B-prepare.xcscheme",
+    "sha256": "9b220de89e959d02325bfb102c15125b784cbee906fcabdc98a1341cd1740d62"
+  }
+]

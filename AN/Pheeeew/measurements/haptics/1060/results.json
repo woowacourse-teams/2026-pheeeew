@@ -1,0 +1,122 @@
+[
+  {
+    "trial": 1,
+    "prepare": false,
+    "status": "complete",
+    "impactsLogged": 2000,
+    "lastIndex": 2000,
+    "channelErrors": 128,
+    "coreHaptics10851": 128,
+    "rateLimitWarnings": 2105,
+    "firstErrorAfterLoggedIndex": 250,
+    "maxLatenessMs": 4,
+    "log": "1-A-impact-only.log",
+    "elapsedMsLastImpact": 39981,
+    "actualIntervalMs": {
+      "min": 17,
+      "max": 23,
+      "median": 20
+    },
+    "countedErrorMeaning": "observed channel-error log lines; not a physical-output failure count"
+  },
+  {
+    "trial": 2,
+    "prepare": true,
+    "status": "complete",
+    "impactsLogged": 2000,
+    "lastIndex": 2000,
+    "channelErrors": 1751,
+    "coreHaptics10851": 1751,
+    "rateLimitWarnings": 250,
+    "firstErrorAfterLoggedIndex": 250,
+    "maxLatenessMs": 2,
+    "log": "2-B-prepare.log",
+    "elapsedMsLastImpact": 39981,
+    "actualIntervalMs": {
+      "min": 18,
+      "max": 22,
+      "median": 20
+    },
+    "countedErrorMeaning": "observed channel-error log lines; not a physical-output failure count"
+  },
+  {
+    "trial": 3,
+    "prepare": true,
+    "status": "complete",
+    "impactsLogged": 2000,
+    "lastIndex": 2000,
+    "channelErrors": 1751,
+    "coreHaptics10851": 1751,
+    "rateLimitWarnings": 250,
+    "firstErrorAfterLoggedIndex": 250,
+    "maxLatenessMs": 16,
+    "log": "3-B-prepare.log",
+    "elapsedMsLastImpact": 39981,
+    "actualIntervalMs": {
+      "min": 5,
+      "max": 31,
+      "median": 20
+    },
+    "countedErrorMeaning": "observed channel-error log lines; not a physical-output failure count"
+  },
+  {
+    "trial": 4,
+    "prepare": false,
+    "status": "invalid",
+    "impactsLogged": 10,
+    "lastIndex": 10,
+    "channelErrors": 0,
+    "coreHaptics10851": 0,
+    "rateLimitWarnings": 0,
+    "firstErrorAfterLoggedIndex": null,
+    "maxLatenessMs": 1,
+    "log": "4-A-impact-only.log",
+    "elapsedMsLastImpact": 181,
+    "actualIntervalMs": {
+      "min": 20,
+      "max": 21,
+      "median": 20
+    },
+    "countedErrorMeaning": "observed channel-error log lines; not a physical-output failure count"
+  },
+  {
+    "trial": 5,
+    "prepare": false,
+    "status": "invalid",
+    "impactsLogged": 3,
+    "lastIndex": 3,
+    "channelErrors": 0,
+    "coreHaptics10851": 0,
+    "rateLimitWarnings": 0,
+    "firstErrorAfterLoggedIndex": null,
+    "maxLatenessMs": 3,
+    "log": "5-A-impact-only.log",
+    "elapsedMsLastImpact": 43,
+    "actualIntervalMs": {
+      "min": 21,
+      "max": 22,
+      "median": 21.5
+    },
+    "countedErrorMeaning": "observed channel-error log lines; not a physical-output failure count"
+  },
+  {
+    "trial": 6,
+    "prepare": false,
+    "status": "complete",
+    "impactsLogged": 2000,
+    "lastIndex": 2000,
+    "channelErrors": 51,
+    "coreHaptics10851": 51,
+    "rateLimitWarnings": 2151,
+    "firstErrorAfterLoggedIndex": 259,
+    "maxLatenessMs": 16,
+    "log": "6-A-impact-only.log",
+    "elapsedMsLastImpact": 39980,
+    "actualIntervalMs": {
+      "min": 5,
+      "max": 31,
+      "median": 20
+    },
+    "countedErrorMeaning": "observed channel-error log lines; not a physical-output failure count"
+  }
+]
