@@ -18,6 +18,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -49,22 +50,26 @@ class DailyRankingConfigBoundaryTest {
             val client =
                 createApiClient(
                     engine =
-                        MockEngine {
-                            requests++
-                            if (successful) {
-                                return@MockEngine respond(
-                                    """{"date":"2026-10-29","startAt":"2026-10-28T15:00:00Z","endAt":"2026-10-29T15:00:00Z","items":[],"me":{"rank":150,"nickname":"익명","pressCount":31}}""",
-                                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
-                                )
+                        MockEngine.create {
+                            // Keep handler cancellation on the scheduler advanced by runCurrent().
+                            dispatcher = StandardTestDispatcher(testScheduler)
+                            addHandler {
+                                requests++
+                                if (successful) {
+                                    return@addHandler respond(
+                                        """{"date":"2026-10-29","startAt":"2026-10-28T15:00:00Z","endAt":"2026-10-29T15:00:00Z","items":[],"me":{"rank":150,"nickname":"익명","pressCount":31}}""",
+                                        headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                                    )
+                                }
+                                entered.complete(Unit)
+                                try {
+                                    awaitCancellation()
+                                } finally {
+                                    cancelled = true
+                                }
+                                @Suppress("UNREACHABLE_CODE")
+                                respond("{}")
                             }
-                            entered.complete(Unit)
-                            try {
-                                awaitCancellation()
-                            } finally {
-                                cancelled = true
-                            }
-                            @Suppress("UNREACHABLE_CODE")
-                            respond("{}")
                         },
                     config = ApiConfig("https://api-dev.pheeeew.com"),
                     accessTokenProvider =
