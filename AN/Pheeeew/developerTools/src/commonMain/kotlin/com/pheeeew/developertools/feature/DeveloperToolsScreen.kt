@@ -36,6 +36,7 @@ internal fun DeveloperToolsScreen(
     onOpenPage: (DeveloperToolsPage) -> Unit,
     onBack: () -> Unit,
     onResetOnboarding: () -> Unit,
+    onResetNotificationPermission: (() -> Unit)?,
     onRestart: (() -> Unit) -> Unit,
     onStartRecovery: (Long?) -> Unit,
     configRepository: AppConfigRepository? = null,
@@ -74,9 +75,10 @@ internal fun DeveloperToolsScreen(
                 DeveloperToolsPage.LOCAL_DATA -> {
                     LocalDataSettingsScreen(
                         canClearConfig = configRepository != null,
+                        canResetNotificationPermission = onResetNotificationPermission != null,
                         applying = applyingLocalData,
                         error = localDataError,
-                        onApply = { onboarding, config ->
+                        onApply = { onboarding, config, notificationPermission ->
                             applyingLocalData = true
                             localDataError = null
                             scope.launch {
@@ -84,8 +86,11 @@ internal fun DeveloperToolsScreen(
                                 if (config && configRepository?.state?.value?.error == "설정 캐시 초기화 실패") {
                                     localDataError = "원격 설정 캐시를 초기화하지 못했습니다. 다시 시도해 주세요."
                                     applyingLocalData = false
-                                } else if (onboarding) {
-                                    onRestart(onResetOnboarding)
+                                } else if (onboarding || notificationPermission) {
+                                    onRestart {
+                                        if (onboarding) onResetOnboarding()
+                                        if (notificationPermission) onResetNotificationPermission?.invoke()
+                                    }
                                 } else {
                                     applyingLocalData = false
                                     onBack()
@@ -139,6 +144,7 @@ private fun DeveloperToolsScreenPreview() {
         onOpenPage = {},
         onBack = {},
         onResetOnboarding = {},
+        onResetNotificationPermission = null,
         onRestart = {},
         onStartRecovery = {},
         configRepository = repository,

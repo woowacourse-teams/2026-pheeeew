@@ -207,18 +207,6 @@ private class IosOnboardingStore : OnboardingStore {
         val defaults = NSUserDefaults.standardUserDefaults
         defaults.removeObjectForKey("onboarding_completed")
     }
-
-    override fun isInitialNotificationPermissionHandled(): Boolean {
-        val defaults = NSUserDefaults.standardUserDefaults
-        if (defaults.objectForKey("initial_notification_permission_handled") == null) {
-            defaults.setBool(isCompleted(), forKey = "initial_notification_permission_handled")
-        }
-        return defaults.boolForKey("initial_notification_permission_handled")
-    }
-
-    override fun completeInitialNotificationPermission() {
-        NSUserDefaults.standardUserDefaults.setBool(true, forKey = "initial_notification_permission_handled")
-    }
 }
 
 fun iosDeviceBuildConfig(): DeviceSessionBuildConfig = IosGraphs.app.apiDependencies.buildConfig

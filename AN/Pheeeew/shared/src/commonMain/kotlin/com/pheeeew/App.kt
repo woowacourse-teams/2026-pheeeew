@@ -217,9 +217,8 @@ private fun AppContent(
     val appVersion = appGraph.appVersion
     val appSettingsLauncher = appGraph.appSettingsLauncher
     val onboardingStore = appGraph.onboardingStore
-    // Initialize before onboarding completes, including migration of existing installs.
     val initialNotificationPermission =
-        remember(onboardingStore) { InitialNotificationPermissionRequest(onboardingStore) }
+        remember { InitialNotificationPermissionRequest() }
     val uriHandler = LocalUriHandler.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val configRepository = apiDependencies.appConfig

@@ -39,9 +39,29 @@ internal class AndroidNotificationPermissionRequest {
 /** An attempted request alone is not evidence of denial: the dialog may have been dismissed. */
 internal class AndroidNotificationPermissionHistory(
     hasObservedRationale: Boolean = false,
+    hasBeenAuthorized: Boolean = false,
 ) {
     var hasObservedRationale = hasObservedRationale
         private set
+
+    var hasBeenAuthorized = hasBeenAuthorized
+        private set
+
+    fun authorization(
+        granted: Boolean,
+        showsRationale: Boolean,
+    ): NotificationAuthorization {
+        if (granted) {
+            onResult(granted = true, showsRationale = false)
+            return NotificationAuthorization.AUTHORIZED
+        }
+        observeRationale(showsRationale)
+        return if (hasObservedRationale || hasBeenAuthorized) {
+            NotificationAuthorization.DENIED
+        } else {
+            NotificationAuthorization.NOT_DETERMINED
+        }
+    }
 
     fun canRequest(showsRationale: Boolean): Boolean = !hasObservedRationale || showsRationale
 
@@ -53,6 +73,7 @@ internal class AndroidNotificationPermissionHistory(
         granted: Boolean,
         showsRationale: Boolean,
     ) {
+        hasBeenAuthorized = hasBeenAuthorized || granted
         hasObservedRationale = !granted && (hasObservedRationale || showsRationale)
     }
 }

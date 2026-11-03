@@ -1,9 +1,11 @@
 package com.pheeeew
 
+import android.os.Build
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.Composable
 import com.pheeeew.core.di.ActivityRetainedGraphOwner
 import com.pheeeew.core.di.AppGraph
+import com.pheeeew.core.notification.AndroidNotificationPermissionController
 import com.pheeeew.core.notification.NotificationClickInbox
 import com.pheeeew.core.notification.NotificationMessageInbox
 import com.pheeeew.developertools.feature.DeveloperToolsHost
@@ -33,6 +35,12 @@ internal fun AppEntry(
         configRepository = appGraph.apiDependencies.appConfig,
         onClearUiSession = owner::clearUiSession,
         onResetOnboarding = appGraph.onboardingStore::resetCompletion,
+        onResetNotificationPermission =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                { AndroidNotificationPermissionController.resetRequestHistory(activity) }
+            } else {
+                null
+            },
     ) { onOpen ->
         AndroidAppContent(
             activity,
