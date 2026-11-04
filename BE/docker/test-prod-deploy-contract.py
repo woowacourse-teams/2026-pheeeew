@@ -30,12 +30,18 @@ class ProductionDeploymentContractTest(unittest.TestCase):
         begin = text.index('contract=$(docker image inspect')
         end = text.index('if ! check_memory', begin)
         check = text[begin:end]
+        abort_begin = text.index('abort_prepared_deployment() {')
+        abort_end = text.index('\nif command -v', abort_begin)
+        check = text[abort_begin:abort_end] + '\n' + check
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             docker = root / 'docker'
             docker.write_text('#!/bin/sh\nprintf "%s\\n" "$TEST_CONTRACT"\n')
             docker.chmod(0o755)
-            env = dict(os.environ, PATH=directory + os.pathsep + os.environ['PATH'], APP_IMAGE='fixture')
+            python = root / 'python3'
+            python.write_text('#!/bin/sh\n[ "$2" = abort-prepared ] || exit 99\nrm -f .press-deploy.json\n')
+            python.chmod(0o755)
+            env = dict(os.environ, PATH=directory + os.pathsep + os.environ['PATH'], APP_IMAGE='fixture', ACTIVE='app-blue')
             for contract, expected in (('1', False), ('2', True), ('', False), ('3', False)):
                 (root / '.press-deploy.json').write_text('{}')
                 result = subprocess.run(['sh', '-c', 'set -eu\n' + check], cwd=root,

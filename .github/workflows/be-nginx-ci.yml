@@ -19,6 +19,7 @@ on:
       - 'BE/docker/test-prod-lock.py'
       - 'BE/docker/press-prod-deploy.sh'
       - 'BE/docker/test-prod-deploy-contract.py'
+      - 'BE/docker/test-prod-deploy-lock-cleanup.py'
       - 'BE/docker/test-prod-route.py'
       - 'BE/docker/press-prod-manifest.py'
       - 'BE/docker/test-prod-manifest.py'
@@ -96,6 +97,7 @@ jobs:
           python3 BE/docker/alloy/verify.py
           python3 BE/docker/test-prod-owner-postgres.py
           python3 BE/docker/test-prod-deploy-contract.py
+          python3 BE/docker/test-prod-deploy-lock-cleanup.py
           python3 BE/docker/test-deploy-switch.py --ci
 
   press-proxy:

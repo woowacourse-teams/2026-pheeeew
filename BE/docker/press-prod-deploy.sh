@@ -14,6 +14,47 @@ PROBE_URL="https://$PROBE_HOST$PROBE_PATH"
 NGINX="docker compose -f compose.nginx.yml"
 APPS="docker compose -f compose.yml"
 DRAIN_WORKERS=
+RELEASE_LOCK_ON_FAILURE=no
+
+no_pending_transition() {
+  for record in .press-deploy.json .press-deploy.json.new "$BACKUP"; do
+    if [ -e "$record" ] || [ -L "$record" ]; then
+      return 1
+    fi
+  done
+}
+
+finish() {
+  status=$1
+  trap - 0 HUP INT TERM
+  if [ "$status" -ne 0 ]; then
+    if [ "$RELEASE_LOCK_ON_FAILURE" = yes ] && no_pending_transition \
+        && [ "$(read_pointer)" = "$ACTIVE" ] && wait_served "$ACTIVE"; then
+      if python3 press-prod-lock.py release "$LOCK_TOKEN"; then
+        echo "안전한 배포 중단을 확인하여 현재 실행의 작업 잠금을 해제했습니다."
+      else
+        echo "작업 잠금 해제를 확인하지 못했습니다. 잠금 상태를 수동 확인하세요." >&2
+      fi
+    else
+      echo "배포 상태가 불확실하여 작업 잠금을 유지합니다. 기록과 실제 서버를 확인하세요." >&2
+    fi
+  fi
+  exit "$status"
+}
+
+# Release only in this remote process, never merely because the SSH caller failed.
+trap 'finish "$?"' 0
+trap 'RELEASE_LOCK_ON_FAILURE=no; exit 129' HUP
+trap 'RELEASE_LOCK_ON_FAILURE=no; exit 130' INT
+trap 'RELEASE_LOCK_ON_FAILURE=no; exit 143' TERM
+
+abort_prepared_deployment() {
+  failure=$1
+  if python3 press-generation.py abort-prepared "pheeeew-prod-$ACTIVE"; then
+    RELEASE_LOCK_ON_FAILURE=yes
+  fi
+  exit "$failure"
+}
 
 if command -v python3 >/dev/null 2>&1; then
   JSON_TOOL=python3
@@ -137,7 +178,7 @@ report_mismatch() {
 
 restore_pointer() {
   [ -f "$BACKUP" ] || return 1
-  cat "$BACKUP" > "$POINTER"
+  cat "$BACKUP" > "$POINTER" || return 1
   $NGINX exec -T nginx nginx -t </dev/null || return 1
   capture_workers
   $NGINX exec -T nginx nginx -s reload </dev/null || return 1
@@ -168,7 +209,11 @@ rollback() {
     report_mismatch
     return 1
   fi
-  rm -f .press-deploy.json "$BACKUP"
+  python3 press-generation.py verify-active "pheeeew-prod-$ACTIVE" || return 1
+  rm -f .press-deploy.json "$BACKUP" || return 1
+  no_pending_transition || return 1
+  [ "$(read_pointer)" = "$ACTIVE" ] && wait_served "$ACTIVE" || return 1
+  RELEASE_LOCK_ON_FAILURE=yes
   echo "$TARGET 을 정리했습니다."
 }
 
@@ -183,12 +228,13 @@ echo "현재 $ACTIVE, 새로 띄울 것 $TARGET"
 command -v python3 >/dev/null
 command -v psql >/dev/null
 command -v openssl >/dev/null
-if [ -e "$BACKUP" ] || [ -e .press-deploy.json ]; then
+if ! no_pending_transition; then
   echo "미완료 전환 기록이 있습니다. DB와 프록시를 수동 확인하기 전에는 재배포하지 않습니다."
   exit 1
 fi
 # Booting a candidate never changes DB ownership or competition activation.
 wait_served "$ACTIVE" || { echo "현재 트래픽과 전환 파일이 다릅니다. 배포하지 않습니다."; exit 1; }
+RELEASE_LOCK_ON_FAILURE=yes
 # A preflight check is not a memory reservation.
 check_memory() {
   available_kib=$(awk '/^MemAvailable:/ {print $2}' /proc/meminfo)
@@ -199,34 +245,37 @@ check_memory() {
   fi
 }
 check_memory || exit 1
+RELEASE_LOCK_ON_FAILURE=no
 python3 press-generation.py prepare "pheeeew-prod-$ACTIVE" "$TARGET"
 APPS="docker compose --env-file .env --env-file press-generations.env -f compose.yml"
-python3 press-prod-preflight.py "$TARGET"
+python3 press-prod-preflight.py "$TARGET" || abort_prepared_deployment "$?"
 
-if ! $APPS pull "$TARGET"; then
+if $APPS pull "$TARGET"; then
+  :
+else
+  failure=$?
   echo "새 이미지를 가져오지 못했습니다. 전환하지 않습니다."
-  rm -f .press-deploy.json
-  exit 1
+  abort_prepared_deployment "$failure"
 fi
 contract=$(docker image inspect "$APP_IMAGE" --format '{{index .Config.Labels "com.pheeeew.press-generation-contract"}}') || contract=
 if [ "$contract" != 2 ]; then
   echo "운영 일반 배포는 계약 2 이미지만 허용합니다. 구버전 복귀는 별도 절차가 필요합니다."
-  rm -f .press-deploy.json
-  exit 1
+  abort_prepared_deployment 1
 fi
 
 if ! check_memory; then
-  rm -f .press-deploy.json
-  exit 1
+  abort_prepared_deployment 1
 fi
-python3 press-prod-preflight.py "$TARGET"
+python3 press-prod-preflight.py "$TARGET" || abort_prepared_deployment "$?"
 
 if ! $APPS up -d --wait --wait-timeout 180 "$TARGET"; then
   echo "===== 새 버전 기동 실패 — 로그 ====="
   $APPS logs --tail=100 "$TARGET" 2>&1 | grep -a -v -F -e 'http_request_failed' -e 'scheduled_task_failed' || true
   if python3 press-generation.py record-target "pheeeew-prod-$TARGET" \
       && python3 press-generation.py cleanup-target "pheeeew-prod-$TARGET"; then
-    rm -f .press-deploy.json
+    python3 press-generation.py verify-active "pheeeew-prod-$ACTIVE" || exit 1
+    rm -f .press-deploy.json || exit 1
+    RELEASE_LOCK_ON_FAILURE=yes
   else
     report_mismatch
   fi
@@ -240,7 +289,9 @@ if ! wait_target_api; then
   echo "새 버전이 최소 API 를 응답하지 않습니다."
   $APPS logs --tail=50 "$TARGET" 2>&1 | grep -a -v -F -e 'http_request_failed' -e 'scheduled_task_failed' || true
   if python3 press-generation.py cleanup-target "pheeeew-prod-$TARGET"; then
-    rm -f .press-deploy.json
+    python3 press-generation.py verify-active "pheeeew-prod-$ACTIVE" || exit 1
+    rm -f .press-deploy.json || exit 1
+    RELEASE_LOCK_ON_FAILURE=yes
   else
     report_mismatch
   fi

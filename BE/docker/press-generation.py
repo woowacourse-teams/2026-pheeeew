@@ -358,6 +358,40 @@ def prepare(active_name: str, target_slot: str, allow_legacy: bool = False, prob
         output.write(''.join(f'{key}={value}\n' for key, value in values.items()))
 
 
+def verify_active(active_name: str, state: dict) -> None:
+    if STATE_FILE.is_symlink() or os.path.lexists(str(STATE_FILE) + '.new'):
+        raise ValueError('Deployment journal is uncertain; preserve it')
+    if state.get('active_container') != active_name or state.get('active_contract') != '2':
+        raise ValueError('The original contract-2 owner must match the deployment journal')
+    control = operations()
+    owner = control.check(state)
+    expected = {key: state[key] for key in ('generation', 'enabled', 'activation_date')}
+    if read_state(environment(owner)) != expected:
+        raise ValueError('Original control changed; preserve the deployment journal')
+    control.prepare(state, owner)
+    owner = control.check(state)
+    if read_state(environment(owner)) != expected:
+        raise ValueError('Original control changed during route verification')
+
+
+def abort_prepared(active_name: str) -> None:
+    if not STATE_FILE.is_file() or STATE_FILE.is_symlink() or os.path.lexists(str(STATE_FILE) + '.new'):
+        raise ValueError('Deployment journal is uncertain; preserve it')
+    state = json.loads(STATE_FILE.read_text())
+    if (state.get('phase') != 'PREPARED' or state.get('active_container') != active_name
+            or state.get('active_contract') != '2'
+            or state.get('target_slot') not in ('app-blue', 'app-green')
+            or 'target_identity' in state or state.get('open_attempted')):
+        raise ValueError('Only an unstarted prepared deployment can be aborted')
+    candidate = active_name.rsplit('-app-', 1)[0] + '-' + state['target_slot']
+    listed = subprocess.run(['docker', 'container', 'ls', '--all', '--format', '{{.Names}}'],
+                            capture_output=True, text=True, check=True, timeout=8)
+    if candidate in listed.stdout.splitlines():
+        raise ValueError('Candidate exists; verified candidate cleanup is required')
+    verify_active(active_name, state)
+    STATE_FILE.unlink()
+
+
 def transition(action: str, target_name: str) -> None:
     state = json.loads(STATE_FILE.read_text())
     if state.get('operations'):
@@ -411,7 +445,7 @@ def transition(action: str, target_name: str) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=('prepare', 'record-target', 'handoff', 'restore', 'verify',
+    parser.add_argument('action', choices=('prepare', 'abort-prepared', 'verify-active', 'record-target', 'handoff', 'restore', 'verify',
         'cleanup-target', 'cleanup-active', 'close-active', 'open-target', 'open-active',
         'emergency-stop', 'status', 'activate', 'stop', 'resume-off', 'reconcile-control', 'finalize'))
     parser.add_argument('container')
@@ -434,6 +468,10 @@ def main() -> int:
             raise ValueError('Invalid local HTTPS port')
         if args.action == 'prepare':
             prepare(args.container, args.target_slot, args.allow_legacy, args.probe_port)
+        elif args.action == 'abort-prepared':
+            abort_prepared(args.container)
+        elif args.action == 'verify-active':
+            verify_active(args.container, json.loads(STATE_FILE.read_text()))
         elif args.action == 'record-target':
             record_target(args.container)
         elif args.action.startswith('cleanup-'):
