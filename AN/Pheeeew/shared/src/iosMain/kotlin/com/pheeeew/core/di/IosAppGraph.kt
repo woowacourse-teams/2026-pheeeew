@@ -28,6 +28,7 @@ import com.pheeeew.data.repository.EmotionRegionMapRepositoryImpl
 import com.pheeeew.domain.model.device.DevicePlatform
 import com.pheeeew.domain.repository.AppVersionRepository
 import com.pheeeew.domain.repository.OnboardingStore
+import com.pheeeew.domain.repository.RecordAnonymityStore
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.GraphExtension
 import dev.zacsweers.metro.Provides
@@ -103,6 +104,10 @@ internal interface IosAppGraph :
     @SingleIn(AppScope::class)
     fun attestation(build: DeviceSessionBuildConfig): DeviceAttestationPolicy =
         build.policy { IosAppAttestProofProvider() }
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun recordAnonymity(): RecordAnonymityStore = IosRecordAnonymityStore()
 
     @Provides
     @SingleIn(AppScope::class)
@@ -201,6 +206,21 @@ internal object IosGraphs {
 
 /** Select platform adapters before the first use of the process graph. */
 fun initializeIosAppGraph(services: AppServiceFactory): AppGraph = IosGraphs.initialize(services)
+
+private class IosRecordAnonymityStore : RecordAnonymityStore {
+    private val defaults = NSUserDefaults.standardUserDefaults
+
+    override fun read(): Boolean? =
+        if (defaults.objectForKey(KEY) != null) defaults.boolForKey(KEY) else null
+
+    override suspend fun save(isAnonymous: Boolean) {
+        defaults.setBool(isAnonymous, forKey = KEY)
+    }
+
+    private companion object {
+        const val KEY = "last_record_anonymous"
+    }
+}
 
 private class IosOnboardingStore : OnboardingStore {
     override fun isCompleted(): Boolean = NSUserDefaults.standardUserDefaults.boolForKey("onboarding_completed")

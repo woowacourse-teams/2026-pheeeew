@@ -95,6 +95,7 @@ class RecordLocationTest {
                     MapRecordViewModel(
                         IsWithinEmotionRecordRadiusUseCase(),
                         repository,
+                        InMemoryRecordAnonymityStore(),
                     )
                 model.open(EmotionTypeUiModel.FRUSTRATED)
                 advanceUntilIdle()
@@ -122,6 +123,7 @@ class RecordLocationTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
             try {
                 val registrations = mutableListOf<EmotionRegistration>()
+                val anonymityStore = InMemoryRecordAnonymityStore()
                 val model =
                     initializedModel(
                         object : EmotionRegistrationRepository {
@@ -136,21 +138,25 @@ class RecordLocationTest {
                                 }
                             }
                         },
+                        anonymityStore,
                     )
                 advanceUntilIdle()
+                assertTrue(model.uiModel.value.isAnonymous)
                 model.onAnonymousChange(false)
                 model.onMemoChange("기록")
                 model.onNext(CurrentLocation(origin.latitude, origin.longitude, 1f, 0L), null)
                 model.onConfirmLocation()
                 advanceUntilIdle()
                 assertFalse(registrations.single().anonymous)
+                assertEquals(null, anonymityStore.read())
                 assertFalse(model.uiModel.value.isSubmitting)
                 model.onConfirmLocation()
                 advanceUntilIdle()
                 assertEquals(2, registrations.size)
                 assertEquals(registrations[0], registrations[1])
                 assertEquals(RecordFlowStepUiModel.Closed, model.uiModel.value.step)
-                assertFalse(model.uiModel.value.isAnonymous)
+                val reopened = initializedModel(FakeRegistrationRepository(), anonymityStore)
+                assertFalse(reopened.uiModel.value.isAnonymous)
             } finally {
                 Dispatchers.resetMain()
             }
@@ -163,19 +169,19 @@ class RecordLocationTest {
             try {
                 val model = initializedModel(FakeRegistrationRepository())
                 advanceUntilIdle()
-                assertFalse(model.uiModel.value.isAnonymous)
-                model.onAnonymousChange(true)
-                model.onMemoChange("기록")
-                model.onNext(CurrentLocation(origin.latitude, origin.longitude, 1f, 0L), null)
                 assertTrue(model.uiModel.value.isAnonymous)
                 model.onAnonymousChange(false)
-                assertTrue(model.uiModel.value.isAnonymous)
+                model.onMemoChange("기록")
+                model.onNext(CurrentLocation(origin.latitude, origin.longitude, 1f, 0L), null)
+                assertFalse(model.uiModel.value.isAnonymous)
+                model.onAnonymousChange(true)
+                assertFalse(model.uiModel.value.isAnonymous)
                 model.onBackToInput()
-                assertTrue(model.uiModel.value.isAnonymous)
+                assertFalse(model.uiModel.value.isAnonymous)
                 model.dismiss()
                 model.open(EmotionTypeUiModel.ANGRY)
                 advanceUntilIdle()
-                assertFalse(model.uiModel.value.isAnonymous)
+                assertTrue(model.uiModel.value.isAnonymous)
             } finally {
                 Dispatchers.resetMain()
             }
@@ -223,10 +229,14 @@ class RecordLocationTest {
             }
         }
 
-    private fun initializedModel(repository: EmotionRegistrationRepository): MapRecordViewModel =
+    private fun initializedModel(
+        repository: EmotionRegistrationRepository,
+        anonymityStore: InMemoryRecordAnonymityStore = InMemoryRecordAnonymityStore(),
+    ): MapRecordViewModel =
         MapRecordViewModel(
             IsWithinEmotionRecordRadiusUseCase(),
             repository,
+            anonymityStore,
         ).also {
             it.open(EmotionTypeUiModel.FRUSTRATED)
         }
