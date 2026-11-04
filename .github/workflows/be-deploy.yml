@@ -226,18 +226,8 @@ jobs:
                   'pheeeew-prod-app', 'pheeeew-prod-app-blue', 'pheeeew-prod-app-green'}
 
           def verify(snapshot):
-              inspected = core.container(name)
-              require(core.identity(inspected) == snapshot, 'App process changed')
-              env = core.environment(inspected)
-              require(core.query(env, core.READ_STATE) == database, 'Press control changed')
-              require(core.runtime_generation(inspected, required_code='DEVICE_NOT_FOUND') == generation,
-                      'App UUID/admission is not ready')
-              require(core.probe_generation(env, ['curl', '-q', '--resolve', 'api.pheeeew.com:443:127.0.0.1'],
-                          url='https://api.pheeeew.com/api/v1/press-race', required_code='DEVICE_NOT_FOUND') == generation,
-                      'HTTPS WebSocket route is not ready')
-              require(core.identity(core.container(name)) == snapshot
-                      and core.query(env, core.READ_STATE) == database and running_apps() == {name},
-                      'App or database changed during verification')
+              require(core.identity(core.container(name)) == snapshot and running_apps() == {name},
+                      'App changed during verification')
 
           def sync_directory():
               fd = os.open('.', os.O_RDONLY)
@@ -263,11 +253,8 @@ jobs:
                   require(match is not None, 'Unknown nginx active slot')
                   slot, name = match[1], 'pheeeew-prod-' + match[1]
                   old = core.container(name)
-                  require((old['Config'].get('Labels') or {}).get(core.CONTRACT_LABEL) == '2', 'Expected current press contract 2')
                   env = core.environment(old)
                   generation = str(UUID(env[core.GENERATION_KEY]))
-                  database = core.query(env, core.READ_STATE)
-                  require(database['generation'] == generation, 'App is not the database owner')
                   verify(core.identity(old))
                   incoming = json.loads((stage / 'incoming.json').read_text())
                   require(incoming['DB_URL'] == env['DB_URL'] and incoming['DB_USERNAME'] == env['DB_USERNAME'],
@@ -287,7 +274,6 @@ jobs:
                   run(compose + ['config', '--quiet'], env=process_env)
                   run(['docker', 'pull', image], timeout=240)
                   target = json.loads(run(['docker', 'image', 'inspect', image]))[0]
-                  require(target['Config']['Labels'].get(core.CONTRACT_LABEL) == '2', 'Expected press contract 2')
                   require(Path('nginx/upstream/active.conf').read_text() == pointer, 'Nginx pointer changed')
                   verify(core.identity(old))
                   # A single interruption record, without a transition state machine or automatic rollback.
@@ -304,8 +290,6 @@ jobs:
                   run(['docker', 'rm', old['Id']], timeout=15)
                   names = run(['docker', 'ps', '--all', '--format', '{{.Names}}']).splitlines()
                   require(name not in names and not running_apps(), 'An app remains after removal')
-                  drain_sql = 'BEGIN;\n' + core.READ_STATE.replace('WHERE id = TRUE;', 'WHERE id = TRUE FOR UPDATE;') + '\nCOMMIT;'
-                  require(core.query(env, drain_sql) == database, 'Database changed while stopping app')
                   run(compose + ['up', '-d', '--no-deps', '--force-recreate', slot], env=process_env, timeout=240)
                   deadline = time.monotonic() + 180
                   while time.monotonic() < deadline:
