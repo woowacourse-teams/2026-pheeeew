@@ -47,12 +47,16 @@ public class CollectionProgressRepository {
                        presses.press_count AS press_count,
                        characters.image_path, stamps.round_image_path, stamps.straight_image_path
                 FROM collection_cards card
-                LEFT JOIN device_daily_stamps activity_stamps
-                  ON activity_stamps.device_id = card.device_id AND activity_stamps.stamp_date = card.card_date
-                 AND activity_stamps.state = card.state
-                LEFT JOIN device_daily_presses presses
-                  ON presses.device_id = card.device_id AND presses.press_date = card.card_date
-                 AND presses.state = card.state
+                LEFT JOIN LATERAL (
+                    SELECT SUM(stamp_count)::bigint AS stamp_count
+                    FROM device_daily_stamps
+                    WHERE device_id = card.device_id AND stamp_date = card.card_date
+                ) activity_stamps ON TRUE
+                LEFT JOIN LATERAL (
+                    SELECT SUM(press_count)::bigint AS press_count
+                    FROM device_daily_presses
+                    WHERE device_id = card.device_id AND press_date = card.card_date
+                ) presses ON TRUE
                 LEFT JOIN collection_character_assets characters
                   ON characters.card_version = card.card_version AND characters.state = card.state
                  AND characters.asset_number = card.character_number

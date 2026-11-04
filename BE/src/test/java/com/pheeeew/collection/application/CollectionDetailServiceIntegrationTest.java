@@ -80,16 +80,18 @@ class CollectionDetailServiceIntegrationTest {
     }
 
     @Test
-    void 과거_카드의_고정_조합과_그_날짜의_집계를_조회한다() {
+    void 과거_카드의_고정_조합과_그_날짜의_모든_감정_합계를_조회한다() {
         // given
         var owner = devices.saveAndFlush(기본_기기_빌더().build());
         LocalDate date = LocalDate.of(2026, 10, 21);
         var card = cards.saveAndFlush(기본_카드_빌더().deviceId(owner.getId())
                 .cardDate(date).combinationIndex(37).build());
-        일별_스탬프를_저장한다(jdbc, owner.getId(), date, EmotionState.ANGRY, 3);
-        개인_프레스를_저장한다(jdbc, owner.getId(), date, EmotionState.ANGRY, 125);
+        일별_스탬프를_저장한다(jdbc, owner.getId(), date, EmotionState.ANGRY, 2);
+        일별_스탬프를_저장한다(jdbc, owner.getId(), date, EmotionState.EXHAUSTED, 3);
+        개인_프레스를_저장한다(jdbc, owner.getId(), date, EmotionState.ANGRY, 40);
+        개인_프레스를_저장한다(jdbc, owner.getId(), date, EmotionState.EXHAUSTED, 70);
+        일별_스탬프를_저장한다(jdbc, owner.getId(), date.plusDays(1), EmotionState.ANGRY, 99);
         개인_프레스를_저장한다(jdbc, owner.getId(), date.plusDays(1), EmotionState.ANGRY, 999);
-        개인_프레스를_저장한다(jdbc, owner.getId(), date, EmotionState.EXHAUSTED, 888);
 
         var other = devices.saveAndFlush(기본_기기_빌더().requestId(UUID.randomUUID()).build());
         일별_스탬프를_저장한다(jdbc, other.getId(), card.getCardDate(), EmotionState.ANGRY, 20);
@@ -102,8 +104,8 @@ class CollectionDetailServiceIntegrationTest {
         assertThat(result.cardId()).isEqualTo(card.getPublicId());
         assertThat(result.date()).isEqualTo(date);
         assertThat(result.state()).isEqualTo(EmotionState.ANGRY);
-        assertThat(result.stampCount()).isEqualTo(3);
-        assertThat(result.pressCount()).isEqualTo(125);
+        assertThat(result.stampCount()).isEqualTo(5);
+        assertThat(result.pressCount()).isEqualTo(110);
         assertThat(result.images().characterUrl()).endsWith("/v1/characters/angry/03.png");
         assertThat(result.images().roundStampUrl()).endsWith("/v1/stamps-round/angry/06.png");
         assertThat(result.images().straightStampUrl()).endsWith("/v1/stamps-straight/angry/06.png");
@@ -126,16 +128,17 @@ class CollectionDetailServiceIntegrationTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"true,false", "false,true"})
-    void 카드_감정의_집계가_없으면_그_횟수를_0으로_보여_준다(boolean hasStamps, boolean hasPresses) {
+    @CsvSource({"true,false", "false,true", "false,false", "true,true"})
+    void 카드_감정에_활동이_없어도_다른_감정을_합산하고_없는_횟수는_0으로_보여_준다(
+            boolean hasStamps, boolean hasPresses) {
         // given
         var owner = devices.saveAndFlush(기본_기기_빌더().build());
         var card = cards.saveAndFlush(기본_카드_빌더().deviceId(owner.getId()).build());
         if (hasStamps) {
-            일별_스탬프를_저장한다(jdbc, owner.getId(), card.getCardDate(), EmotionState.ANGRY, 1);
+            일별_스탬프를_저장한다(jdbc, owner.getId(), card.getCardDate(), EmotionState.EXHAUSTED, 1);
         }
         if (hasPresses) {
-            개인_프레스를_저장한다(jdbc, owner.getId(), card.getCardDate(), EmotionState.ANGRY, 100);
+            개인_프레스를_저장한다(jdbc, owner.getId(), card.getCardDate(), EmotionState.EXHAUSTED, 100);
         }
 
         // when
