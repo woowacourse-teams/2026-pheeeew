@@ -1,6 +1,7 @@
 package com.pheeeew.emotion.domain.repository;
 
 import com.pheeeew.emotion.domain.EmotionState;
+import com.pheeeew.emotion.domain.repository.projection.DeviceDailyPressSum;
 import com.pheeeew.emotion.domain.repository.projection.DevicePressSum;
 import com.pheeeew.emotion.domain.repository.projection.DeviceWeeklyPressSum;
 import java.time.Instant;
@@ -73,6 +74,40 @@ public class DeviceDailyPressRepository {
                 .param("devicePublicId", devicePublicId)
                 .query((row, index) -> DeviceWeeklyPressSum.of(
                         row.getString("nickname"), row.getLong("press_count"), row.getBoolean("mine")))
+                .list();
+    }
+
+    public List<DeviceDailyPressSum> findDailyPressRanking(UUID devicePublicId, LocalDate date) {
+        return jdbc.sql("""
+                WITH daily AS (
+                    SELECT device_id, state,
+                           SUM(press_count) OVER (PARTITION BY device_id) AS press_count,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY device_id
+                               ORDER BY press_count DESC,
+                                        CASE state
+                                            WHEN 'ANGRY' THEN 1
+                                            WHEN 'DISCOURAGED' THEN 2
+                                            WHEN 'EXHAUSTED' THEN 3
+                                            WHEN 'FRUSTRATED' THEN 4
+                                            WHEN 'IRRITATED' THEN 5
+                                        END
+                           ) AS state_order
+                    FROM device_daily_presses
+                    WHERE press_date = :date
+                )
+                SELECT COALESCE(device.nickname, '익명') AS nickname,
+                       daily.press_count,
+                       device.public_id = :devicePublicId AS mine,
+                       daily.state
+                FROM daily
+                JOIN devices device ON device.id = daily.device_id
+                WHERE daily.state_order = 1
+                ORDER BY daily.press_count DESC, COALESCE(device.nickname, '익명'), daily.device_id
+                """).param("date", date).param("devicePublicId", devicePublicId)
+                .query((row, index) -> DeviceDailyPressSum.of(
+                        row.getString("nickname"), row.getLong("press_count"), row.getBoolean("mine"),
+                        EmotionState.valueOf(row.getString("state"))))
                 .list();
     }
 

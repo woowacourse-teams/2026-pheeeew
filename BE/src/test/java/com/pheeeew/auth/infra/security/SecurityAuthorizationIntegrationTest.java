@@ -384,7 +384,7 @@ class SecurityAuthorizationIntegrationTest {
 
         // then
         result.expectStatus().isBadRequest().expectBody().json("""
-                {"code":"DEVICE-008","message":"닉네임은 한글, 영문, 공백으로 1~10자여야 하며 익명은 사용할 수 없습니다."}
+                {"code":"DEVICE-008","message":"닉네임은 한글, 영문, 숫자, 공백으로 1~10자여야 하며 익명은 사용할 수 없습니다."}
                 """, JsonCompareMode.STRICT);
         assertThat(deviceRepository.findAll()).extracting(Device::getNickname).containsExactly("기기 A");
     }
@@ -503,14 +503,14 @@ class SecurityAuthorizationIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"", "   ", " 익명 ", "Star1", "abcdefghijk", "Star\tK"})
+    @ValueSource(strings = {"", "   ", " 익명 ", "Star!", "abcdefghijk", "Star\tK"})
     void 닉네임_규칙을_어긴_등록은_400을_반환하고_기기와_토큰을_남기지_않는다(String nickname) {
         // given / when
         RestTestClient.ResponseSpec result = 닉네임으로_등록한다(UUID.randomUUID(), nickname);
 
         // then
         result.expectStatus().isBadRequest().expectBody().json("""
-                {"code":"DEVICE-008","message":"닉네임은 한글, 영문, 공백으로 1~10자여야 하며 익명은 사용할 수 없습니다."}
+                {"code":"DEVICE-008","message":"닉네임은 한글, 영문, 숫자, 공백으로 1~10자여야 하며 익명은 사용할 수 없습니다."}
                 """, JsonCompareMode.STRICT);
         assertThat(deviceRepository.count()).isZero();
         assertThat(deviceRefreshTokenRepository.count()).isZero();
@@ -648,7 +648,7 @@ class SecurityAuthorizationIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"", "   ", " 익명 ", "Star1", "abcdefghijk", "Star\tK"})
+    @ValueSource(strings = {"", "   ", " 익명 ", "Star!", "abcdefghijk", "Star\tK"})
     void 토큰_없이_잘못된_닉네임을_조회하면_400을_반환한다(String nickname) {
         // given / when
         RestTestClient.ResponseSpec result = client.get()
@@ -657,7 +657,7 @@ class SecurityAuthorizationIntegrationTest {
 
         // then
         result.expectStatus().isBadRequest().expectBody().json("""
-                {"code":"DEVICE-008","message":"닉네임은 한글, 영문, 공백으로 1~10자여야 하며 익명은 사용할 수 없습니다."}
+                {"code":"DEVICE-008","message":"닉네임은 한글, 영문, 숫자, 공백으로 1~10자여야 하며 익명은 사용할 수 없습니다."}
                 """, JsonCompareMode.STRICT);
     }
 
@@ -712,6 +712,44 @@ class SecurityAuthorizationIntegrationTest {
 
         // then
         인증_필요를_검증한다(result);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"android", "ios"})
+    void 기기_등록과_토큰_없이_앱_설정을_조회할_수_있다(String platform) {
+        // given
+        assertThat(deviceRepository.count()).isZero();
+
+        // when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri("/api/v2/app/config?platform=" + platform).exchange();
+
+        // then
+        result.expectStatus().isOk()
+                .expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
+                .expectBody()
+                .jsonPath("$.revision").isEqualTo(1)
+                .jsonPath("$.dailyPressRankingEnabled").isEqualTo(true)
+                .jsonPath("$.noticeMessage").isEqualTo("")
+                .jsonPath("$.updatedAt").exists();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "POST, /api/v2/app/config", "PUT, /api/v2/app/config",
+            "PATCH, /api/v2/app/config", "DELETE, /api/v2/app/config",
+            "GET, /api/v1/app/config", "GET, /api/v2/app/config/other"
+    })
+    void 앱_설정_조회_외의_메서드와_경로는_유효한_토큰으로도_접근할_수_없다(String method, String uri) {
+        // given
+        String accessToken = AccessTokenFixture.유효한_토큰(기기_공개_식별자);
+
+        // when
+        RestTestClient.ResponseSpec result = client.method(HttpMethod.valueOf(method))
+                .uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken).exchange();
+
+        // then
+        result.expectStatus().isForbidden().expectBody().json(권한_없음_응답, JsonCompareMode.STRICT);
     }
 
     @Test

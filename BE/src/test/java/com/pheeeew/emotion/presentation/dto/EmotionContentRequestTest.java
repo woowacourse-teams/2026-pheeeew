@@ -84,7 +84,7 @@ class EmotionContentRequestTest {
     void 공백_제거_후_유니코드_코드포인트로_메모_길이를_검증한다(String character, int length, boolean valid) {
         // given
         EmotionContentRequest request = JSON_MAPPER.convertValue(
-                Map.of("contentType", "MEMO", "memo", "  " + character.repeat(length) + "  "),
+                Map.of("contentType", "MEMO", "memo", "　 " + character.repeat(length) + " 　"),
                 EmotionContentRequest.class);
 
         // when / then

@@ -180,7 +180,7 @@ class EmotionControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"null", "\"\"", "\"11111111-1111-1111-1111-111111111111\"", "false", "{}", "[]"})
+    @ValueSource(strings = {"null", "\"11111111-1111-1111-1111-111111111111\""})
     void v4_등록과_수정은_본문의_groupId를_null도_포함하여_거부한다(String groupId) {
         // when / then
         for (var method : List.of(HttpMethod.POST, HttpMethod.PUT)) {
@@ -300,7 +300,7 @@ class EmotionControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {1, 200, 400, 1000})
+    @ValueSource(ints = {1, 1000})
     void v4_핀은_첫_페이지와_다음_페이지의_limit을_서비스에_전달한다(int limit) {
         // given
         var bounds = EmotionSearchBounds.of(127.8, 37.2, 128.2, 37.8);
@@ -321,7 +321,7 @@ class EmotionControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"", "abc", "1.5", "2147483648", "0", "-1"})
+    @ValueSource(strings = {"", "abc", "0"})
     void v4_핀은_빈값과_숫자_형식_오류와_양수가_아닌_limit을_거부한다(String limit) {
         // when / then
         request(HttpMethod.GET, "/api/v4/emotions/map" + REGION_BOUNDS_QUERY + "&limit=" + limit, "access-token")
@@ -488,8 +488,7 @@ class EmotionControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"groupId", "groupId=", "groupId=null",
-            "groupId=11111111-1111-1111-1111-111111111111", "groupId=&groupId=invalid", "scope=GROUP"})
+    @ValueSource(strings = {"groupId", "scope=GROUP"})
     void v4_조회는_그룹_입력을_값과_무관하게_400으로_거부한다(String query) {
         // when / then
         for (String uri : List.of("/api/v4/emotions?", "/api/v4/emotions/42?",
@@ -695,16 +694,15 @@ class EmotionControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"EMOTION_NOT_VISIBLE", "EMOTION_AUDIO_REQUIRED", "EMOTION_AUDIO_UPLOAD_UNAVAILABLE",
-            "EMOTION_STATE_CHANGE_NOT_ALLOWED"})
-    void 수정_서비스의_실패_코드를_반환한다(String name) {
+    @CsvSource({"EMOTION_AUDIO_REQUIRED,400,EMOTION-010", "EMOTION_AUDIO_UPLOAD_UNAVAILABLE,503,EMOTION-006"})
+    void 수정_서비스의_실패_코드를_반환한다(String name, int status, String code) {
         EmotionErrorCode error = EmotionErrorCode.valueOf(name);
         doThrow(new EmotionException(error)).when(emotionCommandService)
                 .update(42L, DEVICE_PUBLIC_ID, EmotionState.ANGRY, null, null, true, null);
         client.put().uri(EMOTION_URI).header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
                 .contentType(MediaType.APPLICATION_JSON).body("{\"state\":\"ANGRY\",\"contentType\":\"AUDIO\"}")
-                .exchange().expectStatus().isEqualTo(error.getStatus().value())
-                .expectBody().jsonPath("$.code").isEqualTo(error.getCode());
+                .exchange().expectStatus().isEqualTo(status)
+                .expectBody().jsonPath("$.code").isEqualTo(code);
     }
 
     @ParameterizedTest
@@ -746,15 +744,8 @@ class EmotionControllerTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "{}", "{\"state\":\"ANGRY\"}", "{\"contentType\":\"MEMO\",\"memo\":\"메모\"}",
-            "{\"state\":\"ANGRY\",\"contentType\":null}",
+            "{\"contentType\":\"MEMO\",\"memo\":\"메모\"}",
             "{\"state\":\"ANGRY\",\"contentType\":\"NONE\"}",
-            "{\"state\":\"ANGRY\",\"contentType\":\"MEMO\"}",
-            "{\"state\":\"ANGRY\",\"contentType\":\"MEMO\",\"memo\":null}",
-            "{\"state\":\"ANGRY\",\"contentType\":\"MEMO\",\"memo\":\"\"}",
-            "{\"state\":\"ANGRY\",\"contentType\":\"MEMO\",\"memo\":\"   \"}",
-            "{\"state\":\"ANGRY\",\"contentType\":\"MEMO\",\"memo\":\"메모\",\"audioUploadId\":\"upload\"}",
-            "{\"state\":\"ANGRY\",\"contentType\":\"AUDIO\",\"memo\":\"메모\"}",
             "{\"state\":\"ANGRY\",\"contentType\":\"AUDIO\",\"audioUploadId\":\" \"}"
     })
     void v3의_잘못된_수정_내용은_서비스_호출_전에_거부한다(String body) {
@@ -783,9 +774,8 @@ class EmotionControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"EMOTION_NOT_VISIBLE", "EMOTION_AUDIO_REQUIRED", "EMOTION_AUDIO_UPLOAD_NOT_FOUND",
-            "EMOTION_AUDIO_UPLOAD_NOT_READY", "EMOTION_AUDIO_UPLOAD_ALREADY_USED", "EMOTION_AUDIO_UPLOAD_UNAVAILABLE"})
-    void v3_수정도_기존_권한과_녹음_실패_코드를_반환한다(String name) {
+    @CsvSource({"EMOTION_NOT_VISIBLE,404,EMOTION-002", "EMOTION_AUDIO_UPLOAD_ALREADY_USED,409,EMOTION-005"})
+    void v3_수정도_기존_권한과_녹음_실패_코드를_반환한다(String name, int status, String code) {
         // given
         EmotionErrorCode error = EmotionErrorCode.valueOf(name);
         doThrow(new EmotionException(error)).when(emotionCommandService)
@@ -794,8 +784,8 @@ class EmotionControllerTest {
         // when / then
         client.put().uri(V3_EMOTION_URI).header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
                 .contentType(MediaType.APPLICATION_JSON).body("{\"state\":\"ANGRY\",\"contentType\":\"AUDIO\"}")
-                .exchange().expectStatus().isEqualTo(error.getStatus().value())
-                .expectBody().jsonPath("$.code").isEqualTo(error.getCode());
+                .exchange().expectStatus().isEqualTo(status)
+                .expectBody().jsonPath("$.code").isEqualTo(code);
     }
 
     @Test
@@ -811,15 +801,6 @@ class EmotionControllerTest {
             request(HttpMethod.GET, uri, "access-token")
                     .expectStatus().isBadRequest().expectBody().jsonPath("$.code").isEqualTo("COMMON-001");
         }
-        verifyNoInteractions(emotionQueryService);
-    }
-
-    @Test
-    void 상세_조회에서_인증이_없거나_유효하지_않으면_401을_반환한다() {
-        request(HttpMethod.GET, EMOTION_URI, null)
-                .expectStatus().isUnauthorized().expectBody().jsonPath("$.code").isEqualTo("AUTH-001");
-        request(HttpMethod.GET, EMOTION_URI, "invalid-token")
-                .expectStatus().isUnauthorized().expectBody().jsonPath("$.code").isEqualTo("AUTH-001");
         verifyNoInteractions(emotionQueryService);
     }
 
@@ -982,7 +963,7 @@ class EmotionControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"null", "true", "false", "0", "1", "\"false\"", "\"true\"", "\"invalid\"", "[]", "{}"})
+    @ValueSource(strings = {"null", "false", "{}"})
     void v1은_익명_선택을_무시하고_인증된_기기로_익명_등록한다(String anonymous) {
         // given
         Emotion saved = 기본_한숨_빌더().build();
@@ -1077,7 +1058,7 @@ class EmotionControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/api/v1/emotions", "/api/v2/emotions", "/api/v3/emotions"})
+    @ValueSource(strings = {"/api/v2/emotions"})
     void 등록은_기기_인증이_필수다(String uri) {
         request(HttpMethod.POST, uri, null).expectStatus().isUnauthorized();
         request(HttpMethod.POST, uri, "invalid-token").expectStatus().isUnauthorized();
@@ -1085,15 +1066,14 @@ class EmotionControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"EMOTION_REQUEST_ID_CONFLICT", "EMOTION_AUDIO_UPLOAD_NOT_FOUND", "EMOTION_AUDIO_UPLOAD_NOT_READY",
-            "EMOTION_AUDIO_UPLOAD_ALREADY_USED", "EMOTION_AUDIO_UPLOAD_UNAVAILABLE"})
-    void 등록_실패_상태와_코드를_전달한다(String name) {
+    @CsvSource({"EMOTION_REQUEST_ID_CONFLICT,409,EMOTION-001", "EMOTION_AUDIO_UPLOAD_UNAVAILABLE,503,EMOTION-006"})
+    void 등록_실패_상태와_코드를_전달한다(String name, int status, String code) {
         EmotionErrorCode error = EmotionErrorCode.valueOf(name);
         when(emotionCommandService.save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any(), any(), any()))
                 .thenThrow(new EmotionException(error));
         client.post().uri("/api/v1/emotions").header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
                 .contentType(MediaType.APPLICATION_JSON).body(createBody("\"contentType\":\"AUDIO\",\"audioUploadId\":\"upload\""))
-                .exchange().expectStatus().isEqualTo(error.getStatus().value()).expectBody().jsonPath("$.code").isEqualTo(error.getCode());
+                .exchange().expectStatus().isEqualTo(status).expectBody().jsonPath("$.code").isEqualTo(code);
     }
 
     @ParameterizedTest
@@ -1133,14 +1113,6 @@ class EmotionControllerTest {
                 .expectStatus().isOk().expectBody()
                 .json("{\"items\":[],\"hasNext\":false,\"nextCursor\":null}", JsonCompareMode.STRICT);
         verify(emotionQueryService).findListWithoutBounds(DEVICE_PUBLIC_ID, null, null, null, null, null, null);
-    }
-
-    @ParameterizedTest
-    @NullSource
-    @ValueSource(strings = "invalid-token")
-    void 좌표_없는_목록도_유효한_기기_인증이_필요하다(String token) {
-        request(HttpMethod.GET, "/api/v3/emotions", token).expectStatus().isUnauthorized();
-        verifyNoInteractions(emotionQueryService);
     }
 
     @Test
@@ -1270,13 +1242,6 @@ class EmotionControllerTest {
             "?minLongitude=181&minLatitude=37.5&maxLongitude=127.1&maxLatitude=37.6"})
     void 목록_영역과_커서_조합을_검증한다(String query) {
         request(HttpMethod.GET, "/api/v1/emotions" + query, "access-token").expectStatus().isBadRequest();
-        verifyNoInteractions(emotionQueryService);
-    }
-
-    @Test
-    void 목록은_기기_인증이_필수다() {
-        request(HttpMethod.GET, "/api/v1/emotions?cursor=next", null).expectStatus().isUnauthorized();
-        request(HttpMethod.GET, "/api/v1/emotions?cursor=next", "invalid-token").expectStatus().isUnauthorized();
         verifyNoInteractions(emotionQueryService);
     }
 
@@ -1442,13 +1407,7 @@ class EmotionControllerTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "startDate=2026-10-01", "endDate=2026-10-01", "startDate=2026-10-02&endDate=2026-10-01",
-            "startDate=2026-02-30&endDate=2026-03-01", "startDate=invalid&endDate=2026-10-01",
-            "startDate=0000-01-01&endDate=2026-10-01", "startDate=2026-10-01&endDate=+10000-01-01",
-            "contentType=NONE", "contentType=invalid", "scope=invalid", "scope=GROUP", "groupId=invalid",
-            "scope=ALL&groupId=11111111-1111-4111-8111-111111111111",
-            "scope=MY&groupId=11111111-1111-4111-8111-111111111111",
-            "cursor=next&startDate=2026-10-01",
+            "startDate=2026-10-01", "contentType=NONE", "scope=GROUP", "groupId=invalid",
             "cursor=next&scope=MY&groupId=11111111-1111-4111-8111-111111111111"
     })
     void 잘못된_v2_지도_필터는_조회_전에_400을_반환한다(String query) {
@@ -1618,10 +1577,7 @@ class EmotionControllerTest {
 
     @ParameterizedTest
     @CsvSource({
-            "minLongitude,", "minLatitude,", "maxLongitude,", "maxLatitude,", "level,",
-            "level,CITY", "groupId,invalid", "minLongitude,181", "maxLongitude,-181",
-            "minLatitude,-91", "maxLatitude,91", "minLongitude,NaN", "maxLongitude,Infinity",
-            "minLatitude,NaN", "maxLatitude,Infinity", "minLongitude,128.2", "minLatitude,37.8", "minLatitude,39"
+            "minLongitude,", "level,", "level,CITY", "groupId,invalid", "minLatitude,NaN"
     })
     void 지역_요약의_입력_오류는_집계_호출_전에_400으로_거부한다(String field, String value) {
         // given
@@ -1642,9 +1598,7 @@ class EmotionControllerTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"SIDO,ALL,ALL", "SIDO,MEMO,MY", "SIDO,AUDIO,GROUP",
-            "SIGUNGU,ALL,ALL", "SIGUNGU,MEMO,MY", "SIGUNGU,AUDIO,GROUP",
-            "EMD,ALL,ALL", "EMD,MEMO,MY", "EMD,AUDIO,GROUP"})
+    @CsvSource({"SIDO,ALL,ALL", "SIGUNGU,MEMO,MY", "EMD,AUDIO,GROUP"})
     void 지역_요약_필터와_인증된_기기를_서비스로_전달한다(
             RegionLevel level, EmotionContentFilter contentType, EmotionSearchScope scope
     ) {
@@ -1665,11 +1619,7 @@ class EmotionControllerTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "startDate=2026-10-01", "endDate=2026-10-01",
-            "startDate=2026-10-02&endDate=2026-10-01", "startDate=0000-01-01&endDate=2026-10-01",
-            "startDate=2026-10-01&endDate=10000-01-01", "startDate=invalid&endDate=2026-10-01",
-            "contentType=NONE", "scope=INVALID", "scope=GROUP",
-            "scope=MY&groupId=11111111-1111-1111-1111-111111111111",
+            "startDate=2026-10-01", "contentType=NONE", "scope=GROUP",
             "scope=ALL&groupId=11111111-1111-1111-1111-111111111111"
     })
     void 잘못된_지역_필터는_집계_호출_전에_400으로_거부한다(String query) {

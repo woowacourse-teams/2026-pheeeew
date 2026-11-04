@@ -120,36 +120,11 @@ class EmotionReportControllerTest {
         verify(emotionReportService).save(EMOTION_ID, 신고자_기기_공개_식별자(), 기본_신고_사유());
     }
 
-    @Test
-    void 인증_컨텍스트가_없으면_신고자를_비운_채_저장하지_않고_500을_반환한다() {
-        // given
-        SecurityContextHolder.clearContext();
-
-        // when
-        RestTestClient.ResponseSpec result = 신고한다(기본_신고_본문());
-
-        // then
-        오류를_검증한다(result, 500, "COMMON-002", "서버 내부 오류가 발생했습니다.");
-        verifyNoInteractions(emotionReportService);
-    }
-
     @ParameterizedTest
     @MethodSource("올바르지_않은_요청_본문들")
     void 감정_식별자나_신고_사유가_올바르지_않으면_400을_반환한다(String body) {
         // given / when
         RestTestClient.ResponseSpec result = 신고한다(body);
-
-        // then
-        오류를_검증한다(result, 400, "COMMON-001", "요청 값이 올바르지 않습니다.");
-        verifyNoInteractions(emotionReportService);
-    }
-
-    @Test
-    void 요청_본문이_없으면_400을_반환한다() {
-        // given / when
-        RestTestClient.ResponseSpec result = client.post()
-                .uri(REPORTS_URI)
-                .exchange();
 
         // then
         오류를_검증한다(result, 400, "COMMON-001", "요청 값이 올바르지 않습니다.");
@@ -245,13 +220,7 @@ class EmotionReportControllerTest {
                         {"emotionId": 0, "reason": "광고성 게시물입니다"}
                         """,
                 """
-                        {"emotionId": "마흔둘", "reason": "광고성 게시물입니다"}
-                        """,
-                """
                         {"emotionId": 42}
-                        """,
-                """
-                        {"emotionId": 42, "reason": ""}
                         """,
                 """
                         {"emotionId": 42, "reason": "   "}

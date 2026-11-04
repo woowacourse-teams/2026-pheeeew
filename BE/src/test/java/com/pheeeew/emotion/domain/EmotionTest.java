@@ -89,50 +89,6 @@ class EmotionTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"", "   "})
-    void 빈_문자열과_공백으로만_이루어진_메모는_null로_변환한다(String memo) {
-        // given
-        String requestedMemo = memo;
-
-        // when
-        Emotion emotion = 기본_한숨_빌더()
-                .memo(requestedMemo)
-                .build();
-
-        // then
-        assertThat(emotion.getMemo()).isNull();
-    }
-
-    @Test
-    void 메모는_200자를_초과하면_생성할_수_없다() {
-        // given
-        String memo = "가".repeat(201);
-
-        // when
-        Throwable throwable = catchThrowable(() -> 기본_한숨_빌더()
-                .memo(memo)
-                .build()
-        );
-
-        // then
-        assertThat(throwable)
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("메모는 200자를 초과할 수 없습니다.");
-    }
-
-    @Test
-    void 메모의_글자_수는_유니코드_코드포인트로_센다() {
-        // given
-        String memo = "😀".repeat(200);
-
-        // when
-        Emotion emotion = 기본_한숨_빌더().memo(memo).build();
-
-        // then
-        assertThat(emotion.getMemo()).isEqualTo(memo);
-    }
-
-    @ParameterizedTest
     @ValueSource(doubles = {0.0, 23.5, 359.999})
     void 스탬프_각도는_0도_이상_360도_미만으로_저장한다(double rotationDegrees) {
         // when

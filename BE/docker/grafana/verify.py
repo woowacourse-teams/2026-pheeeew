@@ -15,6 +15,153 @@ FAMILIES = {
 }
 
 
+def labels(values):
+    return "{" + ",".join(f'{key}="{value}"' for key, value in sorted(values.items())) + "}"
+
+
+def map_request_fixture(environment, scenario):
+    rows = []
+
+    def add(query, decision, step, outcome="success", instance="a", source="one",
+            env=environment, version="v4", job="pheeeew-api"):
+        tags = dict(job=job, environment=env, api_version=version, instance=instance,
+                    source=source, route="pins", query=query, page="first", decision=decision, outcome=outcome)
+        rows.append((tags, 0 if scenario == "idle" else step))
+
+    if scenario != "absent":
+        add("month_current_default", "bypass_period", 2)
+        add("all_default", "cache_hit", 6)
+        # 검증된 query가 분모다. 이후 처리의 실패도 HTTP 성공만으로 제한하지 않는다.
+        add("month_current_default", "cache_fallback", 2, "server_error")
+        add("other", "bypass_filter", 2, "client_error")
+        add("unclassified", "unclassified", 10, "client_error")
+        if scenario == "weighted":
+            add("month_current_default", "bypass_period", 6, source="cloud-extra")
+            add("all_default", "cache_hit", 3, instance="b")
+        if scenario == "no_month":
+            rows = [row for row in rows if row[0]["query"] == "all_default"]
+        if scenario == "unclassified_only":
+            rows = [row for row in rows if row[0]["query"] == "unclassified"]
+        add("month_current_default", "bypass_period", 100, env="prod" if environment == "dev" else "dev")
+        add("month_current_default", "bypass_period", 100, version="v2")
+        add("month_current_default", "bypass_period", 100, job="other")
+    series = [{"series": "pheeeew_map_read_requests_total" + labels(tags),
+               "values": f"0+{step}x10"} for tags, step in rows]
+    return rows, series
+
+
+def map_request_tests(panels, environment):
+    tests = []
+    count_target, = panels[161]["targets"]
+    for scenario in ("absent", "idle", "observed", "weighted", "no_month", "unclassified_only"):
+        rows, series = map_request_fixture(environment, scenario)
+        selected = [(tags, step) for tags, step in rows
+                    if tags["job"] == "pheeeew-api" and tags["environment"] == environment
+                    and tags["api_version"] == "v4"]
+        expected_counts = {}
+        for tags, step in selected:
+            dimensions = {key: tags[key] for key in ("instance", "route", "query", "page", "decision", "outcome")}
+            key = labels(dimensions)
+            expected_counts[key] = expected_counts.get(key, 0) + step * 5
+        expressions = [{"expr": count_target["expr"].replace("$__range", "5m"), "eval_time": "10m",
+                        "exp_samples": [{"labels": key, "value": value} for key, value in expected_counts.items()]}]
+        for target in panels[162]["targets"]:
+            expected = []
+            for instance in sorted({tags["instance"] for tags, _ in selected}):
+                valid = [(tags, step) for tags, step in selected
+                         if tags["instance"] == instance and tags["query"] != "unclassified"]
+                month = [(tags, step) for tags, step in valid if tags["query"] == "month_current_default"]
+                denominator = sum(step for _, step in (month if target["refId"] == "C" else valid))
+                numerator = sum(step for tags, step in (month if target["refId"] != "B" else valid)
+                                if target["refId"] == "A" or tags["decision"].startswith("bypass_"))
+                if denominator > 0:
+                    expected.append({"labels": labels(dict(instance=instance, route="pins")),
+                                     "value": numerator / denominator * 100})
+            expressions.append({"expr": target["expr"].replace("$__range", "5m"), "eval_time": "10m",
+                                "exp_samples": expected})
+        tests.append({"name": f"{environment}/v4-map-requests/{scenario}", "interval": "1m",
+                      "input_series": series, "promql_expr_test": expressions})
+    return tests
+
+
+def map_latency_tests(panels, environment):
+    tests = []
+    for panel_id in (163, 164, 165):
+        panel = panels[panel_id]
+        assert panel["fieldConfig"]["defaults"]["noValue"] == "데이터 없음"
+        assert panel["fieldConfig"]["defaults"]["custom"]["spanNulls"] is False
+        assert panel["options"]["legend"]["calcs"] == ["last"]
+        for target in panel["targets"]:
+            for scenario in ("absent", "idle", "weighted", "errors_only", "single_sample"):
+                series, expected = [], []
+                if panel_id in (163, 164):
+                    prefix = "pheeeew_map_read_stage_seconds"
+                    dimensions = {"api_version": "v4", "stage": "map_pins_db_path", "outcome": "success"}
+                    output = {"instance": "a", "stage": "map_pins_db_path"}
+                elif target["refId"] == "A":
+                    prefix = "http_server_requests_seconds"
+                    dimensions = {"method": "GET", "uri": "/api/v4/emotions/map", "status": "200"}
+                    output = {"instance": "a", "uri": "/api/v4/emotions/map"}
+                else:
+                    prefix = "pheeeew_map_response_write_seconds"
+                    dimensions = {"api_version": "v4", "route": "pins", "outcome": "success"}
+                    output = {"instance": "a", "route": "pins"}
+
+                def add(count, total, lower, source, env=environment, job="pheeeew-api", **overrides):
+                    tags = dict(job=job, environment=env, instance="a", source=source, **dimensions)
+                    tags.update(overrides)
+                    for suffix, step, extra in (("count", count, {}), ("sum", total, {}),
+                                                ("bucket", lower, {"le": "0.01"}),
+                                                ("bucket", count, {"le": "1.0"}),
+                                                ("bucket", count, {"le": "+Inf"})):
+                        values = "_x9 1" if scenario == "single_sample" else f"0+{step}x10"
+                        series.append({"series": f"{prefix}_{suffix}" + labels(tags | extra), "values": values})
+
+                if scenario != "absent":
+                    if scenario == "idle":
+                        add(0, 0, 0, "one")
+                    elif scenario == "errors_only":
+                        add(10, 100, 0, "one", **({"status": "500"} if prefix == "http_server_requests_seconds"
+                                                   else {"outcome": "error"}))
+                    else:
+                        add(1, 1, 1, "one")
+                        add(3, 9, 0, "two")
+                    add(100, 1000, 0, "other-env", env="prod" if environment == "dev" else "dev")
+                    add(100, 1000, 0, "other-job", job="other")
+                    add(100, 1000, 0, "v2", **({"uri": "/api/v2/emotions/map"}
+                                               if prefix == "http_server_requests_seconds" else {"api_version": "v2"}))
+                    if scenario == "weighted":
+                        expected = [{"labels": labels(output),
+                                     "value": 0.01 + (4 * 0.95 - 1) / 3 * 0.99 if panel_id == 164 else 2.5}]
+                tests.append({"name": f"{environment}/v4-map-latency/{panel_id}/{target['refId']}/{scenario}",
+                              "interval": "1m", "input_series": series, "promql_expr_test": [{
+                                  "expr": target["expr"].replace("$__rate_interval", "5m"),
+                                  "eval_time": "10m", "exp_samples": expected}]})
+    return tests
+
+
+def map_diagnostic_tests(panel, environment):
+    target, = panel["targets"]
+    tests = []
+    for scenario in ("absent", "idle", "observed"):
+        series, expected = [], []
+        if scenario != "absent":
+            for result, step in (("sampled", 2), ("suppressed", 3)):
+                step = 0 if scenario == "idle" else step
+                tags = dict(job="pheeeew-api", environment=environment, instance="a", result=result)
+                series.append({"series": "pheeeew_map_diagnostic_logs_total" + labels(tags),
+                               "values": f"0+{step}x10"})
+                expected.append({"labels": labels(dict(instance="a", result=result)), "value": step * 5})
+            for extra in (dict(environment="prod" if environment == "dev" else "dev"), dict(job="other")):
+                series.append({"series": "pheeeew_map_diagnostic_logs_total" + labels(tags | extra),
+                               "values": "0+100x10"})
+        tests.append({"name": f"{environment}/v4-map-diagnostic/{scenario}", "interval": "1m",
+                      "input_series": series, "promql_expr_test": [{
+                          "expr": target["expr"].replace("$__range", "5m"), "eval_time": "10m",
+                          "exp_samples": expected}]})
+    return tests
+
+
 def fixture(prefix, dimensions, environment, outcome, instance, count, total, lower_bucket):
     labels = {"job": "pheeeew-api", "environment": environment, "instance": instance, **dimensions}
     labels["state" if "repository" in dimensions else "outcome"] = outcome
@@ -176,6 +323,19 @@ def verify():
         assert "pheeeew_activity_" not in json.dumps(dashboard, ensure_ascii=False)
         assert not ({18, 19, 123} & panels.keys())
         assert "pheeeew_app_version_checks" not in json.dumps(dashboard, ensure_ascii=False)
+        assert panels[161]["type"] == "table"
+        assert all(target["instant"] and not target["range"] for target in panels[162]["targets"])
+        assert panels[162]["fieldConfig"]["defaults"]["unit"] == "percent"
+        if environment == "dev":
+            assert panels[167]["type"] == "logs"
+            assert panels[167]["targets"][0]["expr"] == (
+                '{job="pheeeew-api",environment="dev",event="map_read_sample"}'
+                ' | json | apiVersion = "v4" | verification != "true"')
+        else:
+            assert 167 not in panels
+        tests.extend(map_request_tests(panels, environment))
+        tests.extend(map_latency_tests(panels, environment))
+        tests.extend(map_diagnostic_tests(panels[166], environment))
         tests.extend(connection_time_tests(panels[141], environment))
         tests.extend(connection_timeout_tests(panels[142], environment))
         tests.extend(sample_count_tests(panels[130], environment))

@@ -3,7 +3,7 @@ name: pheeeew-dev
 x-app: &app
   image: ${APP_IMAGE:?}
   restart: unless-stopped
-  environment:
+  environment: &app-environment
     SPRING_PROFILES_ACTIVE: dev
     TZ: Asia/Seoul
     DB_URL: ${DB_URL:?}
@@ -38,6 +38,9 @@ x-app: &app
 services:
   app-blue:
     <<: *app
+    environment:
+      <<: *app-environment
+      PHEEEEW_PRESS_RACE_SERVER_GENERATION: ${PRESS_BLUE_GENERATION:-}
     container_name: pheeeew-dev-app-blue
     profiles: ["blue"]
     volumes:
@@ -45,6 +48,9 @@ services:
 
   app-green:
     <<: *app
+    environment:
+      <<: *app-environment
+      PHEEEEW_PRESS_RACE_SERVER_GENERATION: ${PRESS_GREEN_GENERATION:-}
     container_name: pheeeew-dev-app-green
     profiles: ["green"]
     volumes:

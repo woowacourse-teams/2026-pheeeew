@@ -7,24 +7,32 @@ on:
       - 'BE/docker/nginx/**'
       - 'BE/docker/compose.nginx.dev.yml'
       - 'BE/docker/compose.dev.yml'
-      - 'BE/docker/compose.nginx.yml'
-      - 'BE/docker/compose.prod.yml'
-      - 'BE/docker/compose.monitoring.yml'
-      - 'BE/docker/compose.monitoring.dev.yml'
-      - 'BE/docker/alloy/config.alloy'
-      - 'BE/docker/alloy/config.dev.alloy'
-      - 'BE/docker/alloy/verify.py'
-      - '.github/workflows/be-deploy.yml'
       - 'BE/docker/test-deploy-switch.py'
+      - 'BE/docker/press-generation.py'
+      - 'BE/docker/test-press-generation.py'
+      - 'BE/docker/press-operations.py'
+      - 'BE/docker/test-prod-route.py'
+      - 'BE/docker/test-prod-workflow.py'
+      - 'BE/docker/test-prod-monitoring.py'
+      - 'BE/docker/compose.monitoring.yml'
+      - 'BE/docker/compose.monitoring.prod-bluegreen.yml'
+      - 'BE/docker/alloy/*.alloy'
+      - 'BE/docker/alloy/verify.py'
+      - 'BE/docker/compose.prod-bluegreen.yml'
+      - 'BE/docker/compose.nginx.prod-bluegreen.yml'
+      - 'BE/docker/nginx/api-prod-bluegreen.conf'
+      - 'BE/docker/Dockerfile'
       - '.github/workflows/be-dev-deploy.yml'
+      - '.github/workflows/be-deploy.yml'
       - '.github/workflows/be-nginx-ci.yml'
 
 permissions:
   contents: read
 
 jobs:
-  monitoring:
-    name: 개발·운영 Alloy 설정 검사
+  nginx-prod-ws:
+    name: 운영 Nginx ALB·WebSocket 검사
+    if: github.base_ref == 'main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -32,8 +40,11 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: 두 색 지표·로그 라벨과 필터 검증
-        run: python3 BE/docker/alloy/verify.py
+      - name: 운영 ALB 상태 검사와 WebSocket 전달 검증
+        working-directory: BE
+        run: |
+          python3 docker/nginx/test-prod-ws.py
+          python3 docker/nginx/test-prod-ws.py --bluegreen
 
   nginx-health:
     name: 개발 Nginx ALB 상태 검사
@@ -49,21 +60,20 @@ jobs:
         run: python3 docker/nginx/test-alb-health.py
 
   deploy-switch:
-    name: 배포 전환과 복구 검사
+    name: 개발 배포 전환과 복구 검사
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        target: [dev, prod]
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
 
       - name: 전환과 롤백 분기 검증
-        env:
-          DEPLOY_TARGET: ${{ matrix.target }}
         run: |
           pip install --quiet pyyaml
-          python3 BE/docker/test-deploy-switch.py
+          python3 BE/docker/test-press-generation.py
+          python3 BE/docker/test-prod-route.py
+          python3 BE/docker/test-prod-workflow.py
+          python3 BE/docker/test-prod-monitoring.py
+          python3 BE/docker/alloy/verify.py
+          python3 BE/docker/test-deploy-switch.py --ci

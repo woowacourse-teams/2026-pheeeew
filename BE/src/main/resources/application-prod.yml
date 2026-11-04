@@ -3,8 +3,6 @@ spring:
     url: ${DB_URL}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
-  lifecycle:
-    timeout-per-shutdown-phase: 20s
 
 server:
   forward-headers-strategy: native

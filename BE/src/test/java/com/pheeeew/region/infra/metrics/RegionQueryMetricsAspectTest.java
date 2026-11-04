@@ -86,8 +86,8 @@ class RegionQueryMetricsAspectTest {
         assertThat(recorded.totalTime(TimeUnit.SECONDS)).isEqualTo(231);
         assertThat(recorded.getId().getTags()).containsExactlyInAnyOrder(
                 Tag.of("operation", operation), Tag.of("outcome", outcome));
-        assertThat(registry.getMeters()).hasSize(8).allSatisfy(meter ->
-                assertThat(((Timer) meter).count()).isEqualTo(meter == recorded ? 1 : 0));
+        assertThat(registry.find("pheeeew.region.query").timers()).allSatisfy(timer ->
+                assertThat(timer.count()).isEqualTo(timer == recorded ? 1 : 0));
         assertThat(bucketCount(operation, outcome, "120.0")).isZero();
         assertThat(bucketCount(operation, outcome, "300.0")).isEqualTo(1);
     }

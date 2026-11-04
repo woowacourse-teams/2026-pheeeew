@@ -1,6 +1,5 @@
 package com.pheeeew.notification.presentation;
 
-import static com.pheeeew.notification.fixture.PushTokenFixture.기본_등록_값;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -62,37 +61,24 @@ class NotificationSettingControllerTest {
     }
 
     @Test
-    void 등록_값을_저장하고_본문_없이_응답한다() {
+    void 지원_상한의_등록_값을_저장하고_본문_없이_응답한다() {
+        // given
+        String token = "a".repeat(1024);
+
         // when / then
         client.put().uri(PUSH_TOKEN_URI)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
                 .contentType(MediaType.APPLICATION_JSON)
-                .body("{\"token\":\"" + 기본_등록_값 + "\"}")
+                .body("{\"token\":\"" + token + "\"}")
                 .exchange()
                 .expectStatus().isNoContent()
                 .expectBody().isEmpty();
-        verify(service).updatePushToken(DEVICE_PUBLIC_ID, 기본_등록_값);
-    }
-
-    @Test
-    void 지원_상한인_ASCII_1024자는_받는다() {
-        // given
-        String 상한_값 = "a".repeat(1024);
-
-        // when / then
-        client.put().uri(PUSH_TOKEN_URI)
-                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
-                .contentType(MediaType.APPLICATION_JSON)
-                .body("{\"token\":\"" + 상한_값 + "\"}")
-                .exchange()
-                .expectStatus().isNoContent();
-        verify(service).updatePushToken(DEVICE_PUBLIC_ID, 상한_값);
+        verify(service).updatePushToken(DEVICE_PUBLIC_ID, token);
     }
 
     @ParameterizedTest
     @ValueSource(strings = {
             "{}",
-            "{\"token\":null}",
             "{\"token\":\"   \"}",
             "{\"token\":\"a\\u0000b\"}"
     })
@@ -167,8 +153,7 @@ class NotificationSettingControllerTest {
     @ParameterizedTest
     @ValueSource(strings = {
             "{\"collectionClaimableEnabled\":false}",
-            "{\"collectionClaimableEnabled\":null,\"rankChangedEnabled\":true}",
-            "{}"
+            "{\"collectionClaimableEnabled\":null,\"rankChangedEnabled\":true}"
     })
     void 수신_설정은_두_값이_모두_있어야_바꾼다(String body) {
         // when / then

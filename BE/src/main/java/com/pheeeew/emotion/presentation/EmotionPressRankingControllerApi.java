@@ -114,6 +114,10 @@ public interface EmotionPressRankingControllerApi {
                     - 동점은 **공동 순위**입니다. 1, 2, 2, 4 로 매깁니다.
                     - 그날 아무도 누르지 않았으면 빈 배열입니다.
 
+                    `items`와 `me`의 `representativeState`는 그날 가장 많이 누른 감정입니다.
+                    공동 최다는 `ANGRY → DISCOURAGED → EXHAUSTED → FRUSTRATED → IRRITATED` 순으로 선택합니다.
+                    전체 프레스 합계와 순위에는 영향을 주지 않습니다.
+
                     `me` 는 **요청한 기기의 순위**입니다.
 
                     - **상위 100명 안에 있어도 `me` 를 함께 내려줍니다.** `items` 에서 자신을 찾을 필요가 없습니다.

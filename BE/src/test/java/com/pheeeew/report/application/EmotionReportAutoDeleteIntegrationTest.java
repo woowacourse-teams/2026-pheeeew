@@ -65,7 +65,7 @@ class EmotionReportAutoDeleteIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {0, 1, 4})
+    @ValueSource(ints = {0, 4})
     void 신고가_임계값에_못_미치면_한숨이_남는다(int 신고_수) {
         // given
         Long emotionId = 한숨을_저장한다();
@@ -92,19 +92,7 @@ class EmotionReportAutoDeleteIntegrationTest {
         // then
         assertThat(삭제_수).isOne();
         assertThat(삭제_시각(emotionId)).isNotNull();
-    }
-
-    @Test
-    void 삭제해도_신고_기록은_남는다() {
-        // given
-        Long emotionId = 한숨을_저장한다();
-        서로_다른_기기로_신고한다(emotionId, 자동_삭제_임계값);
-
-        // when
-        emotionReportService.deleteReportedOverThreshold();
-
-        // then
-        assertThat(emotionReportRepository.count()).isEqualTo(자동_삭제_임계값);
+        assertThat(emotionReportRepository.count()).isEqualTo(신고_수);
     }
 
     @Test

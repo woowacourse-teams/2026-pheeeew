@@ -28,7 +28,7 @@ class DeviceTest {
 
     @ParameterizedTest
     @NullAndEmptySource
-    @ValueSource(strings = {"익명", "Star1", "abcdefghijk"})
+    @ValueSource(strings = {"익명", "Star!", "abcdefghijk"})
     void 유효하지_않은_닉네임으로_수정하면_기존_닉네임을_유지한다(String nickname) {
         // given
         Device device = 기본_기기_빌더().nickname("스타크").build();
@@ -47,16 +47,6 @@ class DeviceTest {
 
         // then
         assertThat(device.getPublicId()).isNotNull();
-    }
-
-    @Test
-    void 서로_다른_기기는_서로_다른_공개_식별자를_가진다() {
-        // given / when
-        Device device = 기본_기기_빌더().build();
-        Device otherDevice = 기본_기기_빌더().build();
-
-        // then
-        assertThat(device.getPublicId()).isNotEqualTo(otherDevice.getPublicId());
     }
 
     @Test

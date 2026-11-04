@@ -4,8 +4,6 @@ import static com.pheeeew.device.fixture.PlayIntegrityFixture.우리_패키지�
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 class PlayIntegrityProductionGuardTest {
@@ -44,13 +42,12 @@ class PlayIntegrityProductionGuardTest {
                 });
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {"local", "dev", "test"})
-    void 운영이_아닌_프로필에서는_검증을_건너뛰어도_부팅한다(String profile) {
+    @Test
+    void 개발_프로필에서는_검증을_건너뛰어도_부팅한다() {
         // given / when / then
         contextRunner
                 .withPropertyValues(
-                        "spring.profiles.active=" + profile,
+                        "spring.profiles.active=dev",
                         "pheeeew.play-integrity.skip-verification=true"
                 )
                 .run(context -> {

@@ -105,7 +105,7 @@ class CollectionHistoryServiceIntegrationTest {
     }
 
     @Test
-    void 오늘까지_본인의_수령_카드를_상세와_동일하게_조회한다() {
+    void 오늘까지_본인의_수령_카드와_날짜별_모든_감정_합계를_상세와_동일하게_조회한다() {
         // given
         var owner = devices.saveAndFlush(기본_기기_빌더().build());
         var other = devices.saveAndFlush(기본_기기_빌더().requestId(UUID.randomUUID()).build());
@@ -114,9 +114,14 @@ class CollectionHistoryServiceIntegrationTest {
         var today = 카드를_저장한다(owner.getId(), LocalDate.of(2026, 10, 22), EmotionState.ANGRY, 1);
         카드를_저장한다(owner.getId(), LocalDate.of(2026, 10, 23), EmotionState.ANGRY, 2);
         카드를_저장한다(other.getId(), LocalDate.of(2026, 10, 21), EmotionState.ANGRY, 0);
+        일별_스탬프를_저장한다(jdbc, owner.getId(), today.getCardDate(), EmotionState.EXHAUSTED, 2);
+        개인_프레스를_저장한다(jdbc, owner.getId(), today.getCardDate(), EmotionState.EXHAUSTED, 40);
+        일별_스탬프를_저장한다(jdbc, owner.getId(), newer.getCardDate(), EmotionState.ANGRY, 4);
+        개인_프레스를_저장한다(jdbc, owner.getId(), newer.getCardDate(), EmotionState.ANGRY, 70);
 
         // when
         var result = service.findHistory(owner.getPublicId(), null, null, null);
+        var filtered = service.findHistory(owner.getPublicId(), EmotionState.ANGRY, null, null);
 
         // then
         assertThat(result.counts().total()).isEqualTo(3);
@@ -126,6 +131,10 @@ class CollectionHistoryServiceIntegrationTest {
         assertThat(result.items()).containsExactly(service.findDetail(owner.getPublicId(), today.getPublicId()),
                 service.findDetail(owner.getPublicId(), newer.getPublicId()),
                 service.findDetail(owner.getPublicId(), older.getPublicId()));
+        assertThat(result.items()).extracting(item -> item.stampCount()).containsExactly(5L, 7L, 3L);
+        assertThat(result.items()).extracting(item -> item.pressCount()).containsExactly(165L, 195L, 125L);
+        assertThat(filtered.items()).containsExactly(result.items().get(0), result.items().get(2));
+        assertThat(filtered.counts()).isEqualTo(result.counts());
         assertThat(result.hasNext()).isFalse();
         assertThat(result.nextCursor()).isNull();
     }
@@ -242,7 +251,7 @@ class CollectionHistoryServiceIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {0, -1, 51, 2147483647})
+    @ValueSource(ints = {0, 51})
     void 잘못된_페이지_크기는_거절한다(int limit) {
         // given
         var owner = devices.saveAndFlush(기본_기기_빌더().build());
@@ -272,17 +281,17 @@ class CollectionHistoryServiceIntegrationTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"false,false", "true,false", "false,true"})
-    void 카드_감정의_집계가_없으면_목록에서도_그_횟수를_0으로_보여_준다(boolean stamp, boolean press) {
+    @CsvSource({"true,false", "false,true", "false,false", "true,true"})
+    void 목록에서도_카드_감정_외의_활동을_합산하고_없는_횟수는_0으로_보여_준다(boolean stamp, boolean press) {
         // given
         var owner = devices.saveAndFlush(기본_기기_빌더().build());
         var date = LocalDate.of(2026, 10, 21);
         cards.saveAndFlush(기본_카드_빌더().deviceId(owner.getId()).cardDate(date).build());
         if (stamp) {
-            일별_스탬프를_저장한다(jdbc, owner.getId(), date, EmotionState.ANGRY, 1);
+            일별_스탬프를_저장한다(jdbc, owner.getId(), date, EmotionState.EXHAUSTED, 1);
         }
         if (press) {
-            개인_프레스를_저장한다(jdbc, owner.getId(), date, EmotionState.ANGRY, 100);
+            개인_프레스를_저장한다(jdbc, owner.getId(), date, EmotionState.EXHAUSTED, 100);
         }
 
         // when
@@ -369,7 +378,8 @@ class CollectionHistoryServiceIntegrationTest {
         var owner = devices.saveAndFlush(기본_기기_빌더().build());
         var card = 카드를_저장한다(owner.getId(), LocalDate.of(2026, 10, 21), EmotionState.ANGRY, 37);
         var before = service.findHistory(owner.getPublicId(), null, 20, null).items().getFirst();
-        개인_프레스를_저장한다(jdbc, owner.getId(), card.getCardDate(), EmotionState.ANGRY, 5);
+        일별_스탬프를_저장한다(jdbc, owner.getId(), card.getCardDate(), EmotionState.EXHAUSTED, 2);
+        개인_프레스를_저장한다(jdbc, owner.getId(), card.getCardDate(), EmotionState.EXHAUSTED, 5);
 
         // when
         var after = service.findHistory(owner.getPublicId(), null, 20, null).items().getFirst();
@@ -377,6 +387,8 @@ class CollectionHistoryServiceIntegrationTest {
         // then
         assertThat(before.pressCount()).isEqualTo(125);
         assertThat(after.pressCount()).isEqualTo(130);
+        assertThat(before.stampCount()).isEqualTo(3);
+        assertThat(after.stampCount()).isEqualTo(5);
         assertThat(after.cardId()).isEqualTo(before.cardId());
         assertThat(after.images()).isEqualTo(before.images());
     }

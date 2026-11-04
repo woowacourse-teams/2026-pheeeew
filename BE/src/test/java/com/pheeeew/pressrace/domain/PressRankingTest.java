@@ -20,6 +20,79 @@ import org.junit.jupiter.params.provider.ValueSource;
 class PressRankingTest {
 
     @Test
+    void 공동_일위에서_단독_일위가_되면_동점_상대들을_각각_추월한다() {
+        // given
+        var previous = 순위(List.of(참가자(0, 10), 참가자(1, 10), 참가자(2, 10)));
+        var latest = 순위(List.of(참가자(0, 11), 참가자(1, 10), 참가자(2, 10)));
+
+        // when
+        var overtakes = latest.overtakesSince(previous, OBSERVER_ID);
+
+        // then
+        assertThat(overtakes.passed()).isEqualTo(2);
+        assertThat(overtakes.passedBy()).isZero();
+    }
+
+    @ParameterizedTest
+    @CsvSource({"10, 20, 20, 20, 0, 0", "10, 20, 21, 20, 1, 0",
+            "20, 10, 20, 20, 0, 0", "20, 10, 20, 21, 0, 1"})
+    void 동점_도달은_제외하고_실제_초과만_양방향으로_센다(
+            long beforeMe, long beforeOther, long afterMe, long afterOther, int passed, int passedBy) {
+        // given
+        var previous = 순위(List.of(참가자(0, beforeMe), 참가자(1, beforeOther)));
+        var latest = 순위(List.of(참가자(0, afterMe), 참가자(1, afterOther)));
+
+        // when
+        var overtakes = latest.overtakesSince(previous, OBSERVER_ID);
+
+        // then
+        assertThat(overtakes).isEqualTo(PressRanking.Overtakes.of(passed, passedBy));
+    }
+
+    @Test
+    void 첫_참여는_기존_상대만_넘고_기존_참가자는_새_상대에게_추월당할_수_있다() {
+        // given
+        var previous = 순위(List.of(참가자(1, 5)));
+        var latest = 순위(List.of(참가자(0, 10), 참가자(1, 5), 참가자(2, 15)));
+
+        // when / then
+        assertThat(latest.overtakesSince(previous, OBSERVER_ID)).isEqualTo(PressRanking.Overtakes.of(1, 0));
+        assertThat(latest.overtakesSince(previous, 참가자(1, 5).deviceId()))
+                .isEqualTo(PressRanking.Overtakes.of(0, 2));
+        assertThat(latest.overtakesSince(previous, 참가자(2, 15).deviceId()))
+                .isEqualTo(PressRanking.Overtakes.of(1, 0));
+    }
+
+    @Test
+    void 미참여_관찰자와_다른_날짜는_추월_알림을_받지_않는다() {
+        // given
+        var previous = 순위(List.of(참가자(1, 5)));
+        var latest = 순위(List.of(참가자(1, 10), 참가자(2, 15)));
+        var tomorrow = PressRanking.of(DATE.plusDays(1), NOW.plusSeconds(86400),
+                List.of(참가자(1, 20), 참가자(2, 15)));
+
+        // when / then
+        assertThat(latest.overtakesSince(previous, OBSERVER_ID)).isEqualTo(PressRanking.Overtakes.of(0, 0));
+        assertThat(tomorrow.overtakesSince(latest, 참가자(1, 10).deviceId()))
+                .isEqualTo(PressRanking.Overtakes.of(0, 0));
+    }
+
+    @Test
+    void 같은_등수라도_서로_다른_상대의_양방향_추월을_상쇄하지_않는다() {
+        // given
+        var previous = 순위(List.of(참가자(0, 10), 참가자(1, 20), 참가자(2, 5)));
+        var latest = 순위(List.of(참가자(0, 25), 참가자(1, 20), 참가자(2, 30)));
+
+        // when
+        var overtakes = latest.overtakesSince(previous, OBSERVER_ID);
+
+        // then
+        assertThat(latest.forDevice(OBSERVER_ID, PressView.PRESS).me().rank())
+                .isEqualTo(previous.forDevice(OBSERVER_ID, PressView.PRESS).me().rank());
+        assertThat(overtakes).isEqualTo(PressRanking.Overtakes.of(1, 1));
+    }
+
+    @Test
     void 동점은_공개_UUID_unsigned_순서로_표시하고_등수는_점수만으로_계산한다() {
         // given
         var first = 참가자(1, UUID.fromString("00000000-0000-0000-0000-000000000001"), 10, NOW);

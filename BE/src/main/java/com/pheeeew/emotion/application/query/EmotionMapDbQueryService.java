@@ -41,6 +41,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @RequiredArgsConstructor
@@ -161,6 +162,19 @@ public class EmotionMapDbQueryService {
         return EmotionMapPageView.of(items, true, nextCursor);
     }
 
+    public EmotionMapPageView findMapV4(EmotionCursor cursor, UUID devicePublicId, int pageSize) {
+        Long deviceId = findValidatedDeviceId(devicePublicId, cursor.groupIds());
+        List<Emotion> found = findMapEmotions(cursor, deviceId, true, pageSize);
+
+        boolean hasNext = found.size() > pageSize;
+        List<Emotion> page = hasNext ? found.subList(0, pageSize) : found;
+        List<EmotionMapItemView> items = page.stream().map(EmotionMapItemView::from).toList();
+
+        String nextCursor = hasNext ? EmotionCursorCodec.encodeV4(cursor.next(
+                page.getLast().getCreatedAt(), page.getLast().getId())) : null;
+        return EmotionMapPageView.of(items, hasNext, nextCursor);
+    }
+
     public EmotionMapPageView findPinPage(
             PinCandidateCache.Page cached, int pageSize, Function<EmotionCursor, String> encoder
     ) {
@@ -186,6 +200,18 @@ public class EmotionMapDbQueryService {
         EmotionMapPin last = page.getLast();
         return EmotionMapPageView.of(items, true,
                 encoder.apply(cached.cursor().next(last.createdAt(), last.id())));
+    }
+
+    // v4 캐시 응답은 스칼라 값만 조립하므로 클래스의 읽기 트랜잭션을 시작하지 않는다.
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public EmotionMapPageView findPinPageV4(PinCandidateCache.Page cached, int pageSize) {
+        boolean hasNext = cached.pins().size() > pageSize;
+        List<EmotionMapPin> page = hasNext ? cached.pins().subList(0, pageSize) : cached.pins();
+        List<EmotionMapItemView> items = page.stream().map(EmotionMapItemView::from).toList();
+
+        String nextCursor = hasNext ? EmotionCursorCodec.encodeV4(cached.cursor().next(
+                page.getLast().createdAt(), page.getLast().id())) : null;
+        return EmotionMapPageView.of(items, hasNext, nextCursor);
     }
 
     private void validateGroups(List<UUID> groupIds) {

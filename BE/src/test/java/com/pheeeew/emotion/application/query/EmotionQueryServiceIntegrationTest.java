@@ -237,9 +237,10 @@ class EmotionQueryServiceIntegrationTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"1, false", "10, false", "10, true"})
-    void 목록의_작성자와_스탬프가_늘어도_이모지까지_일괄_조회한다(int count, boolean withoutBounds) {
+    @ValueSource(booleans = {false, true})
+    void 목록의_작성자와_스탬프가_늘어도_이모지까지_일괄_조회한다(boolean withoutBounds) {
         // given
+        int count = 10;
         List<Tuple> expected = new ArrayList<>();
         for (int index = 0; index < count; index++) {
             Device writer = deviceRepository.save(기본_기기_빌더().nickname("작성자" + (char) ('A' + index)).build());

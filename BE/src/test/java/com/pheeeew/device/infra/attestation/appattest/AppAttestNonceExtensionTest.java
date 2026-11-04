@@ -25,18 +25,7 @@ class AppAttestNonceExtensionTest {
         // then
         assertThat(result.nonce()).isEqualTo(애플이_게시한_nonce);
         assertThat(result.matches(애플이_게시한_nonce)).isTrue();
-    }
-
-    @Test
-    void 다른_nonce_와는_일치하지_않는다() {
-        // given
-        AppAttestNonceExtension 확장 = AppAttestNonceExtension.from(애플_표본_객체().credentialCertificate());
-
-        // when
-        boolean result = 확장.matches(new byte[애플이_게시한_nonce.length]);
-
-        // then
-        assertThat(result).isFalse();
+        assertThat(result.matches(new byte[애플이_게시한_nonce.length])).isFalse();
     }
 
     @Test

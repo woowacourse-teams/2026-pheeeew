@@ -6,9 +6,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Mockito.when;
 
+import com.pheeeew.common.application.RankingDay;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
-import com.pheeeew.common.application.RankingDay;
+import com.pheeeew.emotion.application.dto.EmotionDailyPressRankingItem;
 import com.pheeeew.emotion.application.dto.EmotionDailyPressRankingResult;
 import com.pheeeew.emotion.application.dto.EmotionPressRankingItem;
 import com.pheeeew.emotion.application.dto.EmotionPressRankingResult;
@@ -23,6 +24,8 @@ import java.time.ZoneId;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -351,9 +354,9 @@ class EmotionPressRankingServiceIntegrationTest {
         assertThat(결과.endAt()).isEqualTo(RankingDay.of(기준_날짜).endAt());
         assertThat(결과.items())
                 .extracting(
-                        EmotionPressRankingItem::rank,
-                        EmotionPressRankingItem::nickname,
-                        EmotionPressRankingItem::pressCount
+                        EmotionDailyPressRankingItem::rank,
+                        EmotionDailyPressRankingItem::nickname,
+                        EmotionDailyPressRankingItem::pressCount
                 )
                 .containsExactly(tuple(1, "한숨많은곰", 7L), tuple(2, "지친다람쥐", 3L));
     }
@@ -363,7 +366,7 @@ class EmotionPressRankingServiceIntegrationTest {
         // given
         Device 기기 = 기기를_저장한다("한숨많은곰");
         개인_프레스를_저장한다(jdbc, 기기.getId(), 기준_날짜.minusDays(1), EmotionState.ANGRY, 100);
-        개인_프레스를_저장한다(jdbc, 기기.getId(), 기준_날짜, EmotionState.ANGRY, 7);
+        개인_프레스를_저장한다(jdbc, 기기.getId(), 기준_날짜, EmotionState.IRRITATED, 7);
         개인_프레스를_저장한다(jdbc, 기기.getId(), 기준_날짜.plusDays(1), EmotionState.ANGRY, 100);
 
         // when
@@ -372,6 +375,7 @@ class EmotionPressRankingServiceIntegrationTest {
 
         // then
         assertThat(결과.me().pressCount()).isEqualTo(7);
+        assertThat(결과.me().representativeState()).isEqualTo(EmotionState.IRRITATED);
     }
 
     @Test
@@ -419,6 +423,90 @@ class EmotionPressRankingServiceIntegrationTest {
         // then
         assertThat(결과.date()).isEqualTo(주_시작_월요일);
         assertThat(결과.me().pressCount()).isEqualTo(4);
+    }
+
+    @Test
+    void 개인별_최다_감정을_합계와_함께_items와_me에_반환한다() {
+        // given
+        Device 내_기기 = 기기를_저장한다("가나다곰");
+        Device 다른_기기 = 기기를_저장한다("나다라곰");
+        개인_프레스를_저장한다(jdbc, 내_기기.getId(), 기준_날짜, EmotionState.IRRITATED, 70);
+        개인_프레스를_저장한다(jdbc, 내_기기.getId(), 기준_날짜, EmotionState.EXHAUSTED, 30);
+        개인_프레스를_저장한다(jdbc, 다른_기기.getId(), 기준_날짜, EmotionState.DISCOURAGED, 90);
+        개인_프레스를_저장한다(jdbc, 다른_기기.getId(), 기준_날짜, EmotionState.ANGRY, 10);
+
+        // when
+        EmotionDailyPressRankingResult 결과 =
+                emotionPressRankingService.findDailyPressRanking(내_기기.getPublicId(), 기준_날짜);
+
+        // then
+        assertThat(결과.items())
+                .extracting(EmotionDailyPressRankingItem::rank, EmotionDailyPressRankingItem::pressCount,
+                        EmotionDailyPressRankingItem::representativeState)
+                .containsExactly(tuple(1, 100L, EmotionState.IRRITATED), tuple(1, 100L, EmotionState.DISCOURAGED));
+        assertThat(결과.me()).isEqualTo(결과.items().getFirst());
+    }
+
+    @ParameterizedTest
+    @CsvSource({"ANGRY,DISCOURAGED", "DISCOURAGED,EXHAUSTED", "EXHAUSTED,FRUSTRATED", "FRUSTRATED,IRRITATED"})
+    void 공동_최다는_정해진_감정_우선순위를_따른다(EmotionState 우선_감정, EmotionState 다음_감정) {
+        // given
+        Device 기기 = 기기를_저장한다("공동최다곰");
+        개인_프레스를_저장한다(jdbc, 기기.getId(), 기준_날짜, 다음_감정, 10);
+        개인_프레스를_저장한다(jdbc, 기기.getId(), 기준_날짜, 우선_감정, 10);
+
+        // when
+        EmotionDailyPressRankingResult 결과 =
+                emotionPressRankingService.findDailyPressRanking(기기.getPublicId(), 기준_날짜);
+
+        // then
+        assertThat(결과.me().pressCount()).isEqualTo(20);
+        assertThat(결과.me().representativeState()).isEqualTo(우선_감정);
+    }
+
+    @Test
+    void 일일_백위_밖_me에도_대표_감정을_반환한다() {
+        // given
+        for (int 등수 = 1; 등수 <= 상위_인원; 등수++) {
+            Device 기기 = 기기를_저장한다(null);
+            개인_프레스를_저장한다(jdbc, 기기.getId(), 기준_날짜, EmotionState.ANGRY, 1000 - 등수);
+        }
+        Device 내_기기 = 기기를_저장한다("꼴찌곰");
+        개인_프레스를_저장한다(jdbc, 내_기기.getId(), 기준_날짜, EmotionState.EXHAUSTED, 1);
+
+        // when
+        EmotionDailyPressRankingResult 결과 =
+                emotionPressRankingService.findDailyPressRanking(내_기기.getPublicId(), 기준_날짜);
+
+        // then
+        assertThat(결과.items()).hasSize(상위_인원);
+        assertThat(결과.items().getLast().rank()).isEqualTo(100);
+        assertThat(결과.items()).allSatisfy(item -> {
+            assertThat(item.nickname()).isEqualTo("익명");
+            assertThat(item.representativeState()).isEqualTo(EmotionState.ANGRY);
+            assertThat(item.mine()).isFalse();
+        });
+        assertThat(결과.me().rank()).isEqualTo(101);
+        assertThat(결과.me().pressCount()).isEqualTo(1);
+        assertThat(결과.me().representativeState()).isEqualTo(EmotionState.EXHAUSTED);
+    }
+
+    @Test
+    void 다른_사람의_일일_기록이_있어도_누르지_않은_나는_null이다() {
+        // given
+        Device 내_기기 = 기기를_저장한다("조용한곰");
+        Device 다른_기기 = 기기를_저장한다("누른곰");
+        개인_프레스를_저장한다(jdbc, 다른_기기.getId(), 기준_날짜, EmotionState.FRUSTRATED, 5);
+        개인_프레스를_저장한다(jdbc, 내_기기.getId(), 기준_날짜.minusDays(1), EmotionState.ANGRY, 100);
+
+        // when
+        EmotionDailyPressRankingResult 결과 =
+                emotionPressRankingService.findDailyPressRanking(내_기기.getPublicId(), 기준_날짜);
+
+        // then
+        assertThat(결과.items()).hasSize(1);
+        assertThat(결과.items().getFirst().representativeState()).isEqualTo(EmotionState.FRUSTRATED);
+        assertThat(결과.me()).isNull();
     }
 
     private Device 기기를_저장한다(String 닉네임) {
