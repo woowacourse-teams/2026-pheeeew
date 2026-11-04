@@ -180,7 +180,7 @@ jobs:
           cat > ~/.ssh/config <<CFG
           Host target
             HostName $SSH_HOST
-            User ubuntu
+            User ec2-user
             IdentityFile ~/.ssh/id_deploy
             StrictHostKeyChecking yes
             UserKnownHostsFile ~/.ssh/known_hosts
