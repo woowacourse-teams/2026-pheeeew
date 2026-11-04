@@ -3,7 +3,12 @@ package com.pheeeew.collection.presentation;
 import com.pheeeew.auth.presentation.annotation.CurrentDevice;
 import com.pheeeew.collection.application.CollectionClaimService;
 import com.pheeeew.collection.application.CollectionQueryService;
+import com.pheeeew.collection.application.CollectionEmotionQueryService;
+import com.pheeeew.collection.presentation.dto.CollectionEmotionRequest;
+import com.pheeeew.collection.presentation.dto.CollectionEmotionResponse;
 import com.pheeeew.collection.presentation.dto.CollectionCardDetailResponse;
+import com.pheeeew.collection.presentation.dto.CollectionCalendarRequest;
+import com.pheeeew.common.presentation.dto.CursorResponse;
 import com.pheeeew.collection.presentation.dto.CollectionCardResponse;
 import com.pheeeew.collection.presentation.dto.CollectionClaimRequest;
 import com.pheeeew.collection.presentation.dto.CollectionHistoryRequest;
@@ -13,6 +18,7 @@ import com.pheeeew.common.exception.CommonErrorCode;
 import com.pheeeew.common.exception.PheeeewException;
 import jakarta.validation.Valid;
 import java.util.UUID;
+import java.time.YearMonth;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
@@ -33,6 +39,32 @@ public class CollectionController implements CollectionControllerApi {
 
     private final CollectionQueryService collectionQueryService;
     private final CollectionClaimService collectionClaimService;
+    private final CollectionEmotionQueryService collectionEmotionQueryService;
+
+    @Override
+    @GetMapping("/{cardId}/emotions")
+    public ResponseEntity<CursorResponse<CollectionEmotionResponse>> findEmotions(
+            @CurrentDevice UUID devicePublicId,
+            @PathVariable UUID cardId,
+            @Valid @ModelAttribute CollectionEmotionRequest request
+    ) {
+        var page = collectionEmotionQueryService.findEmotions(devicePublicId, cardId, request.cursor());
+        var items = page.items().stream().map(CollectionEmotionResponse::from).toList();
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(CursorResponse.of(items, page.hasNext(), page.nextCursor()));
+    }
+
+    @Override
+    @GetMapping("/calendar")
+    public ResponseEntity<CursorResponse<CollectionCardDetailResponse>> findCalendar(
+            @CurrentDevice UUID devicePublicId,
+            @Valid @ModelAttribute CollectionCalendarRequest request
+    ) {
+        var items = collectionQueryService.findCalendar(devicePublicId, YearMonth.parse(request.month()))
+                .stream().map(CollectionCardDetailResponse::from).toList();
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(CursorResponse.of(items, false, null));
+    }
 
     @Override
     @GetMapping

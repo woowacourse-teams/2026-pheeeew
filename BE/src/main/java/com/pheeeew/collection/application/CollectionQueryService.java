@@ -20,9 +20,11 @@ import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.emotion.domain.EmotionState;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -39,6 +41,15 @@ public class CollectionQueryService {
     private final DeviceRepository deviceRepository;
     private final Clock clock;
     private final CollectionAssetService assetService;
+
+    public List<CollectionCardDetailResult> findCalendar(UUID devicePublicId, YearMonth month) {
+        Long deviceId = deviceRepository.findByPublicId(devicePublicId)
+                .map(Device::getId)
+                .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
+
+        return collectionProgressRepository.findCalendar(deviceId, month.atDay(1), month.plusMonths(1).atDay(1))
+                .stream().map(this::toDetailResult).toList();
+    }
 
     public CollectionHistoryResult findHistory(UUID devicePublicId, EmotionState emotion, Integer limit, String encodedCursor) {
         Device device = deviceRepository.findByPublicId(devicePublicId)
