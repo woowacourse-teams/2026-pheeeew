@@ -15,7 +15,7 @@ class ProductionMonitoringTest(unittest.TestCase):
             self.assertIn(f'__address__ = "app-{color}:8080"', config)
             self.assertIn(f'__path__    = "/var/log/pheeeew-{color}/application.json"', config)
             self.assertIn(f'instance    = "pheeeew-prod-{color}"', config)
-        compose = yaml.safe_load((HERE / 'compose.monitoring.prod-bluegreen.yml').read_text())
+        compose = yaml.safe_load((HERE / 'compose.monitoring.prod.yml').read_text())
         self.assertEqual(compose['networks']['app']['name'], 'pheeeew-prod_default')
         mounts = compose['services']['alloy']['volumes']
         for color in ('blue', 'green'):

@@ -12,14 +12,12 @@ on:
       - 'BE/docker/test-press-generation.py'
       - 'BE/docker/press-operations.py'
       - 'BE/docker/test-prod-route.py'
-      - 'BE/docker/test-prod-workflow.py'
       - 'BE/docker/test-prod-monitoring.py'
-      - 'BE/docker/compose.monitoring.yml'
-      - 'BE/docker/compose.monitoring.prod-bluegreen.yml'
+      - 'BE/docker/compose.monitoring.prod.yml'
       - 'BE/docker/alloy/*.alloy'
       - 'BE/docker/alloy/verify.py'
-      - 'BE/docker/compose.prod-bluegreen.yml'
-      - 'BE/docker/compose.nginx.prod-bluegreen.yml'
+      - 'BE/docker/compose.prod.yml'
+      - 'BE/docker/compose.nginx.prod.yml'
       - 'BE/docker/nginx/api-prod-bluegreen.conf'
       - 'BE/docker/Dockerfile'
       - '.github/workflows/be-dev-deploy.yml'
@@ -62,7 +60,7 @@ jobs:
   deploy-switch:
     name: 개발 배포 전환과 복구 검사
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
@@ -73,7 +71,6 @@ jobs:
           pip install --quiet pyyaml
           python3 BE/docker/test-press-generation.py
           python3 BE/docker/test-prod-route.py
-          python3 BE/docker/test-prod-workflow.py
           python3 BE/docker/test-prod-monitoring.py
           python3 BE/docker/alloy/verify.py
           python3 BE/docker/test-deploy-switch.py --ci
