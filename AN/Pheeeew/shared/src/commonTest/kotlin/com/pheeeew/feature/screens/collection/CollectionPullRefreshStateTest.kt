@@ -40,6 +40,33 @@ class CollectionPullRefreshStateTest {
         }
 
     @Test
+    fun `late drag after release does not interrupt return`() =
+        runTest {
+            val clock = BroadcastFrameClock()
+            var requests = 0
+            val state =
+                CollectionPullRefreshState(
+                    scope = CoroutineScope(backgroundScope.coroutineContext + clock),
+                    threshold = 56f,
+                    isEnabled = { requests == 0 },
+                    onRefresh = { requests++ },
+                )
+            state.beginGesture()
+            state.onPostScroll(Offset.Zero, Offset(0f, 80f), NestedScrollSource.UserInput)
+            state.release()
+            runCurrent()
+            clock.sendFrame(0)
+            runCurrent()
+
+            state.onPreScroll(Offset(0f, -1f), NestedScrollSource.UserInput)
+            runCurrent()
+            clock.sendFrame(300_000_000)
+            runCurrent()
+            assertEquals(1, requests)
+            assertEquals(0f, state.offset)
+        }
+
+    @Test
     fun `reverse below threshold and cancellation do not refresh`() =
         runTest {
             val clock = BroadcastFrameClock()
