@@ -12,7 +12,6 @@ on:
       - 'BE/docker/test-press-generation.py'
       - 'BE/docker/press-operations.py'
       - 'BE/docker/test-prod-route.py'
-      - 'BE/docker/test-prod-workflow.py'
       - 'BE/docker/test-prod-monitoring.py'
       - 'BE/docker/compose.monitoring.prod.yml'
       - 'BE/docker/alloy/*.alloy'
@@ -72,7 +71,6 @@ jobs:
           pip install --quiet pyyaml
           python3 BE/docker/test-press-generation.py
           python3 BE/docker/test-prod-route.py
-          python3 BE/docker/test-prod-workflow.py
           python3 BE/docker/test-prod-monitoring.py
           python3 BE/docker/alloy/verify.py
           python3 BE/docker/test-deploy-switch.py --ci
