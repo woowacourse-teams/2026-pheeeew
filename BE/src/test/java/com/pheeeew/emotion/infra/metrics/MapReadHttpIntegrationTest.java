@@ -190,11 +190,11 @@ class MapReadHttpIntegrationTest {
     }
 
     @Test
-    void 한달_첫페이지와_커서_후속페이지는_SQL_우회를_집계하고_v4_계약을_유지한다() throws Exception {
+    void 한달_첫페이지와_커서_후속페이지는_캐시_경로를_집계하고_v4_계약을_유지한다() throws Exception {
         // given
         LocalDate end = LocalDate.now(ZoneId.of("Asia/Seoul"));
         String period = "&startDate=" + end.minusMonths(1) + "&endDate=" + end;
-        double before = requestCount("v4", "pins", "month_current_default", "bypass_period", "success");
+        double before = monthCacheCount();
         double dbBefore = stageCount("v4", "map_pins_db_path");
 
         // when
@@ -209,8 +209,8 @@ class MapReadHttpIntegrationTest {
         var firstId = mapper.readTree(first.body()).get("items").get(0).get("id").asLong();
         var nextId = mapper.readTree(next.body()).get("items").get(0).get("id").asLong();
         assertThat(firstId).isNotEqualTo(nextId);
-        assertThat(requestCount("v4", "pins", "month_current_default", "bypass_period", "success") - before).isEqualTo(2);
-        assertThat(stageCount("v4", "map_pins_db_path") - dbBefore).isEqualTo(2);
+        assertThat(monthCacheCount() - before).isEqualTo(2);
+        assertThat(stageCount("v4", "map_pins_db_path") - dbBefore).isZero();
     }
 
     @Test
@@ -261,6 +261,11 @@ class MapReadHttpIntegrationTest {
     private double writeCount(String version, String route) {
         return meters.find("pheeeew.map.response.write").tags("api_version", version, "route", route, "outcome", "success")
                 .timers().stream().mapToLong(timer -> timer.count()).sum();
+    }
+
+    private double monthCacheCount() {
+        return requestCount("v4", "pins", "month_current_default", "cache_load", "success")
+                + requestCount("v4", "pins", "month_current_default", "cache_hit", "success");
     }
 
     private double requestCount(String version, String route, String query, String decision, String outcome) {

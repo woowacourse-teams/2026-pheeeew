@@ -6,6 +6,7 @@ import com.pheeeew.emotion.domain.repository.projection.EmotionMapPin;
 import com.pheeeew.emotion.domain.repository.projection.RegionEmotionStateCount;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -48,14 +49,15 @@ public class EmotionMapReadRepository {
 
     public List<RegionEmotionStateCount> findRegionStateCounts(Instant snapshotAt) {
         return jdbc.sql("""
-                SELECT left(region_code, 5) AS code, state,
+                SELECT left(region_code, 5) AS code, (created_at AT TIME ZONE 'Asia/Seoul')::date AS day, state,
                     COUNT(*) FILTER (WHERE created_at <= :at) AS amount,
                     MIN(created_at) FILTER (WHERE created_at > :at) AS next_activation
                 FROM emotions
                 WHERE deleted_at IS NULL AND (memo IS NOT NULL OR audio_object_key IS NOT NULL)
-                GROUP BY left(region_code, 5), state
+                GROUP BY left(region_code, 5), (created_at AT TIME ZONE 'Asia/Seoul')::date, state
                 """).param("at", Timestamp.from(snapshotAt)).query((row, index) -> RegionEmotionStateCount.of(
-                        row.getString("code"), row.getString("state") == null ? null : EmotionState.valueOf(row.getString("state")),
+                        row.getString("code"), row.getObject("day", LocalDate.class),
+                        row.getString("state") == null ? null : EmotionState.valueOf(row.getString("state")),
                         row.getLong("amount"), row.getTimestamp("next_activation") == null ? null
                                 : row.getTimestamp("next_activation").toInstant())).list();
     }

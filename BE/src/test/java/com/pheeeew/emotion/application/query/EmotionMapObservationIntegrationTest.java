@@ -106,7 +106,7 @@ class EmotionMapObservationIntegrationTest {
     }
 
     @Test
-    void 한달_SQL_조회는_차단과_커서_기간을_보존하고_자정_이후_후속_페이지도_분류한다() {
+    void 한달_조회는_캐시에서_차단과_커서_기간을_보존하고_자정_이후_후속_페이지도_분류한다() {
         // given
         Emotion second = emotions.save(기본_한숨_빌더().deviceId(requester.getId()).memo("두 번째 핀").build());
         Emotion hidden = emotions.save(기본_한숨_빌더().deviceId(requester.getId()).memo("차단한 핀").build());
@@ -129,10 +129,10 @@ class EmotionMapObservationIntegrationTest {
         assertThat(java.util.stream.Stream.concat(first.value().items().stream(), next.value().items().stream())
                 .map(item -> item.id()).toList()).containsExactlyInAnyOrder(emotion.getId(), second.getId());
         assertThat(first.details()).containsEntry("query", "month_current_default")
-                .containsEntry("page", "first").containsEntry("decision", "bypass_period")
-                .containsEntry("cacheAttempted", false);
+                .containsEntry("page", "first").containsEntry("decision", "cache_load")
+                .containsEntry("cacheAttempted", true);
         assertThat(next.details()).containsEntry("query", "month_other_default")
-                .containsEntry("page", "next").containsEntry("decision", "bypass_period");
+                .containsEntry("page", "next").containsEntry("decision", "cache_hit");
     }
 
     @Test
@@ -183,7 +183,7 @@ class EmotionMapObservationIntegrationTest {
 
     @ParameterizedTest
     @EnumSource(value = RegionLevel.class, names = {"SIDO", "SIGUNGU"})
-    void 전국_요약은_실제_load와_hit_및_한달_SQL_우회를_구분한다(RegionLevel level) {
+    void 전국_요약은_실제_load와_hit를_구분하고_한달_요약도_캐시를_재사용한다(RegionLevel level) {
         // given
         EmotionSearchFilter all = EmotionSearchFilter.from(null);
         LocalDate end = LocalDate.ofInstant(clock.instant(), KOREA);
@@ -192,14 +192,14 @@ class EmotionMapObservationIntegrationTest {
         // when
         var loaded = observe("regions", () -> queries.findRegionMap(BOUNDS, level, requester.getPublicId(), all));
         var hit = observe("regions", () -> queries.findRegionMap(BOUNDS, level, requester.getPublicId(), all));
-        var bypass = observe("regions", () -> queries.findRegionMap(BOUNDS, level, requester.getPublicId(), month));
+        var monthly = observe("regions", () -> queries.findRegionMap(BOUNDS, level, requester.getPublicId(), month));
 
         // then
-        assertThat(loaded.value()).isEqualTo(hit.value()).isEqualTo(bypass.value()).hasSize(1);
+        assertThat(loaded.value()).isEqualTo(hit.value()).isEqualTo(monthly.value()).hasSize(1);
         assertThat(loaded.details()).containsEntry("decision", "cache_load");
         assertThat(hit.details()).containsEntry("decision", "cache_hit");
-        assertThat(bypass.details()).containsEntry("query", "month_current_default")
-                .containsEntry("decision", "bypass_period").containsEntry("cacheAttempted", false);
+        assertThat(monthly.details()).containsEntry("query", "month_current_default")
+                .containsEntry("decision", "cache_hit").containsEntry("cacheAttempted", true);
     }
 
     @Test
