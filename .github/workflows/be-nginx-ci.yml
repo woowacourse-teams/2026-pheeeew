@@ -61,7 +61,7 @@ jobs:
   deploy-switch:
     name: 개발 배포 전환과 복구 검사
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
