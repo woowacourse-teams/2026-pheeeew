@@ -210,8 +210,7 @@ fun initializeIosAppGraph(services: AppServiceFactory): AppGraph = IosGraphs.ini
 private class IosRecordAnonymityStore : RecordAnonymityStore {
     private val defaults = NSUserDefaults.standardUserDefaults
 
-    override fun read(): Boolean? =
-        if (defaults.objectForKey(KEY) != null) defaults.boolForKey(KEY) else null
+    override fun read(): Boolean? = if (defaults.objectForKey(KEY) != null) defaults.boolForKey(KEY) else null
 
     override suspend fun save(isAnonymous: Boolean) {
         defaults.setBool(isAnonymous, forKey = KEY)

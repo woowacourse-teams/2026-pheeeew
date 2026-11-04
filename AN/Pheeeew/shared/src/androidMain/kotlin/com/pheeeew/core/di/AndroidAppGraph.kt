@@ -297,8 +297,7 @@ private class AndroidRecordAnonymityStore(
 ) : RecordAnonymityStore {
     private val preferences = context.getSharedPreferences("pheeeew_preferences", Context.MODE_PRIVATE)
 
-    override fun read(): Boolean? =
-        if (preferences.contains(KEY)) preferences.getBoolean(KEY, true) else null
+    override fun read(): Boolean? = if (preferences.contains(KEY)) preferences.getBoolean(KEY, true) else null
 
     override suspend fun save(isAnonymous: Boolean) {
         withContext(Dispatchers.IO) {
