@@ -5,12 +5,16 @@ import android.os.SystemClock
 import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Direction
@@ -36,6 +40,66 @@ import kotlin.test.assertTrue
 class CollectionScreenTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val device = UiDevice.getInstance(instrumentation)
+
+    @Test
+    fun claimedTodayKeepsListRetryAndCompactCardClickable() {
+        val model =
+            mutableStateOf(
+                sampleCollection().copy(
+                    cards = emptyList(),
+                    pendingProgress = null,
+                    hasClaimedToday = true,
+                    cardsError = "목록 조회 실패",
+                ),
+            )
+        val height = mutableStateOf(600.dp)
+        val retries = LinkedBlockingQueue<Unit>()
+        val clicks = LinkedBlockingQueue<String>()
+        val activity =
+            instrumentation.startActivitySync(
+                Intent(instrumentation.targetContext, ComponentActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            ) as ComponentActivity
+        try {
+            instrumentation.runOnMainSync {
+                activity.actionBar?.hide()
+                activity.setContent {
+                    AppTheme {
+                        Box(Modifier.requiredHeight(height.value)) {
+                            CollectionScreen(
+                                uiModel = model.value,
+                                onSaveCard = { _, _ -> },
+                                onShareCard = { _, _ -> },
+                                onRetryCards = { retries.offer(Unit) },
+                                onCardClick = { clicks.offer(it) },
+                            )
+                        }
+                    }
+                }
+            }
+            node("다시 불러오기").click()
+            assertEquals(Unit, retries.poll(5, TimeUnit.SECONDS))
+            assertFalse(device.hasObject(By.desc("내일 발급할 수 있는 컬렉션 카드 안내")))
+
+            val issued = sampleCollection().cards.first()
+            instrumentation.runOnMainSync {
+                model.value = model.value.copy(cards = listOf(issued), cardsError = null, todayCardId = issued.id)
+            }
+            node("카드를 눌러 저장하거나 공유해보세요!")
+            instrumentation.runOnMainSync { height.value = 240.dp }
+            device.waitForIdle()
+            val issuedCard = card("지침")
+            val bounds = issuedCard.visibleBounds
+            val density = instrumentation.targetContext.resources.displayMetrics.density
+            assertTrue(bounds.width() > 0 && bounds.height() > 0, "Compact card must stay visible")
+            assertTrue(bounds.height() <= 120 * density, "Exercise the previously hidden card height")
+            assertFalse(device.hasObject(By.text("카드를 눌러 저장하거나 공유해보세요!")))
+            issuedCard.click()
+            assertEquals(issued.id, clicks.poll(5, TimeUnit.SECONDS), "Compact card must remain clickable")
+        } finally {
+            instrumentation.runOnMainSync { activity.finish() }
+        }
+    }
 
     @Test
     fun pullRefreshWorksInCoverFlowAlbumAndEmptyState() {
@@ -73,7 +137,7 @@ class CollectionScreenTest {
                     }
                 }
             }
-            node("발급전")
+            card("발급 전")
             val headerTop = node("모은 카드 5장").visibleBounds.top
             pullDown {
                 node("당겨서 새로고침")
@@ -109,7 +173,7 @@ class CollectionScreenTest {
                 30,
             )
             device.waitForIdle()
-            node("지침")
+            card("지침")
 
             node("앨범").click()
             node("전체")
@@ -211,7 +275,7 @@ class CollectionScreenTest {
             }
             node("모은 카드 5장")
             screenshot("coverflow")
-            node("발급전")
+            card("발급 전")
             node("발급하기").click()
             assertTrue(claimed.await(5, TimeUnit.SECONDS))
             assertEquals(EmotionType.EXHAUSTED, claimedEmotion.get())
@@ -224,9 +288,9 @@ class CollectionScreenTest {
                 30,
             )
             device.waitForIdle()
-            node("지침")
+            card("지침")
             instrumentation.runOnMainSync { model.value = model.value.copy(cards = emptyList()) }
-            node("발급전")
+            card("발급 전")
             instrumentation.runOnMainSync { model.value = sampleCollection() }
             val pendingCardBounds = card("발급 전").visibleBounds
             device.swipe(
@@ -237,7 +301,7 @@ class CollectionScreenTest {
                 30,
             )
             device.waitForIdle()
-            node("지침")
+            card("지침")
             node("앨범").click()
             card("답답")
             screenshot("album")
