@@ -352,9 +352,10 @@ internal fun CollectionTomorrowCard(modifier: Modifier = Modifier) {
                         style =
                             Stroke(
                                 width = strokeWidthPx,
-                                pathEffect = PathEffect.dashPathEffect(
-                                    floatArrayOf(dashLength.toPx(), dashGap.toPx()),
-                                ),
+                                pathEffect =
+                                    PathEffect.dashPathEffect(
+                                        floatArrayOf(dashLength.toPx(), dashGap.toPx()),
+                                    ),
                             ),
                     )
                 }

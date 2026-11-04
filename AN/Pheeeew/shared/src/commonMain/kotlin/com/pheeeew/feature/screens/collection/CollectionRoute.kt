@@ -133,7 +133,12 @@ private fun CollectionUiState.toScreenUiModel(
         emotionCounts = emotionCounts,
         selectedFilter = selectedFilter,
         hasClaimedToday = today?.hasClaimedCard == true,
-        todayCardId = today?.items?.firstOrNull { it.card != null }?.card?.cardId,
+        todayCardId =
+            today
+                ?.items
+                ?.firstOrNull { it.card != null }
+                ?.card
+                ?.cardId,
         pendingProgress =
             today
                 ?.takeUnless { it.hasClaimedCard }
