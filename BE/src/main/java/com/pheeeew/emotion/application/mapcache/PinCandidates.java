@@ -84,11 +84,18 @@ final class PinCandidates {
 
         Selection select(EmotionCursor cursor, EmotionMapBlocks blocked, int maximum) {
             List<EmotionMapPin> found = new ArrayList<>();
+            Instant startInclusive = cursor.filter().startInclusive();
+            Instant endExclusive = cursor.filter().endExclusive();
             int scanned = 0;
 
             for (EmotionMapPin pin : pins) {
+                if (startInclusive != null && pin.createdAt().isBefore(startInclusive)) {
+                    break;
+                }
+
                 scanned++;
                 if (!pin.createdAt().isAfter(cursor.snapshotAt()) && beforeCursor(pin, cursor)
+                        && (endExclusive == null || pin.createdAt().isBefore(endExclusive))
                         && within(pin, cursor.bounds()) && !blocked.emotions().contains(pin.id())
                         && (pin.deviceId() == null || !blocked.authors().contains(pin.deviceId()))) {
                     found.add(pin);
