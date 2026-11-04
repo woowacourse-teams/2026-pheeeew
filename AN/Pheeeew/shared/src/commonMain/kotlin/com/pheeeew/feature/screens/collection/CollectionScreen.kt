@@ -146,7 +146,7 @@ fun CollectionScreen(
                     add(CollectionCarouselItem(id = "pending", progress = uiModel.pendingProgress))
                 }
 
-                uiModel.hasClaimedToday -> {
+                uiModel.hasClaimedToday && (uiModel.cards.isNotEmpty() || uiModel.cardsError == null) -> {
                     add(CollectionCarouselItem(id = "tomorrow", isTomorrow = true))
                 }
             }
@@ -701,8 +701,11 @@ private fun CollectionCoverFlow(
     }
     Column(modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
-            val paginationHeight = 56.dp
-            val actionHintHeight = 64.dp
+            // Reserve card space first; omit accessories that would be too small to read.
+            val accessoryHeight = (maxHeight - 160.dp).coerceAtLeast(0.dp)
+            val paginationHeight = minOf(56.dp, accessoryHeight).takeIf { it >= 8.dp } ?: 0.dp
+            val actionHintHeight =
+                minOf(64.dp, accessoryHeight - paginationHeight).takeIf { it >= 32.dp } ?: 0.dp
             val cardHeight = (maxHeight - paginationHeight - actionHintHeight).coerceAtLeast(0.dp)
             val availableWidth = maxWidth
             val cardWidth = minOf(availableWidth * 0.76f, cardHeight * 0.75f)
@@ -771,7 +774,7 @@ private fun CollectionCoverFlow(
                     modifier = Modifier.fillMaxWidth().height(actionHintHeight),
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (selectedItem.card != null) {
+                    if (selectedItem.card != null && actionHintHeight > 0.dp) {
                         Text(
                             text = stringResource(Res.string.collection_card_action_hint),
                             color = AppColors.TextSecondary,
@@ -784,30 +787,32 @@ private fun CollectionCoverFlow(
                 val firstVisibleDot =
                     (selectedIndex - visibleDotCount / 2).coerceIn(0, items.size - visibleDotCount)
                 val lastVisibleDot = firstVisibleDot + visibleDotCount - 1
-                Box(
-                    modifier = Modifier.fillMaxWidth().height(paginationHeight),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                if (paginationHeight > 0.dp) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().height(paginationHeight),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        for (index in firstVisibleDot..lastVisibleDot) {
-                            val isTruncatedEdge =
-                                (index == firstVisibleDot && firstVisibleDot > 0) ||
-                                    (index == lastVisibleDot && lastVisibleDot < items.lastIndex)
-                            Box(
-                                Modifier
-                                    .size(if (isTruncatedEdge) 4.dp else 6.dp)
-                                    .background(
-                                        if (index == selectedIndex) {
-                                            selectedEmotion?.representativeColor ?: AppColors.Primary
-                                        } else {
-                                            AppColors.Gray100
-                                        },
-                                        CircleShape,
-                                    ),
-                            )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            for (index in firstVisibleDot..lastVisibleDot) {
+                                val isTruncatedEdge =
+                                    (index == firstVisibleDot && firstVisibleDot > 0) ||
+                                        (index == lastVisibleDot && lastVisibleDot < items.lastIndex)
+                                Box(
+                                    Modifier
+                                        .size(if (isTruncatedEdge) 4.dp else 6.dp)
+                                        .background(
+                                            if (index == selectedIndex) {
+                                                selectedEmotion?.representativeColor ?: AppColors.Primary
+                                            } else {
+                                                AppColors.Gray100
+                                            },
+                                            CircleShape,
+                                        ),
+                                )
+                            }
                         }
                     }
                 }
