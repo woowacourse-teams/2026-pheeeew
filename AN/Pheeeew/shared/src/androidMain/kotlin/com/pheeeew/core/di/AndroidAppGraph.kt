@@ -40,11 +40,14 @@ import com.pheeeew.domain.model.device.DevicePlatform
 import com.pheeeew.domain.permission.LocationPermissionController
 import com.pheeeew.domain.repository.AppVersionRepository
 import com.pheeeew.domain.repository.OnboardingStore
+import com.pheeeew.domain.repository.RecordAnonymityStore
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.GraphExtension
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.createGraphFactory
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 data class AndroidAppConfig(
     val device: DeviceSessionBuildConfig,
@@ -130,6 +133,10 @@ internal interface AndroidAppGraph :
         config: AndroidAppConfig,
         build: DeviceSessionBuildConfig,
     ): DeviceAttestationPolicy = build.policy { AndroidPlayIntegrityProofProvider(context, config.cloudProjectNumber) }
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun recordAnonymity(context: Context): RecordAnonymityStore = AndroidRecordAnonymityStore(context)
 
     @Provides
     @SingleIn(AppScope::class)
@@ -282,6 +289,24 @@ class ActivityRetainedGraphOwner private constructor(
             val factory = viewModelFactory { initializer { ActivityRetainedGraphOwner(app as AndroidAppGraph) } }
             return ViewModelProvider(activity, factory)[ActivityRetainedGraphOwner::class.java]
         }
+    }
+}
+
+private class AndroidRecordAnonymityStore(
+    context: Context,
+) : RecordAnonymityStore {
+    private val preferences = context.getSharedPreferences("pheeeew_preferences", Context.MODE_PRIVATE)
+
+    override fun read(): Boolean? = if (preferences.contains(KEY)) preferences.getBoolean(KEY, true) else null
+
+    override suspend fun save(isAnonymous: Boolean) {
+        withContext(Dispatchers.IO) {
+            preferences.edit().putBoolean(KEY, isAnonymous).commit()
+        }
+    }
+
+    private companion object {
+        const val KEY = "last_record_anonymous"
     }
 }
 

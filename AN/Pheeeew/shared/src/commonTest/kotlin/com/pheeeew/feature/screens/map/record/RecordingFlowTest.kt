@@ -46,6 +46,7 @@ class RecordingFlowTest {
                     MapRecordViewModel(
                         IsWithinEmotionRecordRadiusUseCase(),
                         repository,
+                        InMemoryRecordAnonymityStore(),
                     )
                 // Registering at the same location again must produce another consumable result.
                 repeat(2) {
@@ -81,6 +82,7 @@ class RecordingFlowTest {
                     MapRecordViewModel(
                         IsWithinEmotionRecordRadiusUseCase(),
                         unusedRepository,
+                        InMemoryRecordAnonymityStore(),
                     )
                 model.open(EmotionTypeUiModel.FRUSTRATED)
                 advanceUntilIdle()
@@ -106,6 +108,7 @@ class RecordingFlowTest {
                     MapRecordViewModel(
                         IsWithinEmotionRecordRadiusUseCase(),
                         unusedRepository,
+                        InMemoryRecordAnonymityStore(),
                     )
                 model.open(EmotionTypeUiModel.FRUSTRATED)
                 advanceUntilIdle()
@@ -128,6 +131,7 @@ class RecordingFlowTest {
                     MapRecordViewModel(
                         IsWithinEmotionRecordRadiusUseCase(),
                         unusedRepository,
+                        InMemoryRecordAnonymityStore(),
                     )
                 model.open(EmotionTypeUiModel.FRUSTRATED)
                 advanceUntilIdle()
