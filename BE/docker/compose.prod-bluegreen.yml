@@ -4,6 +4,9 @@ x-app: &app
   image: ${APP_IMAGE:?}
   restart: ${APP_RESTART_POLICY:-unless-stopped}
   environment: &app-environment
+    # Temporary stop/start deployment: only one slot may run at a time.
+    PHEEEEW_PRESS_RACE_ADMISSION_FILE: ""
+    PHEEEEW_PRESS_RACE_ADMISSION_REQUIRED: "false"
     SPRING_PROFILES_ACTIVE: prod
     TZ: Asia/Seoul
     DB_URL: ${DB_URL:?}
