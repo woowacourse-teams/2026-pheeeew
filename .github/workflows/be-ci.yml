@@ -5,6 +5,10 @@ on:
     branches: [main, be/dev, develop]
     paths:
       - 'BE/**'
+      # 문서만 바꾼 PR 은 테스트와 이미지 빌드를 돌리지 않는다. 뒤 패턴이 앞 패턴을 덮는다.
+      # 코드와 문서를 함께 바꾸면 코드 쪽이 'BE/**' 에 걸려 그대로 실행된다.
+      - '!BE/docs/**'
+      - '!BE/**/*.md'
       - '.github/workflows/be-ci.yml'
 
 permissions:
