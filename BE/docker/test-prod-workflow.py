@@ -62,7 +62,7 @@ class ProductionWorkflowTest(unittest.TestCase):
             envfile.write_text(''.join(f'{key}={value}\n' for key, value in values.items()))
             for color in ('blue', 'green'):
                 result = subprocess.run(['docker', 'compose', '--env-file', str(envfile), '-f',
-                    str(REPO / 'BE/docker/compose.prod-bluegreen.yml'), '--profile', color,
+                    str(REPO / 'BE/docker/compose.prod.yml'), '--profile', color,
                     'config', '--format', 'json'], check=True, capture_output=True, text=True)
                 model = json.loads(result.stdout)
                 service = model['services']['app-' + color]
@@ -83,7 +83,7 @@ class StopStartTest(unittest.TestCase):
         (self.root / 'nginx/upstream/active.conf').write_text('set $upstream_app app-blue;\n')
         self.stage = self.root / 'stage'
         self.stage.mkdir()
-        shutil.copy(REPO / 'BE/docker/compose.prod-bluegreen.yml', self.stage)
+        shutil.copy(REPO / 'BE/docker/compose.prod.yml', self.stage)
         self.env = {'DB_URL': 'jdbc:postgresql://fixture/db', 'DB_USERNAME': 'fixture', 'DB_PASSWORD': 'password',
                     'PHEEEEW_PRESS_RACE_SERVER_GENERATION': GENERATION, 'S3_BUCKET': 'fixture',
                     'JWT_PRIVATE_KEY_BASE64': 'fixture'}

@@ -21,7 +21,7 @@ JVM 기동과 nginx DNS 재조회까지 서비스 중단 및 WS 단절이 생긴
 
 ## 유지하는 운영 구성
 
-현재 nginx는 app-blue/app-green 이름과 연결돼 있고 Alloy는 해당 슬롯의 로그 볼륨을 읽는다. 그래서 `compose.prod-bluegreen.yml`의 기존 슬롯 이름·프로필·네트워크·로그 볼륨 정의를 유지하되, 배포 때 active 슬롯 하나만 종료 후 재생성한다. nginx의 Upgrade/Connection 전달 설정과 Alloy를 교체·reload하지 않는다. 과거 `compose.prod.yml`로 통째로 되돌리면 현재 upstream·로그·서버 세대와 달라지고, 남아 있는 legacy app 서비스와 Compose 소유권이 충돌할 수 있다.
+현재 nginx는 app-blue/app-green 이름과 연결돼 있고 Alloy는 해당 슬롯의 로그 볼륨을 읽는다. 그래서 `compose.prod.yml`의 기존 슬롯 이름·프로필·네트워크·로그 볼륨 정의를 유지하되, 배포 때 active 슬롯 하나만 종료 후 재생성한다. nginx의 Upgrade/Connection 전달 설정과 Alloy를 교체·reload하지 않는다. 과거 단일 앱 구성(app 하나와 nginx를 한 파일에 둔 compose)으로 통째로 되돌리면 현재 upstream·로그·서버 세대와 달라지고, 남아 있는 legacy app 서비스와 Compose 소유권이 충돌할 수 있다.
 
 [ADR-0042](../adr/0042-fence-press-admission-during-deployment.md)의 운영 입력 차단·세대 양도 방식에는 임시 예외를 둔다. 기존 운영 Compose 환경에 `PHEEEEW_PRESS_RACE_ADMISSION_FILE=""`, `PHEEEEW_PRESS_RACE_ADMISSION_REQUIRED=false`를 명시한다. 기존 Java 코드가 지원하는 설정이다. 파일 입력 차단을 사용하지 않으므로 **같은 UUID로 두 앱을 동시에 실행해서는 안 된다.** 개발 CD/전환 도구와 이 운영 경로를 섞어 실행하지 않는다.
 

@@ -182,7 +182,7 @@ jobs:
           fi
           echo "path=$stage" >> "$GITHUB_OUTPUT"
           scp -F ~/.ssh/config env.tmp "target:$stage/incoming.json"
-          for file in press-generation.py compose.prod-bluegreen.yml; do
+          for file in press-generation.py compose.prod.yml; do
             scp -F ~/.ssh/config "BE/docker/$file" "target:$stage/$file"
           done
 
@@ -279,10 +279,10 @@ jobs:
                                   for value in values.values()), 'Unsupported dotenv character')
                       (stage / filename).write_text(''.join(f"{key}='{value}'\n" for key, value in values.items()))
                   process_env = dict(os.environ, COMPOSE_PROFILES='')
-                  for key in re.findall(r'\$\{([A-Z_][A-Z0-9_]*)', (stage / 'compose.prod-bluegreen.yml').read_text()):
+                  for key in re.findall(r'\$\{([A-Z_][A-Z0-9_]*)', (stage / 'compose.prod.yml').read_text()):
                       process_env.pop(key, None)
                   compose = ['docker', 'compose', '--project-name', 'pheeeew-prod', '--project-directory', str(Path.cwd()),
-                             '--env-file', str(stage / 'new.env'), '-f', str(stage / 'compose.prod-bluegreen.yml'),
+                             '--env-file', str(stage / 'new.env'), '-f', str(stage / 'compose.prod.yml'),
                              '--profile', slot.removeprefix('app-')]
                   run(compose + ['config', '--quiet'], env=process_env)
                   run(['docker', 'pull', image], timeout=240)
@@ -318,7 +318,7 @@ jobs:
                   else:
                       raise ValueError('App did not become healthy within 180 seconds')
                   os.replace(stage / 'new.env', '.env')
-                  os.replace(stage / 'compose.prod-bluegreen.yml', 'compose.yml')
+                  os.replace(stage / 'compose.prod.yml', 'compose.yml')
                   Path('.press-deploy.json').unlink()
                   sync_directory()
                   print('Deployment succeeded: ' + image)
