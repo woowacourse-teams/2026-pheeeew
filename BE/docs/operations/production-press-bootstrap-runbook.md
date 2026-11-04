@@ -1,5 +1,6 @@
 # 운영 프레스 최초 이행 실행 순서
 
+> **과거 실행 기록 — 현재 실행 금지.** 2026-11-04 #1088에서 아래 운영 bootstrap/잠금 도구를 제거했다. 현재 절차는 [운영 단일 앱 교체](prod-recreate-deployment.md)를 따른다. 당시 코드와 명령은 [de84154e의 Git 이력](https://github.com/woowacourse-teams/2026-pheeeew/tree/de84154edf48a042f481f4aa1f9b1aad542be588/BE/docker)에서 확인한다.
 이 문서는 실행 준비용이다. 최종 릴리스 SHA, 이미지 ID, 시험 기기와 실행 시점, 중단 기준을 확인하기 전에는 실행하지 않는다. 최초 이행 중에는 운영 API가 일시 중단된다. 운영 RDS 스냅샷을 만들지 않기로 한 사용자 결정에 따라 별도 백업은 없다.
 
 1. `develop` 최종 커밋의 이미지 빌드만 `be-deploy.yml`의 `build_only=true`로 실행한다. 이미지 `APP_RELEASE`와 이미지 ID가 검토한 커밋의 빌드인지 확인한다. 같은 커밋에서 `python3 BE/docker/press-prod-manifest.py <40자리 SHA>`로 manifest를 만들고, 로컬에서 manifest와 `BE/docker/nginx/api-prod-bluegreen.conf`의 SHA-256을 기록한다. Git commit에서 생성된 파일만 운영에 복사한다.

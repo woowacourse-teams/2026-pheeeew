@@ -1,5 +1,7 @@
 # 개발 서버 배포 안내
 
+운영은 임시로 **수동 단일 앱 교체**를 사용해요. main push는 이미지만 빌드하며, 중단 허용·실패 시 수동 복구·최초 전환 조건은 [운영 단일 앱 교체 절차](../docs/operations/prod-recreate-deployment.md)를 따라요. 아래 blue/green 흐름은 개발 CD와 기존 전환 도구를 설명해요.
+
 `develop` 에 푸시하면 `BE DEV CD` 가 돌면서 `app-blue` 와 `app-green` 을 번갈아 띄워요. 한 번에 한 색만 떠 있고, 교체 구간에만 둘이 함께 떠요.
 
 | 파일 | 역할 |
@@ -37,7 +39,7 @@ DB 전환 전 기동·최소 API 검증이 실패하면 기존 소유권을 유�
 
 이미지의 입력 차단은 같은 컨테이너 재시작에 유지돼요. 새 후보는 CLOSED로 시작하고 실제 라우팅·DB 자격을 확인한 뒤 도구가 개방해요. 구형 도구는 계약 2 이미지를 거절해요. 앱 부팅·health 200으로 저장 준비를 대신하지 않아요.
 
-명령·실행 전 확인·실패 경계는 [운영 절차](../docs/operations/realtime-press.md), 선택 이유는 [ADR-0042](../docs/adr/0042-fence-press-admission-during-deployment.md)를 따라요. 실제 배포·활성화·중단·복구는 대상 SHA·환경·시점·중단 기준을 고정해 별도로 승인받아요. 운영의 기존 단일 앱 워크플로는 계약 2를 앱 교체 전에 거절하며 운영 이행 완료로 취급하지 않아요.
+명령·실행 전 확인·실패 경계는 [운영 절차](../docs/operations/realtime-press.md), 선택 이유는 [ADR-0042](../docs/adr/0042-fence-press-admission-during-deployment.md)를 따라요. 실제 배포·활성화·중단·복구는 대상 SHA·환경·시점·중단 기준을 고정해 별도로 승인받아요. 과거 단일 앱 워크플로는 계약 2를 거절해요. 현재 임시 운영 CD는 위 단일 앱 교체 절차의 호환 설정을 사용해요.
 
 ### 프레스 서버 세대: 경쟁 OFF 전용
 
@@ -110,7 +112,14 @@ docker logs pheeeew-dev-alloy 2>&1 | grep -i skipping
 | `PressOperationsProxyIntegrationTest` | 실제 Spring 컨테이너 두 개·인증 WS·nginx·PostGIS에서 ON 전환·개방 전 복귀·미확인 정산·OFF 복구·재시작을 검증해요. `PHEEEEW_PRESS_OPERATIONS_IMAGE`로 검증용 이미지를 지정한 경우에 실행해요 |
 | `nginx/test-alb-health.py` | nginx 라우팅, 접근 제어, 장애 응답 |
 
-`test-press-generation.py`, `test-deploy-switch.py`, `nginx/test-alb-health.py`는 `BE Nginx CI`, `PressHttpDeploymentLifecycleIntegrationTest`는 `BE CI`의 Gradle 테스트에서 돌아요. 실제 Spring 프록시 검사는 `BE Nginx CI`의 별도 이미지 빌드·선택 테스트 잡에서 실행해요. 배포 셸 검사는 워크플로의 같은 셸을 읽어요.
+`test-press-generation.py`, `test-deploy-switch.py`, `nginx/test-alb-health.py`는 `BE Nginx CI`, `PressHttpDeploymentLifecycleIntegrationTest`는 `BE CI`의 Gradle 테스트에서 돌아요. 실제 Spring 컨테이너·nginx를 묶은 프록시 검사는 CI 잡에서 제외하고 배포 구조 변경 시 수동으로 실행해요. 배포 셸 검사는 워크플로의 같은 셸을 읽어요.
+
+수동 프록시 검증은 `BE` 디렉터리에서 실행해요. 일반 `BE CI`에서는 환경변수가 없는 이 선택 테스트를 건너뛰어요.
+
+```bash
+docker build -t pheeeew-press-operations-test -f docker/Dockerfile .
+PHEEEEW_PRESS_OPERATIONS_IMAGE=pheeeew-press-operations-test ./gradlew :test --tests '*PressOperationsProxyIntegrationTest.단일_앱_교체는*' --no-daemon
+```
 
 WS 세대 조회는 Upgrade와 첫 완전한 text 응답의 오류 코드·UUID를 검증하면 연결 종료를 기다리지 않고 완료해요. 수집하는 검증 데이터의 64KiB 상한과 기존 curl 3초·외부 수신 5초 제한, 조회 전후 컨테이너 신원 검사는 유지해요. 조기 완료 이후의 추가 데이터까지 검사한 것은 아니에요. 로컬 `docker exec` 프로세스 정리는 컨테이너 내부 curl 종료의 증거가 아니며, 남은 읽기 전용 조회는 기존 curl 제한으로 끝나요.
 
@@ -122,7 +131,7 @@ nginx의 reload 명령은 신호 접수 뒤 먼저 반환할 수 있어요. 종�
 
 | | **BE CI** | **BE Nginx CI** |
 | --- | --- | --- |
-| 무엇을 검사하나 | 애플리케이션 코드, ARM64 이미지 빌드 | nginx 설정, **배포 셸**, 실제 Spring 이미지의 프레스 운영 전환 |
+| 무엇을 검사하나 | 애플리케이션 코드, ARM64 이미지 빌드 | nginx 설정과 **배포 셸** |
 | 잡으려는 회귀 | 로직 오류, 스키마-엔티티 불일치, 마이그레이션 실패, 이미지 빌드 깨짐 | 잘못된 대상 라우팅, 접근 경계 붕괴, 전환 실패 시 잘못된 정리, 복구 누락, 진행 중 요청 유실 |
 | 대상 브랜치 | `main`, `be/dev`, `develop` | `main`, `be/dev`, `develop` |
 | 변경 경로 | `BE/**` | nginx·배포 도구·워크플로·프레스 애플리케이션/테스트·인증 경로 |

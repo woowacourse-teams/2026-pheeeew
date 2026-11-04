@@ -10,6 +10,7 @@ import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.emotion.domain.repository.projection.RegionEmotionStateCount;
 import com.pheeeew.region.domain.RegionLevel;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -17,15 +18,16 @@ import org.springframework.test.util.ReflectionTestUtils;
 class RegionAggregateTest {
 
     private static final Instant NOW = Instant.parse("2026-10-21T00:00:00Z");
+    private static final LocalDate DAY = LocalDate.of(2026, 10, 21);
 
     @Test
     void 시군구를_시도로_합산하고_NULL_상태와_동률_우선순위를_보존한다() {
         // given
         var aggregate = RegionAggregate.from(List.of(
-                RegionEmotionStateCount.of("11010", EmotionState.ANGRY, 2, null),
-                RegionEmotionStateCount.of("11010", null, 1, null),
-                RegionEmotionStateCount.of("11020", EmotionState.EXHAUSTED, 2, null),
-                RegionEmotionStateCount.of("26010", null, 3, null)));
+                RegionEmotionStateCount.of("11010", DAY, EmotionState.ANGRY, 2, null),
+                RegionEmotionStateCount.of("11010", DAY, null, 1, null),
+                RegionEmotionStateCount.of("11020", DAY, EmotionState.EXHAUSTED, 2, null),
+                RegionEmotionStateCount.of("26010", DAY, null, 3, null)));
 
         // when
         var summaries = aggregate.summaries();
@@ -41,8 +43,8 @@ class RegionAggregateTest {
     void 현재_개수가_0인_지역도_가장_이른_미래_활성_시각은_보존한다() {
         // given / when
         var aggregate = RegionAggregate.from(List.of(
-                RegionEmotionStateCount.of("11010", EmotionState.ANGRY, 0, NOW.plusSeconds(20)),
-                RegionEmotionStateCount.of("11020", EmotionState.EXHAUSTED, 0, NOW.plusSeconds(10))));
+                RegionEmotionStateCount.of("11010", DAY, EmotionState.ANGRY, 0, NOW.plusSeconds(20)),
+                RegionEmotionStateCount.of("11020", DAY, EmotionState.EXHAUSTED, 0, NOW.plusSeconds(10))));
 
         // then
         assertThat(aggregate.summaries().get(RegionLevel.SIGUNGU)).isEmpty();
@@ -53,7 +55,7 @@ class RegionAggregateTest {
     @Test
     void 상태_변경은_새_집계에만_반영하고_이전_집계와_공개된_요약은_보존한다() {
         // given
-        var original = RegionAggregate.from(List.of(RegionEmotionStateCount.of("11010", null, 1, null)));
+        var original = RegionAggregate.from(List.of(RegionEmotionStateCount.of("11010", DAY, null, 1, null)));
         var published = original.summaries();
         var before = contribution(null, "기존 기록", NOW.minusSeconds(1), false);
         var after = contribution(EmotionState.EXHAUSTED, "수정 기록", NOW.minusSeconds(1), false);
@@ -72,7 +74,7 @@ class RegionAggregateTest {
     @Test
     void 마지막_감정을_삭제하면_시군구와_시도_요약에서_모두_제거한다() {
         // given
-        var original = RegionAggregate.from(List.of(RegionEmotionStateCount.of("11010", EmotionState.ANGRY, 1, null)));
+        var original = RegionAggregate.from(List.of(RegionEmotionStateCount.of("11010", DAY, EmotionState.ANGRY, 1, null)));
         var before = contribution(EmotionState.ANGRY, "기록", NOW.minusSeconds(1), false);
         var after = contribution(EmotionState.ANGRY, "기록", NOW.minusSeconds(1), true);
 
@@ -104,7 +106,7 @@ class RegionAggregateTest {
     void 미래_감정은_현재_개수에서_제외하고_기존보다_이른_활성_시각만_반영한다() {
         // given
         var original = RegionAggregate.from(List.of(
-                RegionEmotionStateCount.of("11010", EmotionState.ANGRY, 0, NOW.plusSeconds(5))));
+                RegionEmotionStateCount.of("11010", DAY, EmotionState.ANGRY, 0, NOW.plusSeconds(5))));
 
         // when
         var later = original.applyChange(null, contribution(EmotionState.ANGRY, "나중 기록", NOW.plusSeconds(10), false), NOW);
@@ -127,6 +129,28 @@ class RegionAggregateTest {
         assertThatThrownBy(() -> empty.applyChange(before, null, NOW))
                 .isInstanceOf(IllegalStateException.class).hasMessage("지역 집계 기여분이 음수입니다.");
         assertThat(empty.summaries().get(RegionLevel.SIDO)).isEmpty();
+    }
+
+    @Test
+    void 기간_요약은_양끝_날짜를_포함해_합산하고_변경은_작성일의_KST_날짜에만_반영한다() {
+        // given
+        var original = RegionAggregate.from(List.of(
+                RegionEmotionStateCount.of("11010", DAY.minusDays(2), EmotionState.ANGRY, 1, null),
+                RegionEmotionStateCount.of("11010", DAY.minusDays(1), EmotionState.EXHAUSTED, 2, null),
+                RegionEmotionStateCount.of("11010", DAY, EmotionState.ANGRY, 1, null)));
+        var lateNightKst = Instant.parse("2026-10-19T14:59:59Z");
+
+        // when
+        var added = original.applyChange(null, contribution(EmotionState.ANGRY, "자정 직전", lateNightKst, false), NOW);
+
+        // then
+        assertThat(original.summaries(DAY.minusDays(1), DAY).get(RegionLevel.SIGUNGU))
+                .containsExactlyEntriesOf(java.util.Map.of("11010", RegionEmotionSummary.of(3, EmotionState.EXHAUSTED)));
+        assertThat(added.summaries(DAY.minusDays(2), DAY.minusDays(2)).get(RegionLevel.SIDO))
+                .containsExactlyEntriesOf(java.util.Map.of("11", RegionEmotionSummary.of(2, EmotionState.ANGRY)));
+        assertThat(added.summaries(DAY.minusDays(1), DAY).get(RegionLevel.SIDO))
+                .containsExactlyEntriesOf(java.util.Map.of("11", RegionEmotionSummary.of(3, EmotionState.EXHAUSTED)));
+        assertThat(added.summaries().get(RegionLevel.SIDO)).containsEntry("11", RegionEmotionSummary.of(5, EmotionState.ANGRY));
     }
 
     private EmotionMapContribution contribution(EmotionState state, String memo, Instant createdAt, boolean deleted) {
