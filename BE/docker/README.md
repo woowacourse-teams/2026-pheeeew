@@ -147,6 +147,8 @@ python3 BE/docker/test-deploy-switch.py
 python3 BE/docker/nginx/test-alb-health.py
 ```
 
+CI는 `--ci`로 핵심 시나리오 9개만 돌려요. 인자 없이 실행하면 전체 시나리오를 돌리니, 배포 스크립트(`be-dev-deploy.yml`, `press-generation.py`, `press-operations.py`)를 바꿨다면 머지 전에 전체를 한 번 돌려요.
+
 시나리오 이름을 주면 그것만 돌아요.
 
 ```bash

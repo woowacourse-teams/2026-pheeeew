@@ -1737,12 +1737,16 @@ LEGACY_SCENARIOS = (
 )
 
 SCENARIOS = ON_SCENARIOS + LEGACY_SCENARIOS
-CI_ON_SCENARIOS = {
+CI_SCENARIOS = {
+    '정상 전환',
     '경쟁 ON v2 정상 전환',
-    'ON v2 DB 커밋 응답 유실',
     'ON v2 개방 전 실패 자동 복귀',
-    '최초 개발 배포 마무리 후 경쟁 사용',
-    '이전 서버 삭제 응답 유실의 고정 ID 정산',
+    '새 버전 기동 실패',
+    '전환 후 503',
+    'nginx -t 실패',
+    '정상 전환이 진행 중 요청을 기다린다',
+    'compose 의 색 이름이 배포 스크립트와 일치',
+    'worker PID 캡처와 정확한 종료 판정',
 }
 
 
@@ -1765,7 +1769,8 @@ def main():
     only = sys.argv[1:]
     scenarios = SCENARIOS
     if only == ['--ci']:
-        scenarios = tuple(item for item in ON_SCENARIOS if item[0] in CI_ON_SCENARIOS) + LEGACY_SCENARIOS
+        scenarios = tuple(item for item in SCENARIOS if item[0] in CI_SCENARIOS)
+        expect(len(scenarios) == len(CI_SCENARIOS), 'CI 시나리오 이름이 목록과 다르다')
         only = []
     with tempfile.TemporaryDirectory() as root:
         fx = Fixture(root)

@@ -62,7 +62,7 @@ class ProductionWorkflowTest(unittest.TestCase):
             envfile.write_text(''.join(f'{key}={value}\n' for key, value in values.items()))
             for color in ('blue', 'green'):
                 result = subprocess.run(['docker', 'compose', '--env-file', str(envfile), '-f',
-                    str(REPO / 'BE/docker/compose.prod-bluegreen.yml'), '--profile', color,
+                    str(REPO / 'BE/docker/compose.prod.yml'), '--profile', color,
                     'config', '--format', 'json'], check=True, capture_output=True, text=True)
                 model = json.loads(result.stdout)
                 service = model['services']['app-' + color]
@@ -83,25 +83,20 @@ class StopStartTest(unittest.TestCase):
         (self.root / 'nginx/upstream/active.conf').write_text('set $upstream_app app-blue;\n')
         self.stage = self.root / 'stage'
         self.stage.mkdir()
-        shutil.copy(REPO / 'BE/docker/compose.prod-bluegreen.yml', self.stage)
+        shutil.copy(REPO / 'BE/docker/compose.prod.yml', self.stage)
         self.env = {'DB_URL': 'jdbc:postgresql://fixture/db', 'DB_USERNAME': 'fixture', 'DB_PASSWORD': 'password',
                     'PHEEEEW_PRESS_RACE_SERVER_GENERATION': GENERATION, 'S3_BUCKET': 'fixture',
                     'JWT_PRIVATE_KEY_BASE64': 'fixture'}
         (self.stage / 'incoming.json').write_text(json.dumps(self.env))
         self.containers = {NAME: self.container('a' * 64, 'sha256:old')}
-        self.database = {'generation': GENERATION, 'enabled': True, 'activation_date': '2026-11-04'}
         self.events = []
         self.failure = None
         self.core = types.ModuleType('generation')
         self.core.GENERATION_KEY = 'PHEEEEW_PRESS_RACE_SERVER_GENERATION'
         self.core.CONTRACT_LABEL = 'com.pheeeew.press-generation-contract'
-        self.core.READ_STATE = 'SELECT state FROM press_race_control WHERE id = TRUE;'
         self.core.environment = lambda inspected: dict(self.env)
         self.core.identity = lambda inspected: {key: copy.deepcopy(inspected[key]) for key in ('Id', 'Image', 'State')}
         self.core.container = self.inspect
-        self.core.query = self.query
-        self.core.runtime_generation = self.runtime
-        self.core.probe_generation = lambda *args, **kwargs: GENERATION
 
     def container(self, identifier, image):
         return {'Id': identifier, 'Image': image, 'Config': {'Labels': {'com.pheeeew.press-generation-contract': '2'}},
@@ -112,18 +107,6 @@ class StopStartTest(unittest.TestCase):
         if value is None or require_running and not value['State']['Running']:
             raise ValueError('not running')
         return copy.deepcopy(value)
-
-    def query(self, env, sql):
-        if 'FOR UPDATE' in sql:
-            self.events.append('barrier')
-            if self.failure == 'barrier':
-                return dict(self.database, generation='changed')
-        return self.database
-
-    def runtime(self, inspected, **kwargs):
-        if self.failure == 'new-verification' and inspected['Image'] == 'sha256:new':
-            raise ValueError('new app not ready')
-        return GENERATION
 
     def command(self, args, **kwargs):
         result = ''
@@ -181,7 +164,7 @@ class StopStartTest(unittest.TestCase):
 
     def test_stop_start_success_keeps_slot_and_removes_interruption_record(self):
         self.assertEqual(self.attempt(), 0)
-        self.assertEqual(self.events, ['config', 'pull', 'stop:' + 'a' * 64, 'remove:' + 'a' * 64, 'barrier', 'start'])
+        self.assertEqual(self.events, ['config', 'pull', 'stop:' + 'a' * 64, 'remove:' + 'a' * 64, 'start'])
         self.assertFalse((self.root / '.press-deploy.json').exists())
         self.assertIn(GENERATION, (self.root / '.env').read_text())
         self.assertEqual((self.root / '.env').stat().st_mode & 0o777, 0o600)
@@ -192,8 +175,8 @@ class StopStartTest(unittest.TestCase):
         self.assertNotIn('start', self.events)
         self.assertFalse((self.root / '.press-deploy.json').exists())
 
-    def test_stop_remove_and_database_uncertainty_never_starts_new_app(self):
-        for failure in ('stop', 'still-running', 'still-present', 'barrier'):
+    def test_stop_or_remove_uncertainty_never_starts_new_app(self):
+        for failure in ('stop', 'still-running', 'still-present'):
             with self.subTest(failure=failure):
                 self.containers = {NAME: self.container('a' * 64, 'sha256:old')}
                 (self.root / '.press-deploy.json').unlink(missing_ok=True)
@@ -203,7 +186,7 @@ class StopStartTest(unittest.TestCase):
                 self.assertTrue((self.root / '.press-deploy.json').exists())
 
     def test_new_app_failure_and_uncertain_start_leave_record_without_automatic_rollback(self):
-        for failure in ('new-verification', 'up-timeout'):
+        for failure in ('up-timeout',):
             with self.subTest(failure=failure):
                 self.containers = {NAME: self.container('a' * 64, 'sha256:old')}
                 (self.root / '.press-deploy.json').unlink(missing_ok=True)
