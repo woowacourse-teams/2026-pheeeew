@@ -31,6 +31,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/press-race", "/api/v1/press-race/recovery").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/press-race/snapshot").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v2/press-race/snapshot").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/press-race/stream").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v2/app/version").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v2/app/config").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v3/devices/nicknames/availability").permitAll()

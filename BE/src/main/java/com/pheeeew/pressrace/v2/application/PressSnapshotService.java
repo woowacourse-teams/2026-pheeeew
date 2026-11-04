@@ -23,12 +23,15 @@ public class PressSnapshotService {
     private final PressSnapshotRepository pressSnapshotRepository;
 
     public PressScreen findSnapshot(UUID devicePublicId, PressView view) {
+        return findTodaySnapshot().findScreen(devicePublicId, view);
+    }
+
+    /** DB 시각의 KST 날짜로 만든 오늘의 공통 순위. */
+    public PressSnapshot findTodaySnapshot() {
         Instant now = pressSnapshotRepository.findNow();
         LocalDate today = LocalDate.ofInstant(now, KST);
 
-        PressSnapshot snapshot = PressSnapshot.of(today, now, pressSnapshotRepository.findParticipants(today));
-
-        return snapshot.findScreen(devicePublicId, view);
+        return PressSnapshot.of(today, now, pressSnapshotRepository.findParticipants(today));
     }
 
     /** 지정한 KST 날짜의 공통 순위. 활동 인원은 지금의 DB 시각으로 판정한다. */
