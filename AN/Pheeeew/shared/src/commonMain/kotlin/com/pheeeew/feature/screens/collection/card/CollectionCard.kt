@@ -435,7 +435,7 @@ private fun CollectionCardImageAreaComponentPreview() {
 @Composable
 private fun CollectionCardStatsComponentPreview() {
     CollectionPreviewTheme {
-        CollectionCardStats(pressLabel = "지침 프레스", pressCount = 312, stampLabel = "지침 스탬프", stampCount = 23, scale = 1f)
+        CollectionCardStats(pressLabel = "프레스", pressCount = 312, stampLabel = "스탬프", stampCount = 23, scale = 1f)
     }
 }
 
@@ -469,9 +469,9 @@ private fun collectionCardPreviewUiModel(
     period = "2026.10.18",
     title = "만성 퇴근 희망자",
     emotion = emotion,
-    pressLabel = "지침 프레스",
+    pressLabel = "프레스",
     pressCount = 312_000,
-    stampLabel = "지침 스탬프",
+    stampLabel = "스탬프",
     stampCount = 23,
     characterImageUrl = Res.getUri("drawable/tmp_emotionimg.png").takeIf { withImages },
     textStampImageUrl = Res.getUri("drawable/tmp_text_stamp.png").takeIf { withImages },

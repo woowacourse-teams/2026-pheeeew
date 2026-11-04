@@ -534,9 +534,9 @@ internal class CollectionViewModel(
             period = formatCollectionCardDate(reference.date),
             title = nickname?.takeIf(String::isNotBlank) ?: "나",
             emotion = reference.state.toUi(),
-            pressLabel = "${reference.state.toUi().labelFallback()} 프레스",
+            pressLabel = "프레스",
             pressCount = pressCount,
-            stampLabel = "${reference.state.toUi().labelFallback()} 스탬프",
+            stampLabel = "스탬프",
             stampCount = stampCount,
             characterImageUrl = reference.images.characterUrl,
             textStampImageUrl = reference.images.straightStampUrl,
@@ -604,12 +604,3 @@ internal class CollectionViewModel(
 private fun EmotionType.toDomain(): EmotionState = EmotionState.valueOf(name)
 
 private fun EmotionState.toUi(): EmotionType = EmotionType.valueOf(name)
-
-private fun EmotionType.labelFallback(): String =
-    when (this) {
-        EmotionType.FRUSTRATED -> "답답"
-        EmotionType.IRRITATED -> "짜증"
-        EmotionType.EXHAUSTED -> "지침"
-        EmotionType.DISCOURAGED -> "좌절"
-        EmotionType.ANGRY -> "분노"
-    }
