@@ -4,7 +4,7 @@
 
 Accepted (2026-10-27, #924의 사용자 승인 운영 설계). 구현·검증 결과와 실제 실행 승인은 별도다.
 
-2026-11-04 임시 운영 예외: [#1088](https://github.com/woowacourse-teams/2026-pheeeew/issues/1088)의 사용자 결정에 따라 운영 CD는 중단을 허용하는 수동 단일 앱 교체를 사용한다. 같은 슬롯·DB 소유 세대를 유지하고 프로세스를 중첩하지 않으며 파일 admission은 비활성화한다. DB fencing·request-id 정산은 유지한다. 적용 조건과 실패 경계는 [운영 절차](../operations/prod-recreate-deployment.md)를 따른다. 아래 blue/green 결정과 개발 경로는 후속 무중단 배포 재설계의 참고로 유지한다.
+2026-11-04 [#1088](https://github.com/woowacourse-teams/2026-pheeeew/issues/1088)에서 둔 운영 임시 예외(수동 단일 앱 교체, 파일 admission 비활성화)는 같은 날 [#911](https://github.com/woowacourse-teams/2026-pheeeew/issues/911)에서 해제했다. 운영 CD도 아래 blue/green 결정과 파일 admission을 개발과 같게 따른다. 운영에서 다른 점은 [운영 블루그린 배포](../operations/prod-bluegreen-deployment.md)를 따른다.
 
 ## Context
 
