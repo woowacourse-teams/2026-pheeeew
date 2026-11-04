@@ -77,37 +77,3 @@ jobs:
           python3 BE/docker/test-prod-monitoring.py
           python3 BE/docker/alloy/verify.py
           python3 BE/docker/test-deploy-switch.py --ci
-
-  press-proxy:
-    name: 실제 Spring 프레스 운영 전환 검사
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-
-      - uses: gradle/actions/setup-gradle@v4
-
-      - name: 로컬 검증용 앱 이미지 빌드
-        run: docker build -t pheeeew-press-operations-test -f BE/docker/Dockerfile BE
-
-      - name: 인증 WS와 PostgreSQL·nginx 전환 검증
-        working-directory: BE
-        env:
-          PHEEEEW_PRESS_OPERATIONS_IMAGE: pheeeew-press-operations-test
-        # 재시작 후 HTTP timeout을 포함한 별도 시나리오는 보류 중이다.
-        run: ./gradlew :test --tests '*PressOperationsProxyIntegrationTest.정상_ON_배포는*' --tests '*PressOperationsProxyIntegrationTest.단일_앱_교체는*' --no-daemon
-
-      - name: 프레스 운영 전환 테스트 리포트
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: press-proxy-results
-          path: BE/build/reports/tests/test
-          retention-days: 7

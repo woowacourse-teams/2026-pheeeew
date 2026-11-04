@@ -44,3 +44,5 @@ DB 마이그레이션은 자동으로 되돌리지 않는다. 확인되지 않�
 ## 검증 범위
 
 기존 `test-prod-workflow.py`가 workflow 안의 실제 Python 흐름을 꺼내 제어된 Docker/DB 응답으로 순서·실패 중단·중단 기록·환경 우선순위를 검사한다. 실제 Docker Compose 렌더링으로 슬롯·UUID·admission 환경도 검사한다. 실제 Spring·nginx·PostgreSQL 17/PostGIS 3.5의 `PressOperationsProxyIntegrationTest.단일_앱_교체는*`는 컨테이너 완전 제거/재생성 뒤 같은 UUID의 request-id 정산·중복 방지와 HTTP/WS 저장을 검증한다. 운영 교체·실기기·부하 검증은 별도다.
+
+실제 앱 이미지·nginx를 묶는 `press-proxy` 잡은 PR CI에서 제거한다. `PressOperationsProxyIntegrationTest` 코드는 배포 구조 변경 시 수동 검증용으로 유지하며 일반 BE CI에서는 해당 환경변수가 없어 건너뛴다. 실행 명령은 [Docker 안내](../../docker/README.md)를 따른다. 이 조합의 자동 검증이 빠지는 것이며 WebSocket 기능 자체를 제거하는 것은 아니다.
