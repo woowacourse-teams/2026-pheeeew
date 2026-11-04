@@ -1,0 +1,64 @@
+{
+  "info" : {
+    "arguments" : [
+      "devicectl",
+      "device",
+      "process",
+      "launch",
+      "--device",
+      "<DEVICE_IDENTIFIER>",
+      "--terminate-existing",
+      "--start-stopped",
+      "--environment-variables",
+      "{\"PRESS_HAPTIC_EXPERIMENT\":\"1\",\"PRESS_HAPTIC_PREPARE\":\"1\",\"PRESS_SOUND_DISABLED\":\"0\",\"OS_ACTIVITY_DT_MODE\":\"YES\"}",
+      "--json-output",
+      "unlocked-launch.json",
+      "com.itda.pheeeew"
+    ],
+    "commandType" : "devicectl.device.process.launch",
+    "environment" : {
+      "TERM" : "dumb"
+    },
+    "jsonVersion" : 3,
+    "outcome" : "success",
+    "version" : "518.33"
+  },
+  "result" : {
+    "deviceIdentifier" : "<DEVICE_IDENTIFIER>",
+    "launchOptions" : {
+      "activatedWhenStarted" : true,
+      "arguments" : [
+
+      ],
+      "environmentVariables" : {
+        "OS_ACTIVITY_DT_MODE" : "YES",
+        "PRESS_HAPTIC_EXPERIMENT" : "1",
+        "PRESS_HAPTIC_PREPARE" : "1",
+        "PRESS_SOUND_DISABLED" : "0",
+        "TERM" : "dumb"
+      },
+      "platformSpecificOptions" : {
+
+      },
+      "startStopped" : true,
+      "terminateExistingInstances" : true,
+      "user" : {
+        "active" : true
+      }
+    },
+    "process" : {
+      "auditToken" : [
+        4294967295,
+        501,
+        501,
+        501,
+        501,
+        88706,
+        0,
+        478432
+      ],
+      "executable" : "file:///private/var/containers/Bundle/Application/BA00AF9B-9F4C-41A4-A84E-5702CE70C033/Pheeeew.app/Pheeeew",
+      "processIdentifier" : 88706
+    }
+  }
+}

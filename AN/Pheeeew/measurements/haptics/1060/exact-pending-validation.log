@@ -1,0 +1,9 @@
+(lldb) target create ${DERIVED_DATA}/Build/Products/Debug-iphoneos/Pheeeew.app/Pheeeew
+Current executable set to '${DERIVED_DATA}/Build/Products/Debug-iphoneos/Pheeeew.app/Pheeeew' (arm64).
+(lldb) command script import ${PROJECT_ROOT}/AN/Pheeeew/scripts/haptic_channel_exact_1060.py
+Traceback (most recent call last):
+  File "${PROJECT_ROOT}/AN/Pheeeew/scripts/haptic_channel_exact_1060.py", line 27, in __lldb_init_module
+    raise RuntimeError('Matching CoreHaptics UUID/function not found; no guessed address installed')
+RuntimeError: Matching CoreHaptics UUID/function not found; no guessed address installed
+(lldb) breakpoint list
+No breakpoints currently set.

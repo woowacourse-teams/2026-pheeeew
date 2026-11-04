@@ -1,0 +1,6 @@
+package=com.pheeeew.updatetest
+versionCode=103201
+versionName=2.5.0
+model=SM-G977N
+Android=12
+source=3c3203520b2dd5e21384bfd8b95ae238b6a84416

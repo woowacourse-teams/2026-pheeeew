@@ -22,6 +22,8 @@ data class CollectionScreenUiModel(
     val emotionCounts: Map<EmotionType, Long> = emptyMap(),
     val selectedFilter: EmotionType? = null,
     val pendingProgress: CollectionProgressUiModel? = null,
+    val hasClaimedToday: Boolean = false,
+    val todayCardId: String? = null,
     val todayLoading: Boolean = false,
     val todayError: String? = null,
     val isLoadingCards: Boolean = false,

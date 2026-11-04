@@ -1,0 +1,689 @@
+15:09:05  Enabling developer disk image services.
+15:09:05  Acquired usage assertion.
+Launched application with com.itda.pheeeew bundle identifier.
+Waiting for the application to terminate…
+2026-11-03 15:09:17.757043+0900 Pheeeew[88769:48538815] [PreviewsAgentExecutorLibrary] Looking up debug dylib relative path
+2026-11-03 15:09:17.764034+0900 Pheeeew[88769:48538815] [PreviewsAgentExecutorLibrary] Found debug dylib relative path string `Pheeeew.debug.dylib`
+2026-11-03 15:09:17.764039+0900 Pheeeew[88769:48538815] [PreviewsAgentExecutorLibrary] Looking up debug dylib entry point name
+2026-11-03 15:09:17.764041+0900 Pheeeew[88769:48538815] [PreviewsAgentExecutorLibrary] No debug dylib entry point name defined.
+2026-11-03 15:09:17.764044+0900 Pheeeew[88769:48538815] [PreviewsAgentExecutorLibrary] Looking up debug dylib install name
+2026-11-03 15:09:17.764045+0900 Pheeeew[88769:48538815] [PreviewsAgentExecutorLibrary] Found debug dylib install name string `@rpath/Pheeeew.debug.dylib`
+2026-11-03 15:09:17.764047+0900 Pheeeew[88769:48538815] [PreviewsAgentExecutorLibrary] Looking for Previews JIT link entry point.
+2026-11-03 15:09:17.764341+0900 Pheeeew[88769:48538815] [PreviewsAgentExecutorLibrary] No Previews JIT entry point found.
+2026-11-03 15:09:17.764347+0900 Pheeeew[88769:48538815] [PreviewsAgentExecutorLibrary] Gave PreviewsInjection a chance to run and it returned, continuing with debug dylib.
+2026-11-03 15:09:17.764349+0900 Pheeeew[88769:48538815] [PreviewsAgentExecutorLibrary] Looking for main entry point.
+2026-11-03 15:09:17.764350+0900 Pheeeew[88769:48538815] [PreviewsAgentExecutorLibrary] Opening debug dylib with '@rpath/Pheeeew.debug.dylib'
+2026-11-03 15:09:17.764374+0900 Pheeeew[88769:48538815] [PreviewsAgentExecutorLibrary] Debug dylib handle: 0x83829418
+2026-11-03 15:09:17.764386+0900 Pheeeew[88769:48538815] [PreviewsAgentExecutorLibrary] No entry point found. Checking for alias.
+2026-11-03 15:09:17.764389+0900 Pheeeew[88769:48538815] [PreviewsAgentExecutorLibrary] Calling provided entry point.
+2026-11-03 15:09:17.986439+0900 Pheeeew[88769:48539059] [[FirebaseMessaging]] 13.1.1 - [FirebaseMessaging][I-FCM001000] FIRMessaging Remote Notifications proxy enabled, will swizzle remote notification receiver handlers. If you'd prefer to manually integrate Firebase Messaging, add "FirebaseAppDelegateProxyEnabled" to your Info.plist, and set it to NO. Follow the instructions at:
+https://firebase.google.com/docs/cloud-messaging/ios/client#method_swizzling_in_firebase_messaging
+to ensure proper integration.
+2026-11-03 15:09:19.417446+0900 Pheeeew[88769:48538815] [MC] Reading from public effective user settings.
+[NativeHaptic] event=armed prepare=true bound=0 count=600 intervalMs=20
+2026-11-03 15:09:19.456514+0900 Pheeeew[88769:48539079] [Common] unable to decode "ShellSceneKit.ProfileActivation" because this class does not exist
+2026-11-03 15:09:19.456527+0900 Pheeeew[88769:48539079] [Common] -[BSSettings initWithXPCDictionary:]_block_invoke Could not decode object for setting 17456962218540468756
+2026-11-03 15:09:19.456532+0900 Pheeeew[88769:48539079] [Common] No value decoded for key "profileActivation" (17456962218540468756). Ignoring.
+APNs 등록 성공
+[PushTokenSync] state=WAITING
+[PushTokenSync] state=SYNCING
+[Revisit test] firstIntervalSeconds=172799.984 lastIntervalSeconds=2678399.75
+[Revisit test] alerts=2 lockScreen=2 notificationCenter=2 sound=2 scheduledDelivery=1
+[Revisit test] delivered=0
+[Revisit test] reason=foreground permission=2 pending=30 repeating=0 minuteSpacing=false
+[Revisit test] first=2026-11-05T06:09:19Z last=2026-12-04T06:09:19Z
+[Revisit test] firstRequestId=pheeeew.revisit.1793686159503.0
+[PushTokenSync] method=PUT env=dev http=204
+[PushTokenSync] state=SYNCED
+[NativeHaptic] event=impact index=1 prepare=true elapsedMs=0 intervalMs=0
+[NativeHaptic] event=impact index=2 prepare=true elapsedMs=113 intervalMs=113
+[NativeHaptic] event=impact index=3 prepare=true elapsedMs=182 intervalMs=68
+[NativeHaptic] event=impact index=4 prepare=true elapsedMs=270 intervalMs=87
+[NativeHaptic] event=impact index=5 prepare=true elapsedMs=387 intervalMs=117
+[NativeHaptic] event=impact index=6 prepare=true elapsedMs=399 intervalMs=11
+[NativeHaptic] event=impact index=7 prepare=true elapsedMs=419 intervalMs=19
+[NativeHaptic] event=impact index=8 prepare=true elapsedMs=439 intervalMs=20
+[NativeHaptic] event=impact index=9 prepare=true elapsedMs=459 intervalMs=19
+[NativeHaptic] event=impact index=10 prepare=true elapsedMs=479 intervalMs=20
+[NativeHaptic] event=impact index=11 prepare=true elapsedMs=499 intervalMs=19
+[NativeHaptic] event=impact index=12 prepare=true elapsedMs=519 intervalMs=20
+[NativeHaptic] event=impact index=13 prepare=true elapsedMs=539 intervalMs=19
+[NativeHaptic] event=impact index=14 prepare=true elapsedMs=559 intervalMs=20
+[NativeHaptic] event=impact index=15 prepare=true elapsedMs=579 intervalMs=20
+[NativeHaptic] event=impact index=16 prepare=true elapsedMs=599 intervalMs=19
+[NativeHaptic] event=impact index=17 prepare=true elapsedMs=619 intervalMs=20
+[NativeHaptic] event=impact index=18 prepare=true elapsedMs=639 intervalMs=19
+[NativeHaptic] event=impact index=19 prepare=true elapsedMs=659 intervalMs=20
+[NativeHaptic] event=impact index=20 prepare=true elapsedMs=679 intervalMs=19
+[NativeHaptic] event=impact index=21 prepare=true elapsedMs=699 intervalMs=19
+[NativeHaptic] event=impact index=22 prepare=true elapsedMs=719 intervalMs=20
+[NativeHaptic] event=impact index=23 prepare=true elapsedMs=739 intervalMs=19
+[NativeHaptic] event=impact index=24 prepare=true elapsedMs=759 intervalMs=19
+[NativeHaptic] event=impact index=25 prepare=true elapsedMs=779 intervalMs=20
+[NativeHaptic] event=impact index=26 prepare=true elapsedMs=799 intervalMs=20
+[NativeHaptic] event=impact index=27 prepare=true elapsedMs=819 intervalMs=19
+[NativeHaptic] event=impact index=28 prepare=true elapsedMs=839 intervalMs=19
+[NativeHaptic] event=impact index=29 prepare=true elapsedMs=859 intervalMs=19
+[NativeHaptic] event=impact index=30 prepare=true elapsedMs=879 intervalMs=20
+[NativeHaptic] event=impact index=31 prepare=true elapsedMs=899 intervalMs=19
+[NativeHaptic] event=impact index=32 prepare=true elapsedMs=919 intervalMs=19
+[NativeHaptic] event=impact index=33 prepare=true elapsedMs=939 intervalMs=20
+[NativeHaptic] event=impact index=34 prepare=true elapsedMs=959 intervalMs=19
+[NativeHaptic] event=impact index=35 prepare=true elapsedMs=979 intervalMs=19
+[NativeHaptic] event=impact index=36 prepare=true elapsedMs=999 intervalMs=20
+[NativeHaptic] event=impact index=37 prepare=true elapsedMs=1019 intervalMs=20
+[NativeHaptic] event=impact index=38 prepare=true elapsedMs=1039 intervalMs=19
+[NativeHaptic] event=impact index=39 prepare=true elapsedMs=1059 intervalMs=20
+[NativeHaptic] event=impact index=40 prepare=true elapsedMs=1079 intervalMs=19
+[NativeHaptic] event=impact index=41 prepare=true elapsedMs=1099 intervalMs=19
+[NativeHaptic] event=impact index=42 prepare=true elapsedMs=1119 intervalMs=20
+[NativeHaptic] event=impact index=43 prepare=true elapsedMs=1139 intervalMs=19
+[NativeHaptic] event=impact index=44 prepare=true elapsedMs=1159 intervalMs=20
+[NativeHaptic] event=impact index=45 prepare=true elapsedMs=1179 intervalMs=20
+[NativeHaptic] event=impact index=46 prepare=true elapsedMs=1199 intervalMs=19
+[NativeHaptic] event=impact index=47 prepare=true elapsedMs=1219 intervalMs=19
+[NativeHaptic] event=impact index=48 prepare=true elapsedMs=1239 intervalMs=20
+[NativeHaptic] event=impact index=49 prepare=true elapsedMs=1259 intervalMs=19
+[NativeHaptic] event=impact index=50 prepare=true elapsedMs=1279 intervalMs=19
+[NativeHaptic] event=impact index=51 prepare=true elapsedMs=1299 intervalMs=20
+[NativeHaptic] event=impact index=52 prepare=true elapsedMs=1319 intervalMs=19
+[NativeHaptic] event=impact index=53 prepare=true elapsedMs=1339 intervalMs=20
+[NativeHaptic] event=impact index=54 prepare=true elapsedMs=1359 intervalMs=20
+[NativeHaptic] event=impact index=55 prepare=true elapsedMs=1378 intervalMs=18
+[NativeHaptic] event=impact index=56 prepare=true elapsedMs=1399 intervalMs=20
+[NativeHaptic] event=impact index=57 prepare=true elapsedMs=1419 intervalMs=19
+[NativeHaptic] event=impact index=58 prepare=true elapsedMs=1439 intervalMs=20
+[NativeHaptic] event=impact index=59 prepare=true elapsedMs=1459 intervalMs=19
+[NativeHaptic] event=impact index=60 prepare=true elapsedMs=1479 intervalMs=20
+[NativeHaptic] event=impact index=61 prepare=true elapsedMs=1499 intervalMs=20
+[NativeHaptic] event=impact index=62 prepare=true elapsedMs=1519 intervalMs=19
+[NativeHaptic] event=impact index=63 prepare=true elapsedMs=1539 intervalMs=20
+[NativeHaptic] event=impact index=64 prepare=true elapsedMs=1559 intervalMs=20
+[NativeHaptic] event=impact index=65 prepare=true elapsedMs=1579 intervalMs=19
+[NativeHaptic] event=impact index=66 prepare=true elapsedMs=1599 intervalMs=19
+[NativeHaptic] event=impact index=67 prepare=true elapsedMs=1619 intervalMs=19
+[NativeHaptic] event=impact index=68 prepare=true elapsedMs=1639 intervalMs=20
+[NativeHaptic] event=impact index=69 prepare=true elapsedMs=1659 intervalMs=19
+[NativeHaptic] event=impact index=70 prepare=true elapsedMs=1679 intervalMs=19
+[NativeHaptic] event=impact index=71 prepare=true elapsedMs=1699 intervalMs=20
+[NativeHaptic] event=impact index=72 prepare=true elapsedMs=1719 intervalMs=19
+[NativeHaptic] event=impact index=73 prepare=true elapsedMs=1739 intervalMs=20
+[NativeHaptic] event=impact index=74 prepare=true elapsedMs=1759 intervalMs=19
+[NativeHaptic] event=impact index=75 prepare=true elapsedMs=1779 intervalMs=20
+[NativeHaptic] event=impact index=76 prepare=true elapsedMs=1799 intervalMs=19
+[NativeHaptic] event=impact index=77 prepare=true elapsedMs=1819 intervalMs=19
+[NativeHaptic] event=impact index=78 prepare=true elapsedMs=1839 intervalMs=19
+[NativeHaptic] event=impact index=79 prepare=true elapsedMs=1859 intervalMs=19
+[NativeHaptic] event=impact index=80 prepare=true elapsedMs=1879 intervalMs=20
+[NativeHaptic] event=impact index=81 prepare=true elapsedMs=1899 intervalMs=19
+[NativeHaptic] event=impact index=82 prepare=true elapsedMs=1919 intervalMs=19
+[NativeHaptic] event=impact index=83 prepare=true elapsedMs=1939 intervalMs=20
+[NativeHaptic] event=impact index=84 prepare=true elapsedMs=1959 intervalMs=19
+[NativeHaptic] event=impact index=85 prepare=true elapsedMs=1979 intervalMs=19
+[NativeHaptic] event=impact index=86 prepare=true elapsedMs=1999 intervalMs=19
+[NativeHaptic] event=impact index=87 prepare=true elapsedMs=2019 intervalMs=19
+[NativeHaptic] event=impact index=88 prepare=true elapsedMs=2039 intervalMs=20
+[NativeHaptic] event=impact index=89 prepare=true elapsedMs=2059 intervalMs=19
+[NativeHaptic] event=impact index=90 prepare=true elapsedMs=2079 intervalMs=19
+[NativeHaptic] event=impact index=91 prepare=true elapsedMs=2099 intervalMs=19
+[NativeHaptic] event=impact index=92 prepare=true elapsedMs=2119 intervalMs=20
+[NativeHaptic] event=impact index=93 prepare=true elapsedMs=2139 intervalMs=20
+[NativeHaptic] event=impact index=94 prepare=true elapsedMs=2159 intervalMs=19
+[NativeHaptic] event=impact index=95 prepare=true elapsedMs=2179 intervalMs=20
+[NativeHaptic] event=impact index=96 prepare=true elapsedMs=2199 intervalMs=19
+[NativeHaptic] event=impact index=97 prepare=true elapsedMs=2219 intervalMs=19
+[NativeHaptic] event=impact index=98 prepare=true elapsedMs=2239 intervalMs=20
+[NativeHaptic] event=impact index=99 prepare=true elapsedMs=2259 intervalMs=19
+[NativeHaptic] event=impact index=100 prepare=true elapsedMs=2279 intervalMs=20
+[NativeHaptic] event=impact index=101 prepare=true elapsedMs=2299 intervalMs=20
+[NativeHaptic] event=impact index=102 prepare=true elapsedMs=2319 intervalMs=19
+[NativeHaptic] event=impact index=103 prepare=true elapsedMs=2339 intervalMs=20
+[NativeHaptic] event=impact index=104 prepare=true elapsedMs=2359 intervalMs=20
+[NativeHaptic] event=impact index=105 prepare=true elapsedMs=2379 intervalMs=19
+[NativeHaptic] event=impact index=106 prepare=true elapsedMs=2399 intervalMs=19
+[NativeHaptic] event=impact index=107 prepare=true elapsedMs=2419 intervalMs=20
+[NativeHaptic] event=impact index=108 prepare=true elapsedMs=2439 intervalMs=19
+[NativeHaptic] event=impact index=109 prepare=true elapsedMs=2459 intervalMs=19
+[NativeHaptic] event=impact index=110 prepare=true elapsedMs=2479 intervalMs=20
+[NativeHaptic] event=impact index=111 prepare=true elapsedMs=2499 intervalMs=20
+[NativeHaptic] event=impact index=112 prepare=true elapsedMs=2519 intervalMs=19
+[NativeHaptic] event=impact index=113 prepare=true elapsedMs=2539 intervalMs=19
+[NativeHaptic] event=impact index=114 prepare=true elapsedMs=2559 intervalMs=20
+[NativeHaptic] event=impact index=115 prepare=true elapsedMs=2579 intervalMs=19
+[NativeHaptic] event=impact index=116 prepare=true elapsedMs=2599 intervalMs=19
+[NativeHaptic] event=impact index=117 prepare=true elapsedMs=2619 intervalMs=20
+[NativeHaptic] event=impact index=118 prepare=true elapsedMs=2639 intervalMs=19
+[NativeHaptic] event=impact index=119 prepare=true elapsedMs=2659 intervalMs=20
+[NativeHaptic] event=impact index=120 prepare=true elapsedMs=2679 intervalMs=20
+[NativeHaptic] event=impact index=121 prepare=true elapsedMs=2699 intervalMs=19
+[NativeHaptic] event=impact index=122 prepare=true elapsedMs=2719 intervalMs=20
+[NativeHaptic] event=impact index=123 prepare=true elapsedMs=2739 intervalMs=19
+[NativeHaptic] event=impact index=124 prepare=true elapsedMs=2759 intervalMs=20
+[NativeHaptic] event=impact index=125 prepare=true elapsedMs=2779 intervalMs=19
+[NativeHaptic] event=impact index=126 prepare=true elapsedMs=2799 intervalMs=19
+[NativeHaptic] event=impact index=127 prepare=true elapsedMs=2819 intervalMs=20
+[NativeHaptic] event=impact index=128 prepare=true elapsedMs=2839 intervalMs=19
+[NativeHaptic] event=impact index=129 prepare=true elapsedMs=2859 intervalMs=19
+[NativeHaptic] event=impact index=130 prepare=true elapsedMs=2879 intervalMs=19
+[NativeHaptic] event=impact index=131 prepare=true elapsedMs=2899 intervalMs=20
+[NativeHaptic] event=impact index=132 prepare=true elapsedMs=2919 intervalMs=20
+[NativeHaptic] event=impact index=133 prepare=true elapsedMs=2939 intervalMs=20
+[NativeHaptic] event=impact index=134 prepare=true elapsedMs=2959 intervalMs=19
+[NativeHaptic] event=impact index=135 prepare=true elapsedMs=2979 intervalMs=20
+[NativeHaptic] event=impact index=136 prepare=true elapsedMs=2999 intervalMs=20
+[NativeHaptic] event=impact index=137 prepare=true elapsedMs=3019 intervalMs=19
+[NativeHaptic] event=impact index=138 prepare=true elapsedMs=3039 intervalMs=20
+[NativeHaptic] event=impact index=139 prepare=true elapsedMs=3059 intervalMs=19
+[NativeHaptic] event=impact index=140 prepare=true elapsedMs=3079 intervalMs=20
+[NativeHaptic] event=impact index=141 prepare=true elapsedMs=3099 intervalMs=20
+[NativeHaptic] event=impact index=142 prepare=true elapsedMs=3119 intervalMs=20
+[NativeHaptic] event=impact index=143 prepare=true elapsedMs=3139 intervalMs=19
+[NativeHaptic] event=impact index=144 prepare=true elapsedMs=3159 intervalMs=19
+[NativeHaptic] event=impact index=145 prepare=true elapsedMs=3179 intervalMs=20
+[NativeHaptic] event=impact index=146 prepare=true elapsedMs=3199 intervalMs=19
+[NativeHaptic] event=impact index=147 prepare=true elapsedMs=3219 intervalMs=19
+[NativeHaptic] event=impact index=148 prepare=true elapsedMs=3239 intervalMs=20
+[NativeHaptic] event=impact index=149 prepare=true elapsedMs=3259 intervalMs=20
+[NativeHaptic] event=impact index=150 prepare=true elapsedMs=3279 intervalMs=19
+[NativeHaptic] event=impact index=151 prepare=true elapsedMs=3299 intervalMs=20
+[NativeHaptic] event=impact index=152 prepare=true elapsedMs=3319 intervalMs=20
+[NativeHaptic] event=impact index=153 prepare=true elapsedMs=3339 intervalMs=20
+[NativeHaptic] event=impact index=154 prepare=true elapsedMs=3359 intervalMs=19
+[NativeHaptic] event=impact index=155 prepare=true elapsedMs=3379 intervalMs=19
+[NativeHaptic] event=impact index=156 prepare=true elapsedMs=3399 intervalMs=20
+[NativeHaptic] event=impact index=157 prepare=true elapsedMs=3419 intervalMs=19
+[NativeHaptic] event=impact index=158 prepare=true elapsedMs=3439 intervalMs=20
+[NativeHaptic] event=impact index=159 prepare=true elapsedMs=3459 intervalMs=19
+[NativeHaptic] event=impact index=160 prepare=true elapsedMs=3479 intervalMs=20
+[NativeHaptic] event=impact index=161 prepare=true elapsedMs=3499 intervalMs=19
+[NativeHaptic] event=impact index=162 prepare=true elapsedMs=3519 intervalMs=20
+[NativeHaptic] event=impact index=163 prepare=true elapsedMs=3539 intervalMs=19
+[NativeHaptic] event=impact index=164 prepare=true elapsedMs=3559 intervalMs=20
+[NativeHaptic] event=impact index=165 prepare=true elapsedMs=3579 intervalMs=19
+[NativeHaptic] event=impact index=166 prepare=true elapsedMs=3599 intervalMs=20
+[NativeHaptic] event=impact index=167 prepare=true elapsedMs=3619 intervalMs=20
+[NativeHaptic] event=impact index=168 prepare=true elapsedMs=3639 intervalMs=19
+[NativeHaptic] event=impact index=169 prepare=true elapsedMs=3659 intervalMs=19
+[NativeHaptic] event=impact index=170 prepare=true elapsedMs=3679 intervalMs=19
+[NativeHaptic] event=impact index=171 prepare=true elapsedMs=3699 intervalMs=19
+[NativeHaptic] event=impact index=172 prepare=true elapsedMs=3719 intervalMs=20
+[NativeHaptic] event=impact index=173 prepare=true elapsedMs=3739 intervalMs=19
+[NativeHaptic] event=impact index=174 prepare=true elapsedMs=3759 intervalMs=19
+[NativeHaptic] event=impact index=175 prepare=true elapsedMs=3779 intervalMs=20
+[NativeHaptic] event=impact index=176 prepare=true elapsedMs=3799 intervalMs=19
+[NativeHaptic] event=impact index=177 prepare=true elapsedMs=3819 intervalMs=20
+[NativeHaptic] event=impact index=178 prepare=true elapsedMs=3839 intervalMs=20
+[NativeHaptic] event=impact index=179 prepare=true elapsedMs=3859 intervalMs=19
+[NativeHaptic] event=impact index=180 prepare=true elapsedMs=3879 intervalMs=20
+[NativeHaptic] event=impact index=181 prepare=true elapsedMs=3899 intervalMs=19
+[NativeHaptic] event=impact index=182 prepare=true elapsedMs=3919 intervalMs=20
+[NativeHaptic] event=impact index=183 prepare=true elapsedMs=3939 intervalMs=19
+[NativeHaptic] event=impact index=184 prepare=true elapsedMs=3959 intervalMs=20
+[NativeHaptic] event=impact index=185 prepare=true elapsedMs=3979 intervalMs=19
+[NativeHaptic] event=impact index=186 prepare=true elapsedMs=3999 intervalMs=20
+[NativeHaptic] event=impact index=187 prepare=true elapsedMs=4019 intervalMs=19
+[NativeHaptic] event=impact index=188 prepare=true elapsedMs=4039 intervalMs=20
+[NativeHaptic] event=impact index=189 prepare=true elapsedMs=4059 intervalMs=20
+[NativeHaptic] event=impact index=190 prepare=true elapsedMs=4079 intervalMs=19
+[NativeHaptic] event=impact index=191 prepare=true elapsedMs=4099 intervalMs=20
+[NativeHaptic] event=impact index=192 prepare=true elapsedMs=4119 intervalMs=19
+[NativeHaptic] event=impact index=193 prepare=true elapsedMs=4139 intervalMs=19
+[NativeHaptic] event=impact index=194 prepare=true elapsedMs=4159 intervalMs=19
+[NativeHaptic] event=impact index=195 prepare=true elapsedMs=4179 intervalMs=19
+[NativeHaptic] event=impact index=196 prepare=true elapsedMs=4199 intervalMs=20
+[NativeHaptic] event=impact index=197 prepare=true elapsedMs=4219 intervalMs=19
+[NativeHaptic] event=impact index=198 prepare=true elapsedMs=4239 intervalMs=20
+[NativeHaptic] event=impact index=199 prepare=true elapsedMs=4259 intervalMs=19
+[NativeHaptic] event=impact index=200 prepare=true elapsedMs=4279 intervalMs=20
+[NativeHaptic] event=impact index=201 prepare=true elapsedMs=4299 intervalMs=19
+[NativeHaptic] event=impact index=202 prepare=true elapsedMs=4319 intervalMs=20
+[NativeHaptic] event=impact index=203 prepare=true elapsedMs=4339 intervalMs=19
+[NativeHaptic] event=impact index=204 prepare=true elapsedMs=4359 intervalMs=20
+[NativeHaptic] event=impact index=205 prepare=true elapsedMs=4379 intervalMs=19
+[NativeHaptic] event=impact index=206 prepare=true elapsedMs=4398 intervalMs=19
+[NativeHaptic] event=impact index=207 prepare=true elapsedMs=4419 intervalMs=20
+[NativeHaptic] event=impact index=208 prepare=true elapsedMs=4439 intervalMs=19
+[NativeHaptic] event=impact index=209 prepare=true elapsedMs=4459 intervalMs=19
+[NativeHaptic] event=impact index=210 prepare=true elapsedMs=4479 intervalMs=20
+[NativeHaptic] event=impact index=211 prepare=true elapsedMs=4499 intervalMs=20
+[NativeHaptic] event=impact index=212 prepare=true elapsedMs=4519 intervalMs=20
+[NativeHaptic] event=impact index=213 prepare=true elapsedMs=4539 intervalMs=19
+[NativeHaptic] event=impact index=214 prepare=true elapsedMs=4559 intervalMs=20
+[NativeHaptic] event=impact index=215 prepare=true elapsedMs=4579 intervalMs=20
+[NativeHaptic] event=impact index=216 prepare=true elapsedMs=4599 intervalMs=19
+[NativeHaptic] event=impact index=217 prepare=true elapsedMs=4619 intervalMs=20
+[NativeHaptic] event=impact index=218 prepare=true elapsedMs=4639 intervalMs=19
+[NativeHaptic] event=impact index=219 prepare=true elapsedMs=4659 intervalMs=19
+[NativeHaptic] event=impact index=220 prepare=true elapsedMs=4679 intervalMs=20
+[NativeHaptic] event=impact index=221 prepare=true elapsedMs=4699 intervalMs=19
+[NativeHaptic] event=impact index=222 prepare=true elapsedMs=4719 intervalMs=19
+[NativeHaptic] event=impact index=223 prepare=true elapsedMs=4739 intervalMs=20
+[NativeHaptic] event=impact index=224 prepare=true elapsedMs=4759 intervalMs=20
+[NativeHaptic] event=impact index=225 prepare=true elapsedMs=4779 intervalMs=19
+[NativeHaptic] event=impact index=226 prepare=true elapsedMs=4799 intervalMs=19
+[NativeHaptic] event=impact index=227 prepare=true elapsedMs=4819 intervalMs=20
+[NativeHaptic] event=impact index=228 prepare=true elapsedMs=4839 intervalMs=19
+[NativeHaptic] event=impact index=229 prepare=true elapsedMs=4859 intervalMs=20
+[NativeHaptic] event=impact index=230 prepare=true elapsedMs=4879 intervalMs=20
+[NativeHaptic] event=impact index=231 prepare=true elapsedMs=4899 intervalMs=19
+[NativeHaptic] event=impact index=232 prepare=true elapsedMs=4919 intervalMs=19
+[NativeHaptic] event=impact index=233 prepare=true elapsedMs=4939 intervalMs=20
+[NativeHaptic] event=impact index=234 prepare=true elapsedMs=4959 intervalMs=19
+[NativeHaptic] event=impact index=235 prepare=true elapsedMs=4979 intervalMs=19
+[NativeHaptic] event=impact index=236 prepare=true elapsedMs=4999 intervalMs=20
+[NativeHaptic] event=impact index=237 prepare=true elapsedMs=5019 intervalMs=19
+[NativeHaptic] event=impact index=238 prepare=true elapsedMs=5039 intervalMs=20
+[NativeHaptic] event=impact index=239 prepare=true elapsedMs=5059 intervalMs=20
+[NativeHaptic] event=impact index=240 prepare=true elapsedMs=5079 intervalMs=20
+[NativeHaptic] event=impact index=241 prepare=true elapsedMs=5099 intervalMs=19
+[NativeHaptic] event=impact index=242 prepare=true elapsedMs=5119 intervalMs=20
+[NativeHaptic] event=impact index=243 prepare=true elapsedMs=5139 intervalMs=19
+[NativeHaptic] event=impact index=244 prepare=true elapsedMs=5159 intervalMs=20
+[NativeHaptic] event=impact index=245 prepare=true elapsedMs=5179 intervalMs=20
+[NativeHaptic] event=impact index=246 prepare=true elapsedMs=5199 intervalMs=19
+[NativeHaptic] event=impact index=247 prepare=true elapsedMs=5219 intervalMs=20
+[NativeHaptic] event=impact index=248 prepare=true elapsedMs=5239 intervalMs=19
+[NativeHaptic] event=impact index=249 prepare=true elapsedMs=5259 intervalMs=20
+[NativeHaptic] event=impact index=250 prepare=true elapsedMs=5279 intervalMs=19
+[NativeHaptic] event=impact index=251 prepare=true elapsedMs=5380 intervalMs=100
+2026-11-03 15:09:29.832082+0900 Pheeeew[88769:48539116] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:29.832268+0900 Pheeeew[88769:48539116] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+2026-11-03 15:09:29.833176+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.833279+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.833335+0900 Pheeeew[88769:48539116] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:29.833370+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.833410+0900 Pheeeew[88769:48539116] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+2026-11-03 15:09:29.833453+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.833533+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.833657+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.833742+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.833825+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.833915+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.834017+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.834099+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.834197+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.834276+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.834358+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.834563+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.834676+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.834767+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.834862+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.834943+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.835027+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.835172+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.835283+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.835380+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.835463+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.835550+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.835647+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.835730+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.835817+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.835900+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.835980+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.836062+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.836143+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.836226+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.836323+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.836403+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.836485+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.836564+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.836641+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.836722+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.836802+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.836883+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.836984+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.837067+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.837147+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.837232+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.837315+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.837425+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.837563+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.837662+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.837758+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.837820+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.837881+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.837947+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.838007+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.838069+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.838129+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.838196+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.838267+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.838330+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.838401+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.838508+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.838592+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.838658+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.838728+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.838793+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.838863+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.838923+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.838983+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.839042+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.839106+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.839166+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.839227+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.839286+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.839358+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.839443+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.839504+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.839565+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.839627+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.839688+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.839736+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.839784+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.839845+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.839894+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.839944+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.839993+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.840043+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.840097+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.840149+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.840196+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.840252+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.840300+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.840346+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.840394+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.840443+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.840494+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.840549+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.840598+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.840662+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.840714+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.840765+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.840815+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.840865+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.840915+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.840964+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.841013+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.841066+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.841115+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.841161+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.841215+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.841264+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.841316+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.841396+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.841459+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.841520+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.841576+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.841631+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.841679+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.841729+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.841782+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.841836+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.841893+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.841949+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.842000+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.842049+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.842104+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.842153+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.842204+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.842259+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.842308+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.842364+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.842413+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.842473+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.842524+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.842574+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.842622+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.842676+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.842727+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.842783+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.842832+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.842879+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.842930+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.842982+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.843031+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.843081+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.843129+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.843182+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.843231+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.843279+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.843337+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.843392+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.843439+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.843488+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.843536+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.843593+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.843643+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.843691+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.843741+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.843792+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.843839+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.843893+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.843944+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.844002+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.844088+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.844148+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.844201+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.844251+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.844301+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.844358+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.844405+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.844464+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.844514+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.844566+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.844623+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.844671+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.844720+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.844776+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.844826+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.844883+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.844938+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.844984+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.845032+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.845081+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.845134+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.845182+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.845230+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.845293+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.845342+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.845390+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.845445+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.845499+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.845548+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.845604+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.845648+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.845698+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.845741+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.845789+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.845831+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.845877+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.845917+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.845959+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.846002+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.846049+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.846090+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.846133+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.846175+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.846215+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.846258+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.846299+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.846363+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.846418+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.846460+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.846500+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.846541+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.846582+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.846626+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.846669+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.846709+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.846755+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.846794+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.846839+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.846881+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.846923+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.846962+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.847004+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.847045+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.847090+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.847133+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.847174+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.847214+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.847252+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.847292+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.847336+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.847376+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.847426+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.847475+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.847515+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.847556+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.847596+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.847655+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.847700+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.847744+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.847798+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.847838+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.847881+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.847925+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.847971+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.848013+0900 Pheeeew[88769:48539058] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+[NativeHaptic] event=impact index=252 prepare=true elapsedMs=5399 intervalMs=19
+2026-11-03 15:09:29.851866+0900 Pheeeew[88769:48539113] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381259951898626, rateLimit=32hz }
+2026-11-03 15:09:29.852076+0900 Pheeeew[88769:48539113] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:29.852111+0900 Pheeeew[88769:48539113] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=253 prepare=true elapsedMs=5419 intervalMs=19
+2026-11-03 15:09:29.872306+0900 Pheeeew[88769:48539116] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:29.872369+0900 Pheeeew[88769:48539116] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=254 prepare=true elapsedMs=5439 intervalMs=19
+2026-11-03 15:09:29.892051+0900 Pheeeew[88769:48539113] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:29.892114+0900 Pheeeew[88769:48539113] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=255 prepare=true elapsedMs=5459 intervalMs=20
+2026-11-03 15:09:29.912539+0900 Pheeeew[88769:48539113] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:29.912610+0900 Pheeeew[88769:48539113] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=256 prepare=true elapsedMs=5479 intervalMs=19
+2026-11-03 15:09:29.932436+0900 Pheeeew[88769:48539116] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:29.932497+0900 Pheeeew[88769:48539116] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=257 prepare=true elapsedMs=5499 intervalMs=19
+2026-11-03 15:09:29.952410+0900 Pheeeew[88769:48539113] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:29.952472+0900 Pheeeew[88769:48539113] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=258 prepare=true elapsedMs=5519 intervalMs=19
+2026-11-03 15:09:29.972389+0900 Pheeeew[88769:48539116] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:29.972460+0900 Pheeeew[88769:48539116] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=259 prepare=true elapsedMs=5539 intervalMs=20
+2026-11-03 15:09:29.992485+0900 Pheeeew[88769:48539116] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:29.992549+0900 Pheeeew[88769:48539116] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=260 prepare=true elapsedMs=5559 intervalMs=19
+2026-11-03 15:09:30.012513+0900 Pheeeew[88769:48539113] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.012580+0900 Pheeeew[88769:48539113] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=261 prepare=true elapsedMs=5579 intervalMs=20
+2026-11-03 15:09:30.032502+0900 Pheeeew[88769:48539116] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.032571+0900 Pheeeew[88769:48539116] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=262 prepare=true elapsedMs=5599 intervalMs=19
+2026-11-03 15:09:30.052428+0900 Pheeeew[88769:48539116] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.052497+0900 Pheeeew[88769:48539116] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=263 prepare=true elapsedMs=5619 intervalMs=20
+2026-11-03 15:09:30.072430+0900 Pheeeew[88769:48539116] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.072501+0900 Pheeeew[88769:48539116] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=264 prepare=true elapsedMs=5639 intervalMs=19
+2026-11-03 15:09:30.092466+0900 Pheeeew[88769:48539113] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.092527+0900 Pheeeew[88769:48539113] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=265 prepare=true elapsedMs=5659 intervalMs=20
+2026-11-03 15:09:30.112507+0900 Pheeeew[88769:48539116] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.112572+0900 Pheeeew[88769:48539116] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=266 prepare=true elapsedMs=5679 intervalMs=19
+2026-11-03 15:09:30.132409+0900 Pheeeew[88769:48539113] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.132472+0900 Pheeeew[88769:48539113] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=267 prepare=true elapsedMs=5699 intervalMs=20
+2026-11-03 15:09:30.152440+0900 Pheeeew[88769:48539113] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.152514+0900 Pheeeew[88769:48539113] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=268 prepare=true elapsedMs=5719 intervalMs=19
+2026-11-03 15:09:30.172507+0900 Pheeeew[88769:48539113] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.172570+0900 Pheeeew[88769:48539113] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=269 prepare=true elapsedMs=5739 intervalMs=20
+2026-11-03 15:09:30.192477+0900 Pheeeew[88769:48539113] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.192542+0900 Pheeeew[88769:48539113] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=270 prepare=true elapsedMs=5759 intervalMs=19
+2026-11-03 15:09:30.212461+0900 Pheeeew[88769:48539116] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.212522+0900 Pheeeew[88769:48539116] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=271 prepare=true elapsedMs=5779 intervalMs=20
+2026-11-03 15:09:30.232454+0900 Pheeeew[88769:48539113] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.232515+0900 Pheeeew[88769:48539113] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=272 prepare=true elapsedMs=5799 intervalMs=19
+2026-11-03 15:09:30.252418+0900 Pheeeew[88769:48539113] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.252482+0900 Pheeeew[88769:48539113] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=273 prepare=true elapsedMs=5819 intervalMs=19
+2026-11-03 15:09:30.272452+0900 Pheeeew[88769:48539113] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.272514+0900 Pheeeew[88769:48539113] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=274 prepare=true elapsedMs=5839 intervalMs=20
+2026-11-03 15:09:30.292438+0900 Pheeeew[88769:48539113] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.292502+0900 Pheeeew[88769:48539113] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=275 prepare=true elapsedMs=5859 intervalMs=20
+2026-11-03 15:09:30.312452+0900 Pheeeew[88769:48539116] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.312513+0900 Pheeeew[88769:48539116] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=276 prepare=true elapsedMs=5879 intervalMs=19
+2026-11-03 15:09:30.332446+0900 Pheeeew[88769:48539113] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.332512+0900 Pheeeew[88769:48539113] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=277 prepare=true elapsedMs=5899 intervalMs=19
+2026-11-03 15:09:30.352008+0900 Pheeeew[88769:48539116] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.352072+0900 Pheeeew[88769:48539116] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=278 prepare=true elapsedMs=5919 intervalMs=20
+2026-11-03 15:09:30.372426+0900 Pheeeew[88769:48539116] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.372488+0900 Pheeeew[88769:48539116] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=279 prepare=true elapsedMs=5939 intervalMs=19
+2026-11-03 15:09:30.392155+0900 Pheeeew[88769:48539116] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.392195+0900 Pheeeew[88769:48539116] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=280 prepare=true elapsedMs=5959 intervalMs=20
+2026-11-03 15:09:30.412492+0900 Pheeeew[88769:48539116] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.412554+0900 Pheeeew[88769:48539116] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=281 prepare=true elapsedMs=5979 intervalMs=20
+2026-11-03 15:09:30.432507+0900 Pheeeew[88769:48539113] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.432567+0900 Pheeeew[88769:48539113] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=282 prepare=true elapsedMs=5999 intervalMs=19
+2026-11-03 15:09:30.452432+0900 Pheeeew[88769:48539116] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.452490+0900 Pheeeew[88769:48539116] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=283 prepare=true elapsedMs=6019 intervalMs=19
+2026-11-03 15:09:30.472410+0900 Pheeeew[88769:48539113] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.472469+0900 Pheeeew[88769:48539113] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=284 prepare=true elapsedMs=6039 intervalMs=20
+2026-11-03 15:09:30.492448+0900 Pheeeew[88769:48539113] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.492513+0900 Pheeeew[88769:48539113] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=285 prepare=true elapsedMs=6059 intervalMs=19
+2026-11-03 15:09:30.512477+0900 Pheeeew[88769:48539116] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.512551+0900 Pheeeew[88769:48539116] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=286 prepare=true elapsedMs=6079 intervalMs=19
+2026-11-03 15:09:30.532287+0900 Pheeeew[88769:48539116] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.532339+0900 Pheeeew[88769:48539116] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=287 prepare=true elapsedMs=6099 intervalMs=20
+2026-11-03 15:09:30.552456+0900 Pheeeew[88769:48539113] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.552509+0900 Pheeeew[88769:48539113] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=288 prepare=true elapsedMs=6119 intervalMs=19
+2026-11-03 15:09:30.572527+0900 Pheeeew[88769:48539116] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.572604+0900 Pheeeew[88769:48539116] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=289 prepare=true elapsedMs=6139 intervalMs=19
+2026-11-03 15:09:30.592411+0900 Pheeeew[88769:48539113] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.592494+0900 Pheeeew[88769:48539113] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=290 prepare=true elapsedMs=6159 intervalMs=20
+2026-11-03 15:09:30.612674+0900 Pheeeew[88769:48539113] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.612762+0900 Pheeeew[88769:48539113] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=291 prepare=true elapsedMs=6179 intervalMs=20
+2026-11-03 15:09:30.632560+0900 Pheeeew[88769:48539113] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.632633+0900 Pheeeew[88769:48539113] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=292 prepare=true elapsedMs=6199 intervalMs=20
+2026-11-03 15:09:30.652559+0900 Pheeeew[88769:48539113] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.652639+0900 Pheeeew[88769:48539113] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=293 prepare=true elapsedMs=6219 intervalMs=19
+2026-11-03 15:09:30.671637+0900 Pheeeew[88769:48539113] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.671732+0900 Pheeeew[88769:48539113] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=294 prepare=true elapsedMs=6239 intervalMs=20
+2026-11-03 15:09:30.692171+0900 Pheeeew[88769:48539059] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.692214+0900 Pheeeew[88769:48539059] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=295 prepare=true elapsedMs=6259 intervalMs=20
+2026-11-03 15:09:30.712350+0900 Pheeeew[88769:48539059] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.712386+0900 Pheeeew[88769:48539059] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=296 prepare=true elapsedMs=6279 intervalMs=20
+2026-11-03 15:09:30.732717+0900 Pheeeew[88769:48539059] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.732796+0900 Pheeeew[88769:48539059] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=297 prepare=true elapsedMs=6299 intervalMs=19
+2026-11-03 15:09:30.752726+0900 Pheeeew[88769:48539112] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.752803+0900 Pheeeew[88769:48539112] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=298 prepare=true elapsedMs=6319 intervalMs=19
+2026-11-03 15:09:30.772252+0900 Pheeeew[88769:48539112] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.772300+0900 Pheeeew[88769:48539112] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=299 prepare=true elapsedMs=6339 intervalMs=20
+2026-11-03 15:09:30.792097+0900 Pheeeew[88769:48539112] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.792134+0900 Pheeeew[88769:48539112] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=300 prepare=true elapsedMs=6359 intervalMs=19
+2026-11-03 15:09:30.812199+0900 Pheeeew[88769:48539059] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 15:09:30.812244+0900 Pheeeew[88769:48539059] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x11727f780>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=pause afterIndex=300 durationMs=8000
+App terminated due to signal 15.

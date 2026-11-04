@@ -28,11 +28,11 @@ import com.pheeeew.core.di.device.DeviceSessionBuildConfig
 import com.pheeeew.core.monitoring.MonitoringConfig
 import com.pheeeew.core.network.ConnectivityObserver
 import com.pheeeew.data.local.device.AndroidDeviceCredentialStorage
-import com.pheeeew.developertools.simulation.DebugAppServiceFactory
-import com.pheeeew.developertools.simulation.ErrorSimulation
-import com.pheeeew.developertools.simulation.ErrorSimulationState
-import com.pheeeew.developertools.simulation.LocationSimulationMode
-import com.pheeeew.developertools.simulation.LocationSimulationSettings
+import com.pheeeew.developertools.data.simulation.DebugAppServiceFactory
+import com.pheeeew.developertools.data.simulation.ErrorSimulation
+import com.pheeeew.developertools.data.simulation.ErrorSimulationState
+import com.pheeeew.developertools.data.simulation.LocationSimulationMode
+import com.pheeeew.developertools.data.simulation.LocationSimulationSettings
 import com.pheeeew.domain.model.device.DeviceCredentials
 import com.pheeeew.feature.screens.map.MapViewModel
 import io.ktor.client.engine.HttpClientEngine

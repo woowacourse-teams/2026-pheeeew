@@ -11,6 +11,7 @@ import com.pheeeew.domain.model.emotion.EmotionRegistrationContent
 import com.pheeeew.domain.model.emotion.EmotionRegistrationResult
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.repository.EmotionRegistrationRepository
+import com.pheeeew.domain.repository.RecordAnonymityStore
 import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
 import com.pheeeew.feature.screens.map.EmotionPinUiModel
 import com.pheeeew.feature.screens.map.monitoring.RecordFunnelMonitoring
@@ -34,6 +35,7 @@ import kotlin.uuid.Uuid
 class MapRecordViewModel(
     private val isWithinRecordRadius: IsWithinEmotionRecordRadiusUseCase,
     private val registrationRepository: EmotionRegistrationRepository,
+    private val anonymityStore: RecordAnonymityStore,
     monitoring: Monitoring = NoOpMonitoring,
 ) : ViewModel() {
     val funnel = RecordFunnelMonitoring(monitoring)
@@ -81,6 +83,7 @@ class MapRecordViewModel(
             RecordBottomSheetUiModel(
                 step = RecordFlowStepUiModel.Input,
                 selectedEmotion = emotion,
+                isAnonymous = anonymityStore.read() ?: true,
             )
     }
 
@@ -244,6 +247,13 @@ class MapRecordViewModel(
             val receipt = submission?.finish(result)
             when (result) {
                 is EmotionRegistrationResult.Success -> {
+                    try {
+                        anonymityStore.save(registration.anonymous)
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (_: Exception) {
+                        // The registration already succeeded on the server.
+                    }
                     registrationEvents.send(
                         EmotionPinUiModel(
                             id = result.id,

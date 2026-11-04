@@ -2,7 +2,11 @@
 
 ## 온보딩 열람 기록 초기화
 
-설정 → 개발자 도구 → `온보딩 열람 기록 초기화`를 누르면 온보딩의 로컬 완료 기록을 초기화한다. 기존 UI 세션을 정리한 뒤 온보딩부터 다시 표시하며, 온보딩 완료 후 메인 진입 절차로 이어진다. Android SharedPreferences와 iOS NSUserDefaults에서 온보딩 완료 키를 제거한다. 알림 권한 처리 이력과 다른 로컬 데이터는 유지한다. 진입 버튼은 Debug 전용이다.
+설정 → 개발자 도구 → `온보딩 열람 기록`을 선택해 적용하면 온보딩의 로컬 완료 기록을 초기화한다. 기존 UI 세션을 정리한 뒤 온보딩부터 다시 표시하며, 온보딩 완료 후 메인 진입 절차로 이어진다. Android SharedPreferences와 iOS NSUserDefaults에서 온보딩 완료 키를 제거한다. `알림 권한 테스트 상태`는 Android 13 이상 Debug에서만 제공한다. 앱이 관찰한 알림 거부·허용 이력과 예전 요청 시도 기록을 지운다. 권한이 허용 상태면 Android에 시스템 권한 회수를 예약하며, 회수는 앱이 백그라운드에 있고 시스템이 안전하다고 판단한 뒤 비동기로 적용된다. 권한이 실제로 회수된 것을 확인한 뒤 앱을 다시 열어 테스트한다. 이전에 거부한 권한은 Android 시스템의 거부 이력이 남아 최초 요청이 표시되지 않을 수 있다. 최초 상태 재현을 위해 권한을 회수한 뒤 아래 ADB 명령으로 `user-set`·`user-fixed` 플래그도 초기화한다. 두 항목은 Debug 전용이다.
+
+```sh
+adb shell pm clear-permission-flags <applicationId> android.permission.POST_NOTIFICATIONS user-set user-fixed
+```
 
 ## 빌드 구조
 

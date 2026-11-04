@@ -1,0 +1,12 @@
+(lldb) command source -s 0 'capture-stack.lldb'
+Executing commands in 'capture-stack.lldb'.
+(lldb) target create ${DERIVED_DATA}/Build/Products/Debug-iphoneos/Pheeeew.app/Pheeeew
+Current executable set to '${DERIVED_DATA}/Build/Products/Debug-iphoneos/Pheeeew.app/Pheeeew' (arm64).
+(lldb) device select <DEVICE_IDENTIFIER>
+(lldb) device process attach -p 88686
+(lldb) command script import ${PROJECT_ROOT}/AN/Pheeeew/scripts/haptic_channel_breakpoint_1060.py
+[HapticChannelFailure] breakpoint 1 _os_log_error_impl locations= 1
+[HapticChannelFailure] breakpoint 2 _os_log_fault_impl locations= 1
+First matching error stops. Other logs auto-continue. Delete these breakpoints for timing-only trials.
+(lldb) continue
+error: Process must be launched.

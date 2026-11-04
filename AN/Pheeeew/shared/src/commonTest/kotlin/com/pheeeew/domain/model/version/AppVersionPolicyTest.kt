@@ -25,11 +25,11 @@ class AppVersionPolicyTest {
     @Test
     fun `최소 지원 버전 이상이고 최신 버전보다 낮으면 선택 업데이트한다`() {
         assertEquals(
-            AppVersionDecision.UpdateSuggested(policy.storeUrl),
+            AppVersionDecision.UpdateSuggested(policy.storeUrl, policy.latestVersion),
             evaluateAppVersion("1.2.0", policy),
         )
         assertEquals(
-            AppVersionDecision.UpdateSuggested(policy.storeUrl),
+            AppVersionDecision.UpdateSuggested(policy.storeUrl, policy.latestVersion),
             evaluateAppVersion("1.9.0", policy),
         )
     }

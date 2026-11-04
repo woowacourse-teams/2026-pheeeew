@@ -1,0 +1,7 @@
+(lldb) command source -s 0 'capture-live.lldb'
+Executing commands in 'capture-live.lldb'.
+(lldb) script lldb.debugger.SetAsync(False)
+(lldb) device select <DEVICE_IDENTIFIER>
+(lldb) device process attach -n Pheeeew
+Process 0 exited with status = 9 (0x00000009) killed
+Could not find process: Pheeeew

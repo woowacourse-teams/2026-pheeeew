@@ -14,6 +14,7 @@ internal fun AppEntry(
     owner: ActivityRetainedGraphOwner,
     notificationClicks: NotificationClickInbox,
     notificationMessages: NotificationMessageInbox,
+    updates: com.pheeeew.core.update.AppUpdateController,
 ) {
-    AndroidAppContent(activity, appGraph, owner, notificationClicks, notificationMessages)
+    AndroidAppContent(activity, appGraph, owner, notificationClicks, notificationMessages, updates)
 }

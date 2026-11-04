@@ -1,0 +1,34 @@
+(lldb) command source -s 0 'unlocked-capture.lldb'
+Executing commands in 'unlocked-capture.lldb'.
+(lldb) script lldb.debugger.SetAsync(False)
+(lldb) device select <DEVICE_IDENTIFIER>
+(lldb) device process attach -p 88706
+(lldb) script exec("import time\np = lldb.debugger.GetSelectedTarget().GetProcess()\nfor _ in range(25):\n if p.GetState() in (lldb.eStateStopped, lldb.eStateCrashed, lldb.eStateExited): break\n time.sleep(1)\nprint(\"attach state:\",p.GetState())")
+Process 88706 stopped
+* thread #1, stop reason = signal SIGSTOP
+    frame #0: 0x00000001030670f0 dyld`_dyld_start
+dyld`_dyld_start:
+->  0x1030670f0 <+0>:  mov    x0, sp
+    0x1030670f4 <+4>:  and    sp, x0, #0xfffffffffffffff0
+    0x1030670f8 <+8>:  mov    x29, #0x0                 ; =0
+    0x1030670fc <+12>: mov    x30, #0x0                 ; =0
+Target 0: (Pheeeew) stopped.
+attach state: 5
+(lldb) process status
+Process 88706 stopped
+* thread #1, stop reason = signal SIGSTOP
+    frame #0: 0x00000001030670f0 dyld`_dyld_start
+dyld`_dyld_start:
+->  0x1030670f0 <+0>:  mov    x0, sp
+    0x1030670f4 <+4>:  and    sp, x0, #0xfffffffffffffff0
+    0x1030670f8 <+8>:  mov    x29, #0x0                 ; =0
+    0x1030670fc <+12>: mov    x30, #0x0                 ; =0
+(lldb) target list
+Current targets:
+* target #0: /private/var/containers/Bundle/Application/BA00AF9B-9F4C-41A4-A84E-5702CE70C033/Pheeeew.app/Pheeeew ( arch=arm64-apple-ios, platform=remote-ios, pid=88706, state=stopped )
+(lldb) command script import ${PROJECT_ROOT}/AN/Pheeeew/scripts/haptic_channel_exact_1060.py
+Traceback (most recent call last):
+  File "${PROJECT_ROOT}/AN/Pheeeew/scripts/haptic_channel_exact_1060.py", line 27, in __lldb_init_module
+    raise RuntimeError('Matching CoreHaptics UUID/function not found; no guessed address installed')
+RuntimeError: Matching CoreHaptics UUID/function not found; no guessed address installed
+(lldb) continue

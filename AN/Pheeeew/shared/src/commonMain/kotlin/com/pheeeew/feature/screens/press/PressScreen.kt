@@ -22,9 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LifecycleEventEffect
-import com.pheeeew.core.audio.rememberPressSoundPlayer
+import com.pheeeew.core.audio.PressSoundPlayer
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
@@ -49,20 +47,24 @@ import pheeeew.shared.generated.resources.press_race_input_recovery_required
 import pheeeew.shared.generated.resources.press_screen_subtitle
 import pheeeew.shared.generated.resources.press_screen_title
 
+internal object PreviewPressSoundPlayer : PressSoundPlayer {
+    override fun play() = Unit
+
+    override fun stop() = Unit
+}
+
 @Composable
 internal fun PressScreen(
     uiState: PressUiState,
     onEmotionTap: (EmotionKind) -> Boolean,
     onOpenRanking: () -> Unit,
+    soundPlayer: PressSoundPlayer = PreviewPressSoundPlayer,
     modifier: Modifier = Modifier,
     nearbyRanking: PressNearbyRankingUiState = PressNearbyRankingUiState(status = PressNearbyRankingStatus.Unavailable),
     activity: PressActivityUiState? = null,
     faceVisuals: Map<EmotionKind, EmotionFaceVisual> = emptyMap(),
 ) {
-    val soundPlayer = rememberPressSoundPlayer()
     val feedbackScope = rememberCoroutineScope()
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { soundPlayer.prepare() }
-    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { soundPlayer.stop() }
     val font = notoSansKrFontFamily()
     val emotionCounts =
         EmotionKind.entries.map { kind ->
@@ -181,6 +183,7 @@ private fun PressScreenPreview() {
                 ),
             onEmotionTap = { true },
             onOpenRanking = {},
+            soundPlayer = PreviewPressSoundPlayer,
         )
     }
 }

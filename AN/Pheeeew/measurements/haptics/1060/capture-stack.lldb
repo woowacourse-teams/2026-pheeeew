@@ -1,0 +1,8 @@
+target create ${DERIVED_DATA}/Build/Products/Debug-iphoneos/Pheeeew.app/Pheeeew
+device select <DEVICE_IDENTIFIER>
+device process attach -p 88686
+command script import ${PROJECT_ROOT}/AN/Pheeeew/scripts/haptic_channel_breakpoint_1060.py
+continue
+thread backtrace all
+process detach
+quit

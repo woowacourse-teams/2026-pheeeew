@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<Scheme LastUpgradeVersion="2660" version="1.3">
+  <BuildAction parallelizeBuildables="YES" buildImplicitDependencies="YES">
+    <BuildActionEntries>
+      <BuildActionEntry buildForTesting="YES" buildForRunning="YES" buildForProfiling="YES" buildForArchiving="NO" buildForAnalyzing="YES">
+        <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="941B8A2D45C4AB1B7104EF98" BuildableName="Pheeeew.app" BlueprintName="iosApp" ReferencedContainer="container:iosApp.xcodeproj" />
+      </BuildActionEntry>
+    </BuildActionEntries>
+  </BuildAction>
+  <LaunchAction buildConfiguration="Debug" selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier="Xcode.IDEFoundation.Launcher.LLDB" launchStyle="0" useCustomWorkingDirectory="NO" ignoresPersistentStateOnLaunch="NO" debugDocumentVersioning="YES" debugServiceExtension="internal" allowLocationSimulation="YES">
+    <BuildableProductRunnable runnableDebuggingMode="0">
+      <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="941B8A2D45C4AB1B7104EF98" BuildableName="Pheeeew.app" BlueprintName="iosApp" ReferencedContainer="container:iosApp.xcodeproj" />
+    </BuildableProductRunnable>
+    <EnvironmentVariables>
+      <EnvironmentVariable key="PRESS_HAPTIC_EXPERIMENT" value="1" isEnabled="YES" />
+      <EnvironmentVariable key="PRESS_HAPTIC_PREPARE" value="0" isEnabled="YES" />
+      <EnvironmentVariable key="PRESS_SOUND_DISABLED" value="0" isEnabled="YES" />
+    </EnvironmentVariables>
+  </LaunchAction>
+</Scheme>

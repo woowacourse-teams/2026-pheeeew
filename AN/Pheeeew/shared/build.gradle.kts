@@ -92,6 +92,7 @@ kotlin {
     sourceSets.named("androidDeviceTest") {
         dependencies {
             implementation(libs.kotlin.test)
+            implementation(libs.kotlinx.coroutines.test)
             implementation(libs.androidx.testExt.junit)
             implementation(libs.androidx.test.runner)
             implementation(libs.androidx.uiautomator)

@@ -1,0 +1,61 @@
+14:37:31  Acquired tunnel connection to device.
+14:37:31  Enabling developer disk image services.
+14:37:31  Acquired usage assertion.
+Launched application with com.itda.pheeeew bundle identifier.
+Waiting for the application to terminate…
+2026-11-03 14:37:29.629587+0900 Pheeeew[88693:48509093] [[FirebaseMessaging]] 13.1.1 - [FirebaseMessaging][I-FCM001000] FIRMessaging Remote Notifications proxy enabled, will swizzle remote notification receiver handlers. If you'd prefer to manually integrate Firebase Messaging, add "FirebaseAppDelegateProxyEnabled" to your Info.plist, and set it to NO. Follow the instructions at:
+https://firebase.google.com/docs/cloud-messaging/ios/client#method_swizzling_in_firebase_messaging
+to ensure proper integration.
+2026-11-03 14:37:29.641275+0900 Pheeeew[88693:48509082] [MC] Reading from public effective user settings.
+2026-11-03 14:37:29.776138+0900 Pheeeew[88693:48509085] [Common] unable to decode "ShellSceneKit.ProfileActivation" because this class does not exist
+2026-11-03 14:37:29.776153+0900 Pheeeew[88693:48509085] [Common] -[BSSettings initWithXPCDictionary:]_block_invoke Could not decode object for setting 17456962218540468756
+2026-11-03 14:37:29.776157+0900 Pheeeew[88693:48509085] [Common] No value decoded for key "profileActivation" (17456962218540468756). Ignoring.
+2026-11-03 14:37:29.807270+0900 Pheeeew[88693:48509082] MLNMapView WARNING UIViewController.automaticallyAdjustsScrollViewInsets is deprecated use MLNMapView.automaticallyAdjustContentInset instead.
+APNs 등록 성공
+2026-11-03 14:37:29.819192+0900 Pheeeew[88693:48509098] [connection] nw_connection_copy_protocol_metadata_internal_block_invoke [C6] Client called nw_connection_copy_protocol_metadata_internal on unconnected nw_connection
+2026-11-03 14:37:29.819226+0900 Pheeeew[88693:48509098] [connection] nw_connection_copy_protocol_metadata_internal_block_invoke [C6] Client called nw_connection_copy_protocol_metadata_internal on unconnected nw_connection
+2026-11-03 14:37:29.819233+0900 Pheeeew[88693:48509098] [connection] nw_connection_copy_protocol_metadata_internal_block_invoke [C6] Client called nw_connection_copy_protocol_metadata_internal on unconnected nw_connection
+2026-11-03 14:37:29.819236+0900 Pheeeew[88693:48509098] [connection] nw_connection_copy_connected_local_endpoint_block_invoke [C6] Client called nw_connection_copy_connected_local_endpoint on unconnected nw_connection
+2026-11-03 14:37:29.819239+0900 Pheeeew[88693:48509098] [connection] nw_connection_copy_connected_remote_endpoint_block_invoke [C6] Client called nw_connection_copy_connected_remote_endpoint on unconnected nw_connection
+[PushTokenSync] state=WAITING
+[PushTokenSync] state=SYNCING
+[PushTokenSync] method=PUT env=dev http=204
+[PushTokenSync] state=SYNCED
+[HapticExperiment] event=armed prepare=true count=2000 intervalMs=20 startDelayMs=5000
+2026-11-03 14:37:29.899744+0900 Pheeeew[88693:48509082] [CoreLocation] __delegate_identifier__:Performance Diagnostics__:::____message__: This method can cause UI unresponsiveness if invoked on the main thread. Instead, consider waiting for the `-locationManagerDidChangeAuthorization:` callback and checking `authorizationStatus` first.
+2026-11-03 14:37:29.905457+0900 Pheeeew[88693:48509082] [CoreLocation] __delegate_identifier__:Performance Diagnostics__:::____message__: This method can cause UI unresponsiveness if invoked on the main thread. Instead, consider waiting for the `-locationManagerDidChangeAuthorization:` callback and checking `authorizationStatus` first.
+2026-11-03 14:37:29.908150+0900 Pheeeew[88693:48509082] [CoreLocation] __delegate_identifier__:Performance Diagnostics__:::____message__: This method can cause UI unresponsiveness if invoked on the main thread. Instead, consider waiting for the `-locationManagerDidChangeAuthorization:` callback and checking `authorizationStatus` first.
+[PushTokenSync] state=WAITING
+[PushTokenSync] state=SYNCING
+[PushTokenSync] method=PUT env=dev http=204
+[PushTokenSync] state=SYNCED
+[HapticExperiment] event=start prepare=true category=AVAudioSessionCategoryAmbient mode=AVAudioSessionModeDefault mainThread=true
+[HapticExperiment] event=impact index=1 prepare=true elapsedMs=0 latenessMs=0
+[HapticExperiment] event=impact index=2 prepare=true elapsedMs=21 latenessMs=1
+[HapticExperiment] event=impact index=3 prepare=true elapsedMs=45 latenessMs=5
+[HapticExperiment] event=impact index=4 prepare=true elapsedMs=61 latenessMs=1
+[HapticExperiment] event=impact index=5 prepare=true elapsedMs=82 latenessMs=2
+[HapticExperiment] event=impact index=6 prepare=true elapsedMs=100 latenessMs=0
+[HapticExperiment] event=impact index=7 prepare=true elapsedMs=121 latenessMs=1
+[Revisit test] firstIntervalSeconds=172799.975 lastIntervalSeconds=2678392.607
+[Revisit test] alerts=2 lockScreen=2 notificationCenter=2 sound=2 scheduledDelivery=1
+[Revisit test] delivered=0
+[Revisit test] reason=foreground permission=2 pending=30 repeating=0 minuteSpacing=false
+[Revisit test] first=2026-11-05T05:37:37Z last=2026-12-04T05:37:30Z
+[Revisit test] firstRequestId=pheeeew.revisit.1793684250050.0
+[HapticExperiment] event=impact index=8 prepare=true elapsedMs=141 latenessMs=1
+[HapticExperiment] event=impact index=9 prepare=true elapsedMs=161 latenessMs=1
+[HapticExperiment] event=impact index=10 prepare=true elapsedMs=181 latenessMs=1
+[HapticExperiment] event=impact index=11 prepare=true elapsedMs=200 latenessMs=0
+[HapticExperiment] event=impact index=12 prepare=true elapsedMs=221 latenessMs=1
+[HapticExperiment] event=impact index=13 prepare=true elapsedMs=241 latenessMs=1
+[HapticExperiment] event=impact index=14 prepare=true elapsedMs=261 latenessMs=1
+[HapticExperiment] event=impact index=15 prepare=true elapsedMs=287 latenessMs=7
+[HapticExperiment] event=impact index=16 prepare=true elapsedMs=301 latenessMs=1
+[HapticExperiment] event=impact index=17 prepare=true elapsedMs=321 latenessMs=1
+[HapticExperiment] event=impact index=18 prepare=true elapsedMs=341 latenessMs=1
+[HapticExperiment] event=invalid reason=missedDeadline index=19 latenessMs=43; restart trial
+[HapticExperiment] event=finished prepare=true impacts=18 prepares=18; fewerThan=2000 means incomplete
+2026-11-03 14:38:02.994191+0900 Pheeeew[88693:48509453] [] nw_path_necp_check_for_updates Failed to copy updated result (22)
+2026-11-03 14:38:34.914300+0900 Pheeeew[88693:48509625] [tcp] tcp_input [C1.1.1.1:3] flags=[R.] seq=2671312663, ack=3532666805, win=298 state=CLOSED rcv_nxt=2671312638, snd_una=3532666741
+App terminated due to signal 15.

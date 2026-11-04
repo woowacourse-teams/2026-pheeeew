@@ -201,6 +201,7 @@ internal class AndroidNotificationRuntime(
     // The current BE FCM v1 sender targets `message.token`; FID registration uses `message.fid`.
     @Suppress("DEPRECATION")
     private fun requestCurrentSdkToken() {
+        if (BuildConfig.APPLICATION_ID.endsWith(".updatetest")) return
         FirebaseMessaging
             .getInstance()
             .token

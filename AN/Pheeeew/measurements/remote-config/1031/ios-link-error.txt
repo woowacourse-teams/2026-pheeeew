@@ -1,0 +1,11 @@
+> Task :shared:linkDebugTestIosSimulatorArm64 FAILED
+e: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld invocation reported errors
+Please try to disable compiler caches and rerun the build.
+To disable compiler caches, use `disableNativeCache` in the binary declaration in the Gradle build script.
+See https://kotl.in/disable-native-cache for specific instructions.
+
+Also, consider filing an issue with full Gradle log here: https://kotl.in/issue
+The /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld command returned non-zero exit code: 1.
+output:
+ld: warning: ignoring duplicate libraries: '-lc++', '-ldl', '-lobjc', '-lz'
+ld: framework 'Sentry' not found

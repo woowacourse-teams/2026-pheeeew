@@ -1,0 +1,5 @@
+com.pheeeew.AppUpdateAdapterTest:..
+
+Time: 1.865
+
+OK (2 tests)

@@ -26,11 +26,16 @@ ktlintGradle = "14.2.0"
 maplibre = "13.6.0"
 play-services-location = "21.3.0"
 play-integrity = "1.5.0"
+play-app-update = "2.1.0"
+androidx-fragment = "1.8.9"
 sentryGradle = "6.22.0"
 googleServices = "4.5.0"
 firebaseBom = "35.1.0"
 
 [libraries]
+androidx-fragment = { module = "androidx.fragment:fragment", version.ref = "androidx-fragment" }
+play-app-update = { module = "com.google.android.play:app-update", version.ref = "play-app-update" }
+play-app-update-ktx = { module = "com.google.android.play:app-update-ktx", version.ref = "play-app-update" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 firebase-messaging = { module = "com.google.firebase:firebase-messaging" }
 metro-viewmodel-compose = { module = "dev.zacsweers.metro:metrox-viewmodel-compose", version.ref = "metro" }

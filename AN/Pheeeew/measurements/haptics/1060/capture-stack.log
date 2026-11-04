@@ -1,0 +1,556 @@
+(lldb) command source -s 0 'boot-capture.lldb'
+Executing commands in 'boot-capture.lldb'.
+(lldb) script lldb.debugger.SetAsync(False)
+(lldb) device select <DEVICE_IDENTIFIER>
+(lldb) device process attach -p 88718
+(lldb) script exec("import time\np = lldb.debugger.GetSelectedTarget().GetProcess()\nfor _ in range(25):\n if p.GetState() in (lldb.eStateStopped, lldb.eStateCrashed, lldb.eStateExited): break\n time.sleep(1)\nprint(\"attach state:\",p.GetState())")
+Process 88718 stopped
+* thread #1, stop reason = signal SIGSTOP
+    frame #0: 0x000000010492f0f0 dyld`_dyld_start
+dyld`_dyld_start:
+->  0x10492f0f0 <+0>:  mov    x0, sp
+    0x10492f0f4 <+4>:  and    sp, x0, #0xfffffffffffffff0
+    0x10492f0f8 <+8>:  mov    x29, #0x0                 ; =0
+    0x10492f0fc <+12>: mov    x30, #0x0                 ; =0
+Target 0: (Pheeeew) stopped.
+attach state: 5
+(lldb) process status
+Process 88718 stopped
+* thread #1, stop reason = signal SIGSTOP
+    frame #0: 0x000000010492f0f0 dyld`_dyld_start
+dyld`_dyld_start:
+->  0x10492f0f0 <+0>:  mov    x0, sp
+    0x10492f0f4 <+4>:  and    sp, x0, #0xfffffffffffffff0
+    0x10492f0f8 <+8>:  mov    x29, #0x0                 ; =0
+    0x10492f0fc <+12>: mov    x30, #0x0                 ; =0
+(lldb) target list
+Current targets:
+* target #0: /private/var/containers/Bundle/Application/32023E63-CD2A-4493-A45B-E7A95FA7CEAC/Pheeeew.app/Pheeeew ( arch=arm64-apple-ios, platform=remote-ios, pid=88718, state=stopped )
+(lldb) breakpoint set --func-regex "CHHapticEngine.*init" --one-shot true
+Breakpoint 1: no locations (pending).
+WARNING:  Unable to resolve breakpoint to any actual locations.
+(lldb) continue
+10 locations added to breakpoint 1
+Process 88718 resuming
+Process 88718 stopped
+* thread #1, queue = 'com.apple.main-thread', stop reason = one-shot breakpoint 1
+    frame #0: 0x000000021b83f150 CoreHaptics`+[CHHapticEngine initialize]
+CoreHaptics`+[CHHapticEngine initialize]:
+->  0x21b83f150 <+0>:  pacibsp
+    0x21b83f154 <+4>:  stp    x29, x30, [sp, #-0x10]!
+    0x21b83f158 <+8>:  mov    x29, sp
+    0x21b83f15c <+12>: mov    x1, #0x61dd               ; =25053
+Target 0: (Pheeeew) stopped.
+(lldb) command script import ${PROJECT_ROOT}/AN/Pheeeew/scripts/haptic_channel_exact_1060.py
+[HapticChannelFailure] Exact error branch breakpoint 2 0x21a25efb4
+Only the error branch stops; ordinary log calls are not intercepted.
+(lldb) continue
+Process 88718 resuming
+Process 88718 stopped
+* thread #9, queue = 'com.apple.UIKit.FeedbackCoreHapticsEngineInternal', stop reason = one-shot breakpoint 2
+    frame #0: 0x000000021b852fb4 CoreHaptics`-[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:] + 208
+CoreHaptics`-[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]:
+->  0x21b852fb4 <+208>: bl     0x220a3a7b0
+    0x21b852fb8 <+212>: bl     0x220a3ab00
+    0x21b852fbc <+216>: ldur   x8, [x29, #-0x18]
+    0x21b852fc0 <+220>: adrp   x9, 385534
+Target 0: (Pheeeew) stopped.
+(lldb) thread backtrace all
+  thread #1, queue = 'com.apple.main-thread'
+    frame #0: 0x0000000234511cd4 libsystem_kernel.dylib`mach_msg2_trap + 8
+    frame #1: 0x000000023451530c libsystem_kernel.dylib`mach_msg2_internal + 76
+    frame #2: 0x000000023451522c libsystem_kernel.dylib`mach_msg_overwrite + 424
+    frame #3: 0x0000000234515078 libsystem_kernel.dylib`mach_msg + 24
+    frame #4: 0x0000000184b40344 CoreFoundation`__CFRunLoopServiceMachPort + 160
+    frame #5: 0x0000000184b0a310 CoreFoundation`__CFRunLoopRun + 1188
+    frame #6: 0x0000000184b0954c CoreFoundation`_CFRunLoopRunSpecificWithOptions + 532
+    frame #7: 0x000000022aaf1498 GraphicsServices`GSEventRunModal + 120
+    frame #8: 0x000000018a83d670 UIKitCore`-[UIApplication _run] + 796
+    frame #9: 0x000000018a7a8158 UIKitCore`UIApplicationMain + 332
+    frame #10: 0x000000018db97570 SwiftUI`closure #1 in KitRendererCommon(_:) + 168
+    frame #11: 0x000000018db940f4 SwiftUI`runApp(_:) + 112
+    frame #12: 0x000000018db93c48 SwiftUI`static App.main() + 172
+    frame #14: 0x000000010b6462b0 Pheeeew.debug.dylib`main at iOSApp.swift:0
+    frame #15: 0x0000000181715c1c dyld`start + 6928
+  thread #2
+    frame #0: 0x0000000234511a80 libsystem_kernel.dylib`__workq_kernreturn + 8
+  thread #5, name = 'GC Timer thread'
+    frame #0: 0x00000002345175e8 libsystem_kernel.dylib`__psynch_cvwait + 8
+    frame #1: 0x00000001e449cb48 libsystem_pthread.dylib`_pthread_cond_wait + 980
+    frame #2: 0x000000019425a3dc libc++.1.dylib`std::__1::condition_variable::__do_timed_wait(std::__1::unique_lock<std::__1::mutex>&, std::__1::chrono::time_point<std::__1::chrono::system_clock, std::__1::chrono::duration<long long, std::__1::ratio<1l, 1000000000l>>>) + 104
+    frame #3: 0x000000010c85fe30 Pheeeew.debug.dylib`std::__1::cv_status std::__1::condition_variable::wait_until[abi:nqe210106]<std::__1::chrono::steady_clock, std::__1::chrono::duration<long long, std::__1::ratio<1l, 1000000000l>>>(std::__1::unique_lock<std::__1::mutex>&, std::__1::chrono::time_point<std::__1::chrono::steady_clock, std::__1::chrono::duration<long long, std::__1::ratio<1l, 1000000000l>>> const&) + 320
+    frame #4: 0x000000010c85f234 Pheeeew.debug.dylib`void kotlin::RepeatedTimer<kotlin::steady_clock>::Run<kotlin::gcScheduler::internal::GCSchedulerDataAdaptive<kotlin::steady_clock>::GCSchedulerDataAdaptive(kotlin::gcScheduler::GCSchedulerConfig&, std::__1::function<long long ()>)::'lambda'()>(kotlin::gcScheduler::internal::GCSchedulerDataAdaptive<kotlin::steady_clock>::GCSchedulerDataAdaptive(kotlin::gcScheduler::GCSchedulerConfig&, std::__1::function<long long ()>)::'lambda'()&&) + 296
+    frame #5: 0x000000010c85fa9c Pheeeew.debug.dylib`void* std::__1::__thread_proxy[abi:nqe210106]<std::__1::tuple<std::__1::unique_ptr<std::__1::__thread_struct, std::__1::default_delete<std::__1::__thread_struct>>, void (*)(kotlin::ScopedThread::attributes, void (*&&)(void (kotlin::RepeatedTimer<kotlin::steady_clock>::*&&)(kotlin::gcScheduler::internal::GCSchedulerDataAdaptive<kotlin::steady_clock>::GCSchedulerDataAdaptive(kotlin::gcScheduler::GCSchedulerConfig&, std::__1::function<long long ()>)::'lambda'()&&) noexcept, kotlin::RepeatedTimer<kotlin::steady_clock>*&&, kotlin::gcScheduler::internal::GCSchedulerDataAdaptive<kotlin::steady_clock>::GCSchedulerDataAdaptive(kotlin::gcScheduler::GCSchedulerConfig&, std::__1::function<long long ()>)::'lambda'()&&), void (kotlin::RepeatedTimer<kotlin::steady_clock>::*&&)(kotlin::gcScheduler::internal::GCSchedulerDataAdaptive<kotlin::steady_clock>::GCSchedulerDataAdaptive(kotlin::gcScheduler::GCSchedulerConfig&, std::__1::function<long long ()>)::'lambda'()&&) noexcept, kotlin::RepeatedTimer<kotlin::steady_clock>*&&, kotlin::gcScheduler::internal::GCSchedulerDataAdaptive<kotlin::steady_clock>::GCSchedulerDataAdaptive(kotlin::gcScheduler::GCSchedulerConfig&, std::__1::function<long long ()>)::'lambda'()&&), kotlin::ScopedThread::attributes, void (*)(void (kotlin::RepeatedTimer<kotlin::steady_clock>::*&&)(kotlin::gcScheduler::internal::GCSchedulerDataAdaptive<kotlin::steady_clock>::GCSchedulerDataAdaptive(kotlin::gcScheduler::GCSchedulerConfig&, std::__1::function<long long ()>)::'lambda'()&&) noexcept, kotlin::RepeatedTimer<kotlin::steady_clock>*&&, kotlin::gcScheduler::internal::GCSchedulerDataAdaptive<kotlin::steady_clock>::GCSchedulerDataAdaptive(kotlin::gcScheduler::GCSchedulerConfig&, std::__1::function<long long ()>)::'lambda'()&&), void (kotlin::RepeatedTimer<kotlin::steady_clock>::*)(kotlin::gcScheduler::internal::GCSchedulerDataAdaptive<kotlin::steady_clock>::GCSchedulerDataAdaptive(kotlin::gcScheduler::GCSchedulerConfig&, std::__1::function<long long ()>)::'lambda'()&&) noexcept, kotlin::RepeatedTimer<kotlin::steady_clock>*, kotlin::gcScheduler::internal::GCSchedulerDataAdaptive<kotlin::steady_clock>::GCSchedulerDataAdaptive(kotlin::gcScheduler::GCSchedulerConfig&, std::__1::function<long long ()>)::'lambda'()>>(void*) + 232
+    frame #6: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #6, name = 'Main GC thread'
+    frame #0: 0x00000002345175e8 libsystem_kernel.dylib`__psynch_cvwait + 8
+    frame #1: 0x00000001e449cb48 libsystem_pthread.dylib`_pthread_cond_wait + 980
+    frame #2: 0x0000000194255bcc libc++.1.dylib`std::__1::condition_variable::wait(std::__1::unique_lock<std::__1::mutex>&) + 32
+    frame #3: 0x000000010c8528a4 Pheeeew.debug.dylib`kotlin::gc::internal::MainGCThread<kotlin::gc::internal::CmsGCTraits>::body() + 180
+    frame #4: 0x000000010c852544 Pheeeew.debug.dylib`void* std::__1::__thread_proxy[abi:nqe210106]<std::__1::tuple<std::__1::unique_ptr<std::__1::__thread_struct, std::__1::default_delete<std::__1::__thread_struct>>, void (*)(kotlin::ScopedThread::attributes, void (*&&)(kotlin::gc::internal::MainGCThread<kotlin::gc::internal::CmsGCTraits>::MainGCThread(GCStateHolder&, kotlin::alloc::Allocator&, kotlin::gcScheduler::GCScheduler&, kotlin::gc::mark::ConcurrentMark&)::'lambda'()&&), kotlin::gc::internal::MainGCThread<kotlin::gc::internal::CmsGCTraits>::MainGCThread(GCStateHolder&, kotlin::alloc::Allocator&, kotlin::gcScheduler::GCScheduler&, kotlin::gc::mark::ConcurrentMark&)::'lambda'()&&), kotlin::ScopedThread::attributes, void (*)(kotlin::gc::internal::MainGCThread<kotlin::gc::internal::CmsGCTraits>::MainGCThread(GCStateHolder&, kotlin::alloc::Allocator&, kotlin::gcScheduler::GCScheduler&, kotlin::gc::mark::ConcurrentMark&)::'lambda'()&&), kotlin::gc::internal::MainGCThread<kotlin::gc::internal::CmsGCTraits>::MainGCThread(GCStateHolder&, kotlin::alloc::Allocator&, kotlin::gcScheduler::GCScheduler&, kotlin::gc::mark::ConcurrentMark&)::'lambda'()>>(void*) + 208
+    frame #5: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #7
+    frame #0: 0x00000002345175e8 libsystem_kernel.dylib`__psynch_cvwait + 8
+    frame #1: 0x00000001e449cb48 libsystem_pthread.dylib`_pthread_cond_wait + 980
+    frame #2: 0x000000010c87904c Pheeeew.debug.dylib`WaitOnCondVar(_opaque_pthread_cond_t*, _opaque_pthread_mutex_t*, unsigned long long, unsigned long long*) + 152
+    frame #3: 0x000000010c87c1f8 Pheeeew.debug.dylib`(anonymous namespace)::waitInNativeState(_opaque_pthread_cond_t*, _opaque_pthread_mutex_t*, unsigned long long, unsigned long long*) + 144
+    frame #4: 0x000000010c87b140 Pheeeew.debug.dylib`Worker::processQueueElement(bool) + 872
+    frame #5: 0x000000010c87ac74 Pheeeew.debug.dylib`(anonymous namespace)::workerRoutine(void*) + 244
+    frame #6: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+* thread #9, queue = 'com.apple.UIKit.FeedbackCoreHapticsEngineInternal', stop reason = one-shot breakpoint 2
+  * frame #0: 0x000000021b852fb4 CoreHaptics`-[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:] + 208
+    frame #1: 0x000000021b84cfac CoreHaptics`-[PatternPlayer initWithPlayable:engine:privileged:error:] + 876
+    frame #2: 0x000000021b889050 CoreHaptics`-[CHHapticEngine createPrivilegedPlayerWithPlayable:error:] + 252
+    frame #3: 0x000000018b797610 UIKitCore`-[_UIFeedbackCoreHapticsPlayer _internal_createPlayerWithPattern:] + 124
+    frame #4: 0x000000018b79b6fc UIKitCore`-[_UIFeedbackCoreHapticsPlayer _internal_playFeedbackData:forFeedback:atTime:] + 344
+    frame #5: 0x000000018b79ee44 UIKitCore`__121-[_UIFeedbackEngine _internal_playFeedbackData:atTime:feedback:effectiveFeedbackType:existingPlayer:withCompletionBlock:]_block_invoke + 68
+    frame #6: 0x000000018b79f078 UIKitCore`__121-[_UIFeedbackEngine _internal_playFeedbackData:atTime:feedback:effectiveFeedbackType:existingPlayer:withCompletionBlock:]_block_invoke.106 + 440
+    frame #7: 0x000000018b796524 UIKitCore`__91-[_UIFeedbackCoreHapticsEngine _internal_dequeueReusableFeedbackPlayerWithCompletionBlock:]_block_invoke + 148
+    frame #8: 0x000000018b796444 UIKitCore`-[_UIFeedbackCoreHapticsEngine _internal_dequeueReusableFeedbackPlayerWithCompletionBlock:] + 196
+    frame #9: 0x000000018b79edc8 UIKitCore`-[_UIFeedbackEngine _internal_playFeedbackData:atTime:feedback:effectiveFeedbackType:existingPlayer:withCompletionBlock:] + 960
+    frame #10: 0x000000018b79e8f4 UIKitCore`__62-[_UIFeedbackEngine _playFeedback:atTime:withCompletionBlock:]_block_invoke + 160
+    frame #11: 0x00000001bf6199a8 libdispatch.dylib`_dispatch_call_block_and_release + 32
+    frame #12: 0x00000001bf6331e4 libdispatch.dylib`_dispatch_client_callout + 16
+    frame #13: 0x00000001bf621fb0 libdispatch.dylib`_dispatch_lane_serial_drain + 740
+    frame #14: 0x00000001bf622aac libdispatch.dylib`_dispatch_lane_invoke + 392
+    frame #15: 0x00000001bf62cdac libdispatch.dylib`_dispatch_root_queue_drain_deferred_wlh + 284
+    frame #16: 0x00000001bf62c6ac libdispatch.dylib`_dispatch_workloop_worker_thread + 720
+    frame #17: 0x00000001e449b3b0 libsystem_pthread.dylib`_pthread_wqthread + 292
+  thread #10, name = 'com.apple.uikit.eventfetch-thread'
+    frame #0: 0x0000000234511cd4 libsystem_kernel.dylib`mach_msg2_trap + 8
+    frame #1: 0x000000023451530c libsystem_kernel.dylib`mach_msg2_internal + 76
+    frame #2: 0x000000023451522c libsystem_kernel.dylib`mach_msg_overwrite + 424
+    frame #3: 0x0000000234515078 libsystem_kernel.dylib`mach_msg + 24
+    frame #4: 0x0000000184b40344 CoreFoundation`__CFRunLoopServiceMachPort + 160
+    frame #5: 0x0000000184b0a310 CoreFoundation`__CFRunLoopRun + 1188
+    frame #6: 0x0000000184b0954c CoreFoundation`_CFRunLoopRunSpecificWithOptions + 532
+    frame #7: 0x0000000181d76cf0 Foundation`-[NSRunLoop(NSRunLoop) runMode:beforeDate:] + 212
+    frame #8: 0x0000000181d76bd8 Foundation`-[NSRunLoop(NSRunLoop) runUntilDate:] + 64
+    frame #9: 0x000000018a802eac UIKitCore`-[UIEventFetcher threadMain] + 420
+    frame #10: 0x0000000181dfa904 Foundation`__NSThread__start__ + 732
+    frame #11: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #11
+    frame #0: 0x0000000234511a80 libsystem_kernel.dylib`__workq_kernreturn + 8
+  thread #16
+    frame #0: 0x0000000234511a80 libsystem_kernel.dylib`__workq_kernreturn + 8
+  thread #17
+    frame #0: 0x0000000000000000
+  thread #18, name = 'GC finalizer processor'
+    frame #0: 0x0000000234511cd4 libsystem_kernel.dylib`mach_msg2_trap + 8
+    frame #1: 0x000000023451530c libsystem_kernel.dylib`mach_msg2_internal + 76
+    frame #2: 0x000000023451522c libsystem_kernel.dylib`mach_msg_overwrite + 424
+    frame #3: 0x0000000234515078 libsystem_kernel.dylib`mach_msg + 24
+    frame #4: 0x0000000184b40344 CoreFoundation`__CFRunLoopServiceMachPort + 160
+    frame #5: 0x0000000184b0a310 CoreFoundation`__CFRunLoopRun + 1188
+    frame #6: 0x0000000184b0954c CoreFoundation`_CFRunLoopRunSpecificWithOptions + 532
+    frame #7: 0x0000000184bb9d6c CoreFoundation`CFRunLoopRun + 64
+    frame #8: 0x000000010c85e928 Pheeeew.debug.dylib`kotlin::alloc::FinalizerProcessor<kotlin::alloc::AtomicStack<kotlin::alloc::ExtraObjectCell>, kotlin::alloc::FinalizerQueueTraits>::ProcessingLoopWithCFImpl::body() + 112
+    frame #9: 0x000000010c8569f4 Pheeeew.debug.dylib`std::__1::__invoke_result_impl<void, kotlin::alloc::FinalizerProcessor<kotlin::alloc::AtomicStack<kotlin::alloc::ExtraObjectCell>, kotlin::alloc::FinalizerQueueTraits>::StartFinalizerThreadIfNone()::'lambda'()>::type kotlin::ScopedThread::Run<kotlin::alloc::FinalizerProcessor<kotlin::alloc::AtomicStack<kotlin::alloc::ExtraObjectCell>, kotlin::alloc::FinalizerQueueTraits>::StartFinalizerThreadIfNone()::'lambda'()>(kotlin::ScopedThread::attributes, kotlin::alloc::FinalizerProcessor<kotlin::alloc::AtomicStack<kotlin::alloc::ExtraObjectCell>, kotlin::alloc::FinalizerQueueTraits>::StartFinalizerThreadIfNone()::'lambda'()&&) + 216
+    frame #10: 0x000000010c856cfc Pheeeew.debug.dylib`void* std::__1::__thread_proxy[abi:nqe210106]<std::__1::tuple<std::__1::unique_ptr<std::__1::__thread_struct, std::__1::default_delete<std::__1::__thread_struct>>, void (*)(kotlin::ScopedThread::attributes, kotlin::alloc::FinalizerProcessor<kotlin::alloc::AtomicStack<kotlin::alloc::ExtraObjectCell>, kotlin::alloc::FinalizerQueueTraits>::StartFinalizerThreadIfNone()::'lambda'()&&), kotlin::ScopedThread::attributes, kotlin::alloc::FinalizerProcessor<kotlin::alloc::AtomicStack<kotlin::alloc::ExtraObjectCell>, kotlin::alloc::FinalizerQueueTraits>::StartFinalizerThreadIfNone()::'lambda'()>>(void*) + 196
+    frame #11: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #19
+    frame #0: 0x00000002345175e8 libsystem_kernel.dylib`__psynch_cvwait + 8
+    frame #1: 0x00000001e449cb48 libsystem_pthread.dylib`_pthread_cond_wait + 980
+    frame #2: 0x000000010c87904c Pheeeew.debug.dylib`WaitOnCondVar(_opaque_pthread_cond_t*, _opaque_pthread_mutex_t*, unsigned long long, unsigned long long*) + 152
+    frame #3: 0x000000010c87c1f8 Pheeeew.debug.dylib`(anonymous namespace)::waitInNativeState(_opaque_pthread_cond_t*, _opaque_pthread_mutex_t*, unsigned long long, unsigned long long*) + 144
+    frame #4: 0x000000010c8812e8 Pheeeew.debug.dylib`Worker::park(long long, bool) + 860
+    frame #5: 0x000000010c6efa6c Pheeeew.debug.dylib`kfun:kotlin.native.concurrent.Worker#park(kotlin.Long;kotlin.Boolean){}kotlin.Boolean + 220
+    frame #6: 0x000000010c92f11c Pheeeew.debug.dylib`kfun:kotlinx.coroutines.BlockingCoroutine.joinBlocking#internal(_this=0x0000000109dfc108) at Builders.kt:85:28
+    frame #7: 0x000000010c92e454 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlockingImpl(newContext=0x0000000109ddc0a8, eventLoop=0x0000000109ddc0a8, block=0x0000000109e3c0d0){0§<kotlin.Any?>}0:0 at Builders.kt:15:26
+    frame #8: 0x000000010c92ab30 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlocking(context=0x000000010efede60, block=0x0000000109e3c0d0){0§<kotlin.Any?>}0:0 at Builders.concurrent.kt:172:12
+    frame #9: 0x000000010c92ac50 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlocking$default(context=0x0000000000000000, block=0x0000000109e3c0d0, $mask0=1){0§<kotlin.Any?>}0:0 at Builders.concurrent.kt:157:8
+    frame #10: 0x000000010c933a94 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.workerRunLoop#internal(_this=0x0000000104795108) at MultithreadedDispatchers.kt:102:35
+    frame #11: 0x000000010c9351e0 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.MultiWorkerDispatcher$1.MultiWorkerDispatcher$1$invoke$$inlined$apply$1.invoke#internal(_this=0x0000000109f40270) at MultithreadedDispatchers.kt:86:28
+    frame #12: 0x000000010c935238 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.MultiWorkerDispatcher$1.MultiWorkerDispatcher$1$invoke$$inlined$apply$1.$<bridge-DN>invoke(_this=0x0000000109f40270){}#internal at MultithreadedDispatchers.kt:86:26
+    frame #13: 0x000000010c810f64 Pheeeew.debug.dylib`kfun:kotlin.Function0#invoke(){}1:0-trampoline + 92
+    frame #14: 0x000000010c6eda10 Pheeeew.debug.dylib`WorkerExecuteAfterLaunchpad + 224
+    frame #15: 0x000000010c87bc48 Pheeeew.debug.dylib`Worker::processQueueElement(bool) + 3696
+    frame #16: 0x000000010c87ac74 Pheeeew.debug.dylib`(anonymous namespace)::workerRoutine(void*) + 244
+    frame #17: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #20
+    frame #0: 0x00000002345175e8 libsystem_kernel.dylib`__psynch_cvwait + 8
+    frame #1: 0x00000001e449cb48 libsystem_pthread.dylib`_pthread_cond_wait + 980
+    frame #2: 0x000000010c87904c Pheeeew.debug.dylib`WaitOnCondVar(_opaque_pthread_cond_t*, _opaque_pthread_mutex_t*, unsigned long long, unsigned long long*) + 152
+    frame #3: 0x000000010c87c1f8 Pheeeew.debug.dylib`(anonymous namespace)::waitInNativeState(_opaque_pthread_cond_t*, _opaque_pthread_mutex_t*, unsigned long long, unsigned long long*) + 144
+    frame #4: 0x000000010c8812e8 Pheeeew.debug.dylib`Worker::park(long long, bool) + 860
+    frame #5: 0x000000010c6efa6c Pheeeew.debug.dylib`kfun:kotlin.native.concurrent.Worker#park(kotlin.Long;kotlin.Boolean){}kotlin.Boolean + 220
+    frame #6: 0x000000010c92f11c Pheeeew.debug.dylib`kfun:kotlinx.coroutines.BlockingCoroutine.joinBlocking#internal(_this=0x00000001046e0140) at Builders.kt:85:28
+    frame #7: 0x000000010c92e454 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlockingImpl(newContext=0x0000000104774068, eventLoop=0x0000000104774068, block=0x0000000104660250){0§<kotlin.Any?>}0:0 at Builders.kt:15:26
+    frame #8: 0x000000010c92ab30 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlocking(context=0x000000010efede60, block=0x0000000104660250){0§<kotlin.Any?>}0:0 at Builders.concurrent.kt:172:12
+    frame #9: 0x000000010c92ac50 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlocking$default(context=0x0000000000000000, block=0x0000000104660250, $mask0=1){0§<kotlin.Any?>}0:0 at Builders.concurrent.kt:157:8
+    frame #10: 0x000000010c933a94 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.workerRunLoop#internal(_this=0x0000000104795108) at MultithreadedDispatchers.kt:102:35
+    frame #11: 0x000000010c9351e0 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.MultiWorkerDispatcher$1.MultiWorkerDispatcher$1$invoke$$inlined$apply$1.invoke#internal(_this=0x0000000109f40828) at MultithreadedDispatchers.kt:86:28
+    frame #12: 0x000000010c935238 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.MultiWorkerDispatcher$1.MultiWorkerDispatcher$1$invoke$$inlined$apply$1.$<bridge-DN>invoke(_this=0x0000000109f40828){}#internal at MultithreadedDispatchers.kt:86:26
+    frame #13: 0x000000010c810f64 Pheeeew.debug.dylib`kfun:kotlin.Function0#invoke(){}1:0-trampoline + 92
+    frame #14: 0x000000010c6eda10 Pheeeew.debug.dylib`WorkerExecuteAfterLaunchpad + 224
+    frame #15: 0x000000010c87bc48 Pheeeew.debug.dylib`Worker::processQueueElement(bool) + 3696
+    frame #16: 0x000000010c87ac74 Pheeeew.debug.dylib`(anonymous namespace)::workerRoutine(void*) + 244
+    frame #17: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #21
+    frame #0: 0x0000000234517808 libsystem_kernel.dylib`__semwait_signal + 8
+    frame #1: 0x000000019066482c libsystem_c.dylib`nanosleep + 220
+    frame #2: 0x0000000190664954 libsystem_c.dylib`sleep + 52
+    frame #3: 0x000000010ba31310 Pheeeew.debug.dylib`monitorCachedData + 660
+    frame #4: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #22, name = 'io.sentry.app-hang-tracker'
+    frame #0: 0x0000000234517808 libsystem_kernel.dylib`__semwait_signal + 8
+    frame #1: 0x000000019066482c libsystem_c.dylib`nanosleep + 220
+    frame #2: 0x00000001820814f8 Foundation`+[NSThread sleepForTimeInterval:] + 152
+    frame #3: 0x000000010baa0404 Pheeeew.debug.dylib`@objc SentryThreadWrapper.sleep(forTimeInterval:) + 36
+    frame #4: 0x000000010ba03c64 Pheeeew.debug.dylib`-[SentryANRTrackerV1 detectANRs] + 556
+    frame #5: 0x0000000181dfa904 Foundation`__NSThread__start__ + 732
+    frame #6: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #23, name = 'org.maplibre.mbgl.Worker 1'
+    frame #0: 0x00000002345175e8 libsystem_kernel.dylib`__psynch_cvwait + 8
+    frame #1: 0x00000001e449cb48 libsystem_pthread.dylib`_pthread_cond_wait + 980
+    frame #2: 0x0000000194255bcc libc++.1.dylib`std::__1::condition_variable::wait(std::__1::unique_lock<std::__1::mutex>&) + 32
+    frame #3: 0x00000001055eaa30 MapLibre`___lldb_unnamed_symbol_3ea8c0 + 368
+    frame #4: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #24, name = 'org.maplibre.mbgl.Worker 2'
+    frame #0: 0x00000002345175e8 libsystem_kernel.dylib`__psynch_cvwait + 8
+    frame #1: 0x00000001e449cb48 libsystem_pthread.dylib`_pthread_cond_wait + 980
+    frame #2: 0x0000000194255bcc libc++.1.dylib`std::__1::condition_variable::wait(std::__1::unique_lock<std::__1::mutex>&) + 32
+    frame #3: 0x00000001055eaa30 MapLibre`___lldb_unnamed_symbol_3ea8c0 + 368
+    frame #4: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #25, name = 'org.maplibre.mbgl.Worker 3'
+    frame #0: 0x00000002345175e8 libsystem_kernel.dylib`__psynch_cvwait + 8
+    frame #1: 0x00000001e449cb48 libsystem_pthread.dylib`_pthread_cond_wait + 980
+    frame #2: 0x0000000194255bcc libc++.1.dylib`std::__1::condition_variable::wait(std::__1::unique_lock<std::__1::mutex>&) + 32
+    frame #3: 0x00000001055eaa30 MapLibre`___lldb_unnamed_symbol_3ea8c0 + 368
+    frame #4: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #26, name = 'org.maplibre.mbgl.Worker 4'
+    frame #0: 0x00000002345175e8 libsystem_kernel.dylib`__psynch_cvwait + 8
+    frame #1: 0x00000001e449cb48 libsystem_pthread.dylib`_pthread_cond_wait + 980
+    frame #2: 0x0000000194255bcc libc++.1.dylib`std::__1::condition_variable::wait(std::__1::unique_lock<std::__1::mutex>&) + 32
+    frame #3: 0x00000001055eaa30 MapLibre`___lldb_unnamed_symbol_3ea8c0 + 368
+    frame #4: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #27, name = 'org.maplibre.mbgl.AssetFileSource'
+    frame #0: 0x0000000234511cd4 libsystem_kernel.dylib`mach_msg2_trap + 8
+    frame #1: 0x000000023451530c libsystem_kernel.dylib`mach_msg2_internal + 76
+    frame #2: 0x000000023451522c libsystem_kernel.dylib`mach_msg_overwrite + 424
+    frame #3: 0x0000000234515078 libsystem_kernel.dylib`mach_msg + 24
+    frame #4: 0x0000000184b40344 CoreFoundation`__CFRunLoopServiceMachPort + 160
+    frame #5: 0x0000000184b0a310 CoreFoundation`__CFRunLoopRun + 1188
+    frame #6: 0x0000000184b0954c CoreFoundation`_CFRunLoopRunSpecificWithOptions + 532
+    frame #7: 0x0000000184bb9d6c CoreFoundation`CFRunLoopRun + 64
+    frame #8: 0x00000001052e1728 MapLibre`___lldb_unnamed_symbol_e165c + 204
+    frame #9: 0x00000001052e155c MapLibre`___lldb_unnamed_symbol_e1524 + 56
+    frame #10: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #28, name = 'org.maplibre.mbgl.OnlineFileSource'
+    frame #0: 0x0000000234511cd4 libsystem_kernel.dylib`mach_msg2_trap + 8
+    frame #1: 0x000000023451530c libsystem_kernel.dylib`mach_msg2_internal + 76
+    frame #2: 0x000000023451522c libsystem_kernel.dylib`mach_msg_overwrite + 424
+    frame #3: 0x0000000234515078 libsystem_kernel.dylib`mach_msg + 24
+    frame #4: 0x0000000184b40344 CoreFoundation`__CFRunLoopServiceMachPort + 160
+    frame #5: 0x0000000184b0a310 CoreFoundation`__CFRunLoopRun + 1188
+    frame #6: 0x0000000184b0954c CoreFoundation`_CFRunLoopRunSpecificWithOptions + 532
+    frame #7: 0x0000000184bb9d6c CoreFoundation`CFRunLoopRun + 64
+    frame #8: 0x0000000105319a24 MapLibre`___lldb_unnamed_symbol_119990 + 148
+    frame #9: 0x0000000105319890 MapLibre`___lldb_unnamed_symbol_119858 + 56
+    frame #10: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #29, name = 'org.maplibre.mbgl.DatabaseFileSource'
+    frame #0: 0x0000000234511cd4 libsystem_kernel.dylib`mach_msg2_trap + 8
+    frame #1: 0x000000023451530c libsystem_kernel.dylib`mach_msg2_internal + 76
+    frame #2: 0x000000023451522c libsystem_kernel.dylib`mach_msg_overwrite + 424
+    frame #3: 0x0000000234515078 libsystem_kernel.dylib`mach_msg + 24
+    frame #4: 0x0000000184b40344 CoreFoundation`__CFRunLoopServiceMachPort + 160
+    frame #5: 0x0000000184b0a310 CoreFoundation`__CFRunLoopRun + 1188
+    frame #6: 0x0000000184b0954c CoreFoundation`_CFRunLoopRunSpecificWithOptions + 532
+    frame #7: 0x0000000184bb9d6c CoreFoundation`CFRunLoopRun + 64
+    frame #8: 0x00000001052e81a4 MapLibre`___lldb_unnamed_symbol_e80c8 + 220
+    frame #9: 0x00000001052e7f74 MapLibre`___lldb_unnamed_symbol_e7f40 + 52
+    frame #10: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #30, name = 'org.maplibre.mbgl.LocalFileSource'
+    frame #0: 0x0000000234511cd4 libsystem_kernel.dylib`mach_msg2_trap + 8
+    frame #1: 0x000000023451530c libsystem_kernel.dylib`mach_msg2_internal + 76
+    frame #2: 0x000000023451522c libsystem_kernel.dylib`mach_msg_overwrite + 424
+    frame #3: 0x0000000234515078 libsystem_kernel.dylib`mach_msg + 24
+    frame #4: 0x0000000184b40344 CoreFoundation`__CFRunLoopServiceMachPort + 160
+    frame #5: 0x0000000184b0a310 CoreFoundation`__CFRunLoopRun + 1188
+    frame #6: 0x0000000184b0954c CoreFoundation`_CFRunLoopRunSpecificWithOptions + 532
+    frame #7: 0x0000000184bb9d6c CoreFoundation`CFRunLoopRun + 64
+    frame #8: 0x00000001052efc9c MapLibre`___lldb_unnamed_symbol_efc04 + 152
+    frame #9: 0x00000001052efb04 MapLibre`___lldb_unnamed_symbol_efacc + 56
+    frame #10: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #31, name = 'org.maplibre.mbgl.MBTilesFileSource'
+    frame #0: 0x0000000234511cd4 libsystem_kernel.dylib`mach_msg2_trap + 8
+    frame #1: 0x000000023451530c libsystem_kernel.dylib`mach_msg2_internal + 76
+    frame #2: 0x000000023451522c libsystem_kernel.dylib`mach_msg_overwrite + 424
+    frame #3: 0x0000000234515078 libsystem_kernel.dylib`mach_msg + 24
+    frame #4: 0x0000000184b40344 CoreFoundation`__CFRunLoopServiceMachPort + 160
+    frame #5: 0x0000000184b0a310 CoreFoundation`__CFRunLoopRun + 1188
+    frame #6: 0x0000000184b0954c CoreFoundation`_CFRunLoopRunSpecificWithOptions + 532
+    frame #7: 0x0000000184bb9d6c CoreFoundation`CFRunLoopRun + 64
+    frame #8: 0x00000001053001b0 MapLibre`___lldb_unnamed_symbol_1000e4 + 204
+    frame #9: 0x00000001052fffe4 MapLibre`___lldb_unnamed_symbol_fffac + 56
+    frame #10: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #32, name = 'org.maplibre.mbgl.PMTilesFileSource'
+    frame #0: 0x0000000234511cd4 libsystem_kernel.dylib`mach_msg2_trap + 8
+    frame #1: 0x000000023451530c libsystem_kernel.dylib`mach_msg2_internal + 76
+    frame #2: 0x000000023451522c libsystem_kernel.dylib`mach_msg_overwrite + 424
+    frame #3: 0x0000000234515078 libsystem_kernel.dylib`mach_msg + 24
+    frame #4: 0x0000000184b40344 CoreFoundation`__CFRunLoopServiceMachPort + 160
+    frame #5: 0x0000000184b0a310 CoreFoundation`__CFRunLoopRun + 1188
+    frame #6: 0x0000000184b0954c CoreFoundation`_CFRunLoopRunSpecificWithOptions + 532
+    frame #7: 0x0000000184bb9d6c CoreFoundation`CFRunLoopRun + 64
+    frame #8: 0x000000010532811c MapLibre`___lldb_unnamed_symbol_12804c + 208
+    frame #9: 0x0000000105327f4c MapLibre`___lldb_unnamed_symbol_127f14 + 56
+    frame #10: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #33, name = 'org.maplibre.mbgl.ResourceLoaderThread'
+    frame #0: 0x0000000234511cd4 libsystem_kernel.dylib`mach_msg2_trap + 8
+    frame #1: 0x000000023451530c libsystem_kernel.dylib`mach_msg2_internal + 76
+    frame #2: 0x000000023451522c libsystem_kernel.dylib`mach_msg_overwrite + 424
+    frame #3: 0x0000000234515078 libsystem_kernel.dylib`mach_msg + 24
+    frame #4: 0x0000000184b40344 CoreFoundation`__CFRunLoopServiceMachPort + 160
+    frame #5: 0x0000000184b0a310 CoreFoundation`__CFRunLoopRun + 1188
+    frame #6: 0x0000000184b0954c CoreFoundation`_CFRunLoopRunSpecificWithOptions + 532
+    frame #7: 0x0000000184bb9d6c CoreFoundation`CFRunLoopRun + 64
+    frame #8: 0x00000001052f5d48 MapLibre`___lldb_unnamed_symbol_f5c7c + 204
+    frame #9: 0x00000001052f5b38 MapLibre`___lldb_unnamed_symbol_f5b00 + 56
+    frame #10: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #34, name = 'org.maplibre.mbgl.Worker 1'
+    frame #0: 0x00000002345175e8 libsystem_kernel.dylib`__psynch_cvwait + 8
+    frame #1: 0x00000001e449cb48 libsystem_pthread.dylib`_pthread_cond_wait + 980
+    frame #2: 0x0000000194255bcc libc++.1.dylib`std::__1::condition_variable::wait(std::__1::unique_lock<std::__1::mutex>&) + 32
+    frame #3: 0x00000001055eaa30 MapLibre`___lldb_unnamed_symbol_3ea8c0 + 368
+    frame #4: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #35, name = 'org.maplibre.mbgl.Worker 1'
+    frame #0: 0x00000002345175e8 libsystem_kernel.dylib`__psynch_cvwait + 8
+    frame #1: 0x00000001e449cb48 libsystem_pthread.dylib`_pthread_cond_wait + 980
+    frame #2: 0x0000000194255bcc libc++.1.dylib`std::__1::condition_variable::wait(std::__1::unique_lock<std::__1::mutex>&) + 32
+    frame #3: 0x00000001055eaa30 MapLibre`___lldb_unnamed_symbol_3ea8c0 + 368
+    frame #4: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #36, name = 'org.maplibre.mbgl.Worker 1'
+    frame #0: 0x00000002345175e8 libsystem_kernel.dylib`__psynch_cvwait + 8
+    frame #1: 0x00000001e449cb48 libsystem_pthread.dylib`_pthread_cond_wait + 980
+    frame #2: 0x0000000194255bcc libc++.1.dylib`std::__1::condition_variable::wait(std::__1::unique_lock<std::__1::mutex>&) + 32
+    frame #3: 0x00000001055eaa30 MapLibre`___lldb_unnamed_symbol_3ea8c0 + 368
+    frame #4: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #37, name = 'org.maplibre.mbgl.Worker 1'
+    frame #0: 0x00000002345175e8 libsystem_kernel.dylib`__psynch_cvwait + 8
+    frame #1: 0x00000001e449cb48 libsystem_pthread.dylib`_pthread_cond_wait + 980
+    frame #2: 0x0000000194255bcc libc++.1.dylib`std::__1::condition_variable::wait(std::__1::unique_lock<std::__1::mutex>&) + 32
+    frame #3: 0x00000001055eaa30 MapLibre`___lldb_unnamed_symbol_3ea8c0 + 368
+    frame #4: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #38, name = 'org.maplibre.mbgl.Worker 1'
+    frame #0: 0x00000002345175e8 libsystem_kernel.dylib`__psynch_cvwait + 8
+    frame #1: 0x00000001e449cb48 libsystem_pthread.dylib`_pthread_cond_wait + 980
+    frame #2: 0x0000000194255bcc libc++.1.dylib`std::__1::condition_variable::wait(std::__1::unique_lock<std::__1::mutex>&) + 32
+    frame #3: 0x00000001055eaa30 MapLibre`___lldb_unnamed_symbol_3ea8c0 + 368
+    frame #4: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #39, name = 'com.apple.NSURLConnectionLoader'
+    frame #0: 0x0000000234511cd4 libsystem_kernel.dylib`mach_msg2_trap + 8
+    frame #1: 0x000000023451530c libsystem_kernel.dylib`mach_msg2_internal + 76
+    frame #2: 0x000000023451522c libsystem_kernel.dylib`mach_msg_overwrite + 424
+    frame #3: 0x0000000234515078 libsystem_kernel.dylib`mach_msg + 24
+    frame #4: 0x0000000184b40344 CoreFoundation`__CFRunLoopServiceMachPort + 160
+    frame #5: 0x0000000184b0a310 CoreFoundation`__CFRunLoopRun + 1188
+    frame #6: 0x0000000184b0954c CoreFoundation`_CFRunLoopRunSpecificWithOptions + 532
+    frame #7: 0x000000019a019b54 CFNetwork`+[__CFN_CoreSchedulingSetRunnable _run:] + 416
+    frame #8: 0x0000000181dfa904 Foundation`__NSThread__start__ + 732
+    frame #9: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #40
+    frame #0: 0x00000002345175e8 libsystem_kernel.dylib`__psynch_cvwait + 8
+    frame #1: 0x00000001e449cb48 libsystem_pthread.dylib`_pthread_cond_wait + 980
+    frame #2: 0x000000010c87904c Pheeeew.debug.dylib`WaitOnCondVar(_opaque_pthread_cond_t*, _opaque_pthread_mutex_t*, unsigned long long, unsigned long long*) + 152
+    frame #3: 0x000000010c87c1f8 Pheeeew.debug.dylib`(anonymous namespace)::waitInNativeState(_opaque_pthread_cond_t*, _opaque_pthread_mutex_t*, unsigned long long, unsigned long long*) + 144
+    frame #4: 0x000000010c8812e8 Pheeeew.debug.dylib`Worker::park(long long, bool) + 860
+    frame #5: 0x000000010c6efa6c Pheeeew.debug.dylib`kfun:kotlin.native.concurrent.Worker#park(kotlin.Long;kotlin.Boolean){}kotlin.Boolean + 220
+    frame #6: 0x000000010c92f11c Pheeeew.debug.dylib`kfun:kotlinx.coroutines.BlockingCoroutine.joinBlocking#internal(_this=0x0000000132b2c060) at Builders.kt:85:28
+    frame #7: 0x000000010c92e454 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlockingImpl(newContext=0x0000000132b4c028, eventLoop=0x0000000132b4c028, block=0x0000000132acc028){0§<kotlin.Any?>}0:0 at Builders.kt:15:26
+    frame #8: 0x000000010c92ab30 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlocking(context=0x000000010efede60, block=0x0000000132acc028){0§<kotlin.Any?>}0:0 at Builders.concurrent.kt:172:12
+    frame #9: 0x000000010c92ac50 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlocking$default(context=0x0000000000000000, block=0x0000000132acc028, $mask0=1){0§<kotlin.Any?>}0:0 at Builders.concurrent.kt:157:8
+    frame #10: 0x000000010c933a94 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.workerRunLoop#internal(_this=0x0000000104795108) at MultithreadedDispatchers.kt:102:35
+    frame #11: 0x000000010c9351e0 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.MultiWorkerDispatcher$1.MultiWorkerDispatcher$1$invoke$$inlined$apply$1.invoke#internal(_this=0x00000001231395a0) at MultithreadedDispatchers.kt:86:28
+    frame #12: 0x000000010c935238 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.MultiWorkerDispatcher$1.MultiWorkerDispatcher$1$invoke$$inlined$apply$1.$<bridge-DN>invoke(_this=0x00000001231395a0){}#internal at MultithreadedDispatchers.kt:86:26
+    frame #13: 0x000000010c810f64 Pheeeew.debug.dylib`kfun:kotlin.Function0#invoke(){}1:0-trampoline + 92
+    frame #14: 0x000000010c6eda10 Pheeeew.debug.dylib`WorkerExecuteAfterLaunchpad + 224
+    frame #15: 0x000000010c87bc48 Pheeeew.debug.dylib`Worker::processQueueElement(bool) + 3696
+    frame #16: 0x000000010c87ac74 Pheeeew.debug.dylib`(anonymous namespace)::workerRoutine(void*) + 244
+    frame #17: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #41
+    frame #0: 0x00000002345175e8 libsystem_kernel.dylib`__psynch_cvwait + 8
+    frame #1: 0x00000001e449cb48 libsystem_pthread.dylib`_pthread_cond_wait + 980
+    frame #2: 0x000000010c87904c Pheeeew.debug.dylib`WaitOnCondVar(_opaque_pthread_cond_t*, _opaque_pthread_mutex_t*, unsigned long long, unsigned long long*) + 152
+    frame #3: 0x000000010c87c1f8 Pheeeew.debug.dylib`(anonymous namespace)::waitInNativeState(_opaque_pthread_cond_t*, _opaque_pthread_mutex_t*, unsigned long long, unsigned long long*) + 144
+    frame #4: 0x000000010c8812e8 Pheeeew.debug.dylib`Worker::park(long long, bool) + 860
+    frame #5: 0x000000010c6efa6c Pheeeew.debug.dylib`kfun:kotlin.native.concurrent.Worker#park(kotlin.Long;kotlin.Boolean){}kotlin.Boolean + 220
+    frame #6: 0x000000010c92f11c Pheeeew.debug.dylib`kfun:kotlinx.coroutines.BlockingCoroutine.joinBlocking#internal(_this=0x0000000134640060) at Builders.kt:85:28
+    frame #7: 0x000000010c92e454 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlockingImpl(newContext=0x0000000134680028, eventLoop=0x0000000134680028, block=0x0000000132bac028){0§<kotlin.Any?>}0:0 at Builders.kt:15:26
+    frame #8: 0x000000010c92ab30 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlocking(context=0x000000010efede60, block=0x0000000132bac028){0§<kotlin.Any?>}0:0 at Builders.concurrent.kt:172:12
+    frame #9: 0x000000010c92ac50 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlocking$default(context=0x0000000000000000, block=0x0000000132bac028, $mask0=1){0§<kotlin.Any?>}0:0 at Builders.concurrent.kt:157:8
+    frame #10: 0x000000010c933a94 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.workerRunLoop#internal(_this=0x0000000104795108) at MultithreadedDispatchers.kt:102:35
+    frame #11: 0x000000010c9351e0 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.MultiWorkerDispatcher$1.MultiWorkerDispatcher$1$invoke$$inlined$apply$1.invoke#internal(_this=0x0000000109f431b0) at MultithreadedDispatchers.kt:86:28
+    frame #12: 0x000000010c935238 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.MultiWorkerDispatcher$1.MultiWorkerDispatcher$1$invoke$$inlined$apply$1.$<bridge-DN>invoke(_this=0x0000000109f431b0){}#internal at MultithreadedDispatchers.kt:86:26
+    frame #13: 0x000000010c810f64 Pheeeew.debug.dylib`kfun:kotlin.Function0#invoke(){}1:0-trampoline + 92
+    frame #14: 0x000000010c6eda10 Pheeeew.debug.dylib`WorkerExecuteAfterLaunchpad + 224
+    frame #15: 0x000000010c87bc48 Pheeeew.debug.dylib`Worker::processQueueElement(bool) + 3696
+    frame #16: 0x000000010c87ac74 Pheeeew.debug.dylib`(anonymous namespace)::workerRoutine(void*) + 244
+    frame #17: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #42
+    frame #0: 0x00000002345175e8 libsystem_kernel.dylib`__psynch_cvwait + 8
+    frame #1: 0x00000001e449cb48 libsystem_pthread.dylib`_pthread_cond_wait + 980
+    frame #2: 0x000000010c87904c Pheeeew.debug.dylib`WaitOnCondVar(_opaque_pthread_cond_t*, _opaque_pthread_mutex_t*, unsigned long long, unsigned long long*) + 152
+    frame #3: 0x000000010c87c1f8 Pheeeew.debug.dylib`(anonymous namespace)::waitInNativeState(_opaque_pthread_cond_t*, _opaque_pthread_mutex_t*, unsigned long long, unsigned long long*) + 144
+    frame #4: 0x000000010c8812e8 Pheeeew.debug.dylib`Worker::park(long long, bool) + 860
+    frame #5: 0x000000010c6efa6c Pheeeew.debug.dylib`kfun:kotlin.native.concurrent.Worker#park(kotlin.Long;kotlin.Boolean){}kotlin.Boolean + 220
+    frame #6: 0x000000010c92f11c Pheeeew.debug.dylib`kfun:kotlinx.coroutines.BlockingCoroutine.joinBlocking#internal(_this=0x0000000134a80060) at Builders.kt:85:28
+    frame #7: 0x000000010c92e454 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlockingImpl(newContext=0x0000000134aa0028, eventLoop=0x0000000134aa0028, block=0x0000000134a20028){0§<kotlin.Any?>}0:0 at Builders.kt:15:26
+    frame #8: 0x000000010c92ab30 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlocking(context=0x000000010efede60, block=0x0000000134a20028){0§<kotlin.Any?>}0:0 at Builders.concurrent.kt:172:12
+    frame #9: 0x000000010c92ac50 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlocking$default(context=0x0000000000000000, block=0x0000000134a20028, $mask0=1){0§<kotlin.Any?>}0:0 at Builders.concurrent.kt:157:8
+    frame #10: 0x000000010c933a94 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.workerRunLoop#internal(_this=0x0000000104795108) at MultithreadedDispatchers.kt:102:35
+    frame #11: 0x000000010c9351e0 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.MultiWorkerDispatcher$1.MultiWorkerDispatcher$1$invoke$$inlined$apply$1.invoke#internal(_this=0x0000000109f43258) at MultithreadedDispatchers.kt:86:28
+    frame #12: 0x000000010c935238 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.MultiWorkerDispatcher$1.MultiWorkerDispatcher$1$invoke$$inlined$apply$1.$<bridge-DN>invoke(_this=0x0000000109f43258){}#internal at MultithreadedDispatchers.kt:86:26
+    frame #13: 0x000000010c810f64 Pheeeew.debug.dylib`kfun:kotlin.Function0#invoke(){}1:0-trampoline + 92
+    frame #14: 0x000000010c6eda10 Pheeeew.debug.dylib`WorkerExecuteAfterLaunchpad + 224
+    frame #15: 0x000000010c87bc48 Pheeeew.debug.dylib`Worker::processQueueElement(bool) + 3696
+    frame #16: 0x000000010c87ac74 Pheeeew.debug.dylib`(anonymous namespace)::workerRoutine(void*) + 244
+    frame #17: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #43
+    frame #0: 0x00000002345175e8 libsystem_kernel.dylib`__psynch_cvwait + 8
+    frame #1: 0x00000001e449cb48 libsystem_pthread.dylib`_pthread_cond_wait + 980
+    frame #2: 0x000000010c87904c Pheeeew.debug.dylib`WaitOnCondVar(_opaque_pthread_cond_t*, _opaque_pthread_mutex_t*, unsigned long long, unsigned long long*) + 152
+    frame #3: 0x000000010c87c1f8 Pheeeew.debug.dylib`(anonymous namespace)::waitInNativeState(_opaque_pthread_cond_t*, _opaque_pthread_mutex_t*, unsigned long long, unsigned long long*) + 144
+    frame #4: 0x000000010c8812e8 Pheeeew.debug.dylib`Worker::park(long long, bool) + 860
+    frame #5: 0x000000010c6efa6c Pheeeew.debug.dylib`kfun:kotlin.native.concurrent.Worker#park(kotlin.Long;kotlin.Boolean){}kotlin.Boolean + 220
+    frame #6: 0x000000010c92f11c Pheeeew.debug.dylib`kfun:kotlinx.coroutines.BlockingCoroutine.joinBlocking#internal(_this=0x0000000134960060) at Builders.kt:85:28
+    frame #7: 0x000000010c92e454 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlockingImpl(newContext=0x0000000134980028, eventLoop=0x0000000134980028, block=0x0000000134900028){0§<kotlin.Any?>}0:0 at Builders.kt:15:26
+    frame #8: 0x000000010c92ab30 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlocking(context=0x000000010efede60, block=0x0000000134900028){0§<kotlin.Any?>}0:0 at Builders.concurrent.kt:172:12
+    frame #9: 0x000000010c92ac50 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlocking$default(context=0x0000000000000000, block=0x0000000134900028, $mask0=1){0§<kotlin.Any?>}0:0 at Builders.concurrent.kt:157:8
+    frame #10: 0x000000010c933a94 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.workerRunLoop#internal(_this=0x0000000104795108) at MultithreadedDispatchers.kt:102:35
+    frame #11: 0x000000010c9351e0 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.MultiWorkerDispatcher$1.MultiWorkerDispatcher$1$invoke$$inlined$apply$1.invoke#internal(_this=0x0000000123038580) at MultithreadedDispatchers.kt:86:28
+    frame #12: 0x000000010c935238 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.MultiWorkerDispatcher$1.MultiWorkerDispatcher$1$invoke$$inlined$apply$1.$<bridge-DN>invoke(_this=0x0000000123038580){}#internal at MultithreadedDispatchers.kt:86:26
+    frame #13: 0x000000010c810f64 Pheeeew.debug.dylib`kfun:kotlin.Function0#invoke(){}1:0-trampoline + 92
+    frame #14: 0x000000010c6eda10 Pheeeew.debug.dylib`WorkerExecuteAfterLaunchpad + 224
+    frame #15: 0x000000010c87bc48 Pheeeew.debug.dylib`Worker::processQueueElement(bool) + 3696
+    frame #16: 0x000000010c87ac74 Pheeeew.debug.dylib`(anonymous namespace)::workerRoutine(void*) + 244
+    frame #17: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #44
+    frame #0: 0x00000002345175e8 libsystem_kernel.dylib`__psynch_cvwait + 8
+    frame #1: 0x00000001e449cb48 libsystem_pthread.dylib`_pthread_cond_wait + 980
+    frame #2: 0x000000010c87904c Pheeeew.debug.dylib`WaitOnCondVar(_opaque_pthread_cond_t*, _opaque_pthread_mutex_t*, unsigned long long, unsigned long long*) + 152
+    frame #3: 0x000000010c87c1f8 Pheeeew.debug.dylib`(anonymous namespace)::waitInNativeState(_opaque_pthread_cond_t*, _opaque_pthread_mutex_t*, unsigned long long, unsigned long long*) + 144
+    frame #4: 0x000000010c8812e8 Pheeeew.debug.dylib`Worker::park(long long, bool) + 860
+    frame #5: 0x000000010c6efa6c Pheeeew.debug.dylib`kfun:kotlin.native.concurrent.Worker#park(kotlin.Long;kotlin.Boolean){}kotlin.Boolean + 220
+    frame #6: 0x000000010c92f11c Pheeeew.debug.dylib`kfun:kotlinx.coroutines.BlockingCoroutine.joinBlocking#internal(_this=0x0000000135000060) at Builders.kt:85:28
+    frame #7: 0x000000010c92e454 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlockingImpl(newContext=0x0000000135020028, eventLoop=0x0000000135020028, block=0x0000000134fa0028){0§<kotlin.Any?>}0:0 at Builders.kt:15:26
+    frame #8: 0x000000010c92ab30 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlocking(context=0x000000010efede60, block=0x0000000134fa0028){0§<kotlin.Any?>}0:0 at Builders.concurrent.kt:172:12
+    frame #9: 0x000000010c92ac50 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlocking$default(context=0x0000000000000000, block=0x0000000134fa0028, $mask0=1){0§<kotlin.Any?>}0:0 at Builders.concurrent.kt:157:8
+    frame #10: 0x000000010c933a94 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.workerRunLoop#internal(_this=0x0000000104795108) at MultithreadedDispatchers.kt:102:35
+    frame #11: 0x000000010c9351e0 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.MultiWorkerDispatcher$1.MultiWorkerDispatcher$1$invoke$$inlined$apply$1.invoke#internal(_this=0x000000012fd784a8) at MultithreadedDispatchers.kt:86:28
+    frame #12: 0x000000010c935238 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.MultiWorkerDispatcher$1.MultiWorkerDispatcher$1$invoke$$inlined$apply$1.$<bridge-DN>invoke(_this=0x000000012fd784a8){}#internal at MultithreadedDispatchers.kt:86:26
+    frame #13: 0x000000010c810f64 Pheeeew.debug.dylib`kfun:kotlin.Function0#invoke(){}1:0-trampoline + 92
+    frame #14: 0x000000010c6eda10 Pheeeew.debug.dylib`WorkerExecuteAfterLaunchpad + 224
+    frame #15: 0x000000010c87bc48 Pheeeew.debug.dylib`Worker::processQueueElement(bool) + 3696
+    frame #16: 0x000000010c87ac74 Pheeeew.debug.dylib`(anonymous namespace)::workerRoutine(void*) + 244
+    frame #17: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #45
+    frame #0: 0x00000002345175e8 libsystem_kernel.dylib`__psynch_cvwait + 8
+    frame #1: 0x00000001e449cb48 libsystem_pthread.dylib`_pthread_cond_wait + 980
+    frame #2: 0x000000010c87904c Pheeeew.debug.dylib`WaitOnCondVar(_opaque_pthread_cond_t*, _opaque_pthread_mutex_t*, unsigned long long, unsigned long long*) + 152
+    frame #3: 0x000000010c87c1f8 Pheeeew.debug.dylib`(anonymous namespace)::waitInNativeState(_opaque_pthread_cond_t*, _opaque_pthread_mutex_t*, unsigned long long, unsigned long long*) + 144
+    frame #4: 0x000000010c8812e8 Pheeeew.debug.dylib`Worker::park(long long, bool) + 860
+    frame #5: 0x000000010c6efa6c Pheeeew.debug.dylib`kfun:kotlin.native.concurrent.Worker#park(kotlin.Long;kotlin.Boolean){}kotlin.Boolean + 220
+    frame #6: 0x000000010c92f11c Pheeeew.debug.dylib`kfun:kotlinx.coroutines.BlockingCoroutine.joinBlocking#internal(_this=0x0000000134b80060) at Builders.kt:85:28
+    frame #7: 0x000000010c92e454 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlockingImpl(newContext=0x0000000134ba0028, eventLoop=0x0000000134ba0028, block=0x0000000134b20028){0§<kotlin.Any?>}0:0 at Builders.kt:15:26
+    frame #8: 0x000000010c92ab30 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlocking(context=0x000000010efede60, block=0x0000000134b20028){0§<kotlin.Any?>}0:0 at Builders.concurrent.kt:172:12
+    frame #9: 0x000000010c92ac50 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlocking$default(context=0x0000000000000000, block=0x0000000134b20028, $mask0=1){0§<kotlin.Any?>}0:0 at Builders.concurrent.kt:157:8
+    frame #10: 0x000000010c933a94 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.workerRunLoop#internal(_this=0x0000000104795108) at MultithreadedDispatchers.kt:102:35
+    frame #11: 0x000000010c9351e0 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.MultiWorkerDispatcher$1.MultiWorkerDispatcher$1$invoke$$inlined$apply$1.invoke#internal(_this=0x00000001302e90d8) at MultithreadedDispatchers.kt:86:28
+    frame #12: 0x000000010c935238 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.MultiWorkerDispatcher$1.MultiWorkerDispatcher$1$invoke$$inlined$apply$1.$<bridge-DN>invoke(_this=0x00000001302e90d8){}#internal at MultithreadedDispatchers.kt:86:26
+    frame #13: 0x000000010c810f64 Pheeeew.debug.dylib`kfun:kotlin.Function0#invoke(){}1:0-trampoline + 92
+    frame #14: 0x000000010c6eda10 Pheeeew.debug.dylib`WorkerExecuteAfterLaunchpad + 224
+    frame #15: 0x000000010c87bc48 Pheeeew.debug.dylib`Worker::processQueueElement(bool) + 3696
+    frame #16: 0x000000010c87ac74 Pheeeew.debug.dylib`(anonymous namespace)::workerRoutine(void*) + 244
+    frame #17: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #46
+    frame #0: 0x00000002345175e8 libsystem_kernel.dylib`__psynch_cvwait + 8
+    frame #1: 0x00000001e449cb48 libsystem_pthread.dylib`_pthread_cond_wait + 980
+    frame #2: 0x000000010c87904c Pheeeew.debug.dylib`WaitOnCondVar(_opaque_pthread_cond_t*, _opaque_pthread_mutex_t*, unsigned long long, unsigned long long*) + 152
+    frame #3: 0x000000010c87c1f8 Pheeeew.debug.dylib`(anonymous namespace)::waitInNativeState(_opaque_pthread_cond_t*, _opaque_pthread_mutex_t*, unsigned long long, unsigned long long*) + 144
+    frame #4: 0x000000010c8812e8 Pheeeew.debug.dylib`Worker::park(long long, bool) + 860
+    frame #5: 0x000000010c6efa6c Pheeeew.debug.dylib`kfun:kotlin.native.concurrent.Worker#park(kotlin.Long;kotlin.Boolean){}kotlin.Boolean + 220
+    frame #6: 0x000000010c92f11c Pheeeew.debug.dylib`kfun:kotlinx.coroutines.BlockingCoroutine.joinBlocking#internal(_this=0x0000000134c60060) at Builders.kt:85:28
+    frame #7: 0x000000010c92e454 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlockingImpl(newContext=0x0000000134c80028, eventLoop=0x0000000134c80028, block=0x0000000134c00028){0§<kotlin.Any?>}0:0 at Builders.kt:15:26
+    frame #8: 0x000000010c92ab30 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlocking(context=0x000000010efede60, block=0x0000000134c00028){0§<kotlin.Any?>}0:0 at Builders.concurrent.kt:172:12
+    frame #9: 0x000000010c92ac50 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlocking$default(context=0x0000000000000000, block=0x0000000134c00028, $mask0=1){0§<kotlin.Any?>}0:0 at Builders.concurrent.kt:157:8
+    frame #10: 0x000000010c933a94 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.workerRunLoop#internal(_this=0x0000000104795108) at MultithreadedDispatchers.kt:102:35
+    frame #11: 0x000000010c9351e0 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.MultiWorkerDispatcher$1.MultiWorkerDispatcher$1$invoke$$inlined$apply$1.invoke#internal(_this=0x00000001302e9690) at MultithreadedDispatchers.kt:86:28
+    frame #12: 0x000000010c935238 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.MultiWorkerDispatcher$1.MultiWorkerDispatcher$1$invoke$$inlined$apply$1.$<bridge-DN>invoke(_this=0x00000001302e9690){}#internal at MultithreadedDispatchers.kt:86:26
+    frame #13: 0x000000010c810f64 Pheeeew.debug.dylib`kfun:kotlin.Function0#invoke(){}1:0-trampoline + 92
+    frame #14: 0x000000010c6eda10 Pheeeew.debug.dylib`WorkerExecuteAfterLaunchpad + 224
+    frame #15: 0x000000010c87bc48 Pheeeew.debug.dylib`Worker::processQueueElement(bool) + 3696
+    frame #16: 0x000000010c87ac74 Pheeeew.debug.dylib`(anonymous namespace)::workerRoutine(void*) + 244
+    frame #17: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #47
+    frame #0: 0x00000002345175e8 libsystem_kernel.dylib`__psynch_cvwait + 8
+    frame #1: 0x00000001e449cb48 libsystem_pthread.dylib`_pthread_cond_wait + 980
+    frame #2: 0x000000010c87904c Pheeeew.debug.dylib`WaitOnCondVar(_opaque_pthread_cond_t*, _opaque_pthread_mutex_t*, unsigned long long, unsigned long long*) + 152
+    frame #3: 0x000000010c87c1f8 Pheeeew.debug.dylib`(anonymous namespace)::waitInNativeState(_opaque_pthread_cond_t*, _opaque_pthread_mutex_t*, unsigned long long, unsigned long long*) + 144
+    frame #4: 0x000000010c8812e8 Pheeeew.debug.dylib`Worker::park(long long, bool) + 860
+    frame #5: 0x000000010c6efa6c Pheeeew.debug.dylib`kfun:kotlin.native.concurrent.Worker#park(kotlin.Long;kotlin.Boolean){}kotlin.Boolean + 220
+    frame #6: 0x000000010c92f11c Pheeeew.debug.dylib`kfun:kotlinx.coroutines.BlockingCoroutine.joinBlocking#internal(_this=0x0000000134d40060) at Builders.kt:85:28
+    frame #7: 0x000000010c92e454 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlockingImpl(newContext=0x0000000134d60028, eventLoop=0x0000000134d60028, block=0x0000000134ce0028){0§<kotlin.Any?>}0:0 at Builders.kt:15:26
+    frame #8: 0x000000010c92ab30 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlocking(context=0x000000010efede60, block=0x0000000134ce0028){0§<kotlin.Any?>}0:0 at Builders.concurrent.kt:172:12
+    frame #9: 0x000000010c92ac50 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlocking$default(context=0x0000000000000000, block=0x0000000134ce0028, $mask0=1){0§<kotlin.Any?>}0:0 at Builders.concurrent.kt:157:8
+    frame #10: 0x000000010c933a94 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.workerRunLoop#internal(_this=0x0000000104795108) at MultithreadedDispatchers.kt:102:35
+    frame #11: 0x000000010c9351e0 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.MultiWorkerDispatcher$1.MultiWorkerDispatcher$1$invoke$$inlined$apply$1.invoke#internal(_this=0x00000001302e9c30) at MultithreadedDispatchers.kt:86:28
+    frame #12: 0x000000010c935238 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.MultiWorkerDispatcher$1.MultiWorkerDispatcher$1$invoke$$inlined$apply$1.$<bridge-DN>invoke(_this=0x00000001302e9c30){}#internal at MultithreadedDispatchers.kt:86:26
+    frame #13: 0x000000010c810f64 Pheeeew.debug.dylib`kfun:kotlin.Function0#invoke(){}1:0-trampoline + 92
+    frame #14: 0x000000010c6eda10 Pheeeew.debug.dylib`WorkerExecuteAfterLaunchpad + 224
+    frame #15: 0x000000010c87bc48 Pheeeew.debug.dylib`Worker::processQueueElement(bool) + 3696
+    frame #16: 0x000000010c87ac74 Pheeeew.debug.dylib`(anonymous namespace)::workerRoutine(void*) + 244
+    frame #17: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #48
+    frame #0: 0x00000002345175e8 libsystem_kernel.dylib`__psynch_cvwait + 8
+    frame #1: 0x00000001e449cb48 libsystem_pthread.dylib`_pthread_cond_wait + 980
+    frame #2: 0x000000010c87904c Pheeeew.debug.dylib`WaitOnCondVar(_opaque_pthread_cond_t*, _opaque_pthread_mutex_t*, unsigned long long, unsigned long long*) + 152
+    frame #3: 0x000000010c87c1f8 Pheeeew.debug.dylib`(anonymous namespace)::waitInNativeState(_opaque_pthread_cond_t*, _opaque_pthread_mutex_t*, unsigned long long, unsigned long long*) + 144
+    frame #4: 0x000000010c8812e8 Pheeeew.debug.dylib`Worker::park(long long, bool) + 860
+    frame #5: 0x000000010c6efa6c Pheeeew.debug.dylib`kfun:kotlin.native.concurrent.Worker#park(kotlin.Long;kotlin.Boolean){}kotlin.Boolean + 220
+    frame #6: 0x000000010c92f11c Pheeeew.debug.dylib`kfun:kotlinx.coroutines.BlockingCoroutine.joinBlocking#internal(_this=0x0000000134e40060) at Builders.kt:85:28
+    frame #7: 0x000000010c92e454 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlockingImpl(newContext=0x0000000134e60028, eventLoop=0x0000000134e60028, block=0x0000000134dc0028){0§<kotlin.Any?>}0:0 at Builders.kt:15:26
+    frame #8: 0x000000010c92ab30 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlocking(context=0x000000010efede60, block=0x0000000134dc0028){0§<kotlin.Any?>}0:0 at Builders.concurrent.kt:172:12
+    frame #9: 0x000000010c92ac50 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlocking$default(context=0x0000000000000000, block=0x0000000134dc0028, $mask0=1){0§<kotlin.Any?>}0:0 at Builders.concurrent.kt:157:8
+    frame #10: 0x000000010c933a94 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.workerRunLoop#internal(_this=0x0000000104795108) at MultithreadedDispatchers.kt:102:35
+    frame #11: 0x000000010c9351e0 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.MultiWorkerDispatcher$1.MultiWorkerDispatcher$1$invoke$$inlined$apply$1.invoke#internal(_this=0x0000000132acc520) at MultithreadedDispatchers.kt:86:28
+    frame #12: 0x000000010c935238 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.MultiWorkerDispatcher$1.MultiWorkerDispatcher$1$invoke$$inlined$apply$1.$<bridge-DN>invoke(_this=0x0000000132acc520){}#internal at MultithreadedDispatchers.kt:86:26
+    frame #13: 0x000000010c810f64 Pheeeew.debug.dylib`kfun:kotlin.Function0#invoke(){}1:0-trampoline + 92
+    frame #14: 0x000000010c6eda10 Pheeeew.debug.dylib`WorkerExecuteAfterLaunchpad + 224
+    frame #15: 0x000000010c87bc48 Pheeeew.debug.dylib`Worker::processQueueElement(bool) + 3696
+    frame #16: 0x000000010c87ac74 Pheeeew.debug.dylib`(anonymous namespace)::workerRoutine(void*) + 244
+    frame #17: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #49
+    frame #0: 0x00000002345175e8 libsystem_kernel.dylib`__psynch_cvwait + 8
+    frame #1: 0x00000001e449cb48 libsystem_pthread.dylib`_pthread_cond_wait + 980
+    frame #2: 0x000000010c87904c Pheeeew.debug.dylib`WaitOnCondVar(_opaque_pthread_cond_t*, _opaque_pthread_mutex_t*, unsigned long long, unsigned long long*) + 152
+    frame #3: 0x000000010c87c1f8 Pheeeew.debug.dylib`(anonymous namespace)::waitInNativeState(_opaque_pthread_cond_t*, _opaque_pthread_mutex_t*, unsigned long long, unsigned long long*) + 144
+    frame #4: 0x000000010c8812e8 Pheeeew.debug.dylib`Worker::park(long long, bool) + 860
+    frame #5: 0x000000010c6efa6c Pheeeew.debug.dylib`kfun:kotlin.native.concurrent.Worker#park(kotlin.Long;kotlin.Boolean){}kotlin.Boolean + 220
+    frame #6: 0x000000010c92f11c Pheeeew.debug.dylib`kfun:kotlinx.coroutines.BlockingCoroutine.joinBlocking#internal(_this=0x0000000134f20060) at Builders.kt:85:28
+    frame #7: 0x000000010c92e454 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlockingImpl(newContext=0x0000000134f40028, eventLoop=0x0000000134f40028, block=0x0000000134ec0028){0§<kotlin.Any?>}0:0 at Builders.kt:15:26
+    frame #8: 0x000000010c92ab30 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlocking(context=0x000000010efede60, block=0x0000000134ec0028){0§<kotlin.Any?>}0:0 at Builders.concurrent.kt:172:12
+    frame #9: 0x000000010c92ac50 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlocking$default(context=0x0000000000000000, block=0x0000000134ec0028, $mask0=1){0§<kotlin.Any?>}0:0 at Builders.concurrent.kt:157:8
+    frame #10: 0x000000010c933a94 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.workerRunLoop#internal(_this=0x0000000104795108) at MultithreadedDispatchers.kt:102:35
+    frame #11: 0x000000010c9351e0 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.MultiWorkerDispatcher$1.MultiWorkerDispatcher$1$invoke$$inlined$apply$1.invoke#internal(_this=0x0000000132acc988) at MultithreadedDispatchers.kt:86:28
+    frame #12: 0x000000010c935238 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.MultiWorkerDispatcher$1.MultiWorkerDispatcher$1$invoke$$inlined$apply$1.$<bridge-DN>invoke(_this=0x0000000132acc988){}#internal at MultithreadedDispatchers.kt:86:26
+    frame #13: 0x000000010c810f64 Pheeeew.debug.dylib`kfun:kotlin.Function0#invoke(){}1:0-trampoline + 92
+    frame #14: 0x000000010c6eda10 Pheeeew.debug.dylib`WorkerExecuteAfterLaunchpad + 224
+    frame #15: 0x000000010c87bc48 Pheeeew.debug.dylib`Worker::processQueueElement(bool) + 3696
+    frame #16: 0x000000010c87ac74 Pheeeew.debug.dylib`(anonymous namespace)::workerRoutine(void*) + 244
+    frame #17: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #51, name = 'caulk::deferred_logger'
+    frame #0: 0x0000000234511c50 libsystem_kernel.dylib`semaphore_wait_trap + 8
+    frame #1: 0x000000029f6bec6c caulk`caulk::semaphore::timed_wait(double) + 224
+    frame #2: 0x000000029f6becb8 caulk`caulk::concurrent::details::worker_thread::run() + 32
+    frame #3: 0x000000029f6c2f54 caulk`void* caulk::thread_proxy<std::__1::tuple<caulk::thread::attributes, void (caulk::concurrent::details::worker_thread::*)(), std::__1::tuple<caulk::concurrent::details::worker_thread*>>>(void*) + 96
+    frame #4: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #52, name = 'caulk.messenger.shared:high'
+    frame #0: 0x0000000234511c50 libsystem_kernel.dylib`semaphore_wait_trap + 8
+    frame #1: 0x000000029f6bec6c caulk`caulk::semaphore::timed_wait(double) + 224
+    frame #2: 0x000000029f6becb8 caulk`caulk::concurrent::details::worker_thread::run() + 32
+    frame #3: 0x000000029f6c2f54 caulk`void* caulk::thread_proxy<std::__1::tuple<caulk::thread::attributes, void (caulk::concurrent::details::worker_thread::*)(), std::__1::tuple<caulk::concurrent::details::worker_thread*>>>(void*) + 96
+    frame #4: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+(lldb) process detach
+Process 88718 detached
+(lldb) quit

@@ -60,6 +60,24 @@ Use the run configurations provided by the run widget in your IDE's toolbar. You
 - Android app: `./gradlew :androidApp:assembleDebug`
 - iOS app: open the [/iosApp](./iosApp) directory in Xcode and run it from there.
 
+### 로컬 Android Release 서명
+
+`AN/Pheeeew`에서 `keystore.properties.example`을 `keystore.properties`로 복사한 뒤,
+기존 Google Play 업로드 키스토어의 경로·비밀번호·키 별칭·키 비밀번호를 입력한다.
+`storeFile`은 절대 경로 또는 `AN/Pheeeew` 기준 상대 경로이며, `~`는 확장하지 않는다.
+값에 따옴표를 붙이지 않는다. 비밀번호에 역슬래시가 있다면 Java properties 형식에 맞춰 이스케이프한다.
+로컬 설정과 `.jks`·`.keystore` 파일은 Git에서 제외된다.
+
+기존 Release 모니터링 설정과 `SENTRY_AUTH_TOKEN`도 준비한 뒤 실행한다.
+
+```bash
+./gradlew :androidApp:bundleRelease
+```
+
+서명된 AAB는 `androidApp/build/outputs/bundle/release/androidApp-release.aab`에 생성된다.
+Release APK에도 같은 서명이 적용된다. 서명 설정이 없거나 잘못되면 Release 빌드가 실패하며,
+Debug 빌드는 기존 Debug 키를 사용한다. CI에는 Release 빌드나 서명 정보 주입을 추가하지 않는다.
+
 ### Running tests
 
 Use the run button in your IDE's editor gutter, or run tests using Gradle tasks:

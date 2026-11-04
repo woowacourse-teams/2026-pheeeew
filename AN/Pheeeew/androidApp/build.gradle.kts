@@ -1,4 +1,5 @@
 import org.gradle.api.DefaultTask
+import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
@@ -26,6 +27,33 @@ abstract class ValidateReleaseSentryUpload : DefaultTask() {
     }
 }
 
+abstract class ValidateReleaseSigning : DefaultTask() {
+    @get:Internal
+    abstract val propertiesFile: RegularFileProperty
+
+    @TaskAction
+    fun validate() {
+        val local = propertiesFile.get().asFile
+        check(local.isFile) {
+            "Copy keystore.properties.example to keystore.properties and configure the Play upload keystore."
+        }
+        val settings = Properties().apply { local.inputStream().use { load(it) } }
+        listOf("storeFile", "storePassword", "keyAlias", "keyPassword").forEach { key ->
+            check(!settings.getProperty(key).isNullOrBlank()) {
+                "Set $key in keystore.properties before building release."
+            }
+        }
+        val keystore =
+            local.parentFile
+                .toPath()
+                .resolve(settings.getProperty("storeFile"))
+                .toFile()
+        check(keystore.isFile) {
+            "The storeFile in keystore.properties must point to an existing keystore."
+        }
+    }
+}
+
 kotlin {
     compilerOptions {
         jvmTarget = JvmTarget.JVM_11
@@ -33,11 +61,16 @@ kotlin {
 }
 dependencies {
     implementation(project(":shared"))
+    implementation(libs.play.app.update)
+    // Play pulls an old Fragment; Activity Result requires a compatible version.
+    implementation(libs.androidx.fragment)
+    implementation(libs.play.app.update.ktx)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
     implementation(libs.androidx.work.runtime)
     debugImplementation(project(":developerTools"))
     debugImplementation(libs.compose.foundation)
+    debugImplementation(libs.compose.material3)
     implementation("androidx.lifecycle:lifecycle-process:2.10.0")
 
     androidTestImplementation(libs.androidx.testExt.junit)
@@ -55,6 +88,12 @@ dependencies {
 val monitoringProperties =
     Properties().apply {
         val local = rootProject.file("monitoring.local.properties")
+        if (local.exists()) local.inputStream().use { load(it) }
+    }
+
+val signingProperties =
+    Properties().apply {
+        val local = rootProject.file("keystore.properties")
         if (local.exists()) local.inputStream().use { load(it) }
     }
 
@@ -93,6 +132,10 @@ val debugDeviceAttestationMode = providers.gradleProperty("deviceDebugAttestatio
 val deviceCloudProjectNumber = providers.gradleProperty("deviceCloudProjectNumber").orElse("87715710427")
 val cloudProjectNumberLiteral = "${deviceCloudProjectNumber.get().toLongOrNull() ?: 0L}L"
 
+val appUpdateTestBuild = providers.gradleProperty("appUpdateTestBuild").map(String::toBoolean).orElse(false)
+val appUpdateTestVersionCode = providers.gradleProperty("appUpdateTestVersionCode").orElse("103201")
+val appUpdateTestVersionName = providers.gradleProperty("appUpdateTestVersionName").orElse("2.5.0")
+
 android {
     namespace = "com.pheeeew"
     compileSdk =
@@ -115,8 +158,9 @@ android {
             buildConfigField("String", key, quotedConfig(monitoringValue(key)))
         }
         buildConfigField("boolean", "MONITORING_ENABLED", (monitoringValue("MONITORING_ENABLED") == "true").toString())
-        versionCode = 13
-        versionName = "2.5.0"
+        versionCode = 14
+        versionName = "2.6.0"
+        manifestPlaceholders["appLabel"] = "@string/app_name"
     }
     packaging {
         resources {
@@ -127,8 +171,25 @@ android {
         compose = true
         buildConfig = true
     }
+    signingConfigs {
+        create("release") {
+            storeFile =
+                signingProperties
+                    .getProperty("storeFile")
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { rootProject.file(it) }
+            storePassword = signingProperties.getProperty("storePassword")
+            keyAlias = signingProperties.getProperty("keyAlias")
+            keyPassword = signingProperties.getProperty("keyPassword")
+        }
+    }
     buildTypes {
         debug {
+            if (appUpdateTestBuild.get()) {
+                applicationIdSuffix = ".updatetest"
+                versionNameSuffix = "" // Server version comparison needs major.minor.patch.
+                manifestPlaceholders["appLabel"] = "히유 업데이트 테스트 A/B"
+            }
             require(debugPressInputMode.get() in setOf("http", "ws")) { "Unknown Debug press input mode" }
             buildConfigField("String", "PRESS_INPUT_MODE", quotedConfig(debugPressInputMode.get()))
             buildConfigField("String", "DEVICE_ENVIRONMENT", "\"dev\"")
@@ -142,6 +203,7 @@ android {
             buildConfigField("long", "DEVICE_CLOUD_PROJECT_NUMBER", cloudProjectNumberLiteral)
         }
         release {
+            signingConfig = signingConfigs.getByName("release")
             buildConfigField("String", "PRESS_INPUT_MODE", "\"http\"")
             buildConfigField("String", "DEVICE_ENVIRONMENT", "\"prod\"")
             buildConfigField("String", "DEVICE_ATTESTATION_MODE", "\"required\"")
@@ -201,14 +263,23 @@ val validateReleaseMonitoring by tasks.registering {
 val validateReleaseSentryUpload by tasks.registering(ValidateReleaseSentryUpload::class) {
     authToken.set(sentryAuthToken)
 }
+val validateReleaseSigning by tasks.registering(ValidateReleaseSigning::class) {
+    propertiesFile.set(rootProject.layout.projectDirectory.file("keystore.properties"))
+}
 tasks.matching { it.name == "preReleaseBuild" || it.name == "generateReleaseBuildConfig" }.configureEach {
-    dependsOn(validateReleaseMonitoring, validateReleaseSentryUpload)
+    dependsOn(validateReleaseMonitoring, validateReleaseSentryUpload, validateReleaseSigning)
 }
 
 // Inspect the actual variant fields used by BuildConfig, including flavor/plugin overrides.
 androidComponents {
     onVariants(selector().all()) { variant ->
         val suffix = variant.name.replaceFirstChar { it.uppercaseChar() }
+        if (variant.buildType == "debug" && appUpdateTestBuild.get()) {
+            variant.outputs.forEach { output ->
+                output.versionCode.set(appUpdateTestVersionCode.map(String::toInt))
+                output.versionName.set(appUpdateTestVersionName)
+            }
+        }
         val release = variant.buildType == "release"
         val fields = checkNotNull(variant.buildConfigFields) { "Device session requires BuildConfig" }
         val debuggable = variant.debuggable
@@ -317,4 +388,9 @@ val verifyDeveloperToolsIsolation by tasks.registering {
 
 tasks.matching { it.name == "preDebugBuild" || it.name == "preReleaseBuild" }.configureEach {
     dependsOn(verifyDeveloperToolsIsolation)
+}
+
+// The isolated update-test package is not registered in the production Firebase project.
+if (appUpdateTestBuild.get()) {
+    tasks.matching { it.name == "processDebugGoogleServices" }.configureEach { enabled = false }
 }

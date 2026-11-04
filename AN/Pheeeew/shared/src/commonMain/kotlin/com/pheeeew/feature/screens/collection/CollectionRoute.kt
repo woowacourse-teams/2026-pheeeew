@@ -15,11 +15,10 @@ import com.pheeeew.core.monitoring.EventValue
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.domain.model.collection.COLLECTION_PRESS_CLAIM_TARGET
 import com.pheeeew.domain.model.collection.COLLECTION_STAMP_CLAIM_TARGET
-import com.pheeeew.domain.model.collection.CollectionCardReference
+import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.feature.emotion.model.EmotionType
 import com.pheeeew.feature.monitoring.product.ProductEvents
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
-import com.pheeeew.feature.screens.collection.card.CollectionCardUiModel
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import kotlin.uuid.Uuid
 
@@ -132,6 +131,13 @@ private fun CollectionUiState.toScreenUiModel(
         totalCount = totalCount,
         emotionCounts = emotionCounts,
         selectedFilter = selectedFilter,
+        hasClaimedToday = today?.hasClaimedCard == true,
+        todayCardId =
+            today
+                ?.items
+                ?.firstOrNull { it.card != null }
+                ?.card
+                ?.cardId,
         pendingProgress =
             today
                 ?.takeUnless { it.hasClaimedCard }
@@ -201,34 +207,4 @@ private fun CollectionUiState.toScreenUiModel(
         imageActionPhase = imageActionPhase,
     )
 
-private fun com.pheeeew.domain.model.emotion.EmotionState.toUi(): EmotionType = EmotionType.valueOf(name)
-
-private fun EmotionType.labelFallback(): String =
-    when (this) {
-        EmotionType.FRUSTRATED -> "답답"
-        EmotionType.IRRITATED -> "짜증"
-        EmotionType.EXHAUSTED -> "지침"
-        EmotionType.DISCOURAGED -> "좌절"
-        EmotionType.ANGRY -> "분노"
-    }
-
-private fun CollectionCardReference.toUiModel(
-    nickname: String?,
-    stampCount: Long,
-    pressCount: Long,
-): CollectionCardUiModel {
-    val emotion = state.toUi()
-    return CollectionCardUiModel(
-        id = cardId,
-        period = formatCollectionCardDate(date),
-        title = nickname?.takeIf(String::isNotBlank) ?: "나",
-        emotion = emotion,
-        pressLabel = "${emotion.labelFallback()} 프레스",
-        pressCount = pressCount,
-        stampLabel = "${emotion.labelFallback()} 스탬프",
-        stampCount = stampCount,
-        characterImageUrl = images.characterUrl,
-        textStampImageUrl = images.straightStampUrl,
-        roundStampImageUrl = images.roundStampUrl,
-    )
-}
+private fun EmotionState.toUi(): EmotionType = EmotionType.valueOf(name)
