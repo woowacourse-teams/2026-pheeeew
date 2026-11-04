@@ -24,10 +24,12 @@ internal class CollectionPullRefreshState(
         private set
 
     private var returnJob: Job? = null
+    private var isGestureActive = false
     private var pulled = false
     private var consumeFling = false
 
     fun beginGesture() {
+        isGestureActive = true
         consumeFling = false
         returnJob?.cancel()
     }
@@ -44,7 +46,7 @@ internal class CollectionPullRefreshState(
         available: Offset,
         source: NestedScrollSource,
     ): Offset =
-        if (source == NestedScrollSource.UserInput && offset > 0f && available.y < 0f) {
+        if (isGestureActive && source == NestedScrollSource.UserInput && offset > 0f && available.y < 0f) {
             drag(available.y)
         } else {
             Offset.Zero
@@ -55,13 +57,14 @@ internal class CollectionPullRefreshState(
         available: Offset,
         source: NestedScrollSource,
     ): Offset =
-        if (source == NestedScrollSource.UserInput && isEnabled() && available.y > 0f) {
+        if (isGestureActive && source == NestedScrollSource.UserInput && isEnabled() && available.y > 0f) {
             drag(available.y)
         } else {
             Offset.Zero
         }
 
     fun release(cancelled: Boolean = false) {
+        isGestureActive = false
         val shouldRefresh = !cancelled && pulled && offset >= threshold && isEnabled()
         consumeFling = pulled
         pulled = false

@@ -1,0 +1,503 @@
+{
+  "issue": "https://github.com/woowacourse-teams/2026-pheeeew/issues/1060",
+  "resultsComment": "https://github.com/woowacourse-teams/2026-pheeeew/issues/1060#issuecomment-6596888545",
+  "date": "2026-11-03",
+  "baseCommit": "3961d5cdc",
+  "deviceModel": "iPhone 17 Pro",
+  "os": "iOS 26.6 (23G71)",
+  "privacy": "Device identifiers/name, signing identities/email, and local project/derived-data paths are redacted or normalized. Runtime framework UUID and virtual addresses are retained as technical evidence. Original hashes identify untouched local originals; archived hashes identify committed text. Archived text uses LF line endings and removes trailing horizontal whitespace; local originals are unchanged. Final blank lines are normalized to one terminating newline.",
+  "files": [
+    {
+      "path": "1-A-impact-only.log",
+      "originalSha256": "e6a389777f7871b6488b02c0a433566e6fb30371968d8c093e6853376bb8dfa3",
+      "archivedSha256": "27575458a209c27db17c30c9b9f2eede31f9cb7a78a6cc28c2e0f3302002eeda",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "2-B-prepare.log",
+      "originalSha256": "0e2f456e2a840989685fcd1c30d77ace75176921d1e982dcc528f3da4891a91b",
+      "archivedSha256": "25de9c34bf58010f1871161ec8cc68994f539b7be9f488c059e22ec0555ccf9c",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "3-B-prepare.log",
+      "originalSha256": "bb5f6860b6de748d766e86a3a9e4d6c58073f9342afa778a6716c5f72daeae95",
+      "archivedSha256": "7091f7bb8eb456e3b9cc18d8199769f4cc0f44fb4f31a7a4cbaf0e263026ae43",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "4-A-impact-only.log",
+      "originalSha256": "b8473b6e2e3e81f15ac3a120621190000c5807313811a8951b136ed48bcdd970",
+      "archivedSha256": "c61fa9930a30c4a3b05889c7fa8762bdd2b11e377f746052b01c44ae7b85dbd1",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "5-A-impact-only.log",
+      "originalSha256": "778de8c92d0c39bcbbedb393dc371c54a3c3d5f58c94eaee2bbdf8e3e60ad7fd",
+      "archivedSha256": "2861614d23ca744d08176d06319ca092da16f09f6333ff779eeaad293cb248e3",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "6-A-impact-only.log",
+      "originalSha256": "dc71e92b822bb1d2696cbbecefa9a7b12a5c8113646f0d584bbfbb0266fd9f84",
+      "archivedSha256": "9b91e7d21d9129e03c0426dc2d490507fba8e0848d66126d4b73efcd52ebde38",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "boot-capture.lldb",
+      "originalSha256": "3d9427dedba7063564680d6989c91516ad533cc96ff31b1da4605ebe044045d9",
+      "archivedSha256": "26bde2ac8f500cff514da8edf01e1a19b6359f72b0bc84b4d69802595529a28e",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "boot-console.log",
+      "originalSha256": "57d333a0cbcd8c7a466bbb2de16f235650ecdc30689f74138c1ebe40e61cf4e5",
+      "archivedSha256": "3dd335cf9cad589f2ff5572adc2248b912d91fd940058590285cc1ec765f9e12",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "boot-stack.log",
+      "originalSha256": "e3fe215dbb77807adaf9ddf5d8bd41e1eee8042daf72d62108b6030adfbd8d5d",
+      "archivedSha256": "398e4843c6ab21ced9c045be074a0e1370c475999003e951986f2a3145c9ee21",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "candidate-results.json",
+      "originalSha256": "6cf8f1bc27480f9261260e30b9f1eebbfe1b1f5919c1010448328eadff8c73cf",
+      "archivedSha256": "1ecd8cb5a738b1d8d74c97c4e03551838145471a8577c4738a4afddd32d2359f",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "capture-console.log",
+      "originalSha256": "0131ddf174025358e737e602c99b12b2e97de48003f0edcd934f5249ff777137",
+      "archivedSha256": "f3365fdf1ac501a59c3e0f3f6d5a96e0b17e5d09d46f9b6ba2c09454bcbf72b9",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "capture-exact-pid.lldb",
+      "originalSha256": "15ad6aabe00f2d01f886dc3d1df841deb8efe8872efa0dbed4aed7bbb366dcb4",
+      "archivedSha256": "b5e4dbfb590f31dc85617117e432a4b5918342be5d1a9578fa8a87accf1f1f3b",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "capture-live.lldb",
+      "originalSha256": "16a170d8c5e097ac8d835cf7cc9b5594f7f938b813c1ba1b72e4989d364c1cd1",
+      "archivedSha256": "0b86e971ab596279fd8c11b4ae59e6623d9e7b218b8ea049161e4838d77c25ee",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "capture-stack.lldb",
+      "originalSha256": "e970c6c591914fcc71813419cf6fce4aff5225386eff34379e3a3b866db7d823",
+      "archivedSha256": "fd8187729368795fe951e10e10e7eac992665fcae882f07185418a433e70ad25",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "capture-stack.log",
+      "originalSha256": "ee73bf96cdc18e7679fd1c452220fff02685fd98335840bf1950cce289b00537",
+      "archivedSha256": "f32ddb0ce975e02f0414cdd3f3a7a7c9fc49171b4f3372eb651c37bb6e61d6da",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "capture_boot.py",
+      "originalSha256": "401f9937233424243bc79f2164c8fae57a77803e215d38b8870fcbdf72ac0a75",
+      "archivedSha256": "f27db6b7b13b9329d782572b1d8328cf322594c12b4005131750387cff5e6733",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "capture_final.py",
+      "originalSha256": "ad64a8738485a548ebf1dd6359fee6d05eaa3fa890cf3b3d65101a40c3b208fc",
+      "archivedSha256": "190bd9d014b3a9c7fb44e993182ae957a1a15a5ee3506bdf5e7f0aecd858c7d8",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "capture_lifetime.py",
+      "originalSha256": "dd2f5df2b1fa49bfb195c39f3b3cd899f2ecba19aa8d2b7e786107e726eaa466",
+      "archivedSha256": "b4fb338d585c0cf8ae555d68985864a1f90edb31cf0507cba170d697e9bfbbfc",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "channel-disassembly.log",
+      "originalSha256": "16066b9101e8483dc406b4802eda7a2d833fa791bc25242dde54edcab6dfbdba",
+      "archivedSha256": "a3eb081145c0d32837a2fbacb9b963afcdab9f7e0088a7f1e96456029e2d4764",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "channel-release-disassembly.log",
+      "originalSha256": "4ab0c21a16b7d2206a71fdc6b31b947fc1e5d784abaf4ebf9d3f8d7173a08851",
+      "archivedSha256": "86bd2ffeb1f0a91e944b46aea986b407f291d3c4e0a80b07848e50d74fa95238",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "cleanup-build.log",
+      "originalSha256": "2d8ed782997bd809aa76a75fa91578eaafb0784aea1eecdf5222a68fd0c9413e",
+      "archivedSha256": "fd1ebb8a265c15352e5612bf780908d07f58c3e8b89d6bbade94fa5827fc3e07",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "core-reuse-build.log",
+      "originalSha256": "b7ed1d879de2417a44888fa294fde4e3968fdae846a9d9b8485bb26d0c25ebbf",
+      "archivedSha256": "678e3c8ac6a56a08204dee712f6712eff5ee29e8ee109ee6b4f497287ec5b30e",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "core-reuse.log",
+      "originalSha256": "0fdf5832c5d2c3edf21a100ecc32467ce4f00d7741e57cf54826d34faa9e0fe7",
+      "archivedSha256": "3656f37b108b8be59019c1c16a6e7d3fec7675914085e779cb8bacf8dbc0d4bc",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "exact-launch.json",
+      "originalSha256": "f84016bcca142205e9a92105d5f2db27499acc9bca796b75ab0e3c64cdde4ff2",
+      "archivedSha256": "43ddac5e0075fd9228ebbe56be72ef846f24f8b26afadcf66553cfda0129b95b",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "exact-pending-validation.log",
+      "originalSha256": "8a273bd1c8c92813e524ac5f8d5dfcd90b0f8bd0395dc142cf24ccc7233ed656",
+      "archivedSha256": "53fa1290c4a8053928ff65318cb88d779487264d0c536ba02696e399ce619948",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "experiment-source/AN/Pheeeew/iosApp/iosApp/ContentView.swift",
+      "originalSha256": "0e2e9fa46b2131b09e0c948e4065173671db0f3f3c42f014f2433ed23269411c",
+      "archivedSha256": "0e2e9fa46b2131b09e0c948e4065173671db0f3f3c42f014f2433ed23269411c",
+      "redactedOrPathNormalized": false
+    },
+    {
+      "path": "experiment-source/AN/Pheeeew/iosApp/iosApp/NativeHapticExperiment.swift",
+      "originalSha256": "7ff72da053429762764a47ace25b6950493d6cdbef66aa85beda91c08c31ef5d",
+      "archivedSha256": "7ff72da053429762764a47ace25b6950493d6cdbef66aa85beda91c08c31ef5d",
+      "redactedOrPathNormalized": false
+    },
+    {
+      "path": "experiment-source/AN/Pheeeew/iosApp/iosApp.xcodeproj/xcshareddata/xcschemes/Haptic1060-A-impact-only.xcscheme",
+      "originalSha256": "e8568cd190109b9fe46509c1eaf912b1011dbb31320ae9c59f15467e86277701",
+      "archivedSha256": "03060742509909215b6a1f9c16d3386e3552939e1050679da42f0e57196c62f6",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "experiment-source/AN/Pheeeew/iosApp/iosApp.xcodeproj/xcshareddata/xcschemes/Haptic1060-B-prepare.xcscheme",
+      "originalSha256": "9b220de89e959d02325bfb102c15125b784cbee906fcabdc98a1341cd1740d62",
+      "archivedSha256": "9d2e79d9b7f768c9ae68431170039e21f8c83fcf2c76bd0e2c037023efa48252",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "experiment-source/AN/Pheeeew/scripts/haptic_channel_breakpoint_1060.py",
+      "originalSha256": "fd0303a3a5c87f7fbe00324ae27573a63cee08863ce25be541d657684131ff5e",
+      "archivedSha256": "fd0303a3a5c87f7fbe00324ae27573a63cee08863ce25be541d657684131ff5e",
+      "redactedOrPathNormalized": false
+    },
+    {
+      "path": "experiment-source/AN/Pheeeew/scripts/haptic_channel_exact_1060.py",
+      "originalSha256": "4956e64440b6f62d1f50b05fac6e2b7cda9c35b975b46a346bd9aed80966ff38",
+      "archivedSha256": "4956e64440b6f62d1f50b05fac6e2b7cda9c35b975b46a346bd9aed80966ff38",
+      "redactedOrPathNormalized": false
+    },
+    {
+      "path": "experiment-source/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/App.kt",
+      "originalSha256": "e9dabf11fdb75d0d565b03c868da2beccb34ae17466028170c7c333126f68be3",
+      "archivedSha256": "e9dabf11fdb75d0d565b03c868da2beccb34ae17466028170c7c333126f68be3",
+      "redactedOrPathNormalized": false
+    },
+    {
+      "path": "experiment-source/AN/Pheeeew/shared/src/iosMain/kotlin/com/pheeeew/MainViewController.kt",
+      "originalSha256": "3ebaf7f54ffbcce76d320e72cc9e5ba293eb2c98181d5e8dc0d47aa78208449a",
+      "archivedSha256": "3ebaf7f54ffbcce76d320e72cc9e5ba293eb2c98181d5e8dc0d47aa78208449a",
+      "redactedOrPathNormalized": false
+    },
+    {
+      "path": "experiment-source/AN/Pheeeew/shared/src/iosMain/kotlin/com/pheeeew/feature/emotion/component/EmotionHapticFeedback.ios.kt",
+      "originalSha256": "748f768a761677faa7bcbb34585fa080c85b11f730b2303a132e6654896b808e",
+      "archivedSha256": "748f768a761677faa7bcbb34585fa080c85b11f730b2303a132e6654896b808e",
+      "redactedOrPathNormalized": false
+    },
+    {
+      "path": "experiment-source/AN/Pheeeew/shared/src/iosMain/kotlin/com/pheeeew/feature/emotion/component/PressHapticExperiment.ios.kt",
+      "originalSha256": "ba4351ea313ba8548264e7effaf73fc9a092f0ba61de9257463047fcef591019",
+      "archivedSha256": "ba4351ea313ba8548264e7effaf73fc9a092f0ba61de9257463047fcef591019",
+      "redactedOrPathNormalized": false
+    },
+    {
+      "path": "experiment-source/manifest.json",
+      "originalSha256": "25020f9f4b459bacfdcec2c4bce6ff07bca98b39dba972ff526710bcec7ec494",
+      "archivedSha256": "9ffff0226ca5a8fbc904a10150369d965d4d8bbf32b602559fc162d4a8b9d456",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "investigation-summary.json",
+      "originalSha256": "b1c08426f25b8bcebc99b05eba1e9e2faebc5691e2b2b0a3fe73ed4d2c680941",
+      "archivedSha256": "10531089fb3c28f87f7905f06d9af351e892b5b6f358c47041423ac2e1a47ec4",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "lifetime-console.log",
+      "originalSha256": "1a1235d512c3bde89a0d8a9013dc9faf66f1333f8044f44d98971c2172b63f06",
+      "archivedSha256": "435994646325596cf191784f6c6bc2fd0d3954331ee5eee90972d11ef9e4c211",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "lifetime-result.json",
+      "originalSha256": "6adc9f6be41e0ff526b51e5d36e88b005f57f8b1d9b5019527514e4ae7a1044a",
+      "archivedSha256": "f3892cd205a4a9c9322113e94b7571a092ce416131a8b20eca12c862e3ec18a8",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "lifetime-stack.log",
+      "originalSha256": "16ba473364655e624ec023ccd5e41d4705f24b4bc13c0d2654e0a120ae722387",
+      "archivedSha256": "c27c5d6e9c30bc6834f1b32ab3a98ed4f9d69592a409939a814889c9d190f350",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "lock-state.json",
+      "originalSha256": "d7eb073934b0a385fb21a9e5a3fd1ee3f60a49b0002c37175fb832a668b5cd12",
+      "archivedSha256": "d588ffbe2e38a7fc993ab344465c81751d241432f6024e166f406354d9f1dfc0",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "native-build.log",
+      "originalSha256": "5a50bfe9f9584feb0217b7319d64025f4f76706579b826bf89affb470f2da726",
+      "archivedSha256": "820507f591df4e18f4ebf7bdeeb0fb79808a9108cb3cdb0b29770fe5b95b4194",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "native-current.log",
+      "originalSha256": "cf734299d828eb1f75569691dc4c7946bd83ea2f94cb61509c0f243fb11e2c91",
+      "archivedSha256": "cf734299d828eb1f75569691dc4c7946bd83ea2f94cb61509c0f243fb11e2c91",
+      "redactedOrPathNormalized": false
+    },
+    {
+      "path": "native-prepare0-bound0.log",
+      "originalSha256": "1a1a689a7ca77c700e91954accd28e9ca703fdc04a6fa9ec19ee85e0be441227",
+      "archivedSha256": "c3bbc900cbbd7175c9df5dce620e3daf8d28b766a7dde14c045cecf457f91651",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "native-prepare0-bound1.log",
+      "originalSha256": "b83b447a870b24c528c586f8e7032b65d893a55ea16936afd28421475b6e11ad",
+      "archivedSha256": "383e217d84113af360b5414621a4b599d4d4967b25783dbf4c65d13de44adab2",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "native-prepare1-bound0.log",
+      "originalSha256": "691b1bc2aa0599f676c4f9f2fb8c31baf56980227d4820a4ead46a8a8b05f035",
+      "archivedSha256": "4a9916ebd294197db5bffd015bc9ddd073e94507d1ecf5296ee7563999ff820f",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "native-prepare1-bound1.log",
+      "originalSha256": "356eb9acffe09c9a75ba636d16c5c458e460e916e30eea6294cc22f2eccd7e5c",
+      "archivedSha256": "247be66f90af6bf7ae2d4ac624352e2c21253077fe7728271bb2d929bf4c865a",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "native-results.json",
+      "originalSha256": "4220572b93b1f09e6f3827d502256889323ec812cb92baa7743fb81c2fd64c4c",
+      "archivedSha256": "b59551bbd6cc5c2a9dd07e068b17d3acd12721c339f3a684766e7c04b64955ab",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "native-slow-prepare0-bound0.log",
+      "originalSha256": "ecfe348af30ffe43dc8b2354f2ecf819bbcb3ccebda5fbb3ecc3b0fb724b0d58",
+      "archivedSha256": "086764d1a8724535fdba3b855030eb4cbaa6c6a010e052abc1885d16e827b704",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "native-slow-prepare1-bound0.log",
+      "originalSha256": "a074064f4d5668993dede1c3f709981c317e3e15342bf484d0d8a0d95f217dec",
+      "archivedSha256": "9335c14916502caea701a942fb10667b552077dd9c6f6030ce114fa3ea54c97d",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "native-slow-results.json",
+      "originalSha256": "0ecf7b5a356c2150da69144bcf987bdab533f2fc8351ca0e9d228dc9ec2d70ef",
+      "archivedSha256": "cc85335a88481961e6d406a101c8a6a5cdd1393c2d0f49a5d46ab1c2fa272594",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "player-lifetime-disassembly.log",
+      "originalSha256": "4800c842ec87f3599acfc7fcedb306f6ea861fd84f62e1c4dbd81052ef70d3f2",
+      "archivedSha256": "5339aeabc957b03ba13279822304b4e1401aa999ceb586a816bd8f643f4a74a7",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "player-ownership-disassembly.log",
+      "originalSha256": "0bbd46e363477110b072b8f6c9be9db25c81be9933e9afe0e6725105eaa99953",
+      "archivedSha256": "48b39941b24b6f329a7fd9e42282ec9620796d3d2d94681b4604e267f8d2b27e",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "player-reset-disassembly.log",
+      "originalSha256": "ec227157e42b0a438653433d119196f7a92d086d95e8b93d99658b240eed15cb",
+      "archivedSha256": "0e54a75da9b4e00876f37b249656360793462e21a946d79bbe0c90630d90251c",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "player-reuse-disassembly.log",
+      "originalSha256": "235dd72cba36f7bad161f14213ed2edcc8091a5c03d300ca333b8e48162d5851",
+      "archivedSha256": "94ac4607b1a99a9fe46d1b177c1904e41529c3921435065fea2942cc9b3906c1",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "recovery-build.log",
+      "originalSha256": "2ae3487d676aba2c2256dc25d936fcce7cc0940ceca2f7e773f8b9aef0726aeb",
+      "archivedSha256": "ccf5cafbe97553a5620684bb6ffe463b21f76acae6b2da7354786982efb51240",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "release-channel.log",
+      "originalSha256": "b42e3dc909795cd388f10574203a6445dc310267409edf196fb6b0f67a95f05f",
+      "archivedSha256": "9b8ff0763ce70b5031a34ede11b1d56a4517f1d1e0955e56bd5b05159f202fd5",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "results.json",
+      "originalSha256": "14b9930847cbb21b2da3364b794bf3555f805b4e45a24b8ea42d3a9ec20d5990",
+      "archivedSha256": "21bc78794054e91d58df73d4e634f32522c4c07e524a721de97e1098b5d3a7f0",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "retry_a.py",
+      "originalSha256": "85ee57556edafe8c8f334f733e5a86a1b463fbace1b3a83a00981972c3a4110a",
+      "archivedSha256": "38c6cf74acdcab7ae29c91177111c94a2988582ce9e8d6dc0bd28b6671bde7b1",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "retry_a_6.py",
+      "originalSha256": "152ec6ab9f6800dce3bec45b68de3744b9acdd1f648011c8b99622a83d1b3353",
+      "archivedSha256": "268a51e6af09994a48665273c3a398089fdb7eea1896973829bd633f687c3649",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "run_candidates.py",
+      "originalSha256": "bfa606d3c20bc2ffc9cad14f30d2be4fc3d4d7a5a70bbf9b60c16f13b238f1af",
+      "archivedSha256": "8d10db3679add3871edfd54caaa4010e60b3b21800fd08b15febb399612f761c",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "run_exact_stack.py",
+      "originalSha256": "ec5df80433740019acfb413dd6eff14be1b78bd84c71f08a59923fa7ee16aff8",
+      "archivedSha256": "a3787a3d77cdad4223834cc940428b1e414dd2591f375580e6e6836ddad02a9f",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "run_native.py",
+      "originalSha256": "b56ec95cd38790b2188513c195af72861b8d170e41be22cc9fa45de2ac1a774f",
+      "archivedSha256": "69276993f6c043320897bfd46f1859989550ed2bc50d62b97563f8f15f93fdbb",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "run_native_slow.py",
+      "originalSha256": "e5979ff24ee410898124f8efab899b4922fc7cc75d2fc3935ae9da71839b87d5",
+      "archivedSha256": "44f4f35d5eba84e839464a3242084fe1acc28478987d83b78c91b61d01c69f9a",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "run_stack.py",
+      "originalSha256": "58ecc62747dbb8c964e807e723c816a6fe19f11067031d4bf26d8c58ca29aecb",
+      "archivedSha256": "cf578348879b2a2c6a29cde399cf04d2787d3c60732ab2166f298874ee33157c",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "run_trials.py",
+      "originalSha256": "13852c47e78d39a052f9cfbe451ac8f0061eb8dc424937e7fc4011854a031971",
+      "archivedSha256": "24fe63c94f747a54be32bca6ec78c51a04505ce85bb9533a94aa4f57a3f6b726",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "stack-B-console.log",
+      "originalSha256": "fad4f83fe818e909f75c244f4a34ff030e4ceadd7e7ba7010d29b7c786ff9868",
+      "archivedSha256": "fad4f83fe818e909f75c244f4a34ff030e4ceadd7e7ba7010d29b7c786ff9868",
+      "redactedOrPathNormalized": false
+    },
+    {
+      "path": "stack-B-lldb.log",
+      "originalSha256": "7ed92974cc795591908b8446d314ac432b54aa85c8119c36f40856e28cbe29ca",
+      "archivedSha256": "8313da47c0a05deae607ba3a000032c8c799b8069133b995528b6a9a22a983b7",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "stack-exact-console.log",
+      "originalSha256": "4a447e1a75c2acc1d3a20883cc6aca9e8278cac2dbc5e33299a4f69ea8cbc1e4",
+      "archivedSha256": "4a447e1a75c2acc1d3a20883cc6aca9e8278cac2dbc5e33299a4f69ea8cbc1e4",
+      "redactedOrPathNormalized": false
+    },
+    {
+      "path": "stack-exact-lldb.log",
+      "originalSha256": "b6c74233206f4fbdec127d2e4421223ac391802b2930e632d15431945a69b246",
+      "archivedSha256": "b6363763deeabfc65666e2f16a39b6f2b9713a7bebe27131852ebd20367c0c25",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "stack-exact-pid.log",
+      "originalSha256": "e37782e20b17a88bef1defa3e54fd37524b4f5fac1e58ef5c6a4ede0c31471b6",
+      "archivedSha256": "209f895889d0210675fe670da768003a6a75eb5666c01ccbbfbac9648426d759",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "stack-live-console.log",
+      "originalSha256": "a635aeca8c0fa495ab767945e86e04b07a40ab03bab21f5bdf40c37d9efed57e",
+      "archivedSha256": "8dd79b26bd91abf5a740a89a48165e74e1d13c4e0b6ac5618d884ac60b95b703",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "stack-live-lldb.log",
+      "originalSha256": "075d8862c0d5369299d5be1551226a40d56c846611ea28caf6222f0e6574548d",
+      "archivedSha256": "9d849a4b41adfb76fa5f69a25899e23e974bfd2889715e0de688890ba8d85f73",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "stack-mode-build.log",
+      "originalSha256": "c3accfb520ca300a326f3e727f5a499aba3798382367dfa932e9a4b7c9c8a4ec",
+      "archivedSha256": "8b4dc43a8f4c5779b0b15186e2fba8931f564db6619e87c97dc9859bd02f8794",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "stack-result.json",
+      "originalSha256": "833ac4ee06eef9c699a7540dd2a11c86c87fdac50cb23455e3bb95feca82f45c",
+      "archivedSha256": "a803ed0c34c550b02d8e97e5834e8fe801f5e9c94eb54e64512596941f729587",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "stack-sync-console.log",
+      "originalSha256": "78b381b88741fd6b6719c3c7e7646efcae423c2fb743b6b527bf75d6bd7d74ed",
+      "archivedSha256": "a63ab53f67b15424ccb038b538b485f8476d155c3e06c312e77323d69662d401",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "stack-sync-lldb.log",
+      "originalSha256": "477f83d5b4db53dbd1b2bd1391c13d406262cdf2071a5013d7e5c67abead3dc4",
+      "archivedSha256": "7a83b46372c017ea3cdc135bd2ecedffed3ecb1f41c27a3392874c19a03d0f06",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "uikit-idle-recovery.log",
+      "originalSha256": "afbf4b75898cf5bf843f0be0d2a6c5b28ee667c408fd7463791c1240a2117025",
+      "archivedSha256": "d633007e709597fdf5cba80f217ad7438900a49f4de22af1001d9833feb6dee0",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "unlocked-capture.lldb",
+      "originalSha256": "f724aebbd2452aed52d51a2b9b8125f1a2a9cb35405482a2307d0b1fc3533e0c",
+      "archivedSha256": "fe35b9ae1b3e08daf05421ad3622ebd8356df87c9283c8025451d62cd205aaee",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "unlocked-launch.json",
+      "originalSha256": "74185839d4b8bd7d7adf32ff85faf011e792c9bc63577d506d322aad631718ba",
+      "archivedSha256": "ab047a86fc1d2c646e19365c4bdd6918a96f481fad7daa5295223f4d0a5fe88e",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "unlocked-stack.log",
+      "originalSha256": "576fee9767f39f38abbed5589005ac738f61eb894d778f45005e6290b566ed4c",
+      "archivedSha256": "4b2a97903c14009fd407faf5a7ea679876849b2cbb0770dc566021ca8442808c",
+      "redactedOrPathNormalized": true
+    },
+    {
+      "path": "wrapper-lifetime.log",
+      "originalSha256": "4f79a8de7fac12b55e31e8789a166e681391213918ce8f04c1b60e8f61220c38",
+      "archivedSha256": "efe95ef7400f12098c7a2fbbb8962660a00103ff4ef45b634191e65e62ef2249",
+      "redactedOrPathNormalized": true
+    }
+  ]
+}

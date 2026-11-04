@@ -1,0 +1,36 @@
+(lldb) target create "/Users/USER/Library/Developer/Xcode/iOS DeviceSupport/iPhone18,1 26.6 (23G71)/Symbols/System/Library/PrivateFrameworks/UIKitCore.framework/UIKitCore"
+Current executable set to '/Users/USER/Library/Developer/Xcode/iOS DeviceSupport/iPhone18,1 26.6 (23G71)/Symbols/System/Library/PrivateFrameworks/UIKitCore.framework/UIKitCore' (arm64e).
+(lldb) image lookup -r -n "(UIFeedbackCoreHapticsEngine.*init|UIFeedbackCoreHapticsPlayer.*(dealloc|cxx_destruct|init|omplet|inish))"
+4 matches found in /Users/USER/Library/Developer/Xcode/iOS DeviceSupport/iPhone18,1 26.6 (23G71)/Symbols/System/Library/PrivateFrameworks/UIKitCore.framework/UIKitCore:
+        Address: UIKitCore[0x00000001895e06c0] (UIKitCore.__TEXT.__text + 4933880)
+        Summary: UIKitCore`-[_UIFeedbackCoreHapticsEngine _internal_initializeCoreHapticsEngine]
+        Address: UIKitCore[0x00000001895e48b4] (UIKitCore.__TEXT.__text + 4950764)
+        Summary: UIKitCore`-[_UIFeedbackCoreHapticsEngine init]
+        Address: UIKitCore[0x000000018a1a350c] (UIKitCore.__TEXT.__text + 17266500)
+        Summary: UIKitCore`-[_UIFeedbackCoreHapticsPlayer initWithEngine:]
+        Address: UIKitCore[0x000000018a1a7bcc] (UIKitCore.__TEXT.__text + 17284612)
+        Summary: UIKitCore`-[_UIFeedbackCoreHapticsPlayer .cxx_destruct]
+(lldb) disassemble -n "-[_UIFeedbackCoreHapticsPlayer .cxx_destruct]"
+UIKitCore`-[_UIFeedbackCoreHapticsPlayer .cxx_destruct]:
+UIKitCore[0x18a1a7bcc] <+0>:  pacibsp
+UIKitCore[0x18a1a7bd0] <+4>:  stp    x20, x19, [sp, #-0x20]!
+UIKitCore[0x18a1a7bd4] <+8>:  stp    x29, x30, [sp, #0x10]
+UIKitCore[0x18a1a7bd8] <+12>: add    x29, sp, #0x10
+UIKitCore[0x18a1a7bdc] <+16>: mov    x19, x0
+UIKitCore[0x18a1a7be0] <+20>: add    x0, x0, #0x20
+UIKitCore[0x18a1a7be4] <+24>: mov    x1, #0x0                  ; =0
+UIKitCore[0x18a1a7be8] <+28>: bl     0x18ac8c268               ; symbol stub for: objc_storeStrong
+UIKitCore[0x18a1a7bec] <+32>: add    x0, x19, #0x18
+UIKitCore[0x18a1a7bf0] <+36>: bl     0x18d81d580
+UIKitCore[0x18a1a7bf4] <+40>: add    x0, x19, #0x10
+UIKitCore[0x18a1a7bf8] <+44>: mov    x1, #0x0                  ; =0
+UIKitCore[0x18a1a7bfc] <+48>: bl     0x18ac8c268               ; symbol stub for: objc_storeStrong
+UIKitCore[0x18a1a7c00] <+52>: add    x0, x19, #0x8
+UIKitCore[0x18a1a7c04] <+56>: mov    x1, #0x0                  ; =0
+UIKitCore[0x18a1a7c08] <+60>: ldp    x29, x30, [sp, #0x10]
+UIKitCore[0x18a1a7c0c] <+64>: ldp    x20, x19, [sp], #0x20
+UIKitCore[0x18a1a7c10] <+68>: autibsp
+UIKitCore[0x18a1a7c14] <+72>: eor    x16, x30, x30, lsl #1
+UIKitCore[0x18a1a7c18] <+76>: tbz    x16, #0x3e, 0x18a1a7c20   ; <+84>
+UIKitCore[0x18a1a7c1c] <+80>: brk    #0xc471
+UIKitCore[0x18a1a7c20] <+84>: b      0x18ac8c268               ; symbol stub for: objc_storeStrong

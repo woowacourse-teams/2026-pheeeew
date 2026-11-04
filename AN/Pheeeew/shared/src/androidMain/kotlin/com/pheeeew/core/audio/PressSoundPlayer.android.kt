@@ -48,7 +48,7 @@ private class AndroidPressSoundPlayer(
                 AudioAttributes
                     .Builder()
                     .setUsage(
-                        AudioAttributes.USAGE_ASSISTANCE_SONIFICATION,
+                        AudioAttributes.USAGE_MEDIA,
                     ).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .build(),
             ).build()

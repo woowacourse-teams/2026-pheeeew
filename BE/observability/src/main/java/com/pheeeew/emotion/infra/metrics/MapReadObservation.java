@@ -270,6 +270,7 @@ public final class MapReadObservation implements AutoCloseable {
     public record Route(String apiVersion, String route) {
     }
 
+    /** BYPASS_PERIOD는 기간 조회도 캐시를 사용하면서 기록하지 않는다. 과거 시계열 해석을 위해 남긴다. */
     public enum Decision {
         UNCLASSIFIED, ELIGIBLE, CACHE_ATTEMPT, CACHE_HIT, CACHE_LOAD, CACHE_FALLBACK,
         BYPASS_PERIOD, BYPASS_FILTER, BYPASS_TRANSACTION, BYPASS_LEVEL, EMPTY

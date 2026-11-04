@@ -1,0 +1,17 @@
+script lldb.debugger.SetAsync(False)
+device select <DEVICE_IDENTIFIER>
+device process attach -p 88769
+script exec("import time\np = lldb.debugger.GetSelectedTarget().GetProcess()\nfor _ in range(25):\n if p.GetState() in (lldb.eStateStopped, lldb.eStateCrashed, lldb.eStateExited): break\n time.sleep(1)\nprint(\"attach state:\",p.GetState())")
+process status
+target list
+breakpoint set --func-regex "CHHapticEngine.*init" --one-shot true
+continue
+command script import ${PROJECT_ROOT}/AN/Pheeeew/scripts/haptic_channel_exact_1060.py
+continue
+thread backtrace
+breakpoint set --name "-[CHHapticEngine(CHHapticEngineInternal) releaseChannel:]" --one-shot true
+continue
+register read x2
+thread backtrace all
+process detach
+quit

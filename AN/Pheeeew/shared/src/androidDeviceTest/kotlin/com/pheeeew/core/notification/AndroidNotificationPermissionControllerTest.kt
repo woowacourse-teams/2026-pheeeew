@@ -29,6 +29,40 @@ import kotlin.test.assertTrue
 
 /** Run on an emulator with POST_NOTIFICATIONS revoked and its user-set/user-fixed flags cleared. */
 class AndroidNotificationPermissionControllerTest {
+    @Test
+    fun resetClearsAppHistoryAndDefersGrantedHistoryUntilPermissionIsRevoked() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val preferences = context.getSharedPreferences("foundation-notification-permission", 0)
+        val rationaleKey = "has-observed-notification-rationale"
+        val authorizedKey = "has-been-authorized"
+        val resetPendingKey = "notification-permission-reset-pending"
+        val store = AndroidNotificationPermissionStore(context)
+        try {
+            preferences
+                .edit()
+                .putBoolean("has-requested-post-notifications", true)
+                .putBoolean(rationaleKey, true)
+                .putBoolean(authorizedKey, true)
+                .apply()
+
+            store.reset(permissionGranted = true)
+
+            assertFalse(preferences.contains("has-requested-post-notifications"))
+            assertFalse(preferences.contains(rationaleKey))
+            assertFalse(preferences.contains(authorizedKey))
+            assertTrue(preferences.getBoolean(resetPendingKey, false))
+
+            store.update(permissionGranted = true) { it.onResult(granted = true, showsRationale = false) }
+            assertFalse(preferences.getBoolean(authorizedKey, false))
+
+            store.update(permissionGranted = false) { it.authorization(granted = false, showsRationale = false) }
+            assertFalse(preferences.getBoolean(resetPendingKey, false))
+            assertFalse(preferences.getBoolean(authorizedKey, false))
+        } finally {
+            store.reset(permissionGranted = false)
+        }
+    }
+
     /** Run separately after granting POST_NOTIFICATIONS to the isolated test package. */
     @Test
     fun blockedRemoteChannelDoesNotChangeAppAuthorization() {
@@ -70,6 +104,11 @@ class AndroidNotificationPermissionControllerTest {
         assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val device = UiDevice.getInstance(instrumentation)
+        val context = instrumentation.targetContext
+        val permissionGranted =
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        assumeTrue("Requires revoked notification permission", !permissionGranted)
+        AndroidNotificationPermissionController.resetRequestHistory(context)
         val denySelector = By.res(Pattern.compile(".*:id/permission_deny.*_button"))
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
         val activity =
@@ -92,14 +131,31 @@ class AndroidNotificationPermissionControllerTest {
             device.pressBack()
             runBlocking { withTimeout(10_000) { dismissed.await() } }
             assertTrue(runBlocking { controller.canRequestAuthorization() })
+            assertEquals(NotificationAuthorization.NOT_DETERMINED, runBlocking { controller.authorization() })
+            instrumentation.runOnMainSync {
+                controller.close()
+                controller = AndroidNotificationPermissionController(activity, UnavailableSettingsFallback)
+            }
+            assertEquals(NotificationAuthorization.NOT_DETERMINED, runBlocking { controller.authorization() })
+            val reader = AndroidNotificationPermissionReader(instrumentation.targetContext)
+            assertEquals(NotificationAuthorization.NOT_DETERMINED, runBlocking { reader.authorization() })
 
             repeat(2) { attempt ->
-                val denied = scope.async { controller.requestAuthorization() }
+                val denied =
+                    scope.async {
+                        if (attempt == 0) {
+                            InitialNotificationPermissionRequest().requestIfNeeded(controller)
+                        } else {
+                            controller.requestAuthorization()
+                        }
+                    }
                 val deny =
                     device.wait(Until.findObject(denySelector), 5_000)
                 val visibleResources = device.findObjects(By.clickable(true)).map { it.resourceName }
                 assertNotNull(deny, "attempt=$attempt: $visibleResources").click()
                 runBlocking { withTimeout(10_000) { denied.await() } }
+                assertEquals(NotificationAuthorization.DENIED, runBlocking { controller.authorization() })
+                assertEquals(NotificationAuthorization.DENIED, runBlocking { reader.authorization() })
                 if (attempt == 0) assertTrue(runBlocking { controller.canRequestAuthorization() })
             }
             assertFalse(runBlocking { controller.canRequestAuthorization() })

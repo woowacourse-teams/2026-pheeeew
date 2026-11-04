@@ -14,6 +14,37 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class AndroidNotificationPermissionRequestTest {
     @Test
+    fun dismissedPromptRemainsUndeterminedAfterRecreation() {
+        val history = AndroidNotificationPermissionHistory()
+        history.onResult(granted = false, showsRationale = false)
+        val restored = AndroidNotificationPermissionHistory(history.hasObservedRationale, history.hasBeenAuthorized)
+        assertEquals(NotificationAuthorization.NOT_DETERMINED, restored.authorization(false, false))
+    }
+
+    @Test
+    fun confirmedDenialStaysDeniedAfterRepeatedDenialAndRecreation() {
+        val history = AndroidNotificationPermissionHistory()
+        history.onResult(granted = false, showsRationale = true)
+        history.onResult(granted = false, showsRationale = false)
+        val restored = AndroidNotificationPermissionHistory(history.hasObservedRationale, history.hasBeenAuthorized)
+        assertEquals(NotificationAuthorization.DENIED, restored.authorization(false, false))
+    }
+
+    @Test
+    fun authorizationObservedFromSettingsIsRememberedWhenRevoked() {
+        val history = AndroidNotificationPermissionHistory()
+        assertEquals(NotificationAuthorization.AUTHORIZED, history.authorization(true, false))
+        val restored = AndroidNotificationPermissionHistory(history.hasObservedRationale, history.hasBeenAuthorized)
+        assertEquals(NotificationAuthorization.DENIED, restored.authorization(false, false))
+    }
+
+    @Test
+    fun rationaleObservedBeforeRequestConfirmsDenial() {
+        val history = AndroidNotificationPermissionHistory()
+        assertEquals(NotificationAuthorization.DENIED, history.authorization(false, true))
+    }
+
+    @Test
     fun rationaleFromAnEarlierAppVersionIsRecordedBeforeTheNextRequest() {
         val history = AndroidNotificationPermissionHistory()
         history.observeRationale(showsRationale = true)

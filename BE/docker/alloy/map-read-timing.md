@@ -16,6 +16,8 @@ v2·v4의 동기 지도 GET 요청을 구분한다. 이 문서는 저장소의 �
 | `decision` | `unclassified`, `eligible`, `cache_attempt`, `cache_hit`, `cache_load`, `cache_fallback`, `bypass_period`, `bypass_filter`, `bypass_transaction`, `bypass_level`, `empty` |
 | `outcome` | `success`, `client_error`, `server_error` |
 
+`bypass_period`는 기간 조회도 캐시를 사용하면서 더 이상 기록하지 않는다. 과거 시계열 해석을 위해 값을 남긴다.
+
 `*_default`는 `scope=ALL`, `contentType=ALL` 조건이다. 월 조건은 KST 달력 기준으로
 종료일의 한 달 전부터 종료일까지다. 현재 KST 날짜와 종료일이 같으면 `month_current_default`,
 다르면 `month_other_default`다. 앱 기본값과 동일한 날짜 형태라는 뜻이며 기본 버튼 사용을 증명하지 않는다.

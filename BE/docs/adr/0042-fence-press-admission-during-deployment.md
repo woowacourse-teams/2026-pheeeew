@@ -4,6 +4,8 @@
 
 Accepted (2026-10-27, #924의 사용자 승인 운영 설계). 구현·검증 결과와 실제 실행 승인은 별도다.
 
+2026-11-04 [#1088](https://github.com/woowacourse-teams/2026-pheeeew/issues/1088)에서 둔 운영 임시 예외(수동 단일 앱 교체, 파일 admission 비활성화)는 같은 날 [#911](https://github.com/woowacourse-teams/2026-pheeeew/issues/911)에서 해제했다. 운영 CD도 아래 blue/green 결정과 파일 admission을 개발과 같게 따른다. 운영에서 다른 점은 [운영 블루그린 배포](../operations/prod-bluegreen-deployment.md)를 따른다.
+
 ## Context
 
 - 활성 서버 세대는 HTTP·WS 저장 자격이고 `enabled`·`activation_date`는 WS 경쟁 공개 조건이다. 경쟁 OFF에서도 호환 HTTP 저장을 유지한다.

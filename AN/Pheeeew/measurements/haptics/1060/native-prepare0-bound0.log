@@ -1,0 +1,1247 @@
+14:58:52  Acquired tunnel connection to device.
+14:58:52  Enabling developer disk image services.
+14:58:52  Acquired usage assertion.
+Launched application with com.itda.pheeeew bundle identifier.
+Waiting for the application to terminate…
+2026-11-03 14:58:50.623243+0900 Pheeeew[88740:48528553] [[FirebaseMessaging]] 13.1.1 - [FirebaseMessaging][I-FCM001000] FIRMessaging Remote Notifications proxy enabled, will swizzle remote notification receiver handlers. If you'd prefer to manually integrate Firebase Messaging, add "FirebaseAppDelegateProxyEnabled" to your Info.plist, and set it to NO. Follow the instructions at:
+https://firebase.google.com/docs/cloud-messaging/ios/client#method_swizzling_in_firebase_messaging
+to ensure proper integration.
+2026-11-03 14:58:50.636120+0900 Pheeeew[88740:48528551] [MC] Reading from public effective user settings.
+[NativeHaptic] event=armed prepare=false bound=0 count=600 intervalMs=20
+2026-11-03 14:58:50.665710+0900 Pheeeew[88740:48528565] [Common] unable to decode "ShellSceneKit.ProfileActivation" because this class does not exist
+2026-11-03 14:58:50.665726+0900 Pheeeew[88740:48528565] [Common] -[BSSettings initWithXPCDictionary:]_block_invoke Could not decode object for setting 17456962218540468756
+2026-11-03 14:58:50.665731+0900 Pheeeew[88740:48528565] [Common] No value decoded for key "profileActivation" (17456962218540468756). Ignoring.
+APNs 등록 성공
+[PushTokenSync] state=WAITING
+[PushTokenSync] state=SYNCING
+[PushTokenSync] method=PUT env=dev http=204
+[PushTokenSync] state=SYNCED
+[PushTokenSync] state=WAITING
+[PushTokenSync] state=SYNCING
+[PushTokenSync] method=PUT env=dev http=204
+[PushTokenSync] state=SYNCED
+[Revisit test] firstIntervalSeconds=172799.973 lastIntervalSeconds=2678399.852
+[Revisit test] alerts=2 lockScreen=2 notificationCenter=2 sound=2 scheduledDelivery=1
+[Revisit test] delivered=0
+[Revisit test] reason=foreground permission=2 pending=30 repeating=0 minuteSpacing=false
+[Revisit test] first=2026-11-05T05:58:51Z last=2026-12-04T05:58:51Z
+[Revisit test] firstRequestId=pheeeew.revisit.1793685531051.0
+[NativeHaptic] event=impact index=1 prepare=false elapsedMs=0 intervalMs=0
+[NativeHaptic] event=impact index=2 prepare=false elapsedMs=20 intervalMs=20
+[NativeHaptic] event=impact index=3 prepare=false elapsedMs=40 intervalMs=20
+[NativeHaptic] event=impact index=4 prepare=false elapsedMs=60 intervalMs=19
+[NativeHaptic] event=impact index=5 prepare=false elapsedMs=80 intervalMs=19
+[NativeHaptic] event=impact index=6 prepare=false elapsedMs=100 intervalMs=20
+[NativeHaptic] event=impact index=7 prepare=false elapsedMs=120 intervalMs=20
+[NativeHaptic] event=impact index=8 prepare=false elapsedMs=140 intervalMs=19
+[NativeHaptic] event=impact index=9 prepare=false elapsedMs=160 intervalMs=20
+[NativeHaptic] event=impact index=10 prepare=false elapsedMs=180 intervalMs=19
+[NativeHaptic] event=impact index=11 prepare=false elapsedMs=200 intervalMs=20
+[NativeHaptic] event=impact index=12 prepare=false elapsedMs=220 intervalMs=19
+[NativeHaptic] event=impact index=13 prepare=false elapsedMs=240 intervalMs=20
+[NativeHaptic] event=impact index=14 prepare=false elapsedMs=260 intervalMs=19
+[NativeHaptic] event=impact index=15 prepare=false elapsedMs=280 intervalMs=20
+[NativeHaptic] event=impact index=16 prepare=false elapsedMs=300 intervalMs=19
+[NativeHaptic] event=impact index=17 prepare=false elapsedMs=320 intervalMs=20
+[NativeHaptic] event=impact index=18 prepare=false elapsedMs=340 intervalMs=19
+[NativeHaptic] event=impact index=19 prepare=false elapsedMs=359 intervalMs=19
+[NativeHaptic] event=impact index=20 prepare=false elapsedMs=380 intervalMs=20
+[NativeHaptic] event=impact index=21 prepare=false elapsedMs=400 intervalMs=19
+[NativeHaptic] event=impact index=22 prepare=false elapsedMs=420 intervalMs=20
+[NativeHaptic] event=impact index=23 prepare=false elapsedMs=440 intervalMs=20
+[NativeHaptic] event=impact index=24 prepare=false elapsedMs=460 intervalMs=20
+[NativeHaptic] event=impact index=25 prepare=false elapsedMs=480 intervalMs=19
+[NativeHaptic] event=impact index=26 prepare=false elapsedMs=500 intervalMs=19
+[NativeHaptic] event=impact index=27 prepare=false elapsedMs=520 intervalMs=20
+[NativeHaptic] event=impact index=28 prepare=false elapsedMs=540 intervalMs=19
+[NativeHaptic] event=impact index=29 prepare=false elapsedMs=560 intervalMs=20
+[NativeHaptic] event=impact index=30 prepare=false elapsedMs=580 intervalMs=19
+[NativeHaptic] event=impact index=31 prepare=false elapsedMs=600 intervalMs=19
+[NativeHaptic] event=impact index=32 prepare=false elapsedMs=620 intervalMs=20
+[NativeHaptic] event=impact index=33 prepare=false elapsedMs=640 intervalMs=20
+[NativeHaptic] event=impact index=34 prepare=false elapsedMs=660 intervalMs=20
+[NativeHaptic] event=impact index=35 prepare=false elapsedMs=680 intervalMs=19
+[NativeHaptic] event=impact index=36 prepare=false elapsedMs=700 intervalMs=19
+[NativeHaptic] event=impact index=37 prepare=false elapsedMs=720 intervalMs=20
+[NativeHaptic] event=impact index=38 prepare=false elapsedMs=740 intervalMs=19
+[NativeHaptic] event=impact index=39 prepare=false elapsedMs=760 intervalMs=20
+[NativeHaptic] event=impact index=40 prepare=false elapsedMs=780 intervalMs=19
+[NativeHaptic] event=impact index=41 prepare=false elapsedMs=800 intervalMs=20
+[NativeHaptic] event=impact index=42 prepare=false elapsedMs=819 intervalMs=19
+[NativeHaptic] event=impact index=43 prepare=false elapsedMs=839 intervalMs=19
+[NativeHaptic] event=impact index=44 prepare=false elapsedMs=860 intervalMs=20
+[NativeHaptic] event=impact index=45 prepare=false elapsedMs=880 intervalMs=19
+[NativeHaptic] event=impact index=46 prepare=false elapsedMs=900 intervalMs=19
+[NativeHaptic] event=impact index=47 prepare=false elapsedMs=920 intervalMs=19
+[NativeHaptic] event=impact index=48 prepare=false elapsedMs=939 intervalMs=19
+[NativeHaptic] event=impact index=49 prepare=false elapsedMs=960 intervalMs=20
+[NativeHaptic] event=impact index=50 prepare=false elapsedMs=980 intervalMs=20
+[NativeHaptic] event=impact index=51 prepare=false elapsedMs=1000 intervalMs=19
+[NativeHaptic] event=impact index=52 prepare=false elapsedMs=1020 intervalMs=20
+[NativeHaptic] event=impact index=53 prepare=false elapsedMs=1040 intervalMs=20
+[NativeHaptic] event=impact index=54 prepare=false elapsedMs=1060 intervalMs=19
+[NativeHaptic] event=impact index=55 prepare=false elapsedMs=1080 intervalMs=19
+[NativeHaptic] event=impact index=56 prepare=false elapsedMs=1100 intervalMs=20
+[NativeHaptic] event=impact index=57 prepare=false elapsedMs=1120 intervalMs=19
+[NativeHaptic] event=impact index=58 prepare=false elapsedMs=1140 intervalMs=19
+[NativeHaptic] event=impact index=59 prepare=false elapsedMs=1160 intervalMs=20
+[NativeHaptic] event=impact index=60 prepare=false elapsedMs=1180 intervalMs=20
+[NativeHaptic] event=impact index=61 prepare=false elapsedMs=1200 intervalMs=19
+[NativeHaptic] event=impact index=62 prepare=false elapsedMs=1220 intervalMs=19
+[NativeHaptic] event=impact index=63 prepare=false elapsedMs=1240 intervalMs=20
+[NativeHaptic] event=impact index=64 prepare=false elapsedMs=1260 intervalMs=20
+[NativeHaptic] event=impact index=65 prepare=false elapsedMs=1280 intervalMs=19
+[NativeHaptic] event=impact index=66 prepare=false elapsedMs=1300 intervalMs=19
+[NativeHaptic] event=impact index=67 prepare=false elapsedMs=1320 intervalMs=20
+[NativeHaptic] event=impact index=68 prepare=false elapsedMs=1340 intervalMs=20
+[NativeHaptic] event=impact index=69 prepare=false elapsedMs=1360 intervalMs=19
+[NativeHaptic] event=impact index=70 prepare=false elapsedMs=1380 intervalMs=19
+[NativeHaptic] event=impact index=71 prepare=false elapsedMs=1400 intervalMs=20
+[NativeHaptic] event=impact index=72 prepare=false elapsedMs=1420 intervalMs=19
+[NativeHaptic] event=impact index=73 prepare=false elapsedMs=1440 intervalMs=20
+[NativeHaptic] event=impact index=74 prepare=false elapsedMs=1460 intervalMs=20
+[NativeHaptic] event=impact index=75 prepare=false elapsedMs=1480 intervalMs=19
+[NativeHaptic] event=impact index=76 prepare=false elapsedMs=1500 intervalMs=19
+[NativeHaptic] event=impact index=77 prepare=false elapsedMs=1520 intervalMs=20
+[NativeHaptic] event=impact index=78 prepare=false elapsedMs=1540 intervalMs=19
+[NativeHaptic] event=impact index=79 prepare=false elapsedMs=1560 intervalMs=20
+[NativeHaptic] event=impact index=80 prepare=false elapsedMs=1580 intervalMs=19
+[NativeHaptic] event=impact index=81 prepare=false elapsedMs=1600 intervalMs=19
+[NativeHaptic] event=impact index=82 prepare=false elapsedMs=1620 intervalMs=20
+[NativeHaptic] event=impact index=83 prepare=false elapsedMs=1640 intervalMs=20
+[NativeHaptic] event=impact index=84 prepare=false elapsedMs=1660 intervalMs=20
+[NativeHaptic] event=impact index=85 prepare=false elapsedMs=1680 intervalMs=19
+[NativeHaptic] event=impact index=86 prepare=false elapsedMs=1700 intervalMs=19
+[NativeHaptic] event=impact index=87 prepare=false elapsedMs=1720 intervalMs=19
+[NativeHaptic] event=impact index=88 prepare=false elapsedMs=1740 intervalMs=20
+[NativeHaptic] event=impact index=89 prepare=false elapsedMs=1760 intervalMs=19
+[NativeHaptic] event=impact index=90 prepare=false elapsedMs=1780 intervalMs=20
+[NativeHaptic] event=impact index=91 prepare=false elapsedMs=1800 intervalMs=19
+[NativeHaptic] event=impact index=92 prepare=false elapsedMs=1820 intervalMs=20
+[NativeHaptic] event=impact index=93 prepare=false elapsedMs=1840 intervalMs=19
+[NativeHaptic] event=impact index=94 prepare=false elapsedMs=1860 intervalMs=19
+[NativeHaptic] event=impact index=95 prepare=false elapsedMs=1880 intervalMs=19
+[NativeHaptic] event=impact index=96 prepare=false elapsedMs=1899 intervalMs=19
+[NativeHaptic] event=impact index=97 prepare=false elapsedMs=1920 intervalMs=20
+[NativeHaptic] event=impact index=98 prepare=false elapsedMs=1940 intervalMs=19
+[NativeHaptic] event=impact index=99 prepare=false elapsedMs=1960 intervalMs=20
+[NativeHaptic] event=impact index=100 prepare=false elapsedMs=1980 intervalMs=20
+[NativeHaptic] event=impact index=101 prepare=false elapsedMs=2000 intervalMs=19
+[NativeHaptic] event=impact index=102 prepare=false elapsedMs=2020 intervalMs=19
+[NativeHaptic] event=impact index=103 prepare=false elapsedMs=2039 intervalMs=19
+[NativeHaptic] event=impact index=104 prepare=false elapsedMs=2060 intervalMs=20
+[NativeHaptic] event=impact index=105 prepare=false elapsedMs=2080 intervalMs=20
+[NativeHaptic] event=impact index=106 prepare=false elapsedMs=2099 intervalMs=19
+[NativeHaptic] event=impact index=107 prepare=false elapsedMs=2120 intervalMs=20
+[NativeHaptic] event=impact index=108 prepare=false elapsedMs=2140 intervalMs=19
+[NativeHaptic] event=impact index=109 prepare=false elapsedMs=2160 intervalMs=20
+[NativeHaptic] event=impact index=110 prepare=false elapsedMs=2180 intervalMs=19
+[NativeHaptic] event=impact index=111 prepare=false elapsedMs=2200 intervalMs=20
+[NativeHaptic] event=impact index=112 prepare=false elapsedMs=2220 intervalMs=19
+[NativeHaptic] event=impact index=113 prepare=false elapsedMs=2240 intervalMs=20
+[NativeHaptic] event=impact index=114 prepare=false elapsedMs=2260 intervalMs=20
+[NativeHaptic] event=impact index=115 prepare=false elapsedMs=2280 intervalMs=20
+[NativeHaptic] event=impact index=116 prepare=false elapsedMs=2300 intervalMs=20
+[NativeHaptic] event=impact index=117 prepare=false elapsedMs=2320 intervalMs=19
+[NativeHaptic] event=impact index=118 prepare=false elapsedMs=2340 intervalMs=20
+[NativeHaptic] event=impact index=119 prepare=false elapsedMs=2360 intervalMs=20
+[NativeHaptic] event=impact index=120 prepare=false elapsedMs=2380 intervalMs=20
+[NativeHaptic] event=impact index=121 prepare=false elapsedMs=2400 intervalMs=19
+[NativeHaptic] event=impact index=122 prepare=false elapsedMs=2420 intervalMs=19
+[NativeHaptic] event=impact index=123 prepare=false elapsedMs=2440 intervalMs=20
+[NativeHaptic] event=impact index=124 prepare=false elapsedMs=2460 intervalMs=19
+[NativeHaptic] event=impact index=125 prepare=false elapsedMs=2479 intervalMs=19
+[NativeHaptic] event=impact index=126 prepare=false elapsedMs=2500 intervalMs=20
+[NativeHaptic] event=impact index=127 prepare=false elapsedMs=2520 intervalMs=19
+[NativeHaptic] event=impact index=128 prepare=false elapsedMs=2540 intervalMs=20
+[NativeHaptic] event=impact index=129 prepare=false elapsedMs=2560 intervalMs=19
+[NativeHaptic] event=impact index=130 prepare=false elapsedMs=2580 intervalMs=19
+[NativeHaptic] event=impact index=131 prepare=false elapsedMs=2600 intervalMs=20
+[NativeHaptic] event=impact index=132 prepare=false elapsedMs=2620 intervalMs=20
+[NativeHaptic] event=impact index=133 prepare=false elapsedMs=2640 intervalMs=19
+[NativeHaptic] event=impact index=134 prepare=false elapsedMs=2660 intervalMs=19
+[NativeHaptic] event=impact index=135 prepare=false elapsedMs=2680 intervalMs=19
+[NativeHaptic] event=impact index=136 prepare=false elapsedMs=2700 intervalMs=19
+[NativeHaptic] event=impact index=137 prepare=false elapsedMs=2720 intervalMs=20
+[NativeHaptic] event=impact index=138 prepare=false elapsedMs=2740 intervalMs=19
+[NativeHaptic] event=impact index=139 prepare=false elapsedMs=2760 intervalMs=20
+[NativeHaptic] event=impact index=140 prepare=false elapsedMs=2780 intervalMs=19
+[NativeHaptic] event=impact index=141 prepare=false elapsedMs=2800 intervalMs=20
+[NativeHaptic] event=impact index=142 prepare=false elapsedMs=2820 intervalMs=19
+[NativeHaptic] event=impact index=143 prepare=false elapsedMs=2840 intervalMs=20
+[NativeHaptic] event=impact index=144 prepare=false elapsedMs=2860 intervalMs=19
+[NativeHaptic] event=impact index=145 prepare=false elapsedMs=2880 intervalMs=20
+[NativeHaptic] event=impact index=146 prepare=false elapsedMs=2900 intervalMs=20
+[NativeHaptic] event=impact index=147 prepare=false elapsedMs=2920 intervalMs=19
+[NativeHaptic] event=impact index=148 prepare=false elapsedMs=2940 intervalMs=20
+[NativeHaptic] event=impact index=149 prepare=false elapsedMs=2960 intervalMs=20
+[NativeHaptic] event=impact index=150 prepare=false elapsedMs=2980 intervalMs=19
+[NativeHaptic] event=impact index=151 prepare=false elapsedMs=3000 intervalMs=20
+[NativeHaptic] event=impact index=152 prepare=false elapsedMs=3020 intervalMs=19
+[NativeHaptic] event=impact index=153 prepare=false elapsedMs=3040 intervalMs=19
+[NativeHaptic] event=impact index=154 prepare=false elapsedMs=3060 intervalMs=20
+[NativeHaptic] event=impact index=155 prepare=false elapsedMs=3080 intervalMs=19
+[NativeHaptic] event=impact index=156 prepare=false elapsedMs=3100 intervalMs=20
+[NativeHaptic] event=impact index=157 prepare=false elapsedMs=3120 intervalMs=19
+[NativeHaptic] event=impact index=158 prepare=false elapsedMs=3140 intervalMs=19
+[NativeHaptic] event=impact index=159 prepare=false elapsedMs=3160 intervalMs=20
+[NativeHaptic] event=impact index=160 prepare=false elapsedMs=3180 intervalMs=19
+[NativeHaptic] event=impact index=161 prepare=false elapsedMs=3200 intervalMs=19
+[NativeHaptic] event=impact index=162 prepare=false elapsedMs=3220 intervalMs=20
+[NativeHaptic] event=impact index=163 prepare=false elapsedMs=3240 intervalMs=19
+[NativeHaptic] event=impact index=164 prepare=false elapsedMs=3260 intervalMs=20
+[NativeHaptic] event=impact index=165 prepare=false elapsedMs=3280 intervalMs=19
+[NativeHaptic] event=impact index=166 prepare=false elapsedMs=3300 intervalMs=19
+[NativeHaptic] event=impact index=167 prepare=false elapsedMs=3320 intervalMs=20
+[NativeHaptic] event=impact index=168 prepare=false elapsedMs=3340 intervalMs=19
+[NativeHaptic] event=impact index=169 prepare=false elapsedMs=3360 intervalMs=20
+[NativeHaptic] event=impact index=170 prepare=false elapsedMs=3380 intervalMs=19
+[NativeHaptic] event=impact index=171 prepare=false elapsedMs=3400 intervalMs=19
+[NativeHaptic] event=impact index=172 prepare=false elapsedMs=3420 intervalMs=20
+[NativeHaptic] event=impact index=173 prepare=false elapsedMs=3440 intervalMs=19
+[NativeHaptic] event=impact index=174 prepare=false elapsedMs=3460 intervalMs=20
+[NativeHaptic] event=impact index=175 prepare=false elapsedMs=3480 intervalMs=19
+[NativeHaptic] event=impact index=176 prepare=false elapsedMs=3500 intervalMs=20
+[NativeHaptic] event=impact index=177 prepare=false elapsedMs=3520 intervalMs=19
+[NativeHaptic] event=impact index=178 prepare=false elapsedMs=3540 intervalMs=20
+[NativeHaptic] event=impact index=179 prepare=false elapsedMs=3560 intervalMs=19
+[NativeHaptic] event=impact index=180 prepare=false elapsedMs=3580 intervalMs=19
+[NativeHaptic] event=impact index=181 prepare=false elapsedMs=3600 intervalMs=20
+[NativeHaptic] event=impact index=182 prepare=false elapsedMs=3620 intervalMs=19
+[NativeHaptic] event=impact index=183 prepare=false elapsedMs=3640 intervalMs=20
+[NativeHaptic] event=impact index=184 prepare=false elapsedMs=3660 intervalMs=20
+[NativeHaptic] event=impact index=185 prepare=false elapsedMs=3680 intervalMs=20
+[NativeHaptic] event=impact index=186 prepare=false elapsedMs=3700 intervalMs=19
+[NativeHaptic] event=impact index=187 prepare=false elapsedMs=3720 intervalMs=20
+[NativeHaptic] event=impact index=188 prepare=false elapsedMs=3739 intervalMs=19
+[NativeHaptic] event=impact index=189 prepare=false elapsedMs=3760 intervalMs=20
+[NativeHaptic] event=impact index=190 prepare=false elapsedMs=3780 intervalMs=19
+[NativeHaptic] event=impact index=191 prepare=false elapsedMs=3800 intervalMs=19
+[NativeHaptic] event=impact index=192 prepare=false elapsedMs=3820 intervalMs=20
+[NativeHaptic] event=impact index=193 prepare=false elapsedMs=3840 intervalMs=19
+[NativeHaptic] event=impact index=194 prepare=false elapsedMs=3859 intervalMs=19
+[NativeHaptic] event=impact index=195 prepare=false elapsedMs=3880 intervalMs=20
+[NativeHaptic] event=impact index=196 prepare=false elapsedMs=3900 intervalMs=19
+[NativeHaptic] event=impact index=197 prepare=false elapsedMs=3920 intervalMs=19
+[NativeHaptic] event=impact index=198 prepare=false elapsedMs=3940 intervalMs=20
+[NativeHaptic] event=impact index=199 prepare=false elapsedMs=3960 intervalMs=20
+[NativeHaptic] event=impact index=200 prepare=false elapsedMs=3980 intervalMs=19
+[NativeHaptic] event=impact index=201 prepare=false elapsedMs=4000 intervalMs=19
+[NativeHaptic] event=impact index=202 prepare=false elapsedMs=4020 intervalMs=20
+[NativeHaptic] event=impact index=203 prepare=false elapsedMs=4040 intervalMs=19
+[NativeHaptic] event=impact index=204 prepare=false elapsedMs=4060 intervalMs=20
+[NativeHaptic] event=impact index=205 prepare=false elapsedMs=4080 intervalMs=19
+[NativeHaptic] event=impact index=206 prepare=false elapsedMs=4100 intervalMs=19
+[NativeHaptic] event=impact index=207 prepare=false elapsedMs=4120 intervalMs=20
+[NativeHaptic] event=impact index=208 prepare=false elapsedMs=4140 intervalMs=19
+[NativeHaptic] event=impact index=209 prepare=false elapsedMs=4160 intervalMs=20
+[NativeHaptic] event=impact index=210 prepare=false elapsedMs=4180 intervalMs=19
+[NativeHaptic] event=impact index=211 prepare=false elapsedMs=4200 intervalMs=20
+[NativeHaptic] event=impact index=212 prepare=false elapsedMs=4220 intervalMs=19
+[NativeHaptic] event=impact index=213 prepare=false elapsedMs=4240 intervalMs=20
+[NativeHaptic] event=impact index=214 prepare=false elapsedMs=4260 intervalMs=19
+[NativeHaptic] event=impact index=215 prepare=false elapsedMs=4280 intervalMs=20
+[NativeHaptic] event=impact index=216 prepare=false elapsedMs=4300 intervalMs=19
+[NativeHaptic] event=impact index=217 prepare=false elapsedMs=4320 intervalMs=19
+[NativeHaptic] event=impact index=218 prepare=false elapsedMs=4340 intervalMs=20
+[NativeHaptic] event=impact index=219 prepare=false elapsedMs=4360 intervalMs=20
+[NativeHaptic] event=impact index=220 prepare=false elapsedMs=4380 intervalMs=19
+[NativeHaptic] event=impact index=221 prepare=false elapsedMs=4400 intervalMs=19
+[NativeHaptic] event=impact index=222 prepare=false elapsedMs=4419 intervalMs=19
+[NativeHaptic] event=impact index=223 prepare=false elapsedMs=4440 intervalMs=20
+[NativeHaptic] event=impact index=224 prepare=false elapsedMs=4460 intervalMs=19
+[NativeHaptic] event=impact index=225 prepare=false elapsedMs=4480 intervalMs=20
+[NativeHaptic] event=impact index=226 prepare=false elapsedMs=4500 intervalMs=19
+[NativeHaptic] event=impact index=227 prepare=false elapsedMs=4520 intervalMs=20
+[NativeHaptic] event=impact index=228 prepare=false elapsedMs=4540 intervalMs=19
+[NativeHaptic] event=impact index=229 prepare=false elapsedMs=4560 intervalMs=20
+[NativeHaptic] event=impact index=230 prepare=false elapsedMs=4580 intervalMs=19
+[NativeHaptic] event=impact index=231 prepare=false elapsedMs=4600 intervalMs=19
+[NativeHaptic] event=impact index=232 prepare=false elapsedMs=4620 intervalMs=20
+[NativeHaptic] event=impact index=233 prepare=false elapsedMs=4640 intervalMs=19
+[NativeHaptic] event=impact index=234 prepare=false elapsedMs=4659 intervalMs=19
+[NativeHaptic] event=impact index=235 prepare=false elapsedMs=4680 intervalMs=20
+[NativeHaptic] event=impact index=236 prepare=false elapsedMs=4700 intervalMs=19
+[NativeHaptic] event=impact index=237 prepare=false elapsedMs=4720 intervalMs=20
+[NativeHaptic] event=impact index=238 prepare=false elapsedMs=4740 intervalMs=19
+[NativeHaptic] event=impact index=239 prepare=false elapsedMs=4760 intervalMs=20
+[NativeHaptic] event=impact index=240 prepare=false elapsedMs=4780 intervalMs=19
+[NativeHaptic] event=impact index=241 prepare=false elapsedMs=4800 intervalMs=19
+[NativeHaptic] event=impact index=242 prepare=false elapsedMs=4820 intervalMs=19
+[NativeHaptic] event=impact index=243 prepare=false elapsedMs=4839 intervalMs=19
+[NativeHaptic] event=impact index=244 prepare=false elapsedMs=4860 intervalMs=20
+[NativeHaptic] event=impact index=245 prepare=false elapsedMs=4880 intervalMs=20
+[NativeHaptic] event=impact index=246 prepare=false elapsedMs=4900 intervalMs=19
+[NativeHaptic] event=impact index=247 prepare=false elapsedMs=4920 intervalMs=20
+[NativeHaptic] event=impact index=248 prepare=false elapsedMs=4940 intervalMs=19
+[NativeHaptic] event=impact index=249 prepare=false elapsedMs=4960 intervalMs=20
+[NativeHaptic] event=impact index=250 prepare=false elapsedMs=4980 intervalMs=19
+2026-11-03 14:59:00.640563+0900 Pheeeew[88740:48528565] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 14:59:00.640700+0900 Pheeeew[88740:48528565] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x113186400>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+2026-11-03 14:59:00.645421+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.645507+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.645561+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.645607+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.645660+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.645698+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.645769+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.645823+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.645865+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.645905+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.645950+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.645992+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.646031+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.646105+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.646158+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.646208+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.646249+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.646292+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.646335+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.646383+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.646424+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.646465+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.646502+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.646542+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.646646+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.646702+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.646741+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.646779+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.646817+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.646855+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.646892+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.646933+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.646973+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.647019+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.647059+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.647099+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.647146+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.647188+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.647229+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.647268+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.647309+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.647347+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.647388+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.647432+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.647473+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.647516+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.647555+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.647597+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.647638+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.647675+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.647715+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.647772+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.647844+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.647911+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.647976+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.648028+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.648068+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.648111+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.648150+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.648195+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.648235+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.648275+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.648315+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.648352+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.648392+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.648439+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.648475+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.648510+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.648547+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.648588+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.648629+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.648665+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.648700+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.648740+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.648777+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.648816+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.648956+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.649002+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.649041+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.649085+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.649123+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.649161+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.649201+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.649240+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.649278+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.649321+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.649359+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.649406+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.649450+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.649517+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.649568+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.649610+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.649651+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.649689+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.649728+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.649773+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.649826+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.649862+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.649902+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.650063+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.650118+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.650183+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.650225+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.650261+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.650338+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.650383+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.650426+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.650468+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.650508+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.650554+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.650593+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.650634+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.650686+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.650727+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.650767+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.650809+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.650851+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.650889+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.650930+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.650973+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.651011+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.651052+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.651092+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.651132+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.651173+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.651214+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.651256+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.651294+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.651338+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.651375+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.651411+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.651452+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.651515+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.651558+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.651605+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.651637+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.651674+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.651705+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.651735+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.651778+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.651812+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.651844+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.651875+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.651907+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.651937+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.651972+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.652005+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.652038+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.652071+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.652135+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.652180+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.652216+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.652250+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.652282+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.652320+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.652349+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.652378+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.652410+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.652445+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.652473+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.652531+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.652566+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.652597+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.652628+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.652658+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.652713+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.652754+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.652787+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.652821+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.652852+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.652886+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.652918+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.652953+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.652994+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.653029+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.653063+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.653094+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.653124+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.653154+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.653188+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.653219+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.653251+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.653288+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.653321+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.653391+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.653424+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.653464+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.653540+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.653585+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.653615+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.653693+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.653728+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.653757+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.653789+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.653819+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.653851+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.653882+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.653919+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.653955+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.653985+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.654017+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.654047+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.654079+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.654112+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.654154+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.654186+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.654215+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.654249+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.654299+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.654361+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.654400+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.654430+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.654473+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.654506+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.654537+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.654567+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.654596+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.654682+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.654724+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.654758+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.654788+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.654847+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.654881+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.654912+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.654951+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.654981+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.655023+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.655054+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.655093+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.655125+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.655167+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.655197+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.655244+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.655279+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.655351+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.655377+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.655397+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.655423+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.655446+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.655466+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.655485+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.655503+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.655523+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.655544+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.655599+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.655639+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.655658+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.655705+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.655729+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+[NativeHaptic] event=impact index=251 prepare=false elapsedMs=5000 intervalMs=20
+2026-11-03 14:59:00.669135+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.669168+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+[NativeHaptic] event=impact index=252 prepare=false elapsedMs=5020 intervalMs=20
+2026-11-03 14:59:00.681916+0900 Pheeeew[88740:48528553] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+[NativeHaptic] event=impact index=253 prepare=false elapsedMs=5040 intervalMs=20
+[NativeHaptic] event=impact index=254 prepare=false elapsedMs=5059 intervalMs=19
+2026-11-03 14:59:00.735913+0900 Pheeeew[88740:48528553] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.736346+0900 Pheeeew[88740:48528553] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:00.736720+0900 Pheeeew[88740:48528553] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+[NativeHaptic] event=impact index=255 prepare=false elapsedMs=5080 intervalMs=20
+2026-11-03 14:59:00.740136+0900 Pheeeew[88740:48528553] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+[NativeHaptic] event=impact index=256 prepare=false elapsedMs=5100 intervalMs=19
+[NativeHaptic] event=impact index=257 prepare=false elapsedMs=5120 intervalMs=20
+[NativeHaptic] event=impact index=258 prepare=false elapsedMs=5140 intervalMs=19
+[NativeHaptic] event=impact index=259 prepare=false elapsedMs=5160 intervalMs=20
+[NativeHaptic] event=impact index=260 prepare=false elapsedMs=5180 intervalMs=20
+[NativeHaptic] event=impact index=261 prepare=false elapsedMs=5200 intervalMs=19
+[NativeHaptic] event=impact index=262 prepare=false elapsedMs=5220 intervalMs=20
+[NativeHaptic] event=impact index=263 prepare=false elapsedMs=5240 intervalMs=19
+[NativeHaptic] event=impact index=264 prepare=false elapsedMs=5260 intervalMs=19
+[NativeHaptic] event=impact index=265 prepare=false elapsedMs=5280 intervalMs=20
+[NativeHaptic] event=impact index=266 prepare=false elapsedMs=5300 intervalMs=19
+[NativeHaptic] event=impact index=267 prepare=false elapsedMs=5320 intervalMs=20
+[NativeHaptic] event=impact index=268 prepare=false elapsedMs=5340 intervalMs=19
+[NativeHaptic] event=impact index=269 prepare=false elapsedMs=5360 intervalMs=20
+[NativeHaptic] event=impact index=270 prepare=false elapsedMs=5380 intervalMs=20
+[NativeHaptic] event=impact index=271 prepare=false elapsedMs=5399 intervalMs=19
+[NativeHaptic] event=impact index=272 prepare=false elapsedMs=5420 intervalMs=20
+[NativeHaptic] event=impact index=273 prepare=false elapsedMs=5440 intervalMs=19
+[NativeHaptic] event=impact index=274 prepare=false elapsedMs=5459 intervalMs=19
+[NativeHaptic] event=impact index=275 prepare=false elapsedMs=5480 intervalMs=20
+[NativeHaptic] event=impact index=276 prepare=false elapsedMs=5500 intervalMs=19
+[NativeHaptic] event=impact index=277 prepare=false elapsedMs=5520 intervalMs=20
+[NativeHaptic] event=impact index=278 prepare=false elapsedMs=5540 intervalMs=19
+[NativeHaptic] event=impact index=279 prepare=false elapsedMs=5560 intervalMs=20
+[NativeHaptic] event=impact index=280 prepare=false elapsedMs=5580 intervalMs=20
+[NativeHaptic] event=impact index=281 prepare=false elapsedMs=5600 intervalMs=19
+[NativeHaptic] event=impact index=282 prepare=false elapsedMs=5620 intervalMs=20
+[NativeHaptic] event=impact index=283 prepare=false elapsedMs=5640 intervalMs=19
+[NativeHaptic] event=impact index=284 prepare=false elapsedMs=5660 intervalMs=20
+[NativeHaptic] event=impact index=285 prepare=false elapsedMs=5680 intervalMs=19
+[NativeHaptic] event=impact index=286 prepare=false elapsedMs=5700 intervalMs=19
+[NativeHaptic] event=impact index=287 prepare=false elapsedMs=5720 intervalMs=20
+[NativeHaptic] event=impact index=288 prepare=false elapsedMs=5739 intervalMs=19
+[NativeHaptic] event=impact index=289 prepare=false elapsedMs=5760 intervalMs=20
+[NativeHaptic] event=impact index=290 prepare=false elapsedMs=5780 intervalMs=20
+[NativeHaptic] event=impact index=291 prepare=false elapsedMs=5800 intervalMs=19
+[NativeHaptic] event=impact index=292 prepare=false elapsedMs=5820 intervalMs=20
+[NativeHaptic] event=impact index=293 prepare=false elapsedMs=5840 intervalMs=19
+[NativeHaptic] event=impact index=294 prepare=false elapsedMs=5860 intervalMs=20
+[NativeHaptic] event=impact index=295 prepare=false elapsedMs=5880 intervalMs=20
+[NativeHaptic] event=impact index=296 prepare=false elapsedMs=5900 intervalMs=19
+[NativeHaptic] event=impact index=297 prepare=false elapsedMs=5920 intervalMs=19
+[NativeHaptic] event=impact index=298 prepare=false elapsedMs=5940 intervalMs=20
+[NativeHaptic] event=impact index=299 prepare=false elapsedMs=5960 intervalMs=20
+[NativeHaptic] event=impact index=300 prepare=false elapsedMs=5980 intervalMs=19
+[NativeHaptic] event=impact index=301 prepare=false elapsedMs=6000 intervalMs=19
+[NativeHaptic] event=impact index=302 prepare=false elapsedMs=6020 intervalMs=20
+[NativeHaptic] event=impact index=303 prepare=false elapsedMs=6040 intervalMs=19
+[NativeHaptic] event=impact index=304 prepare=false elapsedMs=6060 intervalMs=20
+[NativeHaptic] event=impact index=305 prepare=false elapsedMs=6080 intervalMs=19
+[NativeHaptic] event=impact index=306 prepare=false elapsedMs=6100 intervalMs=19
+[NativeHaptic] event=impact index=307 prepare=false elapsedMs=6120 intervalMs=20
+[NativeHaptic] event=impact index=308 prepare=false elapsedMs=6140 intervalMs=19
+[NativeHaptic] event=impact index=309 prepare=false elapsedMs=6160 intervalMs=20
+[NativeHaptic] event=impact index=310 prepare=false elapsedMs=6180 intervalMs=19
+[NativeHaptic] event=impact index=311 prepare=false elapsedMs=6200 intervalMs=19
+[NativeHaptic] event=impact index=312 prepare=false elapsedMs=6220 intervalMs=20
+[NativeHaptic] event=impact index=313 prepare=false elapsedMs=6240 intervalMs=19
+[NativeHaptic] event=impact index=314 prepare=false elapsedMs=6260 intervalMs=19
+[NativeHaptic] event=impact index=315 prepare=false elapsedMs=6280 intervalMs=19
+[NativeHaptic] event=impact index=316 prepare=false elapsedMs=6300 intervalMs=19
+[NativeHaptic] event=impact index=317 prepare=false elapsedMs=6320 intervalMs=20
+[NativeHaptic] event=impact index=318 prepare=false elapsedMs=6340 intervalMs=19
+[NativeHaptic] event=impact index=319 prepare=false elapsedMs=6360 intervalMs=20
+[NativeHaptic] event=impact index=320 prepare=false elapsedMs=6380 intervalMs=19
+[NativeHaptic] event=impact index=321 prepare=false elapsedMs=6400 intervalMs=19
+[NativeHaptic] event=impact index=322 prepare=false elapsedMs=6420 intervalMs=20
+[NativeHaptic] event=impact index=323 prepare=false elapsedMs=6440 intervalMs=19
+[NativeHaptic] event=impact index=324 prepare=false elapsedMs=6460 intervalMs=20
+[NativeHaptic] event=impact index=325 prepare=false elapsedMs=6480 intervalMs=19
+[NativeHaptic] event=impact index=326 prepare=false elapsedMs=6499 intervalMs=19
+[NativeHaptic] event=impact index=327 prepare=false elapsedMs=6520 intervalMs=20
+[NativeHaptic] event=impact index=328 prepare=false elapsedMs=6540 intervalMs=19
+[NativeHaptic] event=impact index=329 prepare=false elapsedMs=6560 intervalMs=20
+[NativeHaptic] event=impact index=330 prepare=false elapsedMs=6580 intervalMs=20
+[NativeHaptic] event=impact index=331 prepare=false elapsedMs=6600 intervalMs=19
+[NativeHaptic] event=impact index=332 prepare=false elapsedMs=6620 intervalMs=19
+[NativeHaptic] event=impact index=333 prepare=false elapsedMs=6640 intervalMs=20
+[NativeHaptic] event=impact index=334 prepare=false elapsedMs=6660 intervalMs=19
+[NativeHaptic] event=impact index=335 prepare=false elapsedMs=6680 intervalMs=20
+[NativeHaptic] event=impact index=336 prepare=false elapsedMs=6700 intervalMs=19
+[NativeHaptic] event=impact index=337 prepare=false elapsedMs=6720 intervalMs=20
+[NativeHaptic] event=impact index=338 prepare=false elapsedMs=6740 intervalMs=19
+[NativeHaptic] event=impact index=339 prepare=false elapsedMs=6760 intervalMs=20
+[NativeHaptic] event=impact index=340 prepare=false elapsedMs=6780 intervalMs=20
+[NativeHaptic] event=impact index=341 prepare=false elapsedMs=6800 intervalMs=19
+[NativeHaptic] event=impact index=342 prepare=false elapsedMs=6820 intervalMs=20
+[NativeHaptic] event=impact index=343 prepare=false elapsedMs=6840 intervalMs=19
+[NativeHaptic] event=impact index=344 prepare=false elapsedMs=6859 intervalMs=19
+[NativeHaptic] event=impact index=345 prepare=false elapsedMs=6879 intervalMs=19
+[NativeHaptic] event=impact index=346 prepare=false elapsedMs=6900 intervalMs=20
+[NativeHaptic] event=impact index=347 prepare=false elapsedMs=6920 intervalMs=19
+[NativeHaptic] event=impact index=348 prepare=false elapsedMs=6940 intervalMs=20
+[NativeHaptic] event=impact index=349 prepare=false elapsedMs=6960 intervalMs=19
+[NativeHaptic] event=impact index=350 prepare=false elapsedMs=6980 intervalMs=19
+[NativeHaptic] event=impact index=351 prepare=false elapsedMs=7000 intervalMs=19
+[NativeHaptic] event=impact index=352 prepare=false elapsedMs=7020 intervalMs=20
+[NativeHaptic] event=impact index=353 prepare=false elapsedMs=7040 intervalMs=19
+[NativeHaptic] event=impact index=354 prepare=false elapsedMs=7060 intervalMs=20
+[NativeHaptic] event=impact index=355 prepare=false elapsedMs=7080 intervalMs=20
+[NativeHaptic] event=impact index=356 prepare=false elapsedMs=7100 intervalMs=19
+[NativeHaptic] event=impact index=357 prepare=false elapsedMs=7120 intervalMs=20
+[NativeHaptic] event=impact index=358 prepare=false elapsedMs=7140 intervalMs=20
+[NativeHaptic] event=impact index=359 prepare=false elapsedMs=7160 intervalMs=19
+[NativeHaptic] event=impact index=360 prepare=false elapsedMs=7180 intervalMs=20
+[NativeHaptic] event=impact index=361 prepare=false elapsedMs=7200 intervalMs=19
+[NativeHaptic] event=impact index=362 prepare=false elapsedMs=7220 intervalMs=20
+[NativeHaptic] event=impact index=363 prepare=false elapsedMs=7240 intervalMs=20
+[NativeHaptic] event=impact index=364 prepare=false elapsedMs=7260 intervalMs=19
+[NativeHaptic] event=impact index=365 prepare=false elapsedMs=7280 intervalMs=20
+[NativeHaptic] event=impact index=366 prepare=false elapsedMs=7300 intervalMs=19
+[NativeHaptic] event=impact index=367 prepare=false elapsedMs=7320 intervalMs=20
+[NativeHaptic] event=impact index=368 prepare=false elapsedMs=7340 intervalMs=19
+[NativeHaptic] event=impact index=369 prepare=false elapsedMs=7360 intervalMs=20
+[NativeHaptic] event=impact index=370 prepare=false elapsedMs=7380 intervalMs=20
+[NativeHaptic] event=impact index=371 prepare=false elapsedMs=7400 intervalMs=19
+[NativeHaptic] event=impact index=372 prepare=false elapsedMs=7420 intervalMs=20
+[NativeHaptic] event=impact index=373 prepare=false elapsedMs=7440 intervalMs=19
+[NativeHaptic] event=impact index=374 prepare=false elapsedMs=7460 intervalMs=20
+[NativeHaptic] event=impact index=375 prepare=false elapsedMs=7480 intervalMs=20
+[NativeHaptic] event=impact index=376 prepare=false elapsedMs=7500 intervalMs=19
+[NativeHaptic] event=impact index=377 prepare=false elapsedMs=7520 intervalMs=20
+[NativeHaptic] event=impact index=378 prepare=false elapsedMs=7540 intervalMs=20
+[NativeHaptic] event=impact index=379 prepare=false elapsedMs=7560 intervalMs=20
+[NativeHaptic] event=impact index=380 prepare=false elapsedMs=7580 intervalMs=19
+[NativeHaptic] event=impact index=381 prepare=false elapsedMs=7600 intervalMs=19
+[NativeHaptic] event=impact index=382 prepare=false elapsedMs=7620 intervalMs=20
+[NativeHaptic] event=impact index=383 prepare=false elapsedMs=7640 intervalMs=19
+[NativeHaptic] event=impact index=384 prepare=false elapsedMs=7660 intervalMs=20
+[NativeHaptic] event=impact index=385 prepare=false elapsedMs=7680 intervalMs=19
+[NativeHaptic] event=impact index=386 prepare=false elapsedMs=7700 intervalMs=19
+[NativeHaptic] event=impact index=387 prepare=false elapsedMs=7720 intervalMs=20
+[NativeHaptic] event=impact index=388 prepare=false elapsedMs=7740 intervalMs=19
+[NativeHaptic] event=impact index=389 prepare=false elapsedMs=7760 intervalMs=20
+[NativeHaptic] event=impact index=390 prepare=false elapsedMs=7780 intervalMs=20
+[NativeHaptic] event=impact index=391 prepare=false elapsedMs=7800 intervalMs=19
+[NativeHaptic] event=impact index=392 prepare=false elapsedMs=7820 intervalMs=20
+[NativeHaptic] event=impact index=393 prepare=false elapsedMs=7840 intervalMs=19
+[NativeHaptic] event=impact index=394 prepare=false elapsedMs=7860 intervalMs=20
+[NativeHaptic] event=impact index=395 prepare=false elapsedMs=7880 intervalMs=20
+[NativeHaptic] event=impact index=396 prepare=false elapsedMs=7900 intervalMs=19
+[NativeHaptic] event=impact index=397 prepare=false elapsedMs=7920 intervalMs=20
+[NativeHaptic] event=impact index=398 prepare=false elapsedMs=7940 intervalMs=19
+[NativeHaptic] event=impact index=399 prepare=false elapsedMs=7960 intervalMs=20
+[NativeHaptic] event=impact index=400 prepare=false elapsedMs=7980 intervalMs=20
+[NativeHaptic] event=impact index=401 prepare=false elapsedMs=8000 intervalMs=19
+[NativeHaptic] event=impact index=402 prepare=false elapsedMs=8020 intervalMs=20
+[NativeHaptic] event=impact index=403 prepare=false elapsedMs=8040 intervalMs=20
+[NativeHaptic] event=impact index=404 prepare=false elapsedMs=8060 intervalMs=19
+[NativeHaptic] event=impact index=405 prepare=false elapsedMs=8080 intervalMs=20
+[NativeHaptic] event=impact index=406 prepare=false elapsedMs=8100 intervalMs=19
+[NativeHaptic] event=impact index=407 prepare=false elapsedMs=8120 intervalMs=20
+[NativeHaptic] event=impact index=408 prepare=false elapsedMs=8140 intervalMs=19
+[NativeHaptic] event=impact index=409 prepare=false elapsedMs=8160 intervalMs=19
+[NativeHaptic] event=impact index=410 prepare=false elapsedMs=8180 intervalMs=19
+[NativeHaptic] event=impact index=411 prepare=false elapsedMs=8200 intervalMs=19
+[NativeHaptic] event=impact index=412 prepare=false elapsedMs=8220 intervalMs=20
+[NativeHaptic] event=impact index=413 prepare=false elapsedMs=8240 intervalMs=19
+[NativeHaptic] event=impact index=414 prepare=false elapsedMs=8260 intervalMs=20
+[NativeHaptic] event=impact index=415 prepare=false elapsedMs=8280 intervalMs=20
+[NativeHaptic] event=impact index=416 prepare=false elapsedMs=8300 intervalMs=19
+[NativeHaptic] event=impact index=417 prepare=false elapsedMs=8320 intervalMs=20
+[NativeHaptic] event=impact index=418 prepare=false elapsedMs=8340 intervalMs=19
+[NativeHaptic] event=impact index=419 prepare=false elapsedMs=8360 intervalMs=19
+[NativeHaptic] event=impact index=420 prepare=false elapsedMs=8380 intervalMs=20
+[NativeHaptic] event=impact index=421 prepare=false elapsedMs=8400 intervalMs=19
+[NativeHaptic] event=impact index=422 prepare=false elapsedMs=8420 intervalMs=20
+[NativeHaptic] event=impact index=423 prepare=false elapsedMs=8440 intervalMs=20
+[NativeHaptic] event=impact index=424 prepare=false elapsedMs=8460 intervalMs=19
+[NativeHaptic] event=impact index=425 prepare=false elapsedMs=8480 intervalMs=20
+[NativeHaptic] event=impact index=426 prepare=false elapsedMs=8500 intervalMs=19
+[NativeHaptic] event=impact index=427 prepare=false elapsedMs=8520 intervalMs=20
+[NativeHaptic] event=impact index=428 prepare=false elapsedMs=8540 intervalMs=19
+[NativeHaptic] event=impact index=429 prepare=false elapsedMs=8560 intervalMs=20
+[NativeHaptic] event=impact index=430 prepare=false elapsedMs=8580 intervalMs=19
+[NativeHaptic] event=impact index=431 prepare=false elapsedMs=8600 intervalMs=19
+[NativeHaptic] event=impact index=432 prepare=false elapsedMs=8620 intervalMs=20
+[NativeHaptic] event=impact index=433 prepare=false elapsedMs=8640 intervalMs=20
+[NativeHaptic] event=impact index=434 prepare=false elapsedMs=8660 intervalMs=19
+[NativeHaptic] event=impact index=435 prepare=false elapsedMs=8680 intervalMs=19
+[NativeHaptic] event=impact index=436 prepare=false elapsedMs=8700 intervalMs=19
+[NativeHaptic] event=impact index=437 prepare=false elapsedMs=8720 intervalMs=20
+[NativeHaptic] event=impact index=438 prepare=false elapsedMs=8740 intervalMs=19
+[NativeHaptic] event=impact index=439 prepare=false elapsedMs=8760 intervalMs=20
+[NativeHaptic] event=impact index=440 prepare=false elapsedMs=8780 intervalMs=20
+[NativeHaptic] event=impact index=441 prepare=false elapsedMs=8800 intervalMs=19
+[NativeHaptic] event=impact index=442 prepare=false elapsedMs=8820 intervalMs=20
+[NativeHaptic] event=impact index=443 prepare=false elapsedMs=8840 intervalMs=19
+[NativeHaptic] event=impact index=444 prepare=false elapsedMs=8859 intervalMs=19
+[NativeHaptic] event=impact index=445 prepare=false elapsedMs=8880 intervalMs=20
+[NativeHaptic] event=impact index=446 prepare=false elapsedMs=8900 intervalMs=19
+[NativeHaptic] event=impact index=447 prepare=false elapsedMs=8920 intervalMs=20
+[NativeHaptic] event=impact index=448 prepare=false elapsedMs=8940 intervalMs=19
+[NativeHaptic] event=impact index=449 prepare=false elapsedMs=8960 intervalMs=20
+[NativeHaptic] event=impact index=450 prepare=false elapsedMs=8980 intervalMs=20
+[NativeHaptic] event=impact index=451 prepare=false elapsedMs=9000 intervalMs=19
+[NativeHaptic] event=impact index=452 prepare=false elapsedMs=9020 intervalMs=20
+[NativeHaptic] event=impact index=453 prepare=false elapsedMs=9040 intervalMs=20
+[NativeHaptic] event=impact index=454 prepare=false elapsedMs=9060 intervalMs=20
+[NativeHaptic] event=impact index=455 prepare=false elapsedMs=9080 intervalMs=19
+[NativeHaptic] event=impact index=456 prepare=false elapsedMs=9099 intervalMs=19
+[NativeHaptic] event=impact index=457 prepare=false elapsedMs=9120 intervalMs=20
+[NativeHaptic] event=impact index=458 prepare=false elapsedMs=9140 intervalMs=19
+2026-11-03 14:59:04.800687+0900 Pheeeew[88740:48528565] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 14:59:04.800793+0900 Pheeeew[88740:48528565] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x113186400>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=459 prepare=false elapsedMs=9159 intervalMs=19
+2026-11-03 14:59:04.819835+0900 Pheeeew[88740:48528565] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 14:59:04.819941+0900 Pheeeew[88740:48528565] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x113186400>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+[NativeHaptic] event=impact index=460 prepare=false elapsedMs=9180 intervalMs=20
+2026-11-03 14:59:04.840584+0900 Pheeeew[88740:48528565] [hapi]         CHHapticEngine.mm:2101  -[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]: ERROR: Unable to add an additional player channel
+2026-11-03 14:59:04.840655+0900 Pheeeew[88740:48528565] [Feedback] failed to create player with pattern for <_UIFeedbackCoreHapticsHapticsOnlyEngine: 0x113186400>: Error Domain=com.apple.CoreHaptics Code=-10851 "(null)"
+2026-11-03 14:59:04.847191+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.847300+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.847364+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.847406+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.847455+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.847491+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.847529+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.847572+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.847615+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.847652+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.847691+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.847732+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.847770+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.847810+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.847847+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.847885+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.847926+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.847967+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.848009+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.848060+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.848119+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.848179+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.848233+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.848285+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.848338+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.848410+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.848466+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.848514+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.848586+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.848656+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.848703+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.848746+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.848842+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.848916+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.848962+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.849008+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.849046+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.849088+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.849129+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.849169+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.849228+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.849268+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.849309+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.849357+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.849397+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.849440+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.849483+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.849523+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.849561+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.849608+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.849648+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.849688+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.849748+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.849799+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.849837+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.849872+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.849907+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.849947+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.849985+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.850024+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.850068+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.850111+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.850154+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.850211+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.850264+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.850323+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.850380+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.850441+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.850507+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.850558+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.850617+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.850683+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.850728+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.850773+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.850808+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.850845+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.850887+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.850935+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.850975+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.851016+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.851058+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.851105+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.851147+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.851189+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.851229+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.851274+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.851312+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.851355+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.851399+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.851438+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.851486+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.851531+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.851568+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.851609+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.851645+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.851687+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.851730+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.851798+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.851870+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.851908+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.851982+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.852028+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.852069+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.852109+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.852148+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.852191+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.852232+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.852271+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.852314+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.852353+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.852397+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.852436+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.852473+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.852518+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.852567+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.852607+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.852646+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.852688+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.852727+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.852767+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.852816+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.852857+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.852897+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.852936+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.852976+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.853115+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.853154+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.853233+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.853293+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.853334+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.853386+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.853433+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.853473+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.853521+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.853560+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.853596+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.853640+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.853681+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.853717+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.853757+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.853796+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.853833+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.853869+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.853907+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.853946+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.853983+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.854019+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.854053+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.854095+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.854133+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.854171+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.854263+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.854320+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.854357+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.854395+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.854480+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.854512+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.854544+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.854575+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.854611+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.854645+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.854676+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.854708+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.854738+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.854774+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.854812+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.854846+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.854877+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.854906+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.854940+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.854973+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.855010+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.855038+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.855069+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.855097+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.855159+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.855197+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.855255+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.855290+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.855320+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.855354+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.855383+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.855416+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.855446+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.855477+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.855508+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.855539+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.855571+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.855609+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.855642+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.855672+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.855702+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.855737+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.855773+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.855806+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.855837+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.855867+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.855900+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.855931+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.855963+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.855995+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.856028+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.856059+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.856090+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.856118+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.856173+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.856214+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+[NativeHaptic] event=impact index=461 prepare=false elapsedMs=9200 intervalMs=19
+2026-11-03 14:59:04.867914+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.867948+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+[NativeHaptic] event=impact index=462 prepare=false elapsedMs=9220 intervalMs=20
+[NativeHaptic] event=impact index=463 prepare=false elapsedMs=9240 intervalMs=20
+[NativeHaptic] event=impact index=464 prepare=false elapsedMs=9260 intervalMs=19
+2026-11-03 14:59:04.938672+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+[NativeHaptic] event=impact index=465 prepare=false elapsedMs=9280 intervalMs=19
+2026-11-03 14:59:04.939343+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.940064+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:04.940862+0900 Pheeeew[88740:48528565] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+[NativeHaptic] event=impact index=466 prepare=false elapsedMs=9300 intervalMs=20
+[NativeHaptic] event=impact index=467 prepare=false elapsedMs=9320 intervalMs=19
+[NativeHaptic] event=impact index=468 prepare=false elapsedMs=9339 intervalMs=19
+[NativeHaptic] event=impact index=469 prepare=false elapsedMs=9360 intervalMs=20
+[NativeHaptic] event=impact index=470 prepare=false elapsedMs=9380 intervalMs=20
+[NativeHaptic] event=impact index=471 prepare=false elapsedMs=9400 intervalMs=19
+[NativeHaptic] event=impact index=472 prepare=false elapsedMs=9420 intervalMs=20
+[NativeHaptic] event=impact index=473 prepare=false elapsedMs=9440 intervalMs=20
+[NativeHaptic] event=impact index=474 prepare=false elapsedMs=9460 intervalMs=20
+[NativeHaptic] event=impact index=475 prepare=false elapsedMs=9480 intervalMs=19
+[NativeHaptic] event=impact index=476 prepare=false elapsedMs=9500 intervalMs=20
+[NativeHaptic] event=impact index=477 prepare=false elapsedMs=9520 intervalMs=20
+[NativeHaptic] event=impact index=478 prepare=false elapsedMs=9540 intervalMs=19
+[NativeHaptic] event=impact index=479 prepare=false elapsedMs=9560 intervalMs=19
+[NativeHaptic] event=impact index=480 prepare=false elapsedMs=9580 intervalMs=20
+[NativeHaptic] event=impact index=481 prepare=false elapsedMs=9599 intervalMs=19
+[NativeHaptic] event=impact index=482 prepare=false elapsedMs=9620 intervalMs=20
+[NativeHaptic] event=impact index=483 prepare=false elapsedMs=9640 intervalMs=20
+[NativeHaptic] event=impact index=484 prepare=false elapsedMs=9660 intervalMs=19
+[NativeHaptic] event=impact index=485 prepare=false elapsedMs=9680 intervalMs=20
+[NativeHaptic] event=impact index=486 prepare=false elapsedMs=9700 intervalMs=19
+[NativeHaptic] event=impact index=487 prepare=false elapsedMs=9720 intervalMs=20
+[NativeHaptic] event=impact index=488 prepare=false elapsedMs=9740 intervalMs=19
+[NativeHaptic] event=impact index=489 prepare=false elapsedMs=9760 intervalMs=19
+[NativeHaptic] event=impact index=490 prepare=false elapsedMs=9780 intervalMs=19
+[NativeHaptic] event=impact index=491 prepare=false elapsedMs=9800 intervalMs=20
+[NativeHaptic] event=impact index=492 prepare=false elapsedMs=9820 intervalMs=20
+[NativeHaptic] event=impact index=493 prepare=false elapsedMs=9840 intervalMs=19
+[NativeHaptic] event=impact index=494 prepare=false elapsedMs=9859 intervalMs=18
+[NativeHaptic] event=impact index=495 prepare=false elapsedMs=9880 intervalMs=21
+[NativeHaptic] event=impact index=496 prepare=false elapsedMs=9900 intervalMs=20
+[NativeHaptic] event=impact index=497 prepare=false elapsedMs=9920 intervalMs=19
+[NativeHaptic] event=impact index=498 prepare=false elapsedMs=9940 intervalMs=19
+[NativeHaptic] event=impact index=499 prepare=false elapsedMs=9960 intervalMs=20
+[NativeHaptic] event=impact index=500 prepare=false elapsedMs=9980 intervalMs=20
+[NativeHaptic] event=impact index=501 prepare=false elapsedMs=10000 intervalMs=19
+[NativeHaptic] event=impact index=502 prepare=false elapsedMs=10020 intervalMs=20
+[NativeHaptic] event=impact index=503 prepare=false elapsedMs=10040 intervalMs=19
+[NativeHaptic] event=impact index=504 prepare=false elapsedMs=10059 intervalMs=19
+[NativeHaptic] event=impact index=505 prepare=false elapsedMs=10080 intervalMs=20
+[NativeHaptic] event=impact index=506 prepare=false elapsedMs=10100 intervalMs=20
+[NativeHaptic] event=impact index=507 prepare=false elapsedMs=10120 intervalMs=19
+[NativeHaptic] event=impact index=508 prepare=false elapsedMs=10140 intervalMs=19
+[NativeHaptic] event=impact index=509 prepare=false elapsedMs=10160 intervalMs=20
+[NativeHaptic] event=impact index=510 prepare=false elapsedMs=10180 intervalMs=20
+[NativeHaptic] event=impact index=511 prepare=false elapsedMs=10200 intervalMs=19
+[NativeHaptic] event=impact index=512 prepare=false elapsedMs=10220 intervalMs=20
+[NativeHaptic] event=impact index=513 prepare=false elapsedMs=10240 intervalMs=19
+[NativeHaptic] event=impact index=514 prepare=false elapsedMs=10260 intervalMs=20
+[NativeHaptic] event=impact index=515 prepare=false elapsedMs=10280 intervalMs=19
+[NativeHaptic] event=impact index=516 prepare=false elapsedMs=10300 intervalMs=20
+[NativeHaptic] event=impact index=517 prepare=false elapsedMs=10320 intervalMs=20
+[NativeHaptic] event=impact index=518 prepare=false elapsedMs=10340 intervalMs=19
+[NativeHaptic] event=impact index=519 prepare=false elapsedMs=10360 intervalMs=19
+[NativeHaptic] event=impact index=520 prepare=false elapsedMs=10380 intervalMs=20
+[NativeHaptic] event=impact index=521 prepare=false elapsedMs=10400 intervalMs=19
+[NativeHaptic] event=impact index=522 prepare=false elapsedMs=10420 intervalMs=20
+[NativeHaptic] event=impact index=523 prepare=false elapsedMs=10440 intervalMs=19
+[NativeHaptic] event=impact index=524 prepare=false elapsedMs=10460 intervalMs=20
+[NativeHaptic] event=impact index=525 prepare=false elapsedMs=10480 intervalMs=19
+[NativeHaptic] event=impact index=526 prepare=false elapsedMs=10500 intervalMs=19
+[NativeHaptic] event=impact index=527 prepare=false elapsedMs=10520 intervalMs=20
+[NativeHaptic] event=impact index=528 prepare=false elapsedMs=10540 intervalMs=19
+[NativeHaptic] event=impact index=529 prepare=false elapsedMs=10560 intervalMs=20
+[NativeHaptic] event=impact index=530 prepare=false elapsedMs=10580 intervalMs=19
+[NativeHaptic] event=impact index=531 prepare=false elapsedMs=10600 intervalMs=19
+[NativeHaptic] event=impact index=532 prepare=false elapsedMs=10620 intervalMs=20
+[NativeHaptic] event=impact index=533 prepare=false elapsedMs=10640 intervalMs=19
+[NativeHaptic] event=impact index=534 prepare=false elapsedMs=10660 intervalMs=19
+[NativeHaptic] event=impact index=535 prepare=false elapsedMs=10680 intervalMs=19
+[NativeHaptic] event=impact index=536 prepare=false elapsedMs=10700 intervalMs=20
+[NativeHaptic] event=impact index=537 prepare=false elapsedMs=10720 intervalMs=19
+[NativeHaptic] event=impact index=538 prepare=false elapsedMs=10740 intervalMs=19
+[NativeHaptic] event=impact index=539 prepare=false elapsedMs=10760 intervalMs=19
+[NativeHaptic] event=impact index=540 prepare=false elapsedMs=10780 intervalMs=20
+[NativeHaptic] event=impact index=541 prepare=false elapsedMs=10800 intervalMs=19
+[NativeHaptic] event=impact index=542 prepare=false elapsedMs=10820 intervalMs=20
+[NativeHaptic] event=impact index=543 prepare=false elapsedMs=10840 intervalMs=19
+[NativeHaptic] event=impact index=544 prepare=false elapsedMs=10860 intervalMs=19
+[NativeHaptic] event=impact index=545 prepare=false elapsedMs=10880 intervalMs=19
+[NativeHaptic] event=impact index=546 prepare=false elapsedMs=10900 intervalMs=20
+[NativeHaptic] event=impact index=547 prepare=false elapsedMs=10920 intervalMs=20
+[NativeHaptic] event=impact index=548 prepare=false elapsedMs=10940 intervalMs=19
+[NativeHaptic] event=impact index=549 prepare=false elapsedMs=10960 intervalMs=20
+[NativeHaptic] event=impact index=550 prepare=false elapsedMs=10980 intervalMs=19
+[NativeHaptic] event=impact index=551 prepare=false elapsedMs=11000 intervalMs=20
+[NativeHaptic] event=impact index=552 prepare=false elapsedMs=11020 intervalMs=19
+[NativeHaptic] event=impact index=553 prepare=false elapsedMs=11040 intervalMs=19
+[NativeHaptic] event=impact index=554 prepare=false elapsedMs=11060 intervalMs=20
+[NativeHaptic] event=impact index=555 prepare=false elapsedMs=11080 intervalMs=20
+[NativeHaptic] event=impact index=556 prepare=false elapsedMs=11100 intervalMs=19
+[NativeHaptic] event=impact index=557 prepare=false elapsedMs=11120 intervalMs=20
+[NativeHaptic] event=impact index=558 prepare=false elapsedMs=11140 intervalMs=19
+[NativeHaptic] event=impact index=559 prepare=false elapsedMs=11160 intervalMs=20
+[NativeHaptic] event=impact index=560 prepare=false elapsedMs=11180 intervalMs=19
+[NativeHaptic] event=impact index=561 prepare=false elapsedMs=11200 intervalMs=20
+[NativeHaptic] event=impact index=562 prepare=false elapsedMs=11220 intervalMs=19
+[NativeHaptic] event=impact index=563 prepare=false elapsedMs=11240 intervalMs=19
+[NativeHaptic] event=impact index=564 prepare=false elapsedMs=11260 intervalMs=20
+[NativeHaptic] event=impact index=565 prepare=false elapsedMs=11280 intervalMs=19
+[NativeHaptic] event=impact index=566 prepare=false elapsedMs=11300 intervalMs=20
+[NativeHaptic] event=impact index=567 prepare=false elapsedMs=11320 intervalMs=20
+[NativeHaptic] event=impact index=568 prepare=false elapsedMs=11340 intervalMs=20
+[NativeHaptic] event=impact index=569 prepare=false elapsedMs=11360 intervalMs=19
+[NativeHaptic] event=impact index=570 prepare=false elapsedMs=11380 intervalMs=20
+[NativeHaptic] event=impact index=571 prepare=false elapsedMs=11400 intervalMs=20
+[NativeHaptic] event=impact index=572 prepare=false elapsedMs=11420 intervalMs=19
+[NativeHaptic] event=impact index=573 prepare=false elapsedMs=11440 intervalMs=20
+[NativeHaptic] event=impact index=574 prepare=false elapsedMs=11460 intervalMs=19
+[NativeHaptic] event=impact index=575 prepare=false elapsedMs=11480 intervalMs=19
+[NativeHaptic] event=impact index=576 prepare=false elapsedMs=11500 intervalMs=20
+[NativeHaptic] event=impact index=577 prepare=false elapsedMs=11520 intervalMs=20
+[NativeHaptic] event=impact index=578 prepare=false elapsedMs=11540 intervalMs=19
+[NativeHaptic] event=impact index=579 prepare=false elapsedMs=11560 intervalMs=19
+[NativeHaptic] event=impact index=580 prepare=false elapsedMs=11580 intervalMs=19
+[NativeHaptic] event=impact index=581 prepare=false elapsedMs=11600 intervalMs=20
+[NativeHaptic] event=impact index=582 prepare=false elapsedMs=11620 intervalMs=19
+[NativeHaptic] event=impact index=583 prepare=false elapsedMs=11640 intervalMs=19
+[NativeHaptic] event=impact index=584 prepare=false elapsedMs=11660 intervalMs=20
+[NativeHaptic] event=impact index=585 prepare=false elapsedMs=11680 intervalMs=20
+[NativeHaptic] event=impact index=586 prepare=false elapsedMs=11700 intervalMs=19
+[NativeHaptic] event=impact index=587 prepare=false elapsedMs=11719 intervalMs=19
+[NativeHaptic] event=impact index=588 prepare=false elapsedMs=11740 intervalMs=20
+[NativeHaptic] event=impact index=589 prepare=false elapsedMs=11760 intervalMs=20
+[NativeHaptic] event=impact index=590 prepare=false elapsedMs=11780 intervalMs=19
+[NativeHaptic] event=impact index=591 prepare=false elapsedMs=11800 intervalMs=20
+[NativeHaptic] event=impact index=592 prepare=false elapsedMs=11820 intervalMs=19
+[NativeHaptic] event=impact index=593 prepare=false elapsedMs=11840 intervalMs=20
+[NativeHaptic] event=impact index=594 prepare=false elapsedMs=11860 intervalMs=19
+[NativeHaptic] event=impact index=595 prepare=false elapsedMs=11880 intervalMs=20
+[NativeHaptic] event=impact index=596 prepare=false elapsedMs=11900 intervalMs=20
+[NativeHaptic] event=impact index=597 prepare=false elapsedMs=11920 intervalMs=19
+[NativeHaptic] event=impact index=598 prepare=false elapsedMs=11940 intervalMs=19
+[NativeHaptic] event=impact index=599 prepare=false elapsedMs=11960 intervalMs=19
+[NativeHaptic] event=impact index=600 prepare=false elapsedMs=11980 intervalMs=20
+[NativeHaptic] event=complete impacts=600 physicalOutput=unknown
+2026-11-03 14:59:07.679110+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.679193+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.679255+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.679312+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.679381+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.679458+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.679537+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.679604+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.679660+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.679715+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.679763+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.679836+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.679887+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.679939+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.680004+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.680185+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.680243+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.680303+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.680368+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.680423+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.680488+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.680550+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.680608+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.680660+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.680716+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.680830+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.680920+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.680986+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.681038+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.681105+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.681163+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.681215+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.681276+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.681334+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.681391+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.681481+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.681525+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.681572+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.681619+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.681659+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.681696+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.681744+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.681790+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.681829+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.681872+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.681915+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.681959+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.681995+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.682046+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.682088+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.682132+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.682235+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.682272+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.682340+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.682402+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.682451+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.682497+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.682540+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.682587+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.682624+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.682663+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.682699+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.682736+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.682776+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.682813+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.682857+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.682902+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.682943+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.682980+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.683021+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.683059+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.683096+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.683135+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.683169+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.683211+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.683303+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.683356+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.683392+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.683434+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.683469+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.683507+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.683544+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.683581+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.683623+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.683664+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.683707+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.683746+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.683785+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.683830+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.683866+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.683908+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.683951+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.683992+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.684029+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.684070+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.684107+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.684145+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.684187+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.684223+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.684262+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.684301+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.684406+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.684512+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.684578+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.684622+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.684663+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.684703+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.684739+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.684783+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.684822+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.684859+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.684898+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.684936+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.684976+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.685711+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.685781+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.685822+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.685881+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.685946+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.685989+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.686035+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.686075+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.686114+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.686170+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.686210+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.686257+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.686297+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.686335+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.686376+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.686425+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.686467+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.686505+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.686543+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.686585+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.686678+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.686736+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.686808+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.686849+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.686904+0900 Pheeeew[88740:48528552] [carc] Message send exceeds rate-limit threshold and will be dropped. { reporterID=381135397847042, rateLimit=32hz }
+2026-11-03 14:59:07.710064+0900 Pheeeew[88740:48528552] [carc] Reporter disconnected or already stopped. { func=stop, reporterID=381135397847042 }
+App terminated due to signal 15.

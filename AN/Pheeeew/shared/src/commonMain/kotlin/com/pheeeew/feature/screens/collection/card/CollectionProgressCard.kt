@@ -1,5 +1,6 @@
 package com.pheeeew.feature.screens.collection.card
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -30,6 +31,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
@@ -59,6 +62,8 @@ import pheeeew.shared.generated.resources.collection_progress_card_accessibility
 import pheeeew.shared.generated.resources.collection_progress_unavailable
 import pheeeew.shared.generated.resources.collection_retry
 import pheeeew.shared.generated.resources.collection_stamp_label
+import pheeeew.shared.generated.resources.collection_tomorrow_card_accessibility_description
+import pheeeew.shared.generated.resources.collection_tomorrow_card_message
 import pheeeew.shared.generated.resources.ic_highlighter_underline
 
 @Composable
@@ -85,7 +90,7 @@ internal fun CollectionProgressCard(
         Column(
             Modifier
                 .fillMaxSize()
-                .padding(horizontal = 22.dp * scale, vertical = 28.dp * scale),
+                .padding(horizontal = 20.dp * scale, vertical = 22.dp * scale),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
@@ -100,7 +105,7 @@ internal fun CollectionProgressCard(
                         Box(
                             Modifier
                                 .fillMaxWidth()
-                                .heightIn(min = 30.dp * scale),
+                                .heightIn(min = 34.dp * scale),
                             contentAlignment = Alignment.Center,
                         ) {
                             Image(
@@ -123,8 +128,8 @@ internal fun CollectionProgressCard(
                                         },
                                     ),
                                 color = AppColors.TextPrimary,
-                                fontSize = (14 * scale).sp,
-                                lineHeight = (17 * scale).sp,
+                                fontSize = (16 * scale).sp,
+                                lineHeight = (20 * scale).sp,
                                 fontWeight = FontWeight.SemiBold,
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.fillMaxWidth(),
@@ -132,7 +137,7 @@ internal fun CollectionProgressCard(
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(50.dp * scale))
+                        Spacer(modifier = Modifier.height(36.dp * scale))
                         CollectionActivityProgressRow(
                             label = stringResource(Res.string.collection_stamp_label),
                             count = progress.stampCount,
@@ -142,7 +147,7 @@ internal fun CollectionProgressCard(
                             emotionProgress = progress.stampProgressByEmotion,
                             scale = scale,
                         )
-                        Spacer(modifier = Modifier.height(18.dp * scale))
+                        Spacer(modifier = Modifier.height(20.dp * scale))
                         CollectionActivityProgressRow(
                             label = stringResource(Res.string.collection_press_label),
                             count = progress.pressCount,
@@ -229,12 +234,12 @@ internal fun CollectionProgressCard(
                         contentColor = AppColors.GroupInk,
                     ),
                 contentPadding = PaddingValues(horizontal = 24.dp, vertical = 0.dp),
-                modifier = Modifier.fillMaxWidth().height(48.dp * scale),
+                modifier = Modifier.fillMaxWidth().height(52.dp * scale),
             ) {
                 Text(
                     text = stringResource(Res.string.collection_issue_card),
-                    fontSize = (14 * scale).sp,
-                    lineHeight = (17 * scale).sp,
+                    fontSize = (16 * scale).sp,
+                    lineHeight = (19 * scale).sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                 )
@@ -261,7 +266,7 @@ private fun CollectionActivityProgressRow(
         ) {
             Text(
                 text = stringResource(Res.string.collection_activity_count, label, count, target),
-                fontSize = (11 * scale).sp,
+                fontSize = (13 * scale).sp,
                 fontWeight = FontWeight.Bold,
                 color = AppColors.TextPrimary,
             )
@@ -272,7 +277,7 @@ private fun CollectionActivityProgressRow(
                     } else {
                         stringResource(Res.string.collection_goal_remaining, remaining)
                     },
-                fontSize = (9 * scale).sp,
+                fontSize = (11 * scale).sp,
                 color = AppColors.TextSecondary,
             )
         }
@@ -281,7 +286,7 @@ private fun CollectionActivityProgressRow(
         } else {
             LinearProgressIndicator(
                 progress = { activityProgress(count, target) },
-                modifier = Modifier.fillMaxWidth().height(5.dp * scale),
+                modifier = Modifier.fillMaxWidth().height(7.dp * scale),
                 color = color,
                 trackColor = AppColors.LightDivider,
             )
@@ -301,7 +306,7 @@ private fun CollectionEmotionProgressIndicator(
     Box(
         Modifier
             .fillMaxWidth()
-            .height(5.dp * scale)
+            .height(7.dp * scale)
             .clip(RoundedCornerShape(50))
             .background(AppColors.LightDivider),
     ) {
@@ -316,6 +321,58 @@ private fun CollectionEmotionProgressIndicator(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+internal fun CollectionTomorrowCard(modifier: Modifier = Modifier) {
+    val cardDescription = stringResource(Res.string.collection_tomorrow_card_accessibility_description)
+    CollectionCardFrame(
+        cornerIconTint = AppColors.Primary,
+        modifier = modifier.semantics { contentDescription = cardDescription },
+    ) { scale ->
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = 22.dp * scale, vertical = 26.dp * scale),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(28.dp * scale, Alignment.CenterVertically),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                val diameter = 78.dp * scale
+                val strokeWidth = 2.dp * scale
+                val dashLength = 5.dp * scale
+                val dashGap = 5.dp * scale
+                Canvas(Modifier.size(diameter)) {
+                    val strokeWidthPx = strokeWidth.toPx()
+                    drawCircle(
+                        color = AppColors.Primary,
+                        radius = size.minDimension / 2 - strokeWidthPx / 2,
+                        style =
+                            Stroke(
+                                width = strokeWidthPx,
+                                pathEffect =
+                                    PathEffect.dashPathEffect(
+                                        floatArrayOf(dashLength.toPx(), dashGap.toPx()),
+                                    ),
+                            ),
+                    )
+                }
+                Text(
+                    text = "?",
+                    color = AppColors.Primary,
+                    fontSize = (42 * scale).sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Text(
+                text = stringResource(Res.string.collection_tomorrow_card_message),
+                color = AppColors.TextSecondary,
+                fontSize = (15 * scale).sp,
+                lineHeight = (22 * scale).sp,
+                textAlign = TextAlign.Center,
+            )
         }
     }
 }
@@ -356,5 +413,13 @@ private fun CollectionProgressCardPreview() {
             onRetry = {},
             modifier = Modifier.size(300.dp, 400.dp),
         )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun CollectionTomorrowCardPreview() {
+    CollectionPreviewTheme {
+        CollectionTomorrowCard(Modifier.size(300.dp, 400.dp))
     }
 }

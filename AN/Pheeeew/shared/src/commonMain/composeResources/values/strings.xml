@@ -9,6 +9,12 @@
     <string name="app_update_required_title">앱 업데이트가 필요해요</string>
     <string name="app_update_store_error">스토어를 열 수 없어요. 다시 시도하거나 앱 버전을 확인해 주세요.</string>
     <string name="app_update_required_message">현재 버전은 더 이상 지원되지 않아요. 최신 버전으로 업데이트한 뒤 이용해 주세요.</string>
+    <string name="app_update_ready_title">업데이트 준비가 끝났어요</string>
+    <string name="app_update_downloaded">업데이트 다운로드가 완료됐어요. 설치하면 앱이 다시 시작돼요.</string>
+    <string name="app_update_progress">업데이트를 진행하고 있어요.</string>
+    <string name="app_update_failed">업데이트를 완료하지 못했어요. 다시 시도하거나 스토어에서 설치해 주세요.</string>
+    <string name="app_update_install">설치하고 다시 시작</string>
+    <string name="app_update_open_store">스토어에서 업데이트</string>
     <string name="app_update_retry">다시 확인</string>
     <string name="app_microphone_permission_title">마이크 권한이 필요해요</string>
     <string name="app_microphone_permission_message">음성을 녹음하려면 마이크 권한을 허용해 주세요.
@@ -260,7 +266,9 @@
     <string name="collection_title">나의 감정 컬렉션</string>
     <string name="collection_subtitle">%1$s님의 감정 카드</string>
     <string name="collection_card_count">모은 카드 %1$s장</string>
-    <string name="collection_card_action_hint">카드를 눌러 저장하거나 공유해보세요</string>
+    <string name="collection_card_action_hint">카드를 눌러 저장하거나 공유해보세요!</string>
+    <string name="collection_tomorrow_card_message">컬렉션 카드는 하루에 하나만 발급받을 수 있어요!\n내일 도전해보세요!</string>
+    <string name="collection_tomorrow_card_accessibility_description">내일 발급할 수 있는 컬렉션 카드 안내</string>
     <string name="collection_cover_flow">커버플로</string>
     <string name="collection_album">앨범</string>
     <string name="collection_empty">아직 모은 감정 카드가 없어요</string>
@@ -274,7 +282,6 @@
     <string name="collection_image_sharing">공유 메뉴 여는 중</string>
     <string name="collection_progress_card_description">%1$s 카드 진행도</string>
     <string name="collection_unissued_card_description">발급 전 카드 진행도</string>
-    <string name="collection_unissued_label_compact">발급전</string>
     <string name="collection_unissued_label">발급 전</string>
     <string name="collection_stamp_label">스탬프</string>
     <string name="collection_press_label">프레스</string>

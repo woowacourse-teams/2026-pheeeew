@@ -4,6 +4,7 @@ import com.pheeeew.domain.model.emotion.EmotionState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class CollectionTodayTest {
@@ -34,7 +35,7 @@ class CollectionTodayTest {
         val today =
             today(
                 presses = listOf(49, 54, 0, 0, 0),
-                stamps = listOf(1, 0, 0, 0, 0),
+                stamps = listOf(2, 1, 0, 0, 0),
             )
 
         assertEquals(EmotionState.FRUSTRATED, today.claimEmotion)
@@ -45,11 +46,31 @@ class CollectionTodayTest {
         val today =
             today(
                 presses = listOf(20, 20, 0, 0, 0),
-                stamps = listOf(0, 0, 0, 0, 0),
+                stamps = listOf(1, 1, 0, 0, 0),
                 reverseItems = true,
             )
 
         assertEquals(EmotionState.FRUSTRATED, today.claimEmotion)
+    }
+
+    @Test
+    fun `unregistered emotion cannot win with a higher press score`() {
+        val today =
+            today(
+                presses = listOf(1000, 40, 50, 0, 0),
+                stamps = listOf(0, 2, 1, 0, 0),
+            )
+
+        assertTrue(today.canClaim)
+        assertEquals(EmotionState.IRRITATED, today.claimEmotion)
+    }
+
+    @Test
+    fun `no registered emotions means no claim emotion`() {
+        val today = today(presses = listOf(100, 0, 0, 0, 0), stamps = listOf(0, 0, 0, 0, 0))
+
+        assertNull(today.claimEmotion)
+        assertFalse(today.canClaim)
     }
 
     @Test

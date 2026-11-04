@@ -177,10 +177,48 @@ class CollectionViewModelTest {
             }
         }
 
+    @Test
+    fun `claim excludes unregistered emotions and cards use generic count labels`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            val store = ViewModelStore()
+            try {
+                val repository = FakeCollectionRepository(unregisteredPressCount = 1000)
+                val viewModel = CollectionViewModel(repository)
+                store.put("collection", viewModel)
+                viewModel.onSessionChanged(1L, "오늘도히유")
+                runCurrent()
+
+                viewModel.claim(EmotionType.FRUSTRATED)
+                runCurrent()
+                assertEquals(0, repository.claimRequests)
+
+                viewModel.claim(EmotionType.EXHAUSTED)
+                runCurrent()
+                assertEquals(1, repository.claimRequests)
+                val card =
+                    viewModel.uiState.value.cards
+                        .single()
+                assertEquals("프레스", card.pressLabel)
+                assertEquals("스탬프", card.stampLabel)
+                assertEquals(100L, card.pressCount)
+                assertEquals(1L, card.stampCount)
+
+                viewModel.selectCard(card.id)
+                runCurrent()
+                assertEquals(card, viewModel.uiState.value.selectedCard)
+            } finally {
+                store.clear()
+                runCurrent()
+                Dispatchers.resetMain()
+            }
+        }
+
     private class FakeCollectionRepository(
         private val firstHistory: CompletableDeferred<CollectionResult<CollectionHistory>>? = null,
         private val secondHistory: CompletableDeferred<CollectionResult<CollectionHistory>>? = null,
         private val thirdHistory: CompletableDeferred<CollectionResult<CollectionHistory>>? = null,
+        private val unregisteredPressCount: Long = 0,
     ) : CollectionRepository {
         var historyRequests = 0
             private set
@@ -245,7 +283,7 @@ class CollectionViewModelTest {
                                     ) {
                                         100
                                     } else {
-                                        0
+                                        unregisteredPressCount
                                     },
                                     100,
                                     0,

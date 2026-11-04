@@ -1,21 +1,21 @@
 package com.pheeeew.core.notification
 
-import com.pheeeew.domain.repository.OnboardingStore
 import kotlinx.coroutines.CancellationException
 
-/** Created before onboarding; invoked after the first map's location handling. */
-class InitialNotificationPermissionRequest(
-    private val store: OnboardingStore,
-) {
-    private var handled = store.isInitialNotificationPermissionHandled()
+/** Checks OS authorization once per app UI entry, after the first map's location handling. */
+class InitialNotificationPermissionRequest {
+    private var handled = false
 
     suspend fun requestIfNeeded(controller: NotificationPermissionController) {
         if (handled) return
-        // Consume before opening the system dialog, even if it is dismissed or the UI is recreated.
+        // Avoid duplicate dialogs when readiness effects restart in the same UI entry.
         handled = true
-        store.completeInitialNotificationPermission()
         try {
-            if (controller.canRequestAuthorization()) controller.requestAuthorization()
+            if (controller.authorization() == NotificationAuthorization.NOT_DETERMINED &&
+                controller.canRequestAuthorization()
+            ) {
+                controller.requestAuthorization()
+            }
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {

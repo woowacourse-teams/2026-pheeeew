@@ -89,7 +89,7 @@ public class EmotionMapQueryService {
         }
 
         MapReadObservation.decision(Decision.CACHE_ATTEMPT);
-        Map<String, RegionEmotionSummary> summaries = regionSummaryCache.summaries(level);
+        Map<String, RegionEmotionSummary> summaries = regionSummaryCache.summaries(level, filter.startDate(), filter.endDate());
         if (summaries == null) {
             MapReadObservation.decision(Decision.CACHE_FALLBACK);
             summaries = dbQueries.findSummariesByRegionCodes(
@@ -213,9 +213,6 @@ public class EmotionMapQueryService {
         }
         if (level == RegionLevel.EMD) {
             return Decision.BYPASS_LEVEL;
-        }
-        if (filter.startDate() != null) {
-            return Decision.BYPASS_PERIOD;
         }
         return defaultFilter(filter) ? null : Decision.BYPASS_FILTER;
     }

@@ -19,6 +19,7 @@ fun AndroidAppContent(
     owner: ActivityRetainedGraphOwner,
     notificationClicks: NotificationClickInbox,
     notificationMessages: NotificationMessageInbox,
+    updates: com.pheeeew.core.update.AppUpdateController? = null,
     settingsContent: @Composable () -> Unit = {},
 ) {
     val uiGraph = remember(owner) { owner.attach(activity) }
@@ -30,6 +31,7 @@ fun AndroidAppContent(
         }
     CompositionLocalProvider(LocalViewModelStoreOwner provides owner.uiSession) {
         App(
+            updateController = updates,
             appGraph = appGraph,
             uiGraph = uiGraph,
             settingsContent = settingsContent,

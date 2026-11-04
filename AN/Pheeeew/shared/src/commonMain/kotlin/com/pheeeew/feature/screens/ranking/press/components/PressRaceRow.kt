@@ -13,11 +13,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.feature.component.PressRankBadge
+import com.pheeeew.feature.component.rememberCountUp
 import com.pheeeew.feature.emotion.component.EmotionFeedbackCatalog
 import com.pheeeew.feature.emotion.model.EmotionKind
 import com.pheeeew.feature.screens.ranking.press.PressRaceRowModel
@@ -106,6 +107,7 @@ internal fun PressRaceRow(
     rankWidth: Dp,
     countWidth: Dp,
     modifier: Modifier = Modifier,
+    reducedMotion: Boolean = false,
 ) {
     val description =
         stringResource(
@@ -114,6 +116,7 @@ internal fun PressRaceRow(
             row.nickname,
             row.count.toString(),
         )
+    val displayedCount by rememberCountUp(row.count, reducedMotion)
     val shape = RoundedCornerShape(14.dp)
     val background =
         when {
@@ -195,7 +198,7 @@ internal fun PressRaceRow(
             }
         }
         Text(
-            raceCountText(row.count),
+            raceCountText(displayedCount),
             Modifier.width(countWidth).padding(start = 4.dp),
             color = ink,
             fontSize = 12.sp,

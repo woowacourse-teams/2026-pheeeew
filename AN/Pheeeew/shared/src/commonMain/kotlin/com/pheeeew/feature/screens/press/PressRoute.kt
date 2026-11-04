@@ -6,6 +6,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.pheeeew.core.audio.rememberPressSoundPlayer
 import com.pheeeew.feature.screens.press.measurement.pressRaceDrawMeasurement
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 
@@ -17,7 +18,10 @@ internal fun PressRoute(
     val viewModel: PressViewModel = metroViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val faceDemo = rememberPressFaceDemoState()
+    val soundPlayer = rememberPressSoundPlayer()
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onScreenResumed() }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { soundPlayer.prepare() }
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { soundPlayer.stop() }
     PressScreen(
         uiState = uiState,
         onEmotionTap = { kind ->
@@ -26,6 +30,7 @@ internal fun PressRoute(
             accepted
         },
         onOpenRanking = onOpenRanking,
+        soundPlayer = soundPlayer,
         modifier = modifier.pressRaceDrawMeasurement(uiState.frameKey, viewModel::onFrameDrawn),
         nearbyRanking = uiState.nearbyRanking,
         activity = uiState.activity,

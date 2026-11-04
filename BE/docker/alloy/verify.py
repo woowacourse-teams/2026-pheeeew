@@ -12,7 +12,7 @@ import uuid
 
 DIRECTORY = Path(__file__).resolve().parent
 IMAGE = re.search(r"image: (grafana/alloy:[^\s]+)",
-                  (DIRECTORY.parent / "compose.monitoring.yml").read_text()).group(1)
+                  (DIRECTORY.parent / "compose.monitoring.prod.yml").read_text()).group(1)
 CONFIGS = {"config.alloy": "prod", "config.dev.alloy": "dev", "config.prod-bluegreen.alloy": "prod"}
 
 

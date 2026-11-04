@@ -162,6 +162,51 @@ class PressOperationsProxyIntegrationTest {
     }
 
     @Test
+    void 단일_앱_교체는_같은_서버_세대에서도_미확인_입력을_중복_없이_정산한다() throws Exception {
+        // given: 확정 성공·미확정 접수·미접수 입력을 남긴 채 같은 슬롯을 교체한다.
+        RecoveryInputs inputs = prepareRecoveryInputs();
+        String previousId = blue.getContainerId();
+        String upstream = Files.readString(work.resolve("nginx/upstream/active.conf"));
+
+        // when: 기존 프로세스와 컨테이너가 없어진 뒤 동일 UUID로 새 프로세스를 시작한다.
+        blue.stop();
+        blue = null;
+        assertThat(DockerClientFactory.instance().client().listContainersCmd().withShowAll(true).exec())
+                .noneMatch(container -> previousId.equals(container.getId()));
+        assertThat(inputs.original().closed.poll(8, TimeUnit.SECONDS)).isNotNull();
+        blue = startApp("blue", BLUE_GENERATION, false);
+        assertThat(blue.getContainerId()).isNotEqualTo(previousId);
+        await(() -> {
+            try {
+                return request("GET", "/api/v2/emotions/presses/me", null, true).statusCode() == 200;
+            } catch (Exception exception) {
+                return false;
+            }
+        }, "동일 슬롯의 새 앱으로 nginx 경로 복구");
+
+        // then: 세대·공개 상태·프록시는 유지하고 연결 자격만 새로 발급해 재가산을 막는다.
+        assertThat(Files.readString(work.resolve("nginx/upstream/active.conf"))).isEqualTo(upstream);
+        assertThat(scalar("SELECT active_server_generation::text FROM press_race_control"))
+                .isEqualTo(BLUE_GENERATION.toString());
+        assertThat(scalar("SELECT enabled::text FROM press_race_control")).isEqualTo("true");
+        assertThat(scalar("SELECT activation_date::text FROM press_race_control")).isEqualTo(activationDate.toString());
+        SocketListener current = connect(NORMAL_WS);
+        JsonNode ready = initialize(current, inputs.unknown(), "session.ready");
+        assertThat(ready.path("serverGeneration").stringValue()).isEqualTo(BLUE_GENERATION.toString());
+        assertThat(ready.path("connectionGeneration").stringValue())
+                .isNotEqualTo(inputs.unknown().getFirst().get("connectionGeneration"));
+        assertRecovered(ready, inputs.applied(), inputs.pending(), inputs.absent(), 4);
+        current.send(submit(inputs.applied(), ready, 3));
+        assertThat(current.receive("input.result").path("status").stringValue()).isEqualTo("APPLIED");
+        assertTotals(4);
+        current.send(submit(UUID.randomUUID(), ready, 1));
+        assertThat(current.receive("input.result").path("status").stringValue()).isEqualTo("APPLIED");
+        assertTotals(5);
+        assertThat(press().statusCode()).isEqualTo(200);
+        assertTotals(6);
+    }
+
+    @Test
     void 후보_재시작_뒤에도_긴급_OFF와_입력_차단을_확인한다() throws Exception {
         prepareCandidate();
         operator("handoff", greenName());
@@ -476,6 +521,10 @@ class PressOperationsProxyIntegrationTest {
     }
 
     private GenericContainer<?> startApp(String color, UUID generation) {
+        return startApp(color, generation, true);
+    }
+
+    private GenericContainer<?> startApp(String color, UUID generation, boolean fileAdmission) {
         GenericContainer<?> app = new GenericContainer<>(DockerImageName.parse(System.getenv("PHEEEEW_PRESS_OPERATIONS_IMAGE")))
                 .withNetwork(network).withNetworkAliases("app-" + color)
                 .withCreateContainerCmdModifier(command -> command.withName(prefix + "-app-" + color))
@@ -497,6 +546,10 @@ class PressOperationsProxyIntegrationTest {
                         Map.entry("PHEEEEW_PRESS_RACE_SERVER_GENERATION", generation.toString())))
                 .waitingFor(Wait.forHttp("/actuator/health").forPort(8080).forStatusCode(200)
                         .withStartupTimeout(Duration.ofMinutes(2)));
+        if (!fileAdmission) {
+            app.withEnv("PHEEEEW_PRESS_RACE_ADMISSION_FILE", "")
+                    .withEnv("PHEEEEW_PRESS_RACE_ADMISSION_REQUIRED", "false");
+        }
         app.start();
         return app;
     }

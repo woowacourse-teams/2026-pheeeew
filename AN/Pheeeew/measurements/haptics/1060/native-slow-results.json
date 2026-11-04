@@ -1,0 +1,22 @@
+[
+  {
+    "prepare": false,
+    "boundToView": false,
+    "status": "complete",
+    "impacts": 600,
+    "channelErrorLogCount": 0,
+    "firstErrorAfterLoggedIndex": null,
+    "medianIntervalMs": 99,
+    "log": "native-slow-prepare0-bound0.log"
+  },
+  {
+    "prepare": true,
+    "boundToView": false,
+    "status": "complete",
+    "impacts": 600,
+    "channelErrorLogCount": 351,
+    "firstErrorAfterLoggedIndex": 250,
+    "medianIntervalMs": 99,
+    "log": "native-slow-prepare1-bound0.log"
+  }
+]

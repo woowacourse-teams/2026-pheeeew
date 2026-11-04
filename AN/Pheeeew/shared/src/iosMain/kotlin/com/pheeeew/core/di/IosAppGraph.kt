@@ -6,23 +6,29 @@ import com.pheeeew.core.audio.IosAudioPlayer
 import com.pheeeew.core.audio.IosVoiceRecorder
 import com.pheeeew.core.di.device.DeviceSessionBuildConfig
 import com.pheeeew.core.di.device.PressInputMode
+import com.pheeeew.core.haptics.IosEmotionHapticController
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.ConnectivityObserver
 import com.pheeeew.core.permission.AppSettingsLauncher
 import com.pheeeew.core.permission.IosAppSettingsLauncher
+import com.pheeeew.data.local.config.AppConfigStore
 import com.pheeeew.data.local.device.DeviceCredentialStorage
 import com.pheeeew.data.local.device.IosDeviceCredentialStorage
 import com.pheeeew.data.location.platform.ios.IosLocationPermissionController
 import com.pheeeew.data.location.platform.ios.IosPlatformLocationProvider
 import com.pheeeew.data.remote.attestation.DeviceAttestationPolicy
 import com.pheeeew.data.remote.attestation.IosAppAttestProofProvider
+import com.pheeeew.data.repository.AppConfigRepository
+import com.pheeeew.data.repository.AppVersionCacheStorage
 import com.pheeeew.data.repository.AppVersionRepositoryImpl
+import com.pheeeew.data.repository.CachedAppVersionRepository
 import com.pheeeew.data.repository.EmotionMapRepositoryImpl
 import com.pheeeew.data.repository.EmotionRegionMapRepositoryImpl
 import com.pheeeew.domain.model.device.DevicePlatform
 import com.pheeeew.domain.repository.AppVersionRepository
 import com.pheeeew.domain.repository.OnboardingStore
+import com.pheeeew.domain.repository.RecordAnonymityStore
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.GraphExtension
 import dev.zacsweers.metro.Provides
@@ -39,6 +45,11 @@ internal interface IosAppGraph :
     AppGraph,
     ApiBindings {
     val controllerFactory: ViewControllerGraph.Factory
+    val emotionHaptics: IosEmotionHapticController
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun haptics(): IosEmotionHapticController = IosEmotionHapticController()
 
     @DependencyGraph.Factory
     interface Factory {
@@ -96,13 +107,39 @@ internal interface IosAppGraph :
 
     @Provides
     @SingleIn(AppScope::class)
+    fun recordAnonymity(): RecordAnonymityStore = IosRecordAnonymityStore()
+
+    @Provides
+    @SingleIn(AppScope::class)
     fun onboarding(): OnboardingStore = IosOnboardingStore()
 
     @Provides
     @SingleIn(AppScope::class)
     fun settings(): AppSettingsLauncher = IosAppSettingsLauncher()
 
-    @Provides fun versions(impl: AppVersionRepositoryImpl): AppVersionRepository = impl
+    @Provides
+    @SingleIn(AppScope::class)
+    fun configStore(build: DeviceSessionBuildConfig): AppConfigStore =
+        com.pheeeew.data.local.config
+            .IosAppConfigStore(ApiConfig(build.baseUrl).deviceStorageEnvironment())
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun versions(
+        impl: AppVersionRepositoryImpl,
+        build: DeviceSessionBuildConfig,
+    ): AppVersionRepository {
+        val key = "app_version_policy:ios:${build.baseUrl}"
+        val storage =
+            object : AppVersionCacheStorage {
+                override fun read(): String? = NSUserDefaults.standardUserDefaults.stringForKey(key)
+
+                override fun write(value: String) {
+                    NSUserDefaults.standardUserDefaults.setObject(value, key)
+                }
+            }
+        return CachedAppVersionRepository(impl, storage, "ios", build.baseUrl)
+    }
 
     @Provides
     @SingleIn(AppScope::class)
@@ -170,6 +207,20 @@ internal object IosGraphs {
 /** Select platform adapters before the first use of the process graph. */
 fun initializeIosAppGraph(services: AppServiceFactory): AppGraph = IosGraphs.initialize(services)
 
+private class IosRecordAnonymityStore : RecordAnonymityStore {
+    private val defaults = NSUserDefaults.standardUserDefaults
+
+    override fun read(): Boolean? = if (defaults.objectForKey(KEY) != null) defaults.boolForKey(KEY) else null
+
+    override suspend fun save(isAnonymous: Boolean) {
+        defaults.setBool(isAnonymous, forKey = KEY)
+    }
+
+    private companion object {
+        const val KEY = "last_record_anonymous"
+    }
+}
+
 private class IosOnboardingStore : OnboardingStore {
     override fun isCompleted(): Boolean = NSUserDefaults.standardUserDefaults.boolForKey("onboarding_completed")
 
@@ -181,20 +232,10 @@ private class IosOnboardingStore : OnboardingStore {
         val defaults = NSUserDefaults.standardUserDefaults
         defaults.removeObjectForKey("onboarding_completed")
     }
-
-    override fun isInitialNotificationPermissionHandled(): Boolean {
-        val defaults = NSUserDefaults.standardUserDefaults
-        if (defaults.objectForKey("initial_notification_permission_handled") == null) {
-            defaults.setBool(isCompleted(), forKey = "initial_notification_permission_handled")
-        }
-        return defaults.boolForKey("initial_notification_permission_handled")
-    }
-
-    override fun completeInitialNotificationPermission() {
-        NSUserDefaults.standardUserDefaults.setBool(true, forKey = "initial_notification_permission_handled")
-    }
 }
 
 fun iosDeviceBuildConfig(): DeviceSessionBuildConfig = IosGraphs.app.apiDependencies.buildConfig
 
 fun iosOnboardingStore(): OnboardingStore = IosGraphs.app.onboardingStore
+
+fun iosAppConfigRepository(): AppConfigRepository = IosGraphs.app.apiDependencies.appConfig
