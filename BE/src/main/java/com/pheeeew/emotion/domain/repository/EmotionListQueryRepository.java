@@ -14,6 +14,16 @@ public interface EmotionListQueryRepository {
             long lastId,
             Long deviceId,
             EmotionSearchFilter filter,
+            boolean contentOnly,
+            int limit
+    );
+
+    List<Emotion> findVisiblePageWithoutBounds(
+            Instant snapshotAt,
+            Instant lastCreatedAt,
+            long lastId,
+            Long deviceId,
+            EmotionSearchFilter filter,
             int limit
     );
 

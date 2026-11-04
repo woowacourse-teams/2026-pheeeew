@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.util.ReflectionTestUtils.setField;
 
 import com.pheeeew.auth.fixture.AccessTokenFixture;
 import com.pheeeew.auth.infra.security.AuthenticationErrorHandler;
@@ -14,6 +15,13 @@ import com.pheeeew.auth.presentation.config.AuthWebMvcConfig;
 import com.pheeeew.auth.presentation.resolver.CurrentDeviceArgumentResolver;
 import com.pheeeew.collection.application.CollectionClaimService;
 import com.pheeeew.collection.application.CollectionQueryService;
+import com.pheeeew.collection.application.CollectionEmotionQueryService;
+import com.pheeeew.collection.application.dto.CollectionEmotionResult;
+import com.pheeeew.collection.application.dto.CollectionEmotionPageResult;
+import com.pheeeew.emotion.fixture.EmotionFixture;
+import com.pheeeew.emotion.application.AudioUrlIssuer.PlaybackUrl;
+import com.pheeeew.emotion.exception.EmotionException;
+import com.pheeeew.emotion.exception.EmotionErrorCode;
 import com.pheeeew.collection.application.dto.CollectionCardDetailResult;
 import com.pheeeew.collection.application.dto.CollectionCardResult;
 import com.pheeeew.collection.application.dto.CollectionHistoryResult;
@@ -27,6 +35,8 @@ import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.emotion.domain.EmotionState;
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -72,11 +82,136 @@ class CollectionControllerTest {
     private CollectionClaimService claims;
 
     @MockitoBean
+    private CollectionEmotionQueryService collectionEmotions;
+
+    @MockitoBean
     private JwtDecoder jwtDecoder;
 
     @BeforeEach
     void setUp() {
         when(jwtDecoder.decode("access-token")).thenReturn(AccessTokenFixture.액세스_토큰_클레임(DEVICE_PUBLIC_ID));
+    }
+
+    @Test
+    void 카드의_감정_목록은_지도정보_없이_내용유형과_페이지정보를_반환한다() {
+        // given
+        UUID cardId = UUID.fromString("20769cf2-1f8a-4b62-8dbe-5b594d5ffb5d");
+        var emotion = EmotionFixture.기본_한숨_빌더().state(EmotionState.IRRITATED).memo("짜증난 하루").build();
+        setField(emotion, "id", 42L);
+        setField(emotion, "createdAt", Instant.parse("2026-11-04T01:00:00Z"));
+        var none = EmotionFixture.저장된_기본_한숨(43L, Instant.parse("2026-11-04T00:00:00Z"));
+        var audio = EmotionFixture.저장된_기본_한숨(44L, Instant.parse("2026-11-03T23:00:00Z"));
+        setField(none, "state", EmotionState.EXHAUSTED);
+        setField(audio, "state", EmotionState.ANGRY);
+        var playback = PlaybackUrl.of("https://audio.example/recording", Instant.parse("2026-11-04T02:00:00Z"));
+        when(collectionEmotions.findEmotions(DEVICE_PUBLIC_ID, cardId, "previous"))
+                .thenReturn(CollectionEmotionPageResult.of(List.of(CollectionEmotionResult.of(emotion, null),
+                        CollectionEmotionResult.of(none, null), CollectionEmotionResult.of(audio, playback)), true, "next"));
+
+        // when / then
+        client.get().uri("/api/v1/collection-cards/" + cardId + "/emotions?cursor=previous&devicePublicId=" + UUID.randomUUID())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
+                .expectStatus().isOk().expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
+                .expectBody().json("""
+                        {"items":[{"id":42,"createdAt":"2026-11-04T01:00:00Z","state":"IRRITATED",
+                         "contentType":"MEMO","memo":"짜증난 하루","audio":null},
+                         {"id":43,"createdAt":"2026-11-04T00:00:00Z","state":"EXHAUSTED","contentType":"NONE","memo":null,"audio":null},
+                         {"id":44,"createdAt":"2026-11-03T23:00:00Z","state":"ANGRY","contentType":"AUDIO","memo":null,
+                          "audio":{"playbackUrl":"https://audio.example/recording","expiresAt":"2026-11-04T02:00:00Z"}}],
+                         "hasNext":true,"nextCursor":"next"}
+                        """, JsonCompareMode.STRICT);
+    }
+
+    @Test
+    void 월별_카드를_상세_형식의_완결된_목록으로_반환한다() {
+        // given
+        var item = CollectionCardDetailResult.of(UUID.fromString("20769cf2-1f8a-4b62-8dbe-5b594d5ffb5d"),
+                LocalDate.of(2026, 11, 4), EmotionState.ANGRY, 3, 125, 기본_카드_이미지());
+        when(service.findCalendar(DEVICE_PUBLIC_ID, YearMonth.of(2026, 11))).thenReturn(List.of(item));
+
+        // when / then
+        client.get().uri("/api/v1/collection-cards/calendar?month=2026-11&devicePublicId=" + UUID.randomUUID())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
+                .expectStatus().isOk().expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
+                .expectBody().json("""
+                        {"items":[{"cardId":"20769cf2-1f8a-4b62-8dbe-5b594d5ffb5d","date":"2026-11-04","state":"ANGRY",
+                         "stampCount":3,"pressCount":125,
+                         "images":{"characterUrl":"https://assets.example/v1/characters/angry/01.png",
+                                   "roundStampUrl":"https://assets.example/v1/stamps-round/angry/01.png",
+                                   "straightStampUrl":"https://assets.example/v1/stamps-straight/angry/01.png"}}],
+                         "hasNext":false,"nextCursor":null}
+                        """, JsonCompareMode.STRICT);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "month=", "month=2026-00", "month=2026-13", "month=0000-01",
+            "month=10000-01", "month=2026-1", "month=2026-11-01", "month=abc"})
+    void 잘못된_월은_조회_전에_400으로_거절한다(String query) {
+        // when / then
+        client.get().uri("/api/v1/collection-cards/calendar?" + query)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
+                .expectStatus().isBadRequest().expectBody().jsonPath("$.code").isEqualTo("COMMON-001");
+        verifyNoInteractions(service, collectionEmotions);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0001-01", "9999-12"})
+    void 지원_연도_경계의_빈_달은_빈_목록으로_조회한다(String month) {
+        // given
+        when(service.findCalendar(DEVICE_PUBLIC_ID, YearMonth.parse(month))).thenReturn(List.of());
+
+        // when / then
+        client.get().uri("/api/v1/collection-cards/calendar?month=" + month)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
+                .expectStatus().isOk().expectBody()
+                .json("{\"items\":[],\"hasNext\":false,\"nextCursor\":null}", JsonCompareMode.STRICT);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v1/collection-cards/calendar?month=2026-11",
+            "/api/v1/collection-cards/20769cf2-1f8a-4b62-8dbe-5b594d5ffb5d/emotions"})
+    void 캘린더와_일별_감정도_기기_인증이_필요하다(String uri) {
+        // when / then
+        client.get().uri(uri).exchange().expectStatus().isUnauthorized()
+                .expectBody().jsonPath("$.code").isEqualTo("AUTH-001");
+        verifyNoInteractions(service, collectionEmotions);
+    }
+
+    @Test
+    void 일별_감정의_잘못된_UUID와_너무_긴_커서는_조회_전에_거절한다() {
+        // when / then
+        for (String uri : List.of("/api/v1/collection-cards/invalid/emotions",
+                "/api/v1/collection-cards/20769cf2-1f8a-4b62-8dbe-5b594d5ffb5d/emotions?cursor=" + "a".repeat(2049))) {
+            client.get().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
+                    .expectStatus().isBadRequest().expectBody().jsonPath("$.code").isEqualTo("COMMON-001");
+        }
+        verifyNoInteractions(collectionEmotions);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"COLLECTION_CARD_NOT_FOUND,404,COLLECTION-005", "COLLECTION_INVALID_CURSOR,400,COLLECTION-007"})
+    void 일별_감정_소유권과_커서_오류를_공통_응답으로_반환한다(CollectionErrorCode error, int status, String code) {
+        // given
+        UUID cardId = UUID.randomUUID();
+        when(collectionEmotions.findEmotions(DEVICE_PUBLIC_ID, cardId, null)).thenThrow(new CollectionException(error));
+
+        // when / then
+        client.get().uri("/api/v1/collection-cards/" + cardId + "/emotions")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
+                .expectStatus().isEqualTo(status).expectBody().jsonPath("$.code").isEqualTo(code);
+    }
+
+    @Test
+    void 일별_감정_녹음_발급_오류는_503으로_반환한다() {
+        // given
+        UUID cardId = UUID.randomUUID();
+        when(collectionEmotions.findEmotions(DEVICE_PUBLIC_ID, cardId, null))
+                .thenThrow(new EmotionException(EmotionErrorCode.EMOTION_AUDIO_PLAYBACK_UNAVAILABLE));
+
+        // when / then
+        client.get().uri("/api/v1/collection-cards/" + cardId + "/emotions")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
+                .expectStatus().isEqualTo(503).expectBody().jsonPath("$.code").isEqualTo("EMOTION-009");
     }
 
     @Test
