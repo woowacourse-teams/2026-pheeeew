@@ -67,4 +67,9 @@ dependencies {
 tasks.named('test') {
     useJUnitPlatform()
     systemProperty 'pheeeew.rate-limit.emotion-create.enabled', 'false'
+    // 포크는 별도 JVM 이라 포크마다 자체 PostGIS 컨테이너와 Spring 컨텍스트를 쓴다.
+    // 클래스 간 DB 공유가 늘지 않으므로 격리를 유지한 채 벽시계만 줄인다. 대신 총 작업량이 는다.
+    // 로컬 측정(191 클래스): 1포크 305초, 2포크 197초(작업량 +16%), 4포크 165초(작업량 +76%).
+    // 러너가 4 vCPU 라 2를 기본값으로 둔다. -PtestForks=N 으로 바꿀 수 있다.
+    maxParallelForks = (project.findProperty('testForks') ?: '2') as int
 }
