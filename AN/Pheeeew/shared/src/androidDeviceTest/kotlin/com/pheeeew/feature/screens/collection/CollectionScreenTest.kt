@@ -347,22 +347,14 @@ class CollectionScreenTest {
                     EmotionType.DISCOURAGED,
                     EmotionType.ANGRY,
                 ).map { emotion ->
-                    val label =
-                        when (emotion) {
-                            EmotionType.EXHAUSTED -> "지침"
-                            EmotionType.FRUSTRATED -> "답답"
-                            EmotionType.IRRITATED -> "짜증"
-                            EmotionType.DISCOURAGED -> "좌절"
-                            EmotionType.ANGRY -> "분노"
-                        }
                     CollectionCardUiModel(
                         id = emotion.name,
                         period = "2026.10.18",
                         title = "오늘도히유",
                         emotion = emotion,
-                        pressLabel = "$label 프레스",
+                        pressLabel = "프레스",
                         pressCount = 312,
-                        stampLabel = "$label 스탬프",
+                        stampLabel = "스탬프",
                         stampCount = 23,
                     )
                 },

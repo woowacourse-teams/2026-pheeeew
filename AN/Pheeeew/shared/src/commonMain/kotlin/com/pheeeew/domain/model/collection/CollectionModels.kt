@@ -54,6 +54,7 @@ data class CollectionToday(
         get() =
             EmotionState.entries
                 .mapNotNull { emotion -> items.firstOrNull { it.state == emotion } }
+                .filter { it.stamps.count > 0L }
                 .maxByOrNull { item -> item.presses.count + (item.stamps.count * COLLECTION_PRESS_PER_STAMP_WEIGHT) }
                 ?.state
 

@@ -114,9 +114,9 @@ class CollectionCardDialogTest {
             period = "2026.10.26",
             title = "오늘도히유",
             emotion = EmotionType.EXHAUSTED,
-            pressLabel = "지침 프레스",
+            pressLabel = "프레스",
             pressCount = 312,
-            stampLabel = "지침 스탬프",
+            stampLabel = "스탬프",
             stampCount = 23,
         )
 }
