@@ -1,5 +1,7 @@
 # 개발 서버 배포 안내
 
+운영은 임시로 **수동 단일 앱 교체**를 사용해요. main push는 이미지만 빌드하며, 중단 허용·실패 시 수동 복구·최초 전환 조건은 [운영 단일 앱 교체 절차](../docs/operations/prod-recreate-deployment.md)를 따라요. 아래 blue/green 흐름은 개발 CD와 기존 전환 도구를 설명해요.
+
 `develop` 에 푸시하면 `BE DEV CD` 가 돌면서 `app-blue` 와 `app-green` 을 번갈아 띄워요. 한 번에 한 색만 떠 있고, 교체 구간에만 둘이 함께 떠요.
 
 | 파일 | 역할 |
@@ -37,7 +39,7 @@ DB 전환 전 기동·최소 API 검증이 실패하면 기존 소유권을 유�
 
 이미지의 입력 차단은 같은 컨테이너 재시작에 유지돼요. 새 후보는 CLOSED로 시작하고 실제 라우팅·DB 자격을 확인한 뒤 도구가 개방해요. 구형 도구는 계약 2 이미지를 거절해요. 앱 부팅·health 200으로 저장 준비를 대신하지 않아요.
 
-명령·실행 전 확인·실패 경계는 [운영 절차](../docs/operations/realtime-press.md), 선택 이유는 [ADR-0042](../docs/adr/0042-fence-press-admission-during-deployment.md)를 따라요. 실제 배포·활성화·중단·복구는 대상 SHA·환경·시점·중단 기준을 고정해 별도로 승인받아요. 운영의 기존 단일 앱 워크플로는 계약 2를 앱 교체 전에 거절하며 운영 이행 완료로 취급하지 않아요.
+명령·실행 전 확인·실패 경계는 [운영 절차](../docs/operations/realtime-press.md), 선택 이유는 [ADR-0042](../docs/adr/0042-fence-press-admission-during-deployment.md)를 따라요. 실제 배포·활성화·중단·복구는 대상 SHA·환경·시점·중단 기준을 고정해 별도로 승인받아요. 과거 단일 앱 워크플로는 계약 2를 거절해요. 현재 임시 운영 CD는 위 단일 앱 교체 절차의 호환 설정을 사용해요.
 
 ### 프레스 서버 세대: 경쟁 OFF 전용
 

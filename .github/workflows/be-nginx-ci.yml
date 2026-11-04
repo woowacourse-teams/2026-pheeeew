@@ -11,22 +11,9 @@ on:
       - 'BE/docker/press-generation.py'
       - 'BE/docker/test-press-generation.py'
       - 'BE/docker/press-operations.py'
-      - 'BE/docker/press-prod-bootstrap.py'
-      - 'BE/docker/test-prod-bootstrap.py'
-      - 'BE/docker/press-prod-deploy-guard.sh'
-      - 'BE/docker/test-prod-deploy-guard.py'
-      - 'BE/docker/press-prod-lock.py'
-      - 'BE/docker/test-prod-lock.py'
-      - 'BE/docker/press-prod-deploy.sh'
-      - 'BE/docker/test-prod-deploy-contract.py'
       - 'BE/docker/test-prod-route.py'
-      - 'BE/docker/press-prod-manifest.py'
-      - 'BE/docker/test-prod-manifest.py'
       - 'BE/docker/test-prod-workflow.py'
-      - 'BE/docker/press-prod-preflight.py'
-      - 'BE/docker/test-prod-preflight.py'
       - 'BE/docker/test-prod-monitoring.py'
-      - 'BE/docker/test-prod-owner-postgres.py'
       - 'BE/docker/compose.monitoring.yml'
       - 'BE/docker/compose.monitoring.prod-bluegreen.yml'
       - 'BE/docker/alloy/*.alloy'
@@ -85,17 +72,10 @@ jobs:
         run: |
           pip install --quiet pyyaml
           python3 BE/docker/test-press-generation.py
-          python3 BE/docker/test-prod-bootstrap.py
-          python3 BE/docker/test-prod-deploy-guard.py
-          python3 BE/docker/test-prod-lock.py
           python3 BE/docker/test-prod-route.py
-          python3 BE/docker/test-prod-manifest.py
           python3 BE/docker/test-prod-workflow.py
-          python3 BE/docker/test-prod-preflight.py
           python3 BE/docker/test-prod-monitoring.py
           python3 BE/docker/alloy/verify.py
-          python3 BE/docker/test-prod-owner-postgres.py
-          python3 BE/docker/test-prod-deploy-contract.py
           python3 BE/docker/test-deploy-switch.py --ci
 
   press-proxy:
@@ -122,7 +102,7 @@ jobs:
         env:
           PHEEEEW_PRESS_OPERATIONS_IMAGE: pheeeew-press-operations-test
         # 재시작 후 HTTP timeout을 포함한 별도 시나리오는 보류 중이다.
-        run: ./gradlew :test --tests '*PressOperationsProxyIntegrationTest.정상_ON_배포는*' --no-daemon
+        run: ./gradlew :test --tests '*PressOperationsProxyIntegrationTest.정상_ON_배포는*' --tests '*PressOperationsProxyIntegrationTest.단일_앱_교체는*' --no-daemon
 
       - name: 프레스 운영 전환 테스트 리포트
         if: always()
