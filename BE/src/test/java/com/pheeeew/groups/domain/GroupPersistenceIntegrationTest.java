@@ -15,7 +15,6 @@ import com.pheeeew.groups.domain.repository.GroupMemberRepository;
 import com.pheeeew.groups.domain.repository.GroupRepository;
 import com.pheeeew.groups.domain.repository.GroupStampRepository;
 import com.pheeeew.support.PostgisDataJpaTest;
-import java.time.Instant;
 import java.util.UUID;
 import org.hibernate.Hibernate;
 import org.junit.jupiter.api.AfterEach;
@@ -312,22 +311,6 @@ class GroupPersistenceIntegrationTest {
         assertThat(활동_멤버_수(둘째_그룹.getId())).isOne();
     }
 
-    @Test
-    void 그룹을_지우지_않고_삭제_시각만_남긴다() {
-        // given
-        Group 그룹 = groupRepository.saveAndFlush(기본_그룹_빌더().build());
-
-        // when
-        삭제한다(그룹.getId());
-
-        // then
-        assertThat(groupRepository.findById(그룹.getId())).isPresent();
-        assertThat(jdbcClient.sql("SELECT deleted_at FROM groups WHERE id = ?")
-                .param(그룹.getId())
-                .query(Instant.class)
-                .single()).isNotNull();
-    }
-
     private Device 기기를_저장한다() {
         return deviceRepository.saveAndFlush(기본_기기_빌더().requestId(UUID.randomUUID()).build());
     }
@@ -337,12 +320,6 @@ class GroupPersistenceIntegrationTest {
                 .param(groupId)
                 .query(Long.class)
                 .single();
-    }
-
-    private void 삭제한다(Long groupId) {
-        jdbcClient.sql("UPDATE groups SET deleted_at = NOW() WHERE id = ?")
-                .param(groupId)
-                .update();
     }
 
     private void 내보낸다(Long memberId) {

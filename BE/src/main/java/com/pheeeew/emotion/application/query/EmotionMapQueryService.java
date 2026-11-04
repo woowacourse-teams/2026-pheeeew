@@ -13,6 +13,8 @@ import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.emotion.domain.repository.query.EmotionContentFilter;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchFilter;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchScope;
+import com.pheeeew.emotion.infra.metrics.MapReadObservation;
+import com.pheeeew.emotion.infra.metrics.MapReadObservation.Decision;
 import com.pheeeew.region.domain.Region;
 import com.pheeeew.region.domain.RegionLevel;
 import java.time.Clock;
@@ -68,20 +70,28 @@ public class EmotionMapQueryService {
     public List<EmotionRegionMapItemView> findRegionMap(
             EmotionSearchBounds bounds, RegionLevel level, UUID devicePublicId, EmotionSearchFilter filter
     ) {
-        if (TransactionSynchronizationManager.isActualTransactionActive() || !cacheable(level, filter)) {
+        MapReadObservation.query(filter.startDate(), filter.endDate(), true, defaultFilter(filter), clock);
+        MapReadObservation.filters(filter.scope().name(), filter.contentType().name());
+        Decision bypass = bypassReason(level, filter);
+        if (bypass != null) {
+            MapReadObservation.decision(bypass);
             return dbQueries.findRegionMapSql(bounds, level, devicePublicId, filter);
         }
 
+        MapReadObservation.decision(Decision.ELIGIBLE);
         EmotionMapDbQueryService.RegionRequest request = dbQueries.findRegionRequest(level, devicePublicId, filter);
 
         Long deviceId = request.deviceId();
         List<Region> regions = request.regions();
         if (regions.isEmpty()) {
+            MapReadObservation.decision(Decision.EMPTY);
             return List.of();
         }
 
+        MapReadObservation.decision(Decision.CACHE_ATTEMPT);
         Map<String, RegionEmotionSummary> summaries = regionSummaryCache.summaries(level);
         if (summaries == null) {
+            MapReadObservation.decision(Decision.CACHE_FALLBACK);
             summaries = dbQueries.findSummariesByRegionCodes(
                     regions.stream().map(Region::code).toList(), level, filter, deviceId);
         }
@@ -154,27 +164,64 @@ public class EmotionMapQueryService {
                 : EmotionCursorCodec.decodeV4WithinBounds(encodedCursor);
         cursor.validateSnapshotAt(Instant.now(clock));
         cursor.validateRequestedFilter(startDate, endDate, contentType, scope, null);
-        return findContentMap(cursor, devicePublicId, encodedCursor == null, pageSize, EmotionCursorCodec::encodeV4);
+        PinCandidateCache.Page cached = findCachedPins(cursor, devicePublicId, encodedCursor == null, pageSize);
+        if (cached != null) {
+            return dbQueries.findPinPageV4(cached, pageSize);
+        }
+
+        return dbQueries.findMapV4(cursor, devicePublicId, pageSize);
     }
 
     private EmotionMapPageView findContentMap(
             EmotionCursor cursor, UUID devicePublicId, boolean firstPage, int pageSize, Function<EmotionCursor, String> encoder
     ) {
-        if (!TransactionSynchronizationManager.isActualTransactionActive() && cacheable(RegionLevel.SIDO, cursor.filter())) {
-            Long deviceId = dbQueries.findValidatedDeviceId(devicePublicId, cursor.groupIds());
-
-            PinCandidateCache.Page cached = pinCandidateCache.find(cursor, firstPage, deviceId, pageSize);
-            if (cached != null) {
-                return dbQueries.findPinPage(cached, pageSize, encoder);
-            }
+        PinCandidateCache.Page cached = findCachedPins(cursor, devicePublicId, firstPage, pageSize);
+        if (cached != null) {
+            return dbQueries.findPinPage(cached, pageSize, encoder);
         }
 
         return dbQueries.findMap(cursor, devicePublicId, true, pageSize, encoder);
     }
 
-    private boolean cacheable(RegionLevel level, EmotionSearchFilter filter) {
-        return level != RegionLevel.EMD && filter.scope() == EmotionSearchScope.ALL
-                && filter.contentType() == EmotionContentFilter.ALL && filter.startDate() == null;
+    private PinCandidateCache.Page findCachedPins(
+            EmotionCursor cursor, UUID devicePublicId, boolean firstPage, int pageSize
+    ) {
+        EmotionSearchFilter filter = cursor.filter();
+        MapReadObservation.query(filter.startDate(), filter.endDate(), firstPage, defaultFilter(filter), clock);
+        MapReadObservation.filters(filter.scope().name(), filter.contentType().name());
+        Decision bypass = bypassReason(RegionLevel.SIDO, filter);
+        if (bypass == null) {
+            MapReadObservation.decision(Decision.ELIGIBLE);
+            Long deviceId = dbQueries.findValidatedDeviceId(devicePublicId, cursor.groupIds());
+
+            MapReadObservation.decision(Decision.CACHE_ATTEMPT);
+            PinCandidateCache.Page cached = pinCandidateCache.find(cursor, firstPage, deviceId, pageSize);
+            if (cached != null) {
+                return cached;
+            }
+            MapReadObservation.decision(Decision.CACHE_FALLBACK);
+        } else {
+            MapReadObservation.decision(bypass);
+        }
+
+        return null;
+    }
+
+    private Decision bypassReason(RegionLevel level, EmotionSearchFilter filter) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            return Decision.BYPASS_TRANSACTION;
+        }
+        if (level == RegionLevel.EMD) {
+            return Decision.BYPASS_LEVEL;
+        }
+        if (filter.startDate() != null) {
+            return Decision.BYPASS_PERIOD;
+        }
+        return defaultFilter(filter) ? null : Decision.BYPASS_FILTER;
+    }
+
+    private boolean defaultFilter(EmotionSearchFilter filter) {
+        return filter.scope() == EmotionSearchScope.ALL && filter.contentType() == EmotionContentFilter.ALL;
     }
 
     private Instant currentSnapshotAt() {

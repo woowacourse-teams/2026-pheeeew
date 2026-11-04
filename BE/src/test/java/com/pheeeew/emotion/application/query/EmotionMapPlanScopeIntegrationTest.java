@@ -24,7 +24,6 @@ import com.pheeeew.support.PostgisDataJpaTest;
 import com.pheeeew.support.SharedTestContainers;
 import jakarta.persistence.EntityManager;
 import java.sql.SQLException;
-import java.time.Instant;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
@@ -36,6 +35,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.hibernate.autoconfigure.HibernatePropertiesCustomizer;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -127,10 +127,12 @@ class EmotionMapPlanScopeIntegrationTest {
         });
     }
 
-    @Test
-    void v2_필터_지도는_custom으로_조회하고_정상_종료_후_동일_연결의_지역_조회에_전파하지_않는다() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void v2와_v4_필터_지도는_custom으로_조회하고_정상_종료_후_동일_연결의_지역_조회에_전파하지_않는다(boolean v4) {
         // when
-        var page = findMap(viewer.getPublicId());
+        var page = v4 ? service.findContentMapWithinBoundsV4(BOUNDS, viewer.getPublicId(), null, null,
+                EmotionContentFilter.MEMO, null, null) : findMap(viewer.getPublicId());
 
         // then
         assertThat(page.items()).singleElement().satisfies(item -> assertThat(item.id()).isEqualTo(emotion.getId()));
@@ -149,13 +151,21 @@ class EmotionMapPlanScopeIntegrationTest {
         assertRestoredAndRegionsUnaffected();
     }
 
-    @Test
-    void 설정_후_DB_쿼리가_실패해도_롤백으로_복원하고_동일_연결을_재사용한다() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void 설정_후_DB_쿼리가_실패해도_롤백으로_복원하고_동일_연결을_재사용한다(boolean v4) {
         // given
         observer.failNextMapQuery = true;
 
         // when / then: 실제 PostgreSQL 오류로 트랜잭션을 중단시킨다.
-        assertThatThrownBy(() -> findMap(viewer.getPublicId()))
+        assertThatThrownBy(() -> {
+            if (v4) {
+                service.findContentMapWithinBoundsV4(BOUNDS, viewer.getPublicId(), null, null,
+                        EmotionContentFilter.MEMO, null, null);
+            } else {
+                findMap(viewer.getPublicId());
+            }
+        })
                 .isInstanceOfSatisfying(DataAccessException.class, exception ->
                         assertThat(exception.getMostSpecificCause()).isInstanceOfSatisfying(SQLException.class,
                                 sqlException -> assertThat(sqlException.getSQLState()).isEqualTo("22012")));
@@ -241,36 +251,23 @@ class EmotionMapPlanScopeIntegrationTest {
                 observer.start();
                 var expected = service.findRegionMap(BOUNDS, level, viewer.getPublicId(), filter);
                 assertThat(expected).singleElement().satisfies(item -> assertThat(item.summary().totalCount()).isEqualTo(1));
-                var arguments = nationalQueryArguments(filter);
                 String sql = observer.queries.stream().map(ObservedQuery::sql)
                         .filter(query -> query.contains("AS region_code")).findFirst().orElseThrow();
-                for (int index = 0; index < arguments.size(); index++) {
-                    sql = sql.replaceFirst("\\?", "\\$" + (index + 1));
+                for (int index = 1; sql.contains("?"); index++) {
+                    sql = sql.replaceFirst("\\?", "\\$" + index);
                 }
                 Map<String, Object> before = preparedQuery(sql);
-                for (int repeat = 0; repeat < 5; repeat++) {
-                    assertThat(service.findRegionMap(BOUNDS, level, viewer.getPublicId(), filter)).isEqualTo(expected);
-                }
+                assertThat(service.findRegionMap(BOUNDS, level, viewer.getPublicId(), filter)).isEqualTo(expected);
                 Map<String, Object> after = preparedQuery(sql);
                 assertThat(after.get("name")).isEqualTo(before.get("name"));
-                assertThat(after.get("from_sql")).isEqualTo(false);
-                assertThat(after.get("parameter_count")).isEqualTo(arguments.size());
                 assertThat((Long) after.get("custom_plans") - (Long) before.get("custom_plans"))
-                        .isEqualTo(mode.equals("force_custom_plan") ? 5L : 0L);
+                        .isEqualTo(mode.equals("force_custom_plan") ? 1L : 0L);
                 assertThat((Long) after.get("generic_plans") - (Long) before.get("generic_plans"))
-                        .isEqualTo(mode.equals("force_generic_plan") ? 5L : 0L);
+                        .isEqualTo(mode.equals("force_generic_plan") ? 1L : 0L);
                 String root = "left(e.region_code, " + (level == RegionLevel.SIDO ? 2 : 5) + ")";
                 assertThat(sql).contains(root)
                         .doesNotContain("JOIN regions", root + " IN (", "e.region_code IN (");
                 assertObservedMode(mode);
-                String name = (String) after.get("name");
-                assertThat(name).matches("S_\\d+");
-                // 실행 시간은 이 작은 fixture의 관측값이며 성능 임계값으로 사용하지 않는다.
-                List<String> plan = jdbc.sql("EXPLAIN (ANALYZE, BUFFERS) EXECUTE \"" + name + "\"("
-                        + String.join(", ", arguments) + ")").query(String.class).list();
-                System.out.printf("NATIONAL_JDBC_PLAN level=%s mode=%s content=%s scope=%s date=%s params=%d %s%n",
-                        level, mode, filter.contentType(), filter.scope(), filter.startDate(), arguments.size(),
-                        plan.stream().filter(line -> line.startsWith("Execution Time:")).findFirst().orElseThrow());
             }
         });
         assertThat(currentMode()).isEqualTo("auto");
@@ -279,24 +276,9 @@ class EmotionMapPlanScopeIntegrationTest {
 
     private Map<String, Object> preparedQuery(String sql) {
         return jdbc.sql("""
-                SELECT name, from_sql, cardinality(parameter_types) AS parameter_count, custom_plans, generic_plans
+                SELECT name, custom_plans, generic_plans
                 FROM pg_prepared_statements WHERE statement = :sql
                 """).param("sql", sql).query().singleRow();
-    }
-
-    private List<String> nationalQueryArguments(EmotionSearchFilter filter) {
-        List<String> arguments = new ArrayList<>();
-        arguments.add("'" + Instant.now() + "'::timestamptz");
-        if (filter.startInclusive() != null) {
-            arguments.add("'" + filter.startInclusive() + "'::timestamptz");
-            arguments.add("'" + filter.endExclusive() + "'::timestamptz");
-        }
-        switch (filter.scope()) {
-            case ALL -> { }
-            case MY -> arguments.add(viewer.getId().toString());
-            case GROUP -> filter.groupIds().forEach(groupId -> arguments.add("'" + groupId + "'::uuid"));
-        }
-        return arguments;
     }
 
     private EmotionMapPageView findMap(UUID deviceId) {

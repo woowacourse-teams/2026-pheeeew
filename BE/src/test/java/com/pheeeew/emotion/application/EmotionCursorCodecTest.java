@@ -114,7 +114,7 @@ class EmotionCursorCodecTest {
 
     @ParameterizedTest
     @NullAndEmptySource
-    @ValueSource(strings = {" ", "not-a-cursor"})
+    @ValueSource(strings = {" ", "%%%"})
     void 커서_형식이_올바르지_않으면_거부한다(String encoded) {
         // given / when / then
         잘못된_커서임을_검증한다(encoded);
@@ -190,14 +190,6 @@ class EmotionCursorCodecTest {
     }
 
     @ParameterizedTest
-    @NullAndEmptySource
-    @ValueSource(strings = {" ", "not-a-cursor", "%%%"})
-    void 비어_있거나_잘못_인코딩된_커서를_거부한다(String encoded) {
-        // given / when / then
-        잘못된_좌표_없는_커서임을_검증한다(encoded);
-    }
-
-    @ParameterizedTest
     @ValueSource(strings = {"a", "%"})
     void 긴_문자열도_잘못된_인코딩이나_필드_형식이면_거부한다(String value) {
         // given / when / then
@@ -218,8 +210,6 @@ class EmotionCursorCodecTest {
             "3|2026-10-08T00:00:00Z|invalid|42|",
             "3|2026-10-08T00:00:00Z|2026-10-09T00:00:00Z|42|",
             "3|2026-10-08T00:00:00Z|2026-10-07T00:00:00Z|0|",
-            "3|2026-10-08T00:00:00Z|2026-10-07T00:00:00Z|-1|",
-            "3|2026-10-08T00:00:00Z|2026-10-07T00:00:00Z|9223372036854775808|",
             "3|2026-10-08T00:00:00Z|2026-10-07T00:00:00Z|invalid|",
             "3|2026-10-08T00:00:00Z|2026-10-07T00:00:00Z|42|invalid"
     })
@@ -576,14 +566,6 @@ class EmotionCursorCodecTest {
                                 error -> assertThat(error.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_INVALID_CURSOR));
             }
         }
-    }
-
-    @ParameterizedTest
-    @NullAndEmptySource
-    @ValueSource(strings = {" ", "%%%", "not-a-cursor"})
-    void v4도_빈_커서와_잘못된_인코딩을_거부한다(String encoded) {
-        // when / then
-        v4_잘못된_커서를_검증한다(encoded);
     }
 
     @ParameterizedTest

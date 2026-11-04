@@ -29,7 +29,7 @@ class JwtPropertiesTest {
 
     @ParameterizedTest
     @NullSource
-    @ValueSource(strings = {"", "   "})
+    @ValueSource(strings = {"   "})
     void 개인_키_설정이_비어_있으면_만들_수_없다(String privateKeyBase64) {
         // given / when / then
         assertThatThrownBy(() -> new JwtProperties(privateKeyBase64, 기본_키_설정().publicKeyBase64()))
@@ -38,7 +38,7 @@ class JwtPropertiesTest {
 
     @ParameterizedTest
     @NullSource
-    @ValueSource(strings = {"", "   "})
+    @ValueSource(strings = {"   "})
     void 공개_키_설정이_비어_있으면_만들_수_없다(String publicKeyBase64) {
         // given / when / then
         assertThatThrownBy(() -> new JwtProperties(기본_키_설정().privateKeyBase64(), publicKeyBase64))

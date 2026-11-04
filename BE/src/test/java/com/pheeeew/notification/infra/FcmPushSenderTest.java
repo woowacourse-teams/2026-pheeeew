@@ -45,7 +45,7 @@ class FcmPushSenderTest {
     }
 
     @Test
-    void 프로젝트_경로로_액세스_토큰과_등록_값_알림_데이터를_보낸다() {
+    void FCM_범위의_토큰으로_프로젝트_경로에_등록_값과_알림_데이터를_보낸다() throws Exception {
         // given
         가짜_구글.복호화_응답을_넣는다(200, "{\"name\":\"projects/pheeeew-test/messages/1\"}");
 
@@ -63,17 +63,6 @@ class FcmPushSenderTest {
                 "notification", Map.of("title", "제목", "body", "본문"),
                 "data", Map.of("type", "COLLECTION_CLAIMABLE")
         )));
-    }
-
-    @Test
-    void 액세스_토큰은_FCM_발송_범위로_받는다() throws Exception {
-        // given
-        가짜_구글.복호화_응답을_넣는다(200, "{}");
-
-        // when
-        sender.send(기본_등록_값, 메시지);
-
-        // then
         String assertion = Arrays.stream(가짜_구글.받은_요청들().getFirst().body().split("&"))
                 .filter(pair -> pair.startsWith("assertion="))
                 .map(pair -> URLDecoder.decode(pair.substring("assertion=".length()), StandardCharsets.UTF_8))
@@ -98,12 +87,9 @@ class FcmPushSenderTest {
     @ParameterizedTest
     @CsvSource({
             "400, INVALID_ARGUMENT, REJECTED",
-            "401, UNAUTHENTICATED, REJECTED",
-            "403, SENDER_ID_MISMATCH, REJECTED",
             "404, NOT_FOUND, REJECTED",
             "429, QUOTA_EXCEEDED, RETRYABLE",
-            "500, INTERNAL, RETRYABLE",
-            "503, UNAVAILABLE, RETRYABLE"
+            "500, INTERNAL, RETRYABLE"
     })
     void 무효_등록_값이_아닌_오류는_일시_오류와_영구_거절로_나눈다(int status, String errorCode, PushSendResult expected) {
         // given

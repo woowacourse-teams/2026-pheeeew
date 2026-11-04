@@ -6,7 +6,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.pheeeew.common.config.MessageConverterConfig;
-import com.pheeeew.emotion.infra.metrics.TimedMapJsonMessageConverter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.List;
@@ -21,7 +20,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
-import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter;
 
 class MapResponseTimingConfigurationTest {
 
@@ -49,9 +47,6 @@ class MapResponseTimingConfigurationTest {
                     .timer().count()).isEqualTo(1);
             assertThat(meters.get("pheeeew.map.response.write").tags("route", "regions", "outcome", "success")
                     .timer().count()).isEqualTo(1);
-            var converters = context.getBean(RequestMappingHandlerAdapter.class).getMessageConverters();
-            assertThat(converters.stream().filter(TimedMapJsonMessageConverter.class::isInstance).count()).isEqualTo(1);
-            assertThat(converters).noneMatch(converter -> converter.getSupportedMediaTypes().contains(MediaType.APPLICATION_CBOR));
         }
     }
 

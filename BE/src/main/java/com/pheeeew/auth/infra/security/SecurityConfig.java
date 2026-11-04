@@ -30,6 +30,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.GET, "/api/v1/press-race", "/api/v1/press-race/recovery").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v2/app/version").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v2/app/config").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v3/devices/nicknames/availability").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v3/devices/me/nickname").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/collection-cards", "/api/v1/collection-cards/today", "/api/v1/collection-cards/*").authenticated()

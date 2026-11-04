@@ -405,7 +405,7 @@ class CollectionQueryServiceIntegrationTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"false,false", "true,false", "false,true"})
+    @CsvSource({"true,false", "false,true"})
     void 오늘_조회는_카드_감정의_집계가_없으면_그_횟수를_0으로_보여_준다(boolean hasStamps, boolean hasPresses) {
         // given
         var device = devices.saveAndFlush(기본_기기_빌더().build());
@@ -431,7 +431,7 @@ class CollectionQueryServiceIntegrationTest {
     }
 
     @Test
-    void 활동이_없는_감정으로_받은_카드도_오늘_조회_상세_보관함에서_0으로_조회한다() {
+    void 오늘_감정별_진행도는_0이어도_카드_상세와_보관함은_전체_횟수를_보여_준다() {
         // given
         var device = devices.saveAndFlush(기본_기기_빌더().build());
         LocalDate today = LocalDate.of(2026, 10, 22);
@@ -454,12 +454,12 @@ class CollectionQueryServiceIntegrationTest {
                 });
         assertThat(todayResult.claimed()).isTrue();
         assertThat(detail.state()).isEqualTo(EmotionState.FRUSTRATED);
-        assertThat(detail.stampCount()).isZero();
-        assertThat(detail.pressCount()).isZero();
+        assertThat(detail.stampCount()).isEqualTo(1);
+        assertThat(detail.pressCount()).isEqualTo(100);
         assertThat(history.items()).singleElement().satisfies(item -> {
             assertThat(item.cardId()).isEqualTo(claimed.cardId());
-            assertThat(item.stampCount()).isZero();
-            assertThat(item.pressCount()).isZero();
+            assertThat(item.stampCount()).isEqualTo(1);
+            assertThat(item.pressCount()).isEqualTo(100);
         });
     }
 }

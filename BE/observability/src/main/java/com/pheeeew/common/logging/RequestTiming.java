@@ -31,8 +31,13 @@ public final class RequestTiming {
     }
 
     public static <S extends Enum<S> & RequestTimingStage> void record(S stage, long durationNanos) {
-        if (durationNanos >= 0 && RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes
-                && attributes.getRequest().getAttribute(ATTRIBUTE) instanceof RequestTiming timing) {
+        if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes) {
+            record(attributes.getRequest(), stage, durationNanos);
+        }
+    }
+
+    public static <S extends Enum<S> & RequestTimingStage> void record(HttpServletRequest request, S stage, long durationNanos) {
+        if (durationNanos >= 0 && request.getAttribute(ATTRIBUTE) instanceof RequestTiming timing) {
             timing.add(stage, durationNanos);
         }
     }

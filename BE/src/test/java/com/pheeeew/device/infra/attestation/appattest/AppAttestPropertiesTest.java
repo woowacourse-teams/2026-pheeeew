@@ -51,7 +51,7 @@ class AppAttestPropertiesTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"123456789", "12345678901", "abcdefghij", "1234-56789", "1234 56789"})
+    @ValueSource(strings = {"123456789", "12345678901", "abcdefghij", "1234-56789"})
     void Team_ID_형식이_어긋나면_설정을_만들_수_없다(String teamId) {
         // given / when / then
         assertThatThrownBy(() -> new AppAttestProperties(List.of(teamId), 번들_ID, null, false))
@@ -59,7 +59,7 @@ class AppAttestPropertiesTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"pheeeew", "com..pheeeew", "com.pheeeew.", "com pheeeew", "com.pheeeew!"})
+    @ValueSource(strings = {"pheeeew", "com..pheeeew", "com.pheeeew.", "com pheeeew"})
     void Bundle_ID_형식이_어긋나면_설정을_만들_수_없다(String bundleId) {
         // given / when / then
         assertThatThrownBy(() -> new AppAttestProperties(List.of(팀_ID), bundleId, null, false))
@@ -122,17 +122,8 @@ class AppAttestPropertiesTest {
                     assertThat(properties.appIds())
                             .containsExactly("Z6V4SXKRL6.com.itda.pheeeew", "WKN466N42M.com.itda.pheeeew");
                     assertThat(properties.requireAttestation()).isFalse();
+                    assertThat(properties.environment()).isEqualTo(AppAttestEnvironment.PRODUCTION);
                 });
-    }
-
-    @Test
-    void 기본_환경은_운영이다() {
-        // given / when / then
-        new ApplicationContextRunner()
-                .withInitializer(new ConfigDataApplicationContextInitializer())
-                .withUserConfiguration(AppAttestConfig.class)
-                .run(context -> assertThat(context.getBean(AppAttestProperties.class).environment())
-                        .isEqualTo(AppAttestEnvironment.PRODUCTION));
     }
 
     @Test

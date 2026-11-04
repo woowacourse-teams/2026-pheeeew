@@ -2,6 +2,7 @@ package com.pheeeew.emotion.application.dto;
 
 import com.pheeeew.emotion.domain.Emotion;
 import com.pheeeew.emotion.domain.EmotionState;
+import com.pheeeew.emotion.domain.repository.projection.EmotionMapPin;
 import com.pheeeew.groups.application.dto.GroupStampResult;
 import java.time.Instant;
 import java.util.UUID;
@@ -16,6 +17,16 @@ public record EmotionMapItemView(
         GroupStampResult groupStamp,
         UUID groupId
 ) {
+
+    public static EmotionMapItemView from(Emotion emotion) {
+        return new EmotionMapItemView(emotion.getId(), emotion.getLongitude(), emotion.getLatitude(),
+                emotion.getCreatedAt(), emotion.getState(), emotion.getRotationDegrees(), null, null);
+    }
+
+    public static EmotionMapItemView from(EmotionMapPin pin) {
+        return new EmotionMapItemView(pin.id(), pin.longitude(), pin.latitude(), pin.createdAt(), pin.state(),
+                pin.rotationDegrees(), null, null);
+    }
 
     public static EmotionMapItemView of(Emotion emotion, GroupStampResult stamp) {
         return new EmotionMapItemView(emotion.getId(), emotion.getLongitude(), emotion.getLatitude(),

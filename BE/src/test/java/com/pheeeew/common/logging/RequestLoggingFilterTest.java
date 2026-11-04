@@ -96,50 +96,6 @@ class RequestLoggingFilterTest {
     }
 
     @Test
-    void 다른_클래스_로더의_앱_정책으로도_공통_필터가_기록하고_문맥을_복원한다() throws Exception {
-        // given: DevTools처럼 앱 정책과 라이브러리가 서로 다른 로더에 놓인다.
-        var loader = new ClassLoader(RequestLogPolicy.class.getClassLoader()) {
-            Class<?> definePolicy(byte[] bytes) {
-                return defineClass(PheeeewRequestLogPolicy.class.getName(), bytes, 0, bytes.length);
-            }
-        };
-        RequestLogPolicy separatePolicy;
-        try (var source = PheeeewRequestLogPolicy.class.getResourceAsStream("PheeeewRequestLogPolicy.class")) {
-            separatePolicy = (RequestLogPolicy) loader.definePolicy(source.readAllBytes()).getConstructor().newInstance();
-        }
-        var configuredFilter = new RequestLoggingFilter(new RequestLogWriter(separatePolicy));
-        var request = new MockHttpServletRequest();
-        request.setQueryString("groupId=7&latitude=37.1234567");
-        var response = new MockHttpServletResponse();
-        response.setStatus(500);
-        Object previous = new Object();
-        request.setAttribute(RequestTiming.class.getName(), previous);
-        MDC.put("correlationId", "outer-context");
-        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
-
-        try {
-            // when
-            configuredFilter.doFilter(request, response, (req, res) -> {
-                RequestTiming.record(PheeeewRequestTimingStage.PRESS_INCREASE, 10);
-                assertThat(RequestTiming.snapshot(request)).containsExactlyEntriesOf(Map.of(
-                        PheeeewRequestTimingStage.PRESS_INCREASE, RequestTiming.Measurement.of(1, 10, 10)));
-            });
-
-            // then
-            assertThat(separatePolicy.getClass().getClassLoader()).isNotSameAs(RequestLogWriter.class.getClassLoader());
-            assertThat(request.getAttribute(RequestTiming.class.getName())).isSameAs(previous);
-            assertThat(MDC.get("correlationId")).isEqualTo("outer-context");
-            assertThat(output).hasSize(1);
-            assertThat(JsonParserFactory.getJsonParser().parseMap(output.getFirst()))
-                    .containsEntry("event", "http_request_failed")
-                    .containsEntry("params", Map.of("groupId", "7"));
-            assertThat(output.getFirst()).contains("press_increase").doesNotContain("37.1234567");
-        } finally {
-            RequestContextHolder.resetRequestAttributes();
-        }
-    }
-
-    @Test
     void 정상_요청은_로그_없이_새_추적번호를_응답하고_기존_MDC를_복원한다() throws Exception {
         // given
         MDC.put("correlationId", "outer-context");

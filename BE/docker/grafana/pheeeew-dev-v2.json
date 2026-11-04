@@ -2686,6 +2686,405 @@
         }
       ],
       "id": 127
+    },
+    {
+      "id": 160,
+      "type": "row",
+      "title": "07  v4 지도 진단  /  기간·캐시 경로와 요청 단계",
+      "gridPos": {
+        "x": 0,
+        "y": 141,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 161,
+      "type": "table",
+      "title": "v4 지도 · 조건·경로별 요청 수",
+      "description": "요청 종료 시 한 번 기록한 카운터의 선택 기간 increase 추정치예요. query가 unclassified이면 인증·입력·커서 등의 이유로 검증된 조회 조건을 얻지 못한 요청이에요. 알려진 query에는 이후 DB·기기 오류도 포함돼요. decision은 경로 선택, outcome은 최종 HTTP 결과이며 cache_hit도 응답 성공을 뜻하지 않아요. 표본 로그 횟수와는 달라요. 일부 기간 수집으로도 값이 나올 수 있어요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 142,
+        "w": 24,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "데이터 없음"
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (instance, route, query, page, decision, outcome) (increase(pheeeew_map_read_requests_total{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\"}[$__range]))",
+          "legendFormat": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": false,
+          "instant": true,
+          "interval": "1m",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 162,
+      "type": "stat",
+      "title": "v4 지도 · 선택 기간 기본 한 달·캐시 우회 비중",
+      "description": "기본 한 달 비중과 전체 우회율의 분모는 query!=unclassified인 검증된 조회 조건의 요청이에요(HTTP 성공만이 아님). 한 달 우회율은 month_current_default 요청이 분모예요. 월 조건은 KST 날짜 형태가 앱 기본값과 같다는 뜻이며 기본 버튼 사용을 증명하지 않아요. bypass_*는 캐시 미시도이며 cache_fallback은 별도예요. 분모가 0·없음·표본 부족이면 빈 값이고, 관측된 분모가 양수인데 해당 분자가 없으면 0%예요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 150,
+        "w": 24,
+        "h": 6
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "noValue": "데이터 없음"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "vertical",
+        "textMode": "auto",
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "((( sum by (instance, route) (increase(pheeeew_map_read_requests_total{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\",query=\"month_current_default\"}[$__range])) ) or on (instance, route) (( sum by (instance, route) (increase(pheeeew_map_read_requests_total{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\",query!=\"unclassified\"}[$__range])) ) * 0)) / (sum by (instance, route) (increase(pheeeew_map_read_requests_total{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\",query!=\"unclassified\"}[$__range]))) * 100) and on (instance, route) ((sum by (instance, route) (increase(pheeeew_map_read_requests_total{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\",query!=\"unclassified\"}[$__range]))) > 0)",
+          "legendFormat": "{{instance}} · {{route}} · 기본 한 달 / 검증된 조회",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": false,
+          "instant": true,
+          "interval": "1m"
+        },
+        {
+          "refId": "B",
+          "expr": "((( sum by (instance, route) (increase(pheeeew_map_read_requests_total{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\",query!=\"unclassified\",decision=~\"bypass_.*\"}[$__range])) ) or on (instance, route) (( sum by (instance, route) (increase(pheeeew_map_read_requests_total{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\",query!=\"unclassified\"}[$__range])) ) * 0)) / (sum by (instance, route) (increase(pheeeew_map_read_requests_total{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\",query!=\"unclassified\"}[$__range]))) * 100) and on (instance, route) ((sum by (instance, route) (increase(pheeeew_map_read_requests_total{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\",query!=\"unclassified\"}[$__range]))) > 0)",
+          "legendFormat": "{{instance}} · {{route}} · 캐시 우회 / 검증된 조회",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": false,
+          "instant": true,
+          "interval": "1m"
+        },
+        {
+          "refId": "C",
+          "expr": "((( sum by (instance, route) (increase(pheeeew_map_read_requests_total{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\",query=\"month_current_default\",decision=~\"bypass_.*\"}[$__range])) ) or on (instance, route) (( sum by (instance, route) (increase(pheeeew_map_read_requests_total{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\",query=\"month_current_default\"}[$__range])) ) * 0)) / (sum by (instance, route) (increase(pheeeew_map_read_requests_total{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\",query=\"month_current_default\"}[$__range]))) * 100) and on (instance, route) ((sum by (instance, route) (increase(pheeeew_map_read_requests_total{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\",query=\"month_current_default\"}[$__range]))) > 0)",
+          "legendFormat": "{{instance}} · {{route}} · 한 달 우회 / 한 달 조회",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": false,
+          "instant": true,
+          "interval": "1m"
+        }
+      ]
+    },
+    {
+      "id": 163,
+      "type": "timeseries",
+      "title": "v4 지도 · 단계별 평균",
+      "description": "각 단계가 실제 실행된 성공 호출의 포함 시간이에요. 컨트롤러·서비스·DB 경로·캐시는 중첩되므로 합산하지 않아요. map_pre_mvc는 인증·필터·디스패치·매핑을, map_mvc_pre_controller는 인자 해석 등을 포함한 사전 처리를 뜻해요. pure SQL·서명·파싱 시간으로 해석하지 않아요. 누락은 0초가 아니에요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 156,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "noValue": "데이터 없음",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(sum by (instance, stage) (rate(pheeeew_map_read_stage_seconds_sum{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\",outcome=\"success\"}[$__rate_interval])) / (sum by (instance, stage) (rate(pheeeew_map_read_stage_seconds_count{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\",outcome=\"success\"}[$__rate_interval])))) and ((sum by (instance, stage) (rate(pheeeew_map_read_stage_seconds_count{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\",outcome=\"success\"}[$__rate_interval]))) > 0)",
+          "legendFormat": "{{instance}} · {{stage}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": true,
+          "instant": false,
+          "interval": "1m"
+        }
+      ]
+    },
+    {
+      "id": 164,
+      "type": "timeseries",
+      "title": "v4 지도 · 단계별 p95",
+      "description": "단계별 버킷 보간 추정값이에요. 단계별 실행 모집단이 다르며 p95끼리 더하거나 빼지 않아요. 마지막 유한 버킷 1초에 붙는 값은 실제 꼬리를 제한할 수 있어 count/sum/max와 요청 표본을 함께 확인해요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 156,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "noValue": "데이터 없음",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (instance, stage, le) (rate(pheeeew_map_read_stage_seconds_bucket{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\",outcome=\"success\"}[$__rate_interval]))) and on (instance, stage) ((sum by (instance, stage) (rate(pheeeew_map_read_stage_seconds_count{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\",outcome=\"success\"}[$__rate_interval]))) > 0)",
+          "legendFormat": "{{instance}} · {{stage}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": true,
+          "instant": false,
+          "interval": "1m"
+        }
+      ]
+    },
+    {
+      "id": 165,
+      "type": "timeseries",
+      "title": "v4 지도 · 서버 HTTP와 JSON 출력 평균",
+      "description": "서버 HTTP 관측과 JSON 변환·출력의 평균을 나란히 봐요. 출력은 순수 직렬화 CPU가 아니라 스트림 대기도 포함하며 쓰기 성공은 200 성공과 같은 모집단이 아니에요. 두 평균을 차감해 미계측 시간을 만들지 않아요. 클라이언트 네트워크·수신 완료 및 Servlet 진입 전 대기는 별도예요. v2 지역의 버퍼·gzip 경로와도 구분해요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 164,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "noValue": "데이터 없음",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(sum by (instance, uri) (rate(http_server_requests_seconds_sum{job=\"pheeeew-api\",environment=\"dev\",method=\"GET\",uri=~\"/api/v4/emotions/map(/regions)?\",status=\"200\"}[$__rate_interval])) / (sum by (instance, uri) (rate(http_server_requests_seconds_count{job=\"pheeeew-api\",environment=\"dev\",method=\"GET\",uri=~\"/api/v4/emotions/map(/regions)?\",status=\"200\"}[$__rate_interval])))) and ((sum by (instance, uri) (rate(http_server_requests_seconds_count{job=\"pheeeew-api\",environment=\"dev\",method=\"GET\",uri=~\"/api/v4/emotions/map(/regions)?\",status=\"200\"}[$__rate_interval]))) > 0)",
+          "legendFormat": "{{instance}} · HTTP {{uri}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": true,
+          "instant": false,
+          "interval": "1m"
+        },
+        {
+          "refId": "B",
+          "expr": "(sum by (instance, route) (rate(pheeeew_map_response_write_seconds_sum{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\",outcome=\"success\"}[$__rate_interval])) / (sum by (instance, route) (rate(pheeeew_map_response_write_seconds_count{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\",outcome=\"success\"}[$__rate_interval])))) and ((sum by (instance, route) (rate(pheeeew_map_response_write_seconds_count{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\",outcome=\"success\"}[$__rate_interval]))) > 0)",
+          "legendFormat": "{{instance}} · JSON {{route}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": true,
+          "instant": false,
+          "interval": "1m"
+        }
+      ]
+    },
+    {
+      "id": 166,
+      "type": "stat",
+      "title": "지도 진단 · 표본·상한 생략 수",
+      "description": "sampled는 진단 로그로 선정·기록한 횟수, suppressed는 표본 후보 중 전체 상한으로 생략된 횟수예요. 진단 옵션은 기본 비활성이고 dev에서만 활성화할 수 있어요. 요청량·지연 분포·hit 비율은 이 표본으로 계산하지 않아요. 미생성·미수집·무호출은 데이터 없음으로 남을 수 있어요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 164,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "noValue": "데이터 없음"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "vertical",
+        "textMode": "auto",
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (instance, result) (increase(pheeeew_map_diagnostic_logs_total{job=\"pheeeew-api\",environment=\"dev\"}[$__range]))",
+          "legendFormat": "{{instance}} · {{result}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": false,
+          "instant": true,
+          "interval": "1m"
+        }
+      ]
+    },
+    {
+      "id": 167,
+      "type": "logs",
+      "title": "v4 지도 · 제한된 진단 표본",
+      "description": "개발 전용 map_read_sample 표본이에요. 1% 무작위와 100ms 이상 추가 표본을 합쳐 초당 전체 상한을 적용하므로 이 로그로 전체 p95나 우회 비율을 계산하지 않아요. sampleReason·timings·query·decision을 같은 correlationId에서 읽고 원인 입증과 추론을 구분해요. 옵션 비활성이나 해당 표본 없음은 정상 단정이 아니에요.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 172,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{job=\"pheeeew-api\",environment=\"dev\",event=\"map_read_sample\"} | json | apiVersion = \"v4\" | verification != \"true\"",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "queryType": "range",
+          "editorMode": "code",
+          "maxLines": 100
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": false,
+        "prettifyLogMessage": true,
+        "enableLogDetails": true,
+        "sortOrder": "Descending",
+        "dedupStrategy": "none"
+      }
     }
   ]
 }

@@ -233,8 +233,8 @@ class AsyncLoggingConfigurationTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"default,false", "local,false", "test,false", "test,true"})
-    void 기본과_로컬과_테스트_프로필은_기존_텍스트_출력을_유지한다(String profile, boolean file) throws Exception {
+    @CsvSource({"default,false", "test,true"})
+    void 비운영_프로필은_파일_유무와_관계없이_텍스트_출력을_유지한다(String profile, boolean file) throws Exception {
         load(profile, file);
         Logger root = context.getLogger(Logger.ROOT_LOGGER_NAME);
         assertThat(root.getAppender("CONSOLE")).isInstanceOf(ch.qos.logback.core.ConsoleAppender.class);

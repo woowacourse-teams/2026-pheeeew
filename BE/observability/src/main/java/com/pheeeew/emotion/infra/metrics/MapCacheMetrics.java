@@ -19,6 +19,11 @@ public final class MapCacheMetrics {
     }
 
     public void request(String result) {
+        try {
+            MapReadObservation.cacheResult(cache, result);
+        } catch (RuntimeException ignored) {
+            // 요청별 진단이 기존 캐시 조회와 집계 지표에 영향을 주지 않게 한다.
+        }
         meters.counter("pheeeew.map.cache.requests", "cache", cache, "result", result).increment();
     }
 

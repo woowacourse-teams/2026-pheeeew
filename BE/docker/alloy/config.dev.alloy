@@ -33,7 +33,7 @@ prometheus.relabel "app" {
 	// pheeeew_group_press_* 는 일부러 넣지 않는다. ADR-0032 의 전환이 끝나면 사라지는 경로다.
 	rule {
 		source_labels = ["__name__"]
-		regex         = "up|scrape_duration_seconds|scrape_samples_scraped|http_server_requests_seconds_(count|sum|bucket|max)|pheeeew_sigh_list_(query_seconds_(count|sum|bucket|max)|results_(count|sum|max))|jvm_memory_(used|committed|max)_bytes|jvm_gc_pause_seconds_(count|sum|max)|jvm_threads_live_threads|tomcat_threads_(busy|current|config_max)_threads|process_(cpu_usage|uptime_seconds)|system_cpu_usage|hikaricp_connections(_(active|idle|pending|max|min|timeout_total|(acquire|usage)_seconds_(count|sum|max)))?|spring_data_repository_invocations_seconds_(count|sum|bucket|max)|pheeeew_emotion_create_throttled_total|pheeeew_device_attestation_(accepted|skipped|verdict|rejected)_total|pheeeew_device_appattest_(accepted|rejected)_total|pheeeew_emotion_press_((empty|deadlocks)_total|(applied|clamped|states)_(count|sum|max)|query_seconds_(count|sum|bucket|max))|pheeeew_region_query_seconds_(count|sum|bucket|max)|pheeeew_map_(read_stage|response_write)_seconds_(count|sum|bucket|max)|pheeeew_map_cache_((requests|rebuilds|failures|maintenance_failures|maintenance_busy)_total|(lock_wait|maintenance|rebuild|pin_search)_seconds_(count|sum|max)|pin_scanned_(count|sum|max)|pending_age_seconds|candidates)"
+		regex         = "up|scrape_duration_seconds|scrape_samples_scraped|http_server_requests_seconds_(count|sum|bucket|max)|pheeeew_sigh_list_(query_seconds_(count|sum|bucket|max)|results_(count|sum|max))|jvm_memory_(used|committed|max)_bytes|jvm_gc_pause_seconds_(count|sum|max)|jvm_threads_live_threads|tomcat_threads_(busy|current|config_max)_threads|process_(cpu_usage|uptime_seconds)|system_cpu_usage|hikaricp_connections(_(active|idle|pending|max|min|timeout_total|(acquire|usage)_seconds_(count|sum|max)))?|spring_data_repository_invocations_seconds_(count|sum|bucket|max)|pheeeew_emotion_create_throttled_total|pheeeew_device_attestation_(accepted|skipped|verdict|rejected)_total|pheeeew_device_appattest_(accepted|rejected)_total|pheeeew_emotion_press_((empty|deadlocks)_total|(applied|clamped|states)_(count|sum|max)|query_seconds_(count|sum|bucket|max))|pheeeew_region_query_seconds_(count|sum|bucket|max)|pheeeew_map_read_requests_total|pheeeew_map_diagnostic_logs_total|pheeeew_map_(read_stage|response_write)_seconds_(count|sum|bucket|max)|pheeeew_map_cache_((requests|rebuilds|failures|maintenance_failures|maintenance_busy)_total|(lock_wait|maintenance|rebuild|pin_search)_seconds_(count|sum|max)|pin_scanned_(count|sum|max)|pending_age_seconds|candidates)"
 		action        = "keep"
 	}
 }
@@ -102,7 +102,7 @@ loki.process "http_requests" {
 	}
 	// 개인정보 검토를 마친 클래스와 해당 이벤트의 조합만 전송한다.
 	stage.match {
-		selector            = "{job=\"pheeeew-api\", logger!~\"com[.]pheeeew[.]common[.]logging[.](RequestLogWriter|ScheduledTaskErrorHandler)\"}"
+		selector            = "{job=\"pheeeew-api\", logger!~\"com[.]pheeeew[.](common[.]logging[.](RequestLogWriter|ScheduledTaskErrorHandler)|emotion[.]infra[.]metrics[.]MapReadDiagnostics)\"}"
 		action              = "drop"
 		drop_counter_reason = "unreviewed_logger"
 	}
@@ -121,6 +121,19 @@ loki.process "http_requests" {
 
 	stage.match {
 		selector            = "{job=\"pheeeew-api\", logger=\"com.pheeeew.common.logging.ScheduledTaskErrorHandler\", level!=\"ERROR\"}"
+		action              = "drop"
+		drop_counter_reason = "unreviewed_level"
+	}
+
+	// 개발 환경에서 명시적으로 켠 지도 진단 표본만 허용한다. 운영 설정에는 이 logger를 허용하지 않는다.
+	stage.match {
+		selector            = "{job=\"pheeeew-api\", logger=\"com.pheeeew.emotion.infra.metrics.MapReadDiagnostics\", event!=\"map_read_sample\"}"
+		action              = "drop"
+		drop_counter_reason = "unreviewed_event"
+	}
+
+	stage.match {
+		selector            = "{job=\"pheeeew-api\", logger=\"com.pheeeew.emotion.infra.metrics.MapReadDiagnostics\", level!=\"INFO\"}"
 		action              = "drop"
 		drop_counter_reason = "unreviewed_level"
 	}

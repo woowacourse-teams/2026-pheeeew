@@ -712,28 +712,9 @@ class DeviceServiceIntegrationTest {
         assertThat(deviceRefreshTokenRepository.count()).isEqualTo(2);
     }
 
-    @Test
-    void 등록_후_5분이_지난_재요청에는_토큰을_발급하지_않는다() {
-        // given
-        UUID requestId = UUID.randomUUID();
-        deviceService.save(requestId, "Star K", 무결성_증명_없음(DevicePlatform.ANDROID));
-        등록_시각을_민다(requestId, "5 minutes 1 second");
-
-        // when
-        Throwable throwable = catchThrowable(
-                () -> deviceService.save(requestId, "다른 닉네임", 무결성_증명_없음(DevicePlatform.ANDROID))
-        );
-
-        // then
-        assertThat(throwable).isInstanceOf(DeviceException.class);
-        assertThat(((DeviceException) throwable).getErrorCode())
-                .isEqualTo(DeviceErrorCode.DEVICE_REGISTRATION_WINDOW_EXPIRED);
-        assertThat(deviceRepository.count()).isOne();
-        assertThat(deviceRefreshTokenRepository.count()).isOne();
-    }
-
-    @Test
-    void 창_밖_재요청의_예외_메시지에_요청_식별자가_들어가지_않는다() {
+    @ParameterizedTest
+    @ValueSource(strings = {"스타크", "다른 닉네임"})
+    void 등록_후_5분이_지난_재요청에는_식별자_노출이나_토큰_발급_없이_거부한다(String nickname) {
         // given
         UUID requestId = UUID.randomUUID();
         deviceService.save(requestId, "스타크", 무결성_증명_없음(DevicePlatform.ANDROID));
@@ -741,12 +722,17 @@ class DeviceServiceIntegrationTest {
 
         // when
         Throwable throwable = catchThrowable(
-                () -> deviceService.save(requestId, "스타크", 무결성_증명_없음(DevicePlatform.ANDROID))
+                () -> deviceService.save(requestId, nickname, 무결성_증명_없음(DevicePlatform.ANDROID))
         );
 
         // then
+        assertThat(throwable).isInstanceOf(DeviceException.class);
+        assertThat(((DeviceException) throwable).getErrorCode())
+                .isEqualTo(DeviceErrorCode.DEVICE_REGISTRATION_WINDOW_EXPIRED);
         assertThat(throwable).hasMessage("기기 등록 재시도 시간이 지났습니다. 새 요청으로 등록해 주세요.");
         assertThat(throwable.getMessage()).doesNotContain(requestId.toString());
+        assertThat(deviceRepository.count()).isOne();
+        assertThat(deviceRefreshTokenRepository.count()).isOne();
     }
 
     @Test

@@ -62,22 +62,14 @@ class DeviceChallengeServiceIntegrationTest {
         DeviceChallengeResult result = deviceChallengeService.save();
 
         // then
+        assertThat(result.challenge()).hasSize(43).matches("^[A-Za-z0-9_-]{43}$");
+        assertThat(result.expiresIn()).isEqualTo(300L);
         assertThat(deviceChallengeRepository.count()).isOne();
         DeviceChallenge 저장된_challenge = deviceChallengeRepository.findAll().getFirst();
         assertThat(저장된_challenge.getChallenge()).isEqualTo(result.challenge());
         assertThat(저장된_challenge.getConsumedAt()).isNull();
         assertThat(저장된_challenge.getExpiresAt())
                 .isBetween(발급_전.plus(Duration.ofMinutes(5)), Instant.now().plus(Duration.ofMinutes(5)));
-    }
-
-    @Test
-    void 발급한_challenge_는_URL_안전_문자_43자이고_만료_시간을_300초로_알린다() {
-        // given / when
-        DeviceChallengeResult result = deviceChallengeService.save();
-
-        // then
-        assertThat(result.challenge()).hasSize(43).matches("^[A-Za-z0-9_-]{43}$");
-        assertThat(result.expiresIn()).isEqualTo(300L);
     }
 
     @Test
@@ -89,32 +81,6 @@ class DeviceChallengeServiceIntegrationTest {
         // then
         assertThat(첫_발급.challenge()).isNotEqualTo(두번째_발급.challenge());
         assertThat(deviceChallengeRepository.count()).isEqualTo(2);
-    }
-
-    @Test
-    void 소모하면_소모_시각이_채워진다() {
-        // given
-        DeviceChallengeResult 발급 = deviceChallengeService.save();
-
-        // when
-        deviceChallengeService.consume(발급.challenge());
-
-        // then
-        assertThat(deviceChallengeRepository.findAll().getFirst().getConsumedAt()).isNotNull();
-    }
-
-    @Test
-    void 같은_challenge_를_두_번_소모하면_두_번째가_실패한다() {
-        // given
-        DeviceChallengeResult 발급 = deviceChallengeService.save();
-        deviceChallengeService.consume(발급.challenge());
-
-        // when
-        Throwable throwable = catchThrowable(() -> deviceChallengeService.consume(발급.challenge()));
-
-        // then
-        challenge_를_사용할_수_없다(throwable);
-        assertThat(deviceChallengeRepository.count()).isOne();
     }
 
     @Test
@@ -228,20 +194,6 @@ class DeviceChallengeServiceIntegrationTest {
     }
 
     @Test
-    void 만료된_challenge_는_소모할_수_없다() {
-        // given
-        DeviceChallengeResult 발급 = deviceChallengeService.save();
-        발급_시각을_민다(발급.challenge(), "5 minutes 1 second");
-
-        // when
-        Throwable throwable = catchThrowable(() -> deviceChallengeService.consume(발급.challenge()));
-
-        // then
-        challenge_를_사용할_수_없다(throwable);
-        assertThat(deviceChallengeRepository.findAll().getFirst().getConsumedAt()).isNull();
-    }
-
-    @Test
     void 만료_직전의_challenge_는_소모할_수_있다() {
         // given
         DeviceChallengeResult 발급 = deviceChallengeService.save();
@@ -252,15 +204,6 @@ class DeviceChallengeServiceIntegrationTest {
 
         // then
         assertThat(deviceChallengeRepository.findAll().getFirst().getConsumedAt()).isNotNull();
-    }
-
-    @Test
-    void 발급하지_않은_challenge_는_소모할_수_없다() {
-        // given / when
-        Throwable throwable = catchThrowable(() -> deviceChallengeService.consume(발급하지_않은_challenge));
-
-        // then
-        challenge_를_사용할_수_없다(throwable);
     }
 
     @Test
@@ -281,20 +224,12 @@ class DeviceChallengeServiceIntegrationTest {
         // then
         assertThat(실패들).allSatisfy(this::challenge_를_사용할_수_없다);
         assertThat(실패들).extracting(Throwable::getMessage)
-                .containsOnly("무결성 증명 요청 값을 사용할 수 없습니다.");
-    }
-
-    @Test
-    void 실패_메시지에_제출한_challenge_값이_들어가지_않는다() {
-        // given
-        DeviceChallengeResult 발급 = deviceChallengeService.save();
-        deviceChallengeService.consume(발급.challenge());
-
-        // when
-        Throwable throwable = catchThrowable(() -> deviceChallengeService.consume(발급.challenge()));
-
-        // then
-        assertThat(throwable.getMessage()).doesNotContain(발급.challenge());
+                .containsOnly("무결성 증명 요청 값을 사용할 수 없습니다.")
+                .allSatisfy(message -> assertThat(message).doesNotContain(
+                        발급하지_않은_challenge, 만료할_challenge.challenge(), 소모할_challenge.challenge()));
+        assertThat(deviceChallengeRepository.findAll())
+                .filteredOn(row -> row.getChallenge().equals(만료할_challenge.challenge()))
+                .singleElement().satisfies(row -> assertThat(row.getConsumedAt()).isNull());
     }
 
     @Test

@@ -27,8 +27,10 @@ on:
       - 'BE/docker/test-prod-preflight.py'
       - 'BE/docker/test-prod-monitoring.py'
       - 'BE/docker/test-prod-owner-postgres.py'
+      - 'BE/docker/compose.monitoring.yml'
       - 'BE/docker/compose.monitoring.prod-bluegreen.yml'
-      - 'BE/docker/alloy/config.prod-bluegreen.alloy'
+      - 'BE/docker/alloy/*.alloy'
+      - 'BE/docker/alloy/verify.py'
       - 'BE/docker/compose.prod-bluegreen.yml'
       - 'BE/docker/compose.nginx.prod-bluegreen.yml'
       - 'BE/docker/nginx/api-prod-bluegreen.conf'
@@ -91,6 +93,7 @@ jobs:
           python3 BE/docker/test-prod-workflow.py
           python3 BE/docker/test-prod-preflight.py
           python3 BE/docker/test-prod-monitoring.py
+          python3 BE/docker/alloy/verify.py
           python3 BE/docker/test-prod-owner-postgres.py
           python3 BE/docker/test-prod-deploy-contract.py
           python3 BE/docker/test-deploy-switch.py --ci

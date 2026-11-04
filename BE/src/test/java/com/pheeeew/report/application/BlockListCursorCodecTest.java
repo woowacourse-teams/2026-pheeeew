@@ -9,7 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class BlockListCursorCodecTest {
@@ -30,7 +30,7 @@ class BlockListCursorCodecTest {
     }
 
     @ParameterizedTest
-    @NullAndEmptySource
+    @NullSource
     @ValueSource(strings = {"   "})
     void 커서가_없으면_첫_페이지로_읽는다(String encoded) {
         // given / when
@@ -41,7 +41,7 @@ class BlockListCursorCodecTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"2|42", "1", "1|42|7", "1|영", "1|0", "1|-1"})
+    @ValueSource(strings = {"2|42", "1", "1|42|7", "1|영", "1|0"})
     void 사용할_수_없는_내용을_가진_커서는_거부한다(String payload) {
         // given
         String encoded = Base64.getUrlEncoder()

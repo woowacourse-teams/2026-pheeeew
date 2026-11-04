@@ -1,7 +1,6 @@
 """운영 자격 증명 없이 지표 허용 목록과 실제 Alloy 로그 필터를 검증한다."""
 
 import datetime
-import itertools
 import json
 from pathlib import Path
 import re
@@ -14,7 +13,7 @@ import uuid
 DIRECTORY = Path(__file__).resolve().parent
 IMAGE = re.search(r"image: (grafana/alloy:[^\s]+)",
                   (DIRECTORY.parent / "compose.monitoring.yml").read_text()).group(1)
-CONFIGS = {"config.alloy": "prod", "config.dev.alloy": "dev"}
+CONFIGS = {"config.alloy": "prod", "config.dev.alloy": "dev", "config.prod-bluegreen.alloy": "prod"}
 
 
 def docker(*args, check=True):
@@ -27,7 +26,8 @@ def verify_metrics(config):
     accepted = ["up", "scrape_duration_seconds", "scrape_samples_scraped",
                 "jvm_threads_live_threads",
                 "process_cpu_usage", "process_uptime_seconds", "system_cpu_usage",
-                "hikaricp_connections"]
+                "hikaricp_connections", "pheeeew_map_read_requests_total",
+                "pheeeew_map_diagnostic_logs_total"]
     families = {
         "http_server_requests_seconds_": "count sum bucket max",
         "pheeeew_map_read_stage_seconds_": "count sum bucket max",
@@ -71,35 +71,38 @@ def verify_metrics(config):
     print(f"지표 이름 검증 통과: 허용 {len(accepted)}, 차단 {len(rejected)}")
 
 
-def verify_logs(config):
+def verify_logs(config, environment):
     http = "com.pheeeew.common.logging.RequestLogWriter"
-    recorder = "com.pheeeew.activity.infra.DeviceActivityRecorder"
-    scheduler = "com.pheeeew.activity.infra.DeviceActivityAggregationScheduler"
     task = "com.pheeeew.common.logging.ScheduledTaskErrorHandler"
-    contracts = [(http, "http_request_failed", "ERROR"), (http, "http_request_slow", "WARN"),
-                 (task, "scheduled_task_failed", "ERROR")]
-    # 제거한 활동 logger/event 조합도 전송이 차단되는지 검증한다.
-    events = {event for _, event, _ in contracts} | {
-        "device_activity_record_failed", "device_activity_aggregation_failed", "unknown", None}
-    cases = []
-    for logger, event in itertools.product((http, recorder, scheduler, task, "unknown", None),
-                                           sorted(events, key=str)):
-        cases.append(({"logger_name": logger, "event": event, "level": "ERROR"},
-                      any(logger == owner and event == allowed for owner, allowed, _ in contracts)))
-    for logger, event, _ in contracts[2:]:
-        for level in ("WARN", "INFO", None):
-            cases.append(({"logger_name": logger, "event": event, "level": level}, False))
-        cases.append(({"logger_name": logger.replace(".", "x"), "event": event, "level": "ERROR"}, False))
-    cases.append(({"logger_name": http, "event": "http_request_slow", "level": "WARN"}, True))
+    diagnostic = "com.pheeeew.emotion.infra.metrics.MapReadDiagnostics"
+    # 서비스가 정한 허용·차단 경계마다 대표 입력 하나만 사용한다.
+    cases = [
+        (http, "http_request_failed", "ERROR", True),
+        (http, "http_request_slow", "WARN", True),
+        (task, "scheduled_task_failed", "ERROR", True),
+        (diagnostic, "map_read_sample", "INFO", environment == "dev"),
+        ("unreviewed.logger", "http_request_failed", "ERROR", False),
+        (diagnostic.replace(".", "x"), "map_read_sample", "INFO", False),
+        (http, "unreviewed_event", "ERROR", False),
+        (task, "http_request_failed", "ERROR", False),
+        (diagnostic, "scheduled_task_failed", "INFO", False),
+        (task, "scheduled_task_failed", "WARN", False),
+        (diagnostic, "map_read_sample", "ERROR", False),
+        (None, "http_request_failed", "ERROR", False),
+        (http, None, "ERROR", False),
+    ]
     timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    entries, expected = [], set()
-    for index, (fields, allowed) in enumerate(cases):
+    entries, expected, expected_labels = [], set(), {}
+    for index, (logger, event, level, allowed) in enumerate(cases):
         marker = f"fixture-{index:03}"
+        fields = {"logger_name": logger, "event": event, "level": level}
         entry = {key: value for key, value in fields.items() if value is not None}
         entry.update({"@timestamp": timestamp, "message": marker, "correlationId": "fixture-id"})
         entries.append(json.dumps(entry))
         if allowed:
             expected.add(marker)
+            # 연결용 correlationId는 Loki 라벨에 포함하지 않는다.
+            expected_labels[marker] = {"job", "event"} | ({"level"} if fields["level"] is not None else set())
     entries.append("malformed fixture-999")
 
     # 실제 필터를 그대로 사용하고 전송 대상만 컨테이너 표준 출력으로 바꾼다.
@@ -135,7 +138,8 @@ loki.echo "accepted" {}
                 received = set(re.findall(r"fixture-\d{3}", "\n".join(message["entry"] for message in echoes)))
                 for message in echoes:
                     labels = set(re.findall(r"(\w+)=", message["labels"]))
-                    if labels != {"job", "event", "level"}:
+                    marker, = re.findall(r"fixture-\d{3}", message["entry"])
+                    if labels != expected_labels.get(marker):
                         raise AssertionError(f"예상하지 않은 로그 라벨: {labels}")
                 if received - expected:
                     raise AssertionError(f"허용하지 않은 로그 통과: {received - expected}")
@@ -144,28 +148,21 @@ loki.echo "accepted" {}
                 time.sleep(0.5)
             if received != expected:
                 raise AssertionError(f"로그 누락: {expected - received}\n{output.stdout}{output.stderr}")
-            print(f"실제 Alloy 로그 검증 통과: 허용 {len(expected)}, 차단 {len(entries) - len(expected)}")
+            print(f"실제 Alloy 로그 검증 통과 ({environment}): 허용 {len(expected)}, 차단 {len(entries) - len(expected)}")
         finally:
             docker("rm", "--force", name, check=False)
 
 
 def verify_labels(name, config, environment):
-    for key, value in (("environment", environment), ("instance", f"pheeeew-{environment}")):
+    bluegreen = name in {"config.dev.alloy", "config.prod-bluegreen.alloy"}
+    expected_environment = [environment] * (4 if bluegreen else 2)
+    expected_instances = ([f"pheeeew-{environment}-blue", f"pheeeew-{environment}-green"] * 2
+                          if bluegreen else [f"pheeeew-{environment}"] * 2)
+    for key, expected in (("environment", expected_environment), ("instance", expected_instances)):
         found = re.findall(rf'{key}\s*=\s*"([^"]+)"', config)
-        if found != [value, value]:
-            raise AssertionError(f"{name}: {key} 라벨이 앱 지표·로그 모두 {value} 여야 합니다. 실제 {found}")
+        if found != expected:
+            raise AssertionError(f"{name}: {key} 라벨 기대 {expected}, 실제 {found}")
     print(f"{name}: 환경 라벨 검증 통과 ({environment})")
-
-
-def verify_same_filters(configs):
-    def parts(config):
-        return (re.search(r'regex\s*=\s*"([^"]+)"', config).group(1),
-                config.split('loki.process "http_requests" {', 1)[1].split('loki.write "grafana" {', 1)[0])
-
-    unique = {parts(config) for config in configs.values()}
-    if len(unique) != 1:
-        raise AssertionError("설정 파일의 지표 허용 목록 또는 로그 필터가 다릅니다. 한쪽만 수정했는지 확인하세요.")
-    print(f"설정 {len(configs)}개의 허용 목록·로그 필터 동일성 검증 통과")
 
 
 def validate(name):
@@ -185,13 +182,11 @@ def validate(name):
 
 def main():
     configs = {name: (DIRECTORY / name).read_text() for name in CONFIGS}
-    verify_same_filters(configs)
     for name, environment in CONFIGS.items():
         verify_metrics(configs[name])
         verify_labels(name, configs[name], environment)
         validate(name)
-    # 로그 필터가 두 설정에서 동일함을 확인했으므로 실제 파이프라인 검증은 한 번만 실행한다.
-    verify_logs(configs["config.alloy"])
+        verify_logs(configs[name], environment)
 
 
 if __name__ == "__main__":

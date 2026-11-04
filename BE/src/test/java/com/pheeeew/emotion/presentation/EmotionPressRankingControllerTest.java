@@ -19,6 +19,7 @@ import com.pheeeew.emotion.application.dto.EmotionStatePressRankingResult;
 import com.pheeeew.emotion.application.query.EmotionPressRankingService;
 import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.emotion.domain.repository.projection.DeviceDailyPressSum;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -91,7 +92,12 @@ class EmotionPressRankingControllerTest {
                 .jsonPath("$.endAt").isEqualTo("2026-10-11T15:00:00Z")
                 .jsonPath("$.items[0].rank").isEqualTo(1)
                 .jsonPath("$.me.rank").isEqualTo(2)
-                .jsonPath("$.me.pressCount").isEqualTo(388);
+                .jsonPath("$.me.pressCount").isEqualTo(388)
+                .consumeWith(result -> assertThat(new String(result.getResponseBody(), StandardCharsets.UTF_8))
+                        .contains("\"items\":[{\"rank\":1,\"nickname\":\"한숨많은곰\",\"pressCount\":412}]")
+                        .contains("\"me\":{\"rank\":2,\"nickname\":\"지친다람쥐\",\"pressCount\":388}")
+                        .doesNotContain("mine")
+                        .doesNotContain(DEVICE_PUBLIC_ID.toString()));
         verify(emotionPressRankingService).findPressRanking(DEVICE_PUBLIC_ID, 0);
     }
 
@@ -134,22 +140,6 @@ class EmotionPressRankingControllerTest {
                 .expectBody()
                 .jsonPath("$.code").isEqualTo("AUTH-001");
         verifyNoInteractions(emotionPressRankingService);
-    }
-
-    @Test
-    void 순위_항목에_기기_식별자와_mine_을_담지_않는다() {
-        // given
-        when(emotionPressRankingService.findPressRanking(DEVICE_PUBLIC_ID, 0)).thenReturn(순위표(내_항목));
-
-        // when
-        String 본문 = 본문을_받는다(RANKING_URI);
-
-        // then
-        assertThat(본문)
-                .contains("\"items\":[{\"rank\":1,\"nickname\":\"한숨많은곰\",\"pressCount\":412}]")
-                .contains("\"me\":{\"rank\":2,\"nickname\":\"지친다람쥐\",\"pressCount\":388}")
-                .doesNotContain("mine")
-                .doesNotContain(DEVICE_PUBLIC_ID.toString());
     }
 
     @Test
