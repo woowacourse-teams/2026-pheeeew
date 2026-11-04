@@ -30,4 +30,11 @@ public class PressSnapshotService {
 
         return snapshot.findScreen(devicePublicId, view);
     }
+
+    /** 지정한 KST 날짜의 공통 순위. 활동 인원은 지금의 DB 시각으로 판정한다. */
+    public PressSnapshot findSnapshotOn(LocalDate pressDate) {
+        Instant now = pressSnapshotRepository.findNow();
+
+        return PressSnapshot.of(pressDate, now, pressSnapshotRepository.findParticipants(pressDate));
+    }
 }

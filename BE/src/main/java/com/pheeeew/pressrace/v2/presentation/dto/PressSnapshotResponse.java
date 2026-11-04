@@ -16,7 +16,7 @@ public record PressSnapshotResponse(
         Instant generatedAt,
 
         @Schema(
-                description = "최근 5초 안에 프레스가 반영된 서로 다른 기기 수입니다. 사람 수가 아니라 기기 수이고, "
+                description = "generatedAt 기준 최근 5초 안에 프레스가 반영된 서로 다른 기기 수입니다. 사람 수가 아니라 기기 수이고, "
                         + "한 기기가 여러 감정을 눌러도 1로 셉니다. 새 프레스가 없으면 시간이 지나며 줄어듭니다.",
                 example = "7"
         )
