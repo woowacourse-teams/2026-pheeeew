@@ -3085,6 +3085,84 @@
         "sortOrder": "Descending",
         "dedupStrategy": "none"
       }
+    },
+    {
+      "id": 168,
+      "type": "stat",
+      "title": "지도 지역 요약 · 기간 결과 캐시 적중률",
+      "description": "기간을 지정한 SIDO·SIGUNGU 요약 결과(Caffeine)의 재사용 비율이에요. 분모는 같은 기간 결과 조회 수(cache_gets)이며 전체 기간 요약과 SQL로 우회한 요청은 포함하지 않아요. 집계가 바뀌면 새 결과를 계산하므로 miss가 함께 늘어요. 분모가 0이거나 수집 자료가 없으면 빈 값이고, 관측된 분모가 양수인데 적중이 없으면 0%예요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 180,
+        "w": 24,
+        "h": 6
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "noValue": "데이터 없음"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "vertical",
+        "textMode": "auto",
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(((sum by (instance) (increase(cache_gets_total{job=\"pheeeew-api\",environment=\"dev\",cache=\"map_region_periods\",result=\"hit\"}[$__range]))) or on (instance) ((sum by (instance) (increase(cache_gets_total{job=\"pheeeew-api\",environment=\"dev\",cache=\"map_region_periods\"}[$__range]))) * 0)) / (sum by (instance) (increase(cache_gets_total{job=\"pheeeew-api\",environment=\"dev\",cache=\"map_region_periods\"}[$__range]))) * 100) and on (instance) ((sum by (instance) (increase(cache_gets_total{job=\"pheeeew-api\",environment=\"dev\",cache=\"map_region_periods\"}[$__range]))) > 0)",
+          "legendFormat": "{{instance}} · 적중 / 기간 결과 조회",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": false,
+          "instant": true,
+          "interval": "1m"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (instance) (increase(cache_gets_total{job=\"pheeeew-api\",environment=\"dev\",cache=\"map_region_periods\"}[$__range]))",
+          "legendFormat": "{{instance}} · 기간 결과 조회 수",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": false,
+          "instant": true,
+          "interval": "1m"
+        }
+      ]
     }
   ]
 }
