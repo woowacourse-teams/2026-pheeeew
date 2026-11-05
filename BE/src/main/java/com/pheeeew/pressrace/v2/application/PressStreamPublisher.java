@@ -37,8 +37,9 @@ import org.springframework.stereotype.Service;
  * <ul>
  *   <li>SEQUENTIAL: 이 발행기 스레드에서 구독마다 차례로 보낸다. 수신이 늦은 연결은 같은 주기의 다른 전송을 늦출 수 있다.</li>
  *   <li>ISOLATED: 발행기는 구독별 대기를 최신 화면 하나와 heartbeat 표시 하나로 바꾸기만 하고, 전송은 상한이 있는 전송 실행기에서
- *   구독마다 한 번에 하나씩 한다. 실행기가 가득 차면 대기를 남겨 두고 다음 주기에 다시 넣는다. 한 번의 전송이 제한 시간 이상
- *   걸리면 구독을 닫는다.</li>
+ *   구독마다 한 번에 하나씩 한다. 전송 작업 하나는 한 번만 보내고 남은 대기는 실행기 대기열 뒤로 다시 넣어, 느린 구독도 다른
+ *   구독에 차례를 넘긴다. 실행기가 가득 차면 대기를 남겨 두고 다음 주기에 다시 넣는다. 한 번의 전송이 제한 시간 이상 걸리면
+ *   구독을 닫는다.</li>
  * </ul>
  * 같은 기기의 동시 구독 상한은 이 JVM 안에서만 센다.
  * 열린 구독은 진행 중인 비동기 요청이라 웹 서버의 graceful 종료가 기다린다. 그보다 먼저 멈추도록 기본 phase 의
@@ -355,10 +356,20 @@ public class PressStreamPublisher implements SmartLifecycle {
                 lastQueued = screen;
             }
             pendingHeartbeat |= heartbeat;
-            if (scheduled || (pending == null && !pendingHeartbeat)) {
+            if (!scheduled) {
+                schedule();
+            }
+        }
+
+        /**
+         * 대기가 있으면 전송 실행기 대기열 뒤에 한 건을 넣는다. 거절되면 예약을 풀고 대기는 남겨 다음 발행 주기에 다시 넣는다.
+         * 모니터를 쥔 채로 부른다.
+         */
+        private void schedule() {
+            if (pending == null && !pendingHeartbeat) {
+                scheduled = false;
                 return;
             }
-
             scheduled = true;
             try {
                 sender.execute(this::drain);
@@ -367,42 +378,41 @@ public class PressStreamPublisher implements SmartLifecycle {
             }
         }
 
+        /** 대기를 한 번만 보내고 스레드를 돌려준다. 남은 대기는 대기열 뒤로 다시 넣어 다른 구독이 차례를 얻게 한다. */
         private void drain() {
-            while (true) {
-                PressScreen screen;
-                boolean heartbeat;
-                synchronized (this) {
-                    if (closed.get() || (pending == null && !pendingHeartbeat)) {
-                        scheduled = false;
-                        return;
-                    }
-                    screen = pending;
-                    heartbeat = pendingHeartbeat;
-                    pending = null;
-                    pendingHeartbeat = false;
-                    sendingSince = clock.instant();
-                }
-
-                boolean failed = false;
-                try {
-                    write(screen, heartbeat);
-                } catch (IOException | RuntimeException exception) {
-                    failed = true;
-                }
-
-                synchronized (this) {
-                    sendingSince = null;
-                    if (failed) {
-                        markClosed();
-                    }
-                    if (!closed.get()) {
-                        continue;
-                    }
+            PressScreen screen;
+            boolean heartbeat;
+            synchronized (this) {
+                if (closed.get() || (pending == null && !pendingHeartbeat)) {
                     scheduled = false;
+                    return;
                 }
-                listener.close();
-                return;
+                screen = pending;
+                heartbeat = pendingHeartbeat;
+                pending = null;
+                pendingHeartbeat = false;
+                sendingSince = clock.instant();
             }
+
+            boolean failed = false;
+            try {
+                write(screen, heartbeat);
+            } catch (IOException | RuntimeException exception) {
+                failed = true;
+            }
+
+            synchronized (this) {
+                sendingSince = null;
+                if (failed) {
+                    markClosed();
+                }
+                if (!closed.get()) {
+                    schedule();
+                    return;
+                }
+                scheduled = false;
+            }
+            listener.close();
         }
 
         private void write(PressScreen screen, boolean heartbeat) throws IOException {
