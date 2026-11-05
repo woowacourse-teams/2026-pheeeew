@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.requiredHeight
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
@@ -17,13 +18,16 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
-import androidx.test.uiautomator.Direction
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiObject2
 import androidx.test.uiautomator.Until
+import com.pheeeew.core.audio.AudioPlaybackState
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.feature.emotion.model.EmotionType
+import com.pheeeew.feature.screens.collection.calendar.detail.CollectionDayAudioState
+import com.pheeeew.feature.screens.collection.calendar.detail.CollectionDayDetailScreen
 import com.pheeeew.feature.screens.collection.card.CollectionCardUiModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import org.junit.Test
 import java.io.File
@@ -40,6 +44,59 @@ import kotlin.test.assertTrue
 class CollectionScreenTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val device = UiDevice.getInstance(instrumentation)
+
+    @Test
+    fun dayDetailReportsSettledCardAndBack() {
+        val first = sampleCollection().cards.first().copy(period = "2026.10.15")
+        val second = first.copy(id = "next-date", period = "2026.10.16")
+        val selected = mutableStateOf(first.id)
+        val settled = LinkedBlockingQueue<String>()
+        val back = LinkedBlockingQueue<Unit>()
+        val activity =
+            instrumentation.startActivitySync(
+                Intent(instrumentation.targetContext, ComponentActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            ) as ComponentActivity
+        try {
+            instrumentation.runOnMainSync {
+                val audio = CollectionDayAudioState(null, MutableStateFlow(AudioPlaybackState.Empty), false, null) {}
+                activity.setContent {
+                    AppTheme {
+                        CollectionDayDetailScreen(
+                            cards = listOf(first, second),
+                            selectedCardId = selected.value,
+                            nickname = "나",
+                            emotions = emptyList(),
+                            emotionCount = null,
+                            isLoadingEmotions = false,
+                            isLoadingNextEmotions = false,
+                            emotionsError = null,
+                            hasNextEmotions = false,
+                            audio = audio,
+                            onBack = { back.offer(Unit) },
+                            onCardSettled = {
+                                selected.value = it
+                                settled.offer(it)
+                            },
+                            onOpenCard = {},
+                            onLoadMoreEmotions = {},
+                            onRetryEmotions = {},
+                            modifier = Modifier.statusBarsPadding(),
+                        )
+                    }
+                }
+            }
+            val bounds = card("지침").visibleBounds
+            device.swipe(bounds.right - 8, bounds.centerY(), bounds.left + 8, bounds.centerY(), 18)
+            assertEquals(second.id, settled.poll(5, TimeUnit.SECONDS))
+            node("10월 16일")
+            val backButton = requireNotNull(device.wait(Until.findObject(By.desc("달력으로 돌아가기")), 5_000))
+            backButton.click()
+            assertEquals(Unit, back.poll(5, TimeUnit.SECONDS))
+        } finally {
+            instrumentation.runOnMainSync { activity.finish() }
+        }
+    }
 
     @Test
     fun claimedTodayKeepsListRetryAndCompactCardClickable() {
@@ -102,7 +159,7 @@ class CollectionScreenTest {
     }
 
     @Test
-    fun pullRefreshWorksInCoverFlowAlbumAndEmptyState() {
+    fun pullRefreshWorksInCollectionAndEmptyState() {
         val model = mutableStateOf(sampleCollection())
         val refreshes = AtomicInteger()
         val refreshEvents = LinkedBlockingQueue<Int>()
@@ -176,9 +233,11 @@ class CollectionScreenTest {
             card("지침")
 
             node("앨범").click()
-            node("전체")
+            node("오늘")
+            node("커버플로").click()
+            card("지침")
             pullDown()
-            assertEquals(2, refreshEvents.poll(5, TimeUnit.SECONDS), "Album must dispatch pull refresh")
+            assertEquals(2, refreshEvents.poll(5, TimeUnit.SECONDS), "Collection must dispatch pull refresh")
             instrumentation.runOnMainSync {
                 model.value =
                     model.value.copy(
@@ -189,9 +248,6 @@ class CollectionScreenTest {
                     )
             }
             node("모은 카드 0장")
-            node("커버플로").click()
-            device.waitForIdle()
-            assertFalse(device.hasObject(By.text("전체")), "Cover flow must be selected")
             node("아직 모은 감정 카드가 없어요")
             pullDown { node("당겨서 새로고침") }
             assertEquals(3, refreshEvents.poll(5, TimeUnit.SECONDS), "Empty cover flow must dispatch pull refresh")
@@ -232,7 +288,7 @@ class CollectionScreenTest {
     }
 
     @Test
-    fun swipeAlbumSelectionActionsAndRemovedSelection() {
+    fun swipeSelectionActionsAndRemovedSelection() {
         val model = mutableStateOf(sampleCollection())
         val savedBytes = AtomicReference<ByteArray?>()
         val sharedBytes = AtomicReference<ByteArray?>()
@@ -302,9 +358,6 @@ class CollectionScreenTest {
             )
             device.waitForIdle()
             card("지침")
-            node("앨범").click()
-            card("답답")
-            screenshot("album")
             card("지침").click()
             node("카드 저장")
             screenshot("dialog")
@@ -316,15 +369,7 @@ class CollectionScreenTest {
             assertTrue(checkNotNull(sharedBytes.get()).isNotEmpty())
             device.pressBack()
             assertTrue(device.wait(Until.gone(By.text("카드 저장")), 5_000))
-            repeat(4) {
-                if (!device.hasObject(By.descContains("분노 카드 ·"))) {
-                    checkNotNull(device.findObject(By.scrollable(true))).scroll(Direction.DOWN, 1f)
-                    device.waitForIdle()
-                }
-            }
-            card("분노")
-            screenshot("album-scrolled")
-            card("분노").click()
+            card("지침").click()
             node("카드 저장")
             instrumentation.runOnMainSync { model.value = model.value.copy(cards = emptyList()) }
             node("발급 전")
@@ -343,14 +388,6 @@ class CollectionScreenTest {
                     )
             }
             val issuedSelector = By.descContains("오늘 발급 카드")
-            val issuedAlbumCard = checkNotNull(device.wait(Until.findObject(issuedSelector), 5_000))
-            assertTrue(
-                issuedAlbumCard.visibleBounds.top < device.displayHeight / 2,
-                "Album must reset to the first card",
-            )
-            node("커버플로").click()
-            assertTrue(device.wait(Until.gone(By.text("전체")), 5_000))
-            device.waitForIdle()
             val issuedCoverCard = checkNotNull(device.wait(Until.findObject(issuedSelector), 5_000))
             val coverBounds = issuedCoverCard.visibleBounds
             assertTrue(coverBounds.contains(device.displayWidth / 2, coverBounds.centerY()))

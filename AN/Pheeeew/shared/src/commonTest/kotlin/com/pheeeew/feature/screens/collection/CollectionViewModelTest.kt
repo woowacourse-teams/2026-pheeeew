@@ -2,9 +2,13 @@ package com.pheeeew.feature.screens.collection
 
 import androidx.lifecycle.ViewModelStore
 import com.pheeeew.domain.model.collection.CollectionActivityProgress
+import com.pheeeew.domain.model.collection.CollectionCalendar
 import com.pheeeew.domain.model.collection.CollectionCard
 import com.pheeeew.domain.model.collection.CollectionCardReference
 import com.pheeeew.domain.model.collection.CollectionCounts
+import com.pheeeew.domain.model.collection.CollectionEmotion
+import com.pheeeew.domain.model.collection.CollectionEmotionContentType
+import com.pheeeew.domain.model.collection.CollectionEmotionPage
 import com.pheeeew.domain.model.collection.CollectionFailure
 import com.pheeeew.domain.model.collection.CollectionHistory
 import com.pheeeew.domain.model.collection.CollectionHistoryQuery
@@ -18,11 +22,13 @@ import com.pheeeew.feature.emotion.model.EmotionType
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -214,6 +220,207 @@ class CollectionViewModelTest {
             }
         }
 
+    @Test
+    fun `returning to a date shows cached emotions before merging fresh results`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            val store = ViewModelStore()
+            try {
+                val first =
+                    CollectionEmotion(
+                        1L,
+                        "2026-10-15T11:00:00Z",
+                        EmotionState.EXHAUSTED,
+                        CollectionEmotionContentType.NONE,
+                        null,
+                        null,
+                    )
+                val latest = first.copy(id = 2L, createdAt = "2026-10-15T12:00:00Z")
+                val refresh = CompletableDeferred<CollectionResult<CollectionEmotionPage>>()
+                val base = FakeCollectionRepository()
+                var visits = 0
+                val repository =
+                    object : CollectionRepository by base {
+                        override suspend fun findCalendar(month: String): CollectionResult<CollectionCalendar> =
+                            CollectionResult.Success(
+                                CollectionCalendar(base.history("first").cards + base.history("second").cards),
+                            )
+
+                        override suspend fun findEmotions(
+                            cardId: String,
+                            cursor: String?,
+                        ): CollectionResult<CollectionEmotionPage> =
+                            when {
+                                cardId == "second" -> {
+                                    CollectionResult.Success(
+                                        CollectionEmotionPage(emptyList(), false, null),
+                                    )
+                                }
+
+                                ++visits == 1 -> {
+                                    CollectionResult.Success(CollectionEmotionPage(listOf(first), false, null))
+                                }
+
+                                else -> {
+                                    refresh.await()
+                                }
+                            }
+                    }
+                val viewModel = CollectionViewModel(repository)
+                store.put("collection", viewModel)
+                viewModel.onSessionChanged(1L, "나")
+                runCurrent()
+                viewModel.selectCalendarCard("first")
+                runCurrent()
+                viewModel.selectCalendarCard("second")
+                runCurrent()
+                viewModel.selectCalendarCard("first")
+                runCurrent()
+                assertEquals(listOf(first), viewModel.uiState.value.day.calendarEmotions)
+
+                refresh.complete(CollectionResult.Success(CollectionEmotionPage(listOf(latest, first), false, null)))
+                runCurrent()
+                assertEquals(listOf(latest, first), viewModel.uiState.value.day.calendarEmotions)
+            } finally {
+                store.clear()
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `append retries its cursor and an invalid cursor restarts once from page one`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            val store = ViewModelStore()
+            try {
+                val base = FakeCollectionRepository()
+                val cursors = mutableListOf<String?>()
+                val emotion =
+                    CollectionEmotion(
+                        1L,
+                        "2026-10-15T11:00:00Z",
+                        EmotionState.EXHAUSTED,
+                        CollectionEmotionContentType.NONE,
+                        null,
+                        null,
+                    )
+                val repository =
+                    object : CollectionRepository by base {
+                        override suspend fun findCalendar(month: String): CollectionResult<CollectionCalendar> =
+                            CollectionResult.Success(CollectionCalendar(base.history("card").cards))
+
+                        override suspend fun findEmotions(
+                            cardId: String,
+                            cursor: String?,
+                        ): CollectionResult<CollectionEmotionPage> {
+                            cursors += cursor
+                            return when (cursors.size) {
+                                1 -> {
+                                    CollectionResult.Success(CollectionEmotionPage(listOf(emotion), true, "old"))
+                                }
+
+                                2 -> {
+                                    CollectionResult.Failure(CollectionFailure(null, "NETWORK", null))
+                                }
+
+                                3 -> {
+                                    CollectionResult.Failure(CollectionFailure(400, "COLLECTION-007", null))
+                                }
+
+                                else -> {
+                                    CollectionResult.Success(
+                                        CollectionEmotionPage(listOf(emotion.copy(id = 2)), false, null),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                val viewModel = CollectionViewModel(repository)
+                store.put("collection", viewModel)
+                viewModel.onSessionChanged(1L, "나")
+                viewModel.openCalendarDay(viewModel.uiState.value.calendarMonth, "card")
+                runCurrent()
+                viewModel.loadNextCalendarEmotions()
+                runCurrent()
+                assertEquals(listOf(emotion), viewModel.uiState.value.day.calendarEmotions)
+
+                viewModel.retryNextCalendarEmotions()
+                runCurrent()
+                assertEquals(listOf(null, "old", "old", null), cursors)
+                assertEquals(
+                    listOf(2L),
+                    viewModel.uiState.value.day.calendarEmotions
+                        .map { it.id },
+                )
+
+                viewModel.closeCalendarDay()
+                assertEquals(null, viewModel.uiState.value.day.selectedCalendarCardId)
+                assertTrue(
+                    viewModel.uiState.value.calendarCards
+                        .isNotEmpty(),
+                )
+            } finally {
+                store.clear()
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `late emotions from an earlier session cannot replace the same card in the new session`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            val store = ViewModelStore()
+            val oldPage = CompletableDeferred<CollectionResult<CollectionEmotionPage>>()
+            try {
+                val base = FakeCollectionRepository()
+                var requests = 0
+                val repository =
+                    object : CollectionRepository by base {
+                        override suspend fun findCalendar(month: String): CollectionResult<CollectionCalendar> =
+                            CollectionResult.Success(CollectionCalendar(base.history("card").cards))
+
+                        override suspend fun findEmotions(
+                            cardId: String,
+                            cursor: String?,
+                        ): CollectionResult<CollectionEmotionPage> =
+                            if (++requests == 1) {
+                                withContext(NonCancellable) { oldPage.await() }
+                            } else {
+                                CollectionResult.Success(CollectionEmotionPage(emptyList(), false, null))
+                            }
+                    }
+                val viewModel = CollectionViewModel(repository)
+                store.put("collection", viewModel)
+                for (generation in 1L..2L) {
+                    viewModel.onSessionChanged(generation, "나")
+                    viewModel.openCalendarDay(viewModel.uiState.value.calendarMonth, "card")
+                    runCurrent()
+                }
+                val stale =
+                    CollectionEmotion(
+                        1L,
+                        "2026-10-15T11:00:00Z",
+                        EmotionState.EXHAUSTED,
+                        CollectionEmotionContentType.NONE,
+                        null,
+                        null,
+                    )
+                oldPage.complete(CollectionResult.Success(CollectionEmotionPage(listOf(stale), false, null)))
+                runCurrent()
+
+                assertEquals(2, requests)
+                assertTrue(viewModel.uiState.value.day.calendarEmotionsLoaded)
+                assertTrue(
+                    viewModel.uiState.value.day.calendarEmotions
+                        .isEmpty(),
+                )
+            } finally {
+                oldPage.cancel()
+                store.clear()
+                Dispatchers.resetMain()
+            }
+        }
+
     private class FakeCollectionRepository(
         private val firstHistory: CompletableDeferred<CollectionResult<CollectionHistory>>? = null,
         private val secondHistory: CompletableDeferred<CollectionResult<CollectionHistory>>? = null,
@@ -251,6 +458,15 @@ class CollectionViewModelTest {
                     pressCount = 100,
                 ),
             )
+
+        override suspend fun findCalendar(month: String): CollectionResult<CollectionCalendar> =
+            CollectionResult.Success(CollectionCalendar(emptyList()))
+
+        override suspend fun findEmotions(
+            cardId: String,
+            cursor: String?,
+        ): CollectionResult<CollectionEmotionPage> =
+            CollectionResult.Success(CollectionEmotionPage(emptyList(), hasNext = false, nextCursor = null))
 
         fun history(cardId: String) =
             CollectionHistory(

@@ -38,7 +38,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -51,6 +51,7 @@ import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.core.di.AppGraph
 import com.pheeeew.core.di.UiGraph
+import com.pheeeew.core.navigation.CollectionDayDestination
 import com.pheeeew.core.navigation.CollectionRootDestination
 import com.pheeeew.core.navigation.DailyPressRankingRootDestination
 import com.pheeeew.core.navigation.DoubleBackToExitHandler
@@ -78,6 +79,8 @@ import com.pheeeew.feature.component.AppDestination
 import com.pheeeew.feature.monitoring.product.LocalProductMonitoringVisible
 import com.pheeeew.feature.notification.NotificationClickEffect
 import com.pheeeew.feature.screens.collection.CollectionRoute
+import com.pheeeew.feature.screens.collection.CollectionViewModel
+import com.pheeeew.feature.screens.collection.calendar.detail.CollectionDayRoute
 import com.pheeeew.feature.screens.config.DailyRankingConfigGate
 import com.pheeeew.feature.screens.map.EmotionPinUiModel
 import com.pheeeew.feature.screens.map.HighlightedPinPosition
@@ -122,7 +125,6 @@ import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
 
@@ -903,11 +905,41 @@ private fun AppContent(
                         currentNickname = appEntryState.currentNickname,
                         notificationDate = collectionNotificationDate,
                         refreshRevision = collectionRefreshRevision,
+                        onOpenCalendarDay = { month, cardId ->
+                            if (navController.currentDestination?.hasRoute<CollectionRootDestination>() == true) {
+                                navController.navigate(
+                                    CollectionDayDestination(month, cardId),
+                                ) { launchSingleTop = true }
+                            }
+                        },
                         modifier = Modifier.fillMaxSize(),
                         bottomBar = {
                             Spacer(Modifier.navigationBarsPadding().height(AppBottomNavigationBarOverlaySpace))
                         },
                     )
+                }
+
+                composable<CollectionDayDestination> { entry ->
+                    if (!mainFeaturesReady) return@composable
+                    val destination = entry.toRoute<CollectionDayDestination>()
+                    val collectionEntry =
+                        remember(entry) {
+                            navController.getBackStackEntry<CollectionRootDestination>()
+                        }
+                    CompositionLocalProvider(LocalViewModelStoreOwner provides collectionEntry) {
+                        CollectionDayRoute(
+                            destination = destination,
+                            viewModel = metroViewModel<CollectionViewModel>(),
+                            sessionGeneration = sessionGeneration,
+                            currentNickname = appEntryState.currentNickname,
+                            monitoring = apiDependencies.client.monitoring,
+                            restoredCardId = entry.savedStateHandle.get<String>("collectionDayCardId"),
+                            onSelectedCardChanged = { entry.savedStateHandle["collectionDayCardId"] = it },
+                            onBack = {
+                                if (navController.currentBackStackEntry == entry) navController.popBackStack()
+                            },
+                        )
+                    }
                 }
 
                 composable<RankingRootDestination> {

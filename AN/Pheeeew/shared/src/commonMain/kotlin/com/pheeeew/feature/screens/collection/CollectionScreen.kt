@@ -3,10 +3,8 @@ package com.pheeeew.feature.screens.collection
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -14,12 +12,8 @@ import androidx.compose.foundation.gestures.rememberScrollableState
 import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,20 +22,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyGridState
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.PageSize
-import androidx.compose.foundation.pager.PagerState
-import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -52,31 +37,24 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.SaveableStateHolder
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -84,36 +62,25 @@ import coil3.annotation.ExperimentalCoilApi
 import coil3.compose.AsyncImagePreviewHandler
 import coil3.compose.LocalAsyncImagePreviewHandler
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
-import com.pheeeew.core.designsystem.component.LoadErrorContent
 import com.pheeeew.core.designsystem.component.RefreshErrorBanner
-import com.pheeeew.core.designsystem.component.Snackbar
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.feature.emotion.model.EmotionType
-import com.pheeeew.feature.screens.collection.card.CollectionCard
+import com.pheeeew.feature.screens.collection.calendar.CalendarSection
+import com.pheeeew.feature.screens.collection.calendar.CollectionRetryState
 import com.pheeeew.feature.screens.collection.card.CollectionCardUiModel
-import com.pheeeew.feature.screens.collection.card.CollectionProgressCard
-import com.pheeeew.feature.screens.collection.card.CollectionTomorrowCard
+import com.pheeeew.feature.screens.collection.coverflow.CoverflowSection
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.collection_album
-import pheeeew.shared.generated.resources.collection_card_action_hint
 import pheeeew.shared.generated.resources.collection_card_count
 import pheeeew.shared.generated.resources.collection_cover_flow
-import pheeeew.shared.generated.resources.collection_empty
-import pheeeew.shared.generated.resources.collection_empty_hint
-import pheeeew.shared.generated.resources.collection_filter_all
-import pheeeew.shared.generated.resources.collection_loading
 import pheeeew.shared.generated.resources.collection_notification_outdated
-import pheeeew.shared.generated.resources.collection_refresh_failed
 import pheeeew.shared.generated.resources.collection_subtitle
 import pheeeew.shared.generated.resources.collection_title
-import pheeeew.shared.generated.resources.collection_unissued_label
 import pheeeew.shared.generated.resources.ic_collection_album
 import pheeeew.shared.generated.resources.ic_collection_cover_flow
-import pheeeew.shared.generated.resources.ic_emotion_frustrated
-import kotlin.math.absoluteValue
 
 @Composable
 fun CollectionScreen(
@@ -121,12 +88,10 @@ fun CollectionScreen(
     onSaveCard: (cardId: String, capture: suspend () -> ByteArray) -> Unit,
     onShareCard: (cardId: String, capture: suspend () -> ByteArray) -> Unit,
     modifier: Modifier = Modifier,
-    initialViewMode: CollectionViewMode = CollectionViewMode.COVER_FLOW,
     bottomBar: @Composable () -> Unit = {},
     onCancelCardCapture: (String) -> Unit = {},
     onClaim: (EmotionType) -> Unit = {},
     onRetryClaim: () -> Unit = {},
-    onFilterChange: (EmotionType?) -> Unit = {},
     onLoadMore: () -> Unit = {},
     onRefresh: () -> Unit = {},
     onRetryCards: () -> Unit = {},
@@ -135,29 +100,13 @@ fun CollectionScreen(
     onDismissSaveCompletion: () -> Unit = {},
     onRetryCard: () -> Unit = {},
     onCardClick: (String) -> Unit = {},
+    onCalendarMonthChange: (String) -> Unit = {},
+    onCalendarRetry: () -> Unit = {},
+    onCalendarDayClick: (String) -> Unit = {},
 ) {
-    var viewModeName by rememberSaveable { mutableStateOf(initialViewMode.name) }
+    var viewMode by rememberSaveable { mutableStateOf(CollectionViewMode.COVER_FLOW) }
+    val tabState = rememberSaveableStateHolder()
     var selectedCardId by rememberSaveable { mutableStateOf<String?>(null) }
-    val viewMode = CollectionViewMode.valueOf(viewModeName)
-    val coverFlowItems =
-        buildList {
-            when {
-                uiModel.pendingProgress != null -> {
-                    add(CollectionCarouselItem(id = "pending", progress = uiModel.pendingProgress))
-                }
-
-                uiModel.hasClaimedToday && (uiModel.cards.isNotEmpty() || uiModel.cardsError == null) -> {
-                    add(CollectionCarouselItem(id = "tomorrow", isTomorrow = true))
-                }
-            }
-            uiModel.cards.forEach { card -> add(CollectionCarouselItem(id = card.id, card = card)) }
-        }
-    val todayCardIndex =
-        uiModel.todayCardId?.let { todayCardId -> coverFlowItems.indexOfFirst { it.id == todayCardId } } ?: -1
-    val pagerState = rememberPagerState { coverFlowItems.size.coerceAtLeast(1) }
-    val albumStateHolder = rememberSaveableStateHolder()
-    // Forward vertical drags to the refresh connection when content only scrolls horizontally.
-    val coverFlowDragState = rememberScrollableState { 0f }
     val hapticFeedback = LocalHapticFeedback.current
     val pullDistance = with(LocalDensity.current) { 56.dp.toPx() }
     val scope = rememberCoroutineScope()
@@ -170,31 +119,13 @@ fun CollectionScreen(
                 latestRefresh()
             }
         }
-    val unavailableState =
-        collectionUnavailableState(
-            hasContent = uiModel.cards.isNotEmpty() || uiModel.pendingProgress != null,
-            isLoading = uiModel.isLoadingCards || uiModel.todayLoading || uiModel.isRefreshRequestActive,
-            cardsError = uiModel.cardsError,
-            todayError = uiModel.todayError,
-            onRetryCards = onRetryCards,
-            onRetryToday = onRetryToday,
-        )
-    val hasVisibleContent =
-        uiModel.cards.isNotEmpty() ||
-            uiModel.hasClaimedToday ||
-            (
-                uiModel.pendingProgress != null &&
-                    (viewMode == CollectionViewMode.COVER_FLOW || uiModel.selectedFilter == null)
-            )
-    var isCardsErrorDismissed by remember(uiModel.cardsError, uiModel.scrollToTopRequestId) { mutableStateOf(false) }
     val visibleCards = uiModel.cards
-    LaunchedEffect(visibleCards, selectedCardId) {
-        if (selectedCardId != null && visibleCards.none { it.id == selectedCardId }) {
+    LaunchedEffect(visibleCards, uiModel.calendarCards, selectedCardId) {
+        if (selectedCardId != null && visibleCards.none { it.id == selectedCardId } &&
+            uiModel.calendarCards.none { it.id == selectedCardId }
+        ) {
             selectedCardId = null
         }
-    }
-    LaunchedEffect(uiModel.scrollToTopRequestId, uiModel.todayCardId, todayCardIndex) {
-        pagerState.scrollToPage(todayCardIndex.takeIf { it >= 0 } ?: 0)
     }
 
     Column(
@@ -231,75 +162,102 @@ fun CollectionScreen(
                 )
             }
             Box(Modifier.fillMaxSize()) {
-                Column(
-                    Modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-                            translationY = pullState.offset
-                        }.scrollable(
-                            state = coverFlowDragState,
-                            orientation = Orientation.Vertical,
-                            enabled = viewMode == CollectionViewMode.COVER_FLOW && !uiModel.isRefreshRequestActive,
-                        ),
-                ) {
-                    CollectionScreenHeader(
-                        nickname = uiModel.nickname,
-                        cardCount = uiModel.totalCount,
-                        viewMode = viewMode,
-                        onViewModeChange = {
-                            viewModeName = it.name
-                            if (it == CollectionViewMode.COVER_FLOW && uiModel.selectedFilter != null) {
-                                onFilterChange(null)
+                tabState.SaveableStateProvider(viewMode.name) {
+                    Column(
+                        Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                translationY = pullState.offset
+                            }.scrollable(
+                                state = rememberScrollableState { 0f },
+                                orientation = Orientation.Vertical,
+                                enabled = viewMode == CollectionViewMode.COVER_FLOW,
+                            ),
+                    ) {
+                        CollectionScreenHeader(
+                            nickname = uiModel.nickname,
+                            cardCount = uiModel.totalCount,
+                            viewMode = viewMode,
+                            onViewModeChange = { viewMode = it },
+                        )
+                        if (uiModel.isNotificationDateOutdated) {
+                            Text(
+                                text = stringResource(Res.string.collection_notification_outdated),
+                                color = AppColors.TextSecondary,
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                            )
+                        }
+                        uiModel.claimError?.let { error ->
+                            RefreshErrorBanner(
+                                message = if (uiModel.claimOutcomeUnknown) "$error 같은 요청으로 다시 확인할 수 있어요." else error,
+                                onRetry = onRetryClaim,
+                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp),
+                            )
+                        }
+                        if (uiModel.commonError == CollectionCommonError.Initial &&
+                            viewMode == CollectionViewMode.COVER_FLOW
+                        ) {
+                            CollectionRetryState(
+                                message = "인터넷 연결을 확인하고 다시 시도해 주세요.",
+                                onRetry = onRefresh,
+                                modifier = Modifier.weight(1f).fillMaxWidth(),
+                            )
+                        } else {
+                            if (uiModel.commonError == CollectionCommonError.Refresh) {
+                                RefreshErrorBanner(
+                                    message = "인터넷 연결을 확인하고 다시 시도해 주세요.",
+                                    onRetry = onRefresh,
+                                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp),
+                                )
                             }
-                        },
-                    )
-                    if (uiModel.isNotificationDateOutdated) {
-                        Text(
-                            text = stringResource(Res.string.collection_notification_outdated),
-                            color = AppColors.TextSecondary,
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-                        )
-                    }
-                    uiModel.claimError?.let { error ->
-                        RefreshErrorBanner(
-                            message = if (uiModel.claimOutcomeUnknown) "$error 같은 요청으로 다시 확인할 수 있어요." else error,
-                            onRetry = onRetryClaim,
-                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp),
-                        )
-                    }
-                    if (viewMode == CollectionViewMode.COVER_FLOW) {
-                        CollectionCoverFlow(
-                            items = coverFlowItems,
-                            unavailableState = unavailableState,
-                            pagerState = pagerState,
-                            isLoadingToday = uiModel.todayLoading,
-                            todayError = uiModel.todayError,
-                            onClaim = onClaim,
-                            onRetryToday = onRetryToday,
-                            hasNext = uiModel.hasNext,
-                            isLoadingNext = uiModel.isLoadingNext,
-                            onLoadMore = onLoadMore,
-                            onCardClick = { card ->
-                                selectedCardId = card.id
-                                onCardClick(card.id)
-                            },
-                            modifier = Modifier.weight(1f),
-                        )
-                    } else {
-                        CollectionAlbumSectionWithSavedState(
-                            stateHolder = albumStateHolder,
-                            uiModel = uiModel,
-                            onFilterChange = onFilterChange,
-                            onClaim = onClaim,
-                            onRetryToday = onRetryToday,
-                            onRetryCards = onRetryCards,
-                            onLoadMore = onLoadMore,
-                            onCardClick = { card ->
-                                selectedCardId = card.id
-                                onCardClick(card.id)
-                            },
-                        )
+                            if (viewMode == CollectionViewMode.COVER_FLOW) {
+                                CoverflowSection(
+                                    uiModel = uiModel,
+                                    onClaim = onClaim,
+                                    onRetryToday = onRetryToday,
+                                    onRetryCards = onRetryCards,
+                                    onLoadMore = onLoadMore,
+                                    onCardClick = { card ->
+                                        selectedCardId = card.id
+                                        onCardClick(card.id)
+                                    },
+                                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                                )
+                            } else {
+                                val commonInitialFailure = uiModel.commonError == CollectionCommonError.Initial
+                                CalendarSection(
+                                    month = uiModel.calendarMonth,
+                                    cards = uiModel.calendarCards,
+                                    isLoading =
+                                        uiModel.calendarLoad == CollectionSectionLoad.InitialLoading ||
+                                            uiModel.isLoadingCalendar,
+                                    error =
+                                        when {
+                                            commonInitialFailure -> {
+                                                "인터넷 연결을 확인하고 다시 시도해 주세요."
+                                            }
+
+                                            uiModel.calendarLoad is CollectionSectionLoad.InitialFailure -> {
+                                                "이번 달 카드를 불러오지 못했어요."
+                                            }
+
+                                            else -> {
+                                                (uiModel.calendarLoad as? CollectionSectionLoad.Content)
+                                                    ?.refreshFailure
+                                                    ?.message
+                                            }
+                                        },
+                                    hasLoaded =
+                                        !commonInitialFailure && uiModel.calendarLoad is CollectionSectionLoad.Content,
+                                    showRefreshIndicator = !uiModel.isRefreshRequestActive,
+                                    onMonthChange = onCalendarMonthChange,
+                                    onRetry = if (commonInitialFailure) onRefresh else onCalendarRetry,
+                                    onDateClick = onCalendarDayClick,
+                                    modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
+                                )
+                            }
+                        }
                     }
                 }
                 if (uiModel.isRefreshIndicatorVisible) {
@@ -308,246 +266,47 @@ fun CollectionScreen(
                         color = AppColors.Primary,
                     )
                 }
-                Snackbar(
-                    message =
-                        if (uiModel.cardsError != null && hasVisibleContent && !isCardsErrorDismissed) {
-                            stringResource(Res.string.collection_refresh_failed)
-                        } else {
-                            null
-                        },
-                    onDismiss = { isCardsErrorDismissed = true },
-                    isError = true,
-                    modifier = Modifier.align(Alignment.BottomCenter).padding(horizontal = 24.dp, vertical = 16.dp),
-                )
             }
         }
         bottomBar()
     }
 
     selectedCardId?.let { cardId ->
-        (uiModel.selectedCard?.takeIf { it.id == cardId } ?: visibleCards.firstOrNull { it.id == cardId })
-            ?.let { selectedCard ->
-                CollectionCardDialog(
-                    card = selectedCard,
-                    isLoading = uiModel.isLoadingCard,
-                    error = uiModel.cardError,
-                    isSaveCompleted = uiModel.saveCompletionCardId == selectedCard.id,
-                    saveCompletionId = uiModel.saveCompletionId,
-                    imageActionError = uiModel.imageActionError,
-                    imageActionErrorCardId = uiModel.imageActionErrorCardId,
-                    imageActionErrorId = uiModel.imageActionErrorId,
-                    imageActionPhase = uiModel.imageActionPhase,
-                    onDismissSaveCompletion = onDismissSaveCompletion,
-                    onDismiss = {
-                        onDismissSaveCompletion()
-                        selectedCardId = null
-                        onDismissCard()
-                    },
-                    onRetry = onRetryCard,
-                    onSave = { capture -> onSaveCard(selectedCard.id, capture) },
-                    onShare = { capture -> onShareCard(selectedCard.id, capture) },
-                    onCancelCapture = onCancelCardCapture,
-                )
-            }
-    }
-}
-
-@Composable
-private fun ColumnScope.CollectionAlbumSectionWithSavedState(
-    stateHolder: SaveableStateHolder,
-    uiModel: CollectionScreenUiModel,
-    onFilterChange: (EmotionType?) -> Unit,
-    onClaim: (EmotionType) -> Unit,
-    onRetryToday: () -> Unit,
-    onRetryCards: () -> Unit,
-    onLoadMore: () -> Unit,
-    onCardClick: (CollectionCardUiModel) -> Unit,
-) {
-    val filterKey = uiModel.selectedFilter?.name ?: "all"
-    CollectionEmotionFilters(
-        selected = uiModel.selectedFilter,
-        counts = uiModel.emotionCounts,
-        onFilterChange = onFilterChange,
-    )
-    stateHolder.SaveableStateProvider(filterKey) {
-        val albumState = rememberLazyGridState()
-        LaunchedEffect(uiModel.scrollToTopRequestId) { albumState.scrollToItem(0) }
-        CollectionAlbumSection(
-            uiModel = uiModel,
-            albumState = albumState,
-            onClaim = onClaim,
-            onRetryToday = onRetryToday,
-            onRetryCards = onRetryCards,
-            onLoadMore = onLoadMore,
-            onCardClick = onCardClick,
-        )
-    }
-}
-
-private sealed interface CollectionUnavailableState {
-    data object Waiting : CollectionUnavailableState
-
-    data class Error(
-        val onRetry: () -> Unit,
-    ) : CollectionUnavailableState
-
-    data object Empty : CollectionUnavailableState
-}
-
-private fun collectionUnavailableState(
-    hasContent: Boolean,
-    isLoading: Boolean,
-    cardsError: String?,
-    todayError: String?,
-    onRetryCards: () -> Unit,
-    onRetryToday: () -> Unit,
-): CollectionUnavailableState? =
-    when {
-        hasContent -> null
-        isLoading -> CollectionUnavailableState.Waiting
-        cardsError != null -> CollectionUnavailableState.Error(onRetryCards)
-        todayError != null -> CollectionUnavailableState.Error(onRetryToday)
-        else -> CollectionUnavailableState.Empty
-    }
-
-@Composable
-private fun ColumnScope.CollectionAlbumSection(
-    uiModel: CollectionScreenUiModel,
-    albumState: LazyGridState,
-    onClaim: (EmotionType) -> Unit,
-    onRetryToday: () -> Unit,
-    onRetryCards: () -> Unit,
-    onLoadMore: () -> Unit,
-    onCardClick: (CollectionCardUiModel) -> Unit,
-) {
-    val pendingProgress = uiModel.pendingProgress.takeIf { uiModel.selectedFilter == null }
-    val unavailableState =
-        collectionUnavailableState(
-            hasContent = uiModel.cards.isNotEmpty() || pendingProgress != null,
-            isLoading =
-                uiModel.isLoadingCards || uiModel.isRefreshRequestActive ||
-                    (pendingProgress != null && uiModel.todayLoading),
-            cardsError = uiModel.cardsError,
-            todayError = uiModel.todayError.takeIf { pendingProgress != null },
-            onRetryCards = onRetryCards,
-            onRetryToday = onRetryToday,
-        )
-    if (unavailableState == null) {
-        CollectionAlbum(
-            cards = uiModel.cards,
-            pendingProgress = pendingProgress,
-            isLoadingToday = uiModel.todayLoading,
-            todayError = uiModel.todayError,
-            onClaim = onClaim,
-            onRetryToday = onRetryToday,
-            state = albumState,
-            onCardClick = onCardClick,
-            onLoadMore = onLoadMore,
-            modifier = Modifier.weight(1f),
-        )
-    } else {
-        CollectionContentPlaceholder(unavailableState, Modifier.weight(1f))
-    }
-    if (uiModel.isLoadingNext) {
-        Text(
-            stringResource(Res.string.collection_loading),
-            color = AppColors.TextSecondary,
-            fontSize = 11.sp,
-            modifier = Modifier.align(Alignment.CenterHorizontally).padding(8.dp),
-        )
-    }
-}
-
-@Composable
-private fun CollectionContentPlaceholder(
-    state: CollectionUnavailableState,
-    modifier: Modifier = Modifier,
-) {
-    when (state) {
-        CollectionUnavailableState.Waiting -> {
-            Box(modifier.fillMaxSize())
-        }
-
-        is CollectionUnavailableState.Error -> {
-            CollectionCenteredState(modifier) {
-                LoadErrorContent(onRetry = state.onRetry)
-            }
-        }
-
-        CollectionUnavailableState.Empty -> {
-            CollectionEmptyState(modifier)
+        (
+            uiModel.selectedCard?.takeIf { it.id == cardId }
+                ?: visibleCards.firstOrNull { it.id == cardId } ?: uiModel.calendarCards.firstOrNull { it.id == cardId }
+        )?.let { selectedCard ->
+            CollectionCardDialog(
+                card = selectedCard,
+                isLoading = uiModel.isLoadingCard,
+                error = uiModel.cardError,
+                isSaveCompleted = uiModel.saveCompletionCardId == selectedCard.id,
+                saveCompletionId = uiModel.saveCompletionId,
+                imageActionError = uiModel.imageActionError,
+                imageActionErrorCardId = uiModel.imageActionErrorCardId,
+                imageActionErrorId = uiModel.imageActionErrorId,
+                imageActionPhase = uiModel.imageActionPhase,
+                onDismissSaveCompletion = onDismissSaveCompletion,
+                onDismiss = {
+                    onDismissSaveCompletion()
+                    selectedCardId = null
+                    onDismissCard()
+                },
+                onRetry = onRetryCard,
+                onSave = { capture -> onSaveCard(selectedCard.id, capture) },
+                onShare = { capture -> onShareCard(selectedCard.id, capture) },
+                onCancelCapture = onCancelCardCapture,
+            )
         }
     }
-}
-
-@Composable
-private fun CollectionCenteredState(
-    modifier: Modifier,
-    content: @Composable () -> Unit,
-) {
-    Column(
-        modifier.fillMaxSize().padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        content = { content() },
-    )
-}
-
-@Composable
-private fun CollectionEmotionFilters(
-    selected: EmotionType?,
-    counts: Map<EmotionType, Long>,
-    onFilterChange: (EmotionType?) -> Unit,
-) {
-    LazyRow(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-        contentPadding = PaddingValues(horizontal = 24.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        item(key = "all") {
-            CollectionFilterChip(
-                selected == null,
-                stringResource(Res.string.collection_filter_all),
-            ) { onFilterChange(null) }
-        }
-        items(EmotionType.entries, key = { it.name }) { emotion ->
-            val count = counts[emotion] ?: 0L
-            CollectionFilterChip(selected == emotion, "${stringResource(emotion.label)} $count") {
-                onFilterChange(emotion)
-            }
-        }
-    }
-}
-
-@Composable
-private fun CollectionFilterChip(
-    selected: Boolean,
-    label: String,
-    onClick: () -> Unit,
-) {
-    val textColor = if (selected) AppColors.TextPrimary else AppColors.TextSecondary
-    val borderColor = if (selected) AppColors.TextPrimary else AppColors.CollectionCardDivider
-    Text(
-        text = label,
-        color = textColor,
-        fontSize = 10.sp,
-        fontWeight = FontWeight.SemiBold,
-        modifier =
-            Modifier
-                .clip(CircleShape)
-                .background(if (selected) AppColors.Primary else AppColors.Surface)
-                .border(1.dp, borderColor, CircleShape)
-                .clickable(onClick = onClick)
-                .padding(horizontal = 12.dp, vertical = 2.dp),
-    )
 }
 
 @Composable
 private fun CollectionScreenHeader(
     nickname: String,
     cardCount: Long,
-    viewMode: CollectionViewMode,
-    onViewModeChange: (CollectionViewMode) -> Unit,
+    viewMode: CollectionViewMode = CollectionViewMode.COVER_FLOW,
+    onViewModeChange: (CollectionViewMode) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -567,7 +326,7 @@ private fun CollectionScreenHeader(
             modifier = Modifier.padding(top = 4.dp),
         )
         Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 32.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -576,13 +335,12 @@ private fun CollectionScreenHeader(
                 fontSize = 12.sp,
                 color = AppColors.TextSecondary,
             )
-            CollectionViewModeToggle(
-                selectedMode = viewMode,
-                onModeChange = onViewModeChange,
-            )
+            CollectionViewModeToggle(selectedMode = viewMode, onModeChange = onViewModeChange)
         }
     }
 }
+
+private enum class CollectionViewMode { COVER_FLOW, ALBUM }
 
 @Composable
 private fun CollectionViewModeToggle(
@@ -662,292 +420,6 @@ private fun CollectionViewModeToggle(
     }
 }
 
-private data class CollectionCarouselItem(
-    val id: String,
-    val card: CollectionCardUiModel? = null,
-    val progress: CollectionProgressUiModel? = null,
-    val isTomorrow: Boolean = false,
-)
-
-@Composable
-private fun CollectionCoverFlow(
-    items: List<CollectionCarouselItem>,
-    unavailableState: CollectionUnavailableState?,
-    pagerState: PagerState,
-    isLoadingToday: Boolean,
-    todayError: String?,
-    onClaim: (EmotionType) -> Unit,
-    onRetryToday: () -> Unit,
-    hasNext: Boolean,
-    isLoadingNext: Boolean,
-    onLoadMore: () -> Unit,
-    onCardClick: (CollectionCardUiModel) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val latestLoadMore by rememberUpdatedState(onLoadMore)
-    LaunchedEffect(pagerState, items.size, hasNext, isLoadingNext) {
-        snapshotFlow { pagerState.settledPage }.collect { page ->
-            if (hasNext && !isLoadingNext && items.isNotEmpty() && page >= items.lastIndex - 2) {
-                latestLoadMore()
-            }
-        }
-    }
-    if (items.isEmpty()) {
-        CollectionContentPlaceholder(
-            unavailableState ?: CollectionUnavailableState.Empty,
-            modifier.fillMaxSize(),
-        )
-        return
-    }
-    Column(modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
-            // Reserve card space first; omit accessories that would be too small to read.
-            val accessoryHeight = (maxHeight - 160.dp).coerceAtLeast(0.dp)
-            val paginationHeight = minOf(56.dp, accessoryHeight).takeIf { it >= 8.dp } ?: 0.dp
-            val actionHintHeight =
-                minOf(64.dp, accessoryHeight - paginationHeight).takeIf { it >= 32.dp } ?: 0.dp
-            val cardHeight = (maxHeight - paginationHeight - actionHintHeight).coerceAtLeast(0.dp)
-            val availableWidth = maxWidth
-            val cardWidth = minOf(availableWidth * 0.76f, cardHeight * 0.75f)
-            val actualCardHeight = cardWidth / 0.75f
-            Column(
-                Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Top,
-            ) {
-                HorizontalPager(
-                    state = pagerState,
-                    modifier = Modifier.fillMaxWidth().height(actualCardHeight),
-                    pageSize = PageSize.Fixed(cardWidth),
-                    contentPadding = PaddingValues(horizontal = (availableWidth - cardWidth) / 2),
-                    pageSpacing = availableWidth * 0.04f,
-                    key = { page -> items.getOrNull(page)?.id ?: "stale-page-$page" },
-                ) { page ->
-                    val item = items.getOrNull(page) ?: return@HorizontalPager
-                    val issuedCard = item.card
-                    val progress = item.progress
-                    val animatedModifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .layout { measurable, constraints ->
-                                val placeable = measurable.measure(constraints)
-                                layout(placeable.width, placeable.height) {
-                                    val offset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
-                                    val distance = offset.absoluteValue.coerceIn(0f, 1f)
-                                    placeable.place(0, 0, zIndex = 1f - distance)
-                                }
-                            }.graphicsLayer {
-                                val offset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
-                                val distance = offset.absoluteValue.coerceIn(0f, 1f)
-                                scaleX = 1f - distance * 0.12f
-                                scaleY = 1f - distance * 0.1f
-                                rotationY = offset.coerceIn(-1f, 1f) * -12f
-                                alpha = 1f - distance * 0.35f
-                                cameraDistance = 12f * density
-                            }
-                    val cardModifier =
-                        if (issuedCard != null) {
-                            animatedModifier.clickable(role = Role.Button) { onCardClick(issuedCard) }
-                        } else {
-                            animatedModifier
-                        }
-                    if (issuedCard != null) {
-                        CollectionCard(uiModel = issuedCard, modifier = cardModifier)
-                    } else if (item.isTomorrow) {
-                        CollectionTomorrowCard(modifier = animatedModifier)
-                    } else {
-                        val unissuedProgress = requireNotNull(progress)
-                        CollectionProgressCard(
-                            progress = unissuedProgress,
-                            isLoading = isLoadingToday,
-                            error = todayError,
-                            onClaim = { onClaim(unissuedProgress.emotion) },
-                            onRetry = onRetryToday,
-                            modifier = cardModifier,
-                        )
-                    }
-                }
-                val selectedIndex = collectionCardIndex(pagerState.currentPage, items.size)
-                val selectedItem = items[selectedIndex]
-                val selectedEmotion = selectedItem.card?.emotion ?: selectedItem.progress?.emotion
-                Box(
-                    modifier = Modifier.fillMaxWidth().height(actionHintHeight),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (selectedItem.card != null && actionHintHeight > 0.dp) {
-                        Text(
-                            text = stringResource(Res.string.collection_card_action_hint),
-                            color = AppColors.TextSecondary,
-                            fontSize = 12.sp,
-                            textAlign = TextAlign.Center,
-                        )
-                    }
-                }
-                val visibleDotCount = minOf(items.size, 7)
-                val firstVisibleDot =
-                    (selectedIndex - visibleDotCount / 2).coerceIn(0, items.size - visibleDotCount)
-                val lastVisibleDot = firstVisibleDot + visibleDotCount - 1
-                if (paginationHeight > 0.dp) {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().height(paginationHeight),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            for (index in firstVisibleDot..lastVisibleDot) {
-                                val isTruncatedEdge =
-                                    (index == firstVisibleDot && firstVisibleDot > 0) ||
-                                        (index == lastVisibleDot && lastVisibleDot < items.lastIndex)
-                                Box(
-                                    Modifier
-                                        .size(if (isTruncatedEdge) 4.dp else 6.dp)
-                                        .background(
-                                            if (index == selectedIndex) {
-                                                selectedEmotion?.representativeColor ?: AppColors.Primary
-                                            } else {
-                                                AppColors.Gray100
-                                            },
-                                            CircleShape,
-                                        ),
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-private fun collectionCardIndex(
-    page: Int,
-    cardCount: Int,
-): Int = page.coerceIn(0, cardCount - 1)
-
-@Composable
-private fun CollectionAlbum(
-    cards: List<CollectionCardUiModel>,
-    pendingProgress: CollectionProgressUiModel?,
-    isLoadingToday: Boolean,
-    todayError: String?,
-    onClaim: (EmotionType) -> Unit,
-    onRetryToday: () -> Unit,
-    state: LazyGridState,
-    onCardClick: (CollectionCardUiModel) -> Unit,
-    onLoadMore: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val latestLoadMore by rememberUpdatedState(onLoadMore)
-    LaunchedEffect(state, cards.size) {
-        snapshotFlow {
-            state.layoutInfo.visibleItemsInfo
-                .lastOrNull()
-                ?.index
-        }.collect { index -> if (index != null && index >= cards.lastIndex - 3) latestLoadMore() }
-    }
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
-        state = state,
-        modifier =
-            modifier.fillMaxSize().drawWithContent {
-                drawContent()
-                if (state.canScrollBackward) {
-                    val fadeHeight = 24.dp.toPx().coerceAtMost(size.height)
-                    drawRect(
-                        brush =
-                            Brush.verticalGradient(
-                                colors = listOf(AppColors.GroupBackground, Color.Transparent),
-                                startY = 0f,
-                                endY = fadeHeight,
-                            ),
-                        size = Size(size.width, fadeHeight),
-                    )
-                }
-            },
-        contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 24.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
-    ) {
-        if (pendingProgress != null) {
-            item(key = "pending") {
-                Column {
-                    CollectionProgressCard(
-                        progress = pendingProgress,
-                        isLoading = isLoadingToday,
-                        error = todayError,
-                        onClaim = { onClaim(pendingProgress.emotion) },
-                        onRetry = onRetryToday,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Row(
-                        Modifier.fillMaxWidth().padding(top = 6.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = stringResource(Res.string.collection_unissued_label),
-                            color = pendingProgress.emotion.representativeColor,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                }
-            }
-        }
-        items(cards, key = { it.id }) { card ->
-            Column(
-                Modifier
-                    .clickable(role = Role.Button) { onCardClick(card) },
-            ) {
-                CollectionCard(uiModel = card, modifier = Modifier.fillMaxWidth())
-                Row(
-                    Modifier.fillMaxWidth().padding(top = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = stringResource(card.emotion.label),
-                        color = card.emotion.representativeColor,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Text(text = card.period, color = AppColors.TextSecondary, fontSize = 9.sp)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CollectionEmptyState(modifier: Modifier = Modifier) {
-    CollectionCenteredState(modifier) {
-        Image(
-            painter = painterResource(Res.drawable.ic_emotion_frustrated),
-            contentDescription = null,
-            modifier = Modifier.size(96.dp),
-        )
-        Spacer(Modifier.height(24.dp))
-        Text(
-            text = stringResource(Res.string.collection_empty),
-            fontWeight = FontWeight.Bold,
-            fontSize = 16.sp,
-            color = AppColors.RankingContent,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(19.dp))
-        Text(
-            text = stringResource(Res.string.collection_empty_hint),
-            color = AppColors.RankingSecondaryContent,
-            fontSize = 12.sp,
-            textAlign = TextAlign.Center,
-        )
-    }
-}
-
 @Preview(showBackground = true)
 @Composable
 private fun CollectionScreenHeaderComponentPreview() {
@@ -955,108 +427,20 @@ private fun CollectionScreenHeaderComponentPreview() {
         CollectionScreenHeader(
             nickname = "오늘도히유",
             cardCount = 5,
-            viewMode = CollectionViewMode.COVER_FLOW,
-            onViewModeChange = {},
         )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun CollectionCoverFlowComponentPreview() {
-    CollectionPreviewTheme {
-        val items =
-            buildList {
-                add(CollectionCarouselItem("pending", progress = collectionPreviewPendingProgress()))
-                collectionPreviewCards().forEach { add(CollectionCarouselItem(it.id, card = it)) }
-            }
-        CollectionCoverFlow(
-            items = items,
-            unavailableState = null,
-            pagerState =
-                rememberPagerState(
-                    initialPage = 1,
-                    pageCount = { items.size },
-                ),
-            isLoadingToday = false,
-            todayError = null,
-            onClaim = {},
-            onRetryToday = {},
-            hasNext = false,
-            isLoadingNext = false,
-            onLoadMore = {},
-            onCardClick = {},
-        )
-    }
-}
-
-@Preview(name = "컬렉션 · 내일 카드 안내", showBackground = true)
-@Composable
-private fun CollectionCoverFlowTomorrowPreview() {
-    CollectionPreviewTheme {
-        val items =
-            buildList {
-                add(CollectionCarouselItem("tomorrow", isTomorrow = true))
-                collectionPreviewCards().forEach { add(CollectionCarouselItem(it.id, card = it)) }
-            }
-        CollectionCoverFlow(
-            items = items,
-            unavailableState = null,
-            pagerState = rememberPagerState(pageCount = { items.size }),
-            isLoadingToday = false,
-            todayError = null,
-            onClaim = {},
-            onRetryToday = {},
-            hasNext = false,
-            isLoadingNext = false,
-            onLoadMore = {},
-            onCardClick = {},
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun CollectionAlbumComponentPreview() {
-    CollectionPreviewTheme {
-        CollectionAlbum(
-            cards = collectionPreviewCards(),
-            pendingProgress = collectionPreviewPendingProgress(),
-            isLoadingToday = false,
-            todayError = null,
-            onClaim = {},
-            onRetryToday = {},
-            state = rememberLazyGridState(),
-            onCardClick = {},
-            onLoadMore = {},
-        )
-    }
-}
-
-@Preview(widthDp = 390, heightDp = 640, showBackground = true)
-@Composable
-private fun CollectionEmptyStateComponentPreview() {
-    CollectionPreviewTheme {
-        CollectionEmptyState()
     }
 }
 
 @Preview(name = "컬렉션 · 커버플로", showBackground = true)
 @Composable
 private fun CollectionScreenPreview() {
-    CollectionPreview(CollectionViewMode.COVER_FLOW)
-}
-
-@Preview(name = "컬렉션 · 앨범", showBackground = true)
-@Composable
-private fun CollectionAlbumPreview() {
-    CollectionPreview(CollectionViewMode.ALBUM)
+    CollectionPreview()
 }
 
 @Preview(name = "컬렉션 · 작은 화면", showBackground = true)
 @Composable
 private fun CollectionCompactPreview() {
-    CollectionPreview(CollectionViewMode.COVER_FLOW)
+    CollectionPreview()
 }
 
 @Preview(name = "컬렉션 · 빈 목록", showBackground = true)
@@ -1101,7 +485,7 @@ private fun CollectionRefreshErrorPreview() {
 }
 
 @Composable
-private fun CollectionPreview(mode: CollectionViewMode) {
+private fun CollectionPreview() {
     val cards = collectionPreviewCards()
     CollectionPreviewTheme {
         CollectionScreen(
@@ -1113,12 +497,11 @@ private fun CollectionPreview(mode: CollectionViewMode) {
                 ),
             onSaveCard = { _, _ -> },
             onShareCard = { _, _ -> },
-            initialViewMode = mode,
         )
     }
 }
 
-private fun collectionPreviewPendingProgress() =
+internal fun collectionPreviewPendingProgress() =
     CollectionProgressUiModel(
         emotion = EmotionType.FRUSTRATED,
         stampCount = 3,
@@ -1147,7 +530,7 @@ private fun collectionPreviewPendingProgress() =
     )
 
 @Composable
-private fun collectionPreviewCards(): List<CollectionCardUiModel> {
+internal fun collectionPreviewCards(): List<CollectionCardUiModel> {
     val emotions =
         listOf(
             EmotionType.EXHAUSTED,
