@@ -1,21 +1,30 @@
 package com.pheeeew.data.remote.mapper
 
 import com.pheeeew.data.remote.dto.CollectionActivityProgressDto
+import com.pheeeew.data.remote.dto.CollectionCalendarDto
 import com.pheeeew.data.remote.dto.CollectionCardDto
 import com.pheeeew.data.remote.dto.CollectionCardReferenceDto
 import com.pheeeew.data.remote.dto.CollectionCountsDto
+import com.pheeeew.data.remote.dto.CollectionEmotionDto
+import com.pheeeew.data.remote.dto.CollectionEmotionPageDto
 import com.pheeeew.data.remote.dto.CollectionHistoryDto
 import com.pheeeew.data.remote.dto.CollectionImagesDto
 import com.pheeeew.data.remote.dto.CollectionTodayDto
 import com.pheeeew.domain.model.collection.CollectionActivityProgress
+import com.pheeeew.domain.model.collection.CollectionCalendar
 import com.pheeeew.domain.model.collection.CollectionCard
 import com.pheeeew.domain.model.collection.CollectionCardReference
 import com.pheeeew.domain.model.collection.CollectionCounts
+import com.pheeeew.domain.model.collection.CollectionEmotion
+import com.pheeeew.domain.model.collection.CollectionEmotionAudio
+import com.pheeeew.domain.model.collection.CollectionEmotionContentType
+import com.pheeeew.domain.model.collection.CollectionEmotionPage
 import com.pheeeew.domain.model.collection.CollectionHistory
 import com.pheeeew.domain.model.collection.CollectionImages
 import com.pheeeew.domain.model.collection.CollectionToday
 import com.pheeeew.domain.model.collection.CollectionTodayItem
 import com.pheeeew.domain.model.emotion.EmotionState
+import kotlin.time.Instant
 
 internal class CollectionContractException(
     field: String,
@@ -73,6 +82,76 @@ internal object CollectionMapper {
             reference = dto.toReference(),
             stampCount = stampCount,
             pressCount = pressCount,
+        )
+    }
+
+    fun toDomain(dto: CollectionCalendarDto): CollectionCalendar {
+        val dates = dto.items.map(CollectionCardDto::date)
+        if (dates != dates.sorted() || dates.distinct().size != dates.size || dates.size > 31) {
+            throw CollectionContractException("calendar.items")
+        }
+        return CollectionCalendar(dto.items.map(::toDomain))
+    }
+
+    fun toDomain(
+        dto: CollectionCalendarDto,
+        month: String,
+    ): CollectionCalendar {
+        val calendar = toDomain(dto)
+        if (!MONTH_PATTERN.toRegex().matches(month) ||
+            calendar.cards.any { it.reference.date.take(7) != month }
+        ) {
+            throw CollectionContractException("calendar.month")
+        }
+        return calendar
+    }
+
+    fun toDomain(dto: CollectionEmotionPageDto): CollectionEmotionPage {
+        val cursor = dto.nextCursor
+        if (dto.hasNext != (cursor != null) || cursor?.isBlank() == true || dto.items.size > 50) {
+            throw CollectionContractException("emotions.nextCursor")
+        }
+        if (dto.items
+                .map(CollectionEmotionDto::id)
+                .distinct()
+                .size != dto.items.size
+        ) {
+            throw CollectionContractException("emotions.items.id")
+        }
+        return CollectionEmotionPage(
+            items = dto.items.map(::toDomain),
+            hasNext = dto.hasNext,
+            nextCursor = cursor,
+        )
+    }
+
+    private fun toDomain(dto: CollectionEmotionDto): CollectionEmotion {
+        if (dto.id <= 0L) throw CollectionContractException("emotions.id")
+        requireInstant(dto.createdAt, "emotions.createdAt")
+        val state = state(dto.state)
+        val contentType =
+            runCatching { CollectionEmotionContentType.valueOf(dto.contentType) }
+                .getOrElse { throw CollectionContractException("emotions.contentType") }
+        val audio =
+            if (contentType == CollectionEmotionContentType.AUDIO) {
+                val value = dto.audio ?: throw CollectionContractException("emotions.audio")
+                if (!value.playbackUrl.startsWith("https://")) throw CollectionContractException("emotions.audio.url")
+                requireInstant(value.expiresAt, "emotions.audio.expiresAt")
+                CollectionEmotionAudio(value.playbackUrl, value.expiresAt)
+            } else {
+                if (dto.audio != null) throw CollectionContractException("emotions.audio")
+                null
+            }
+        if (contentType == CollectionEmotionContentType.MEMO && dto.memo.isNullOrBlank()) {
+            throw CollectionContractException("emotions.memo")
+        }
+        return CollectionEmotion(
+            id = dto.id,
+            createdAt = dto.createdAt,
+            state = state,
+            contentType = contentType,
+            memo = dto.memo.takeIf { contentType == CollectionEmotionContentType.MEMO },
+            audio = audio,
         )
     }
 
@@ -139,12 +218,24 @@ internal object CollectionMapper {
         if (!DATE_PATTERN.toRegex().matches(value)) throw CollectionContractException(field)
     }
 
+    private fun requireInstant(
+        value: String,
+        field: String,
+    ) {
+        try {
+            Instant.parse(value)
+        } catch (_: IllegalArgumentException) {
+            throw CollectionContractException(field)
+        }
+    }
+
     private fun String.requireCardId(): String =
         takeIf(UUID_PATTERN::matches) ?: throw CollectionContractException("cardId")
 
     private fun Long.requireCount(field: String): Long = takeIf { it >= 0L } ?: throw CollectionContractException(field)
 
     private const val DATE_PATTERN = "\\d{4}-\\d{2}-\\d{2}"
+    private const val MONTH_PATTERN = "\\d{4}-(0[1-9]|1[0-2])"
     private const val STAMP_TARGET = 1L
     private const val PRESS_TARGET = 100L
     private val UUID_PATTERN =

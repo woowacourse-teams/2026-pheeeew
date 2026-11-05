@@ -6,8 +6,10 @@ import com.pheeeew.core.network.NetworkFailure
 import com.pheeeew.data.remote.api.CollectionApi
 import com.pheeeew.data.remote.mapper.CollectionContractException
 import com.pheeeew.data.remote.mapper.CollectionMapper
+import com.pheeeew.domain.model.collection.CollectionCalendar
 import com.pheeeew.domain.model.collection.CollectionCard
 import com.pheeeew.domain.model.collection.CollectionCardReference
+import com.pheeeew.domain.model.collection.CollectionEmotionPage
 import com.pheeeew.domain.model.collection.CollectionFailure
 import com.pheeeew.domain.model.collection.CollectionHistory
 import com.pheeeew.domain.model.collection.CollectionHistoryQuery
@@ -36,6 +38,15 @@ internal class CollectionRepositoryImpl(
 
     override suspend fun findCard(cardId: String): CollectionResult<CollectionCard> =
         mapResult({ api.findCard(cardId) }, CollectionMapper::toDomain)
+
+    override suspend fun findCalendar(month: String): CollectionResult<CollectionCalendar> =
+        mapResult({ api.findCalendar(month) }) { CollectionMapper.toDomain(it, month) }
+
+    override suspend fun findEmotions(
+        cardId: String,
+        cursor: String?,
+    ): CollectionResult<CollectionEmotionPage> =
+        mapResult({ api.findEmotions(cardId, cursor) }, CollectionMapper::toDomain)
 
     private suspend fun <Dto : Any, Domain : Any> mapResult(
         response: suspend () -> ApiResult<Dto>,
@@ -86,7 +97,7 @@ internal class CollectionRepositoryImpl(
             is NetworkFailure.Unexpected -> {
                 CollectionFailure(
                     statusCode = null,
-                    code = "NETWORK",
+                    code = "UNEXPECTED",
                     message = null,
                     isOutcomeUnknown = mutationCertainty == MutationCertainty.UNKNOWN,
                 )

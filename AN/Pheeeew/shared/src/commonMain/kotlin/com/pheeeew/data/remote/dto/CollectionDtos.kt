@@ -64,6 +64,36 @@ data class CollectionHistoryDto(
 )
 
 @Serializable
+data class CollectionCalendarDto(
+    val items: List<CollectionCardDto>,
+    val hasNext: Boolean = false,
+    val nextCursor: String? = null,
+)
+
+@Serializable
+data class CollectionEmotionAudioDto(
+    val playbackUrl: String,
+    val expiresAt: String,
+)
+
+@Serializable
+data class CollectionEmotionDto(
+    val id: Long,
+    val createdAt: String,
+    val state: String,
+    val contentType: String,
+    val memo: String? = null,
+    val audio: CollectionEmotionAudioDto? = null,
+)
+
+@Serializable
+data class CollectionEmotionPageDto(
+    val items: List<CollectionEmotionDto>,
+    val hasNext: Boolean,
+    val nextCursor: String? = null,
+)
+
+@Serializable
 data class CollectionClaimRequestDto(
     val date: String,
     val state: String,
