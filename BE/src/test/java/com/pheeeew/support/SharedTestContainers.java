@@ -26,3 +26,5 @@ public final class SharedTestContainers {
         }
     }
 }
+
+// [실험 트리거] 빌드 캐시 측정용 런 F. 다음 커밋에서 되돌린다.
