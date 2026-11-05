@@ -80,7 +80,7 @@ class PressStreamPublisherIntegrationTest {
         clock = new MutableClock(Instant.now());
         repository = spy(new PressSnapshotRepository(jdbc));
         publisher = new PressStreamPublisher(new PressSnapshotService(repository), clock, PUBLISH_INTERVAL,
-                HEARTBEAT_INTERVAL);
+                HEARTBEAT_INTERVAL, PressStreamSendMode.SEQUENTIAL, 1, 1, Duration.ofSeconds(5));
     }
 
     @AfterEach
