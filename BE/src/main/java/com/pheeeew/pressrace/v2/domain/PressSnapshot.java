@@ -62,6 +62,10 @@ public class PressSnapshot {
         return new PressSnapshot(date, generatedAt, activeCount, List.copyOf(rankers), Map.copyOf(positions));
     }
 
+    public LocalDate date() {
+        return date;
+    }
+
     public PressScreen findScreen(UUID devicePublicId, PressView view) {
         Integer index = positions.get(devicePublicId);
         PressRanker me = index == null ? PressRanker.absent() : rankers.get(index);

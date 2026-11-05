@@ -14,6 +14,7 @@
 | WebSocket | `GET /api/v1/press-race` (Upgrade) | [실시간 프레스 연결, 입력 복구 연동](realtime-press.md) |
 | 기본 폴링 | `GET /api/v1/press-race/snapshot` | 이 문서 |
 | 캐시 적용 폴링 | `GET /api/v2/press-race/snapshot` | 이 문서의 [캐시 적용 폴링](#캐시-적용-폴링) |
+| SSE 구독 | `GET /api/v1/press-race/stream` | [실시간 프레스 SSE 구독 연동](realtime-press-sse.md) |
 
 두 폴링은 인증, 요청, 응답 필드와 의미, 순위 기준이 같고 응답의 최신성만 다릅니다.
 기본 폴링은 요청마다 DB를 읽고, 캐시 적용 폴링은 서버가 만든 공통 순위를 유효시간 동안 재사용합니다.
