@@ -39,6 +39,12 @@ jobs:
         with:
           persist-credentials: false
 
+      # 테스트 JVM 이 처음 DB 를 쓸 때 받던 PostGIS 이미지를 미리 받는다. 뒤의 Gradle 기동·컴파일과 겹쳐서 돈다.
+      # Testcontainers 는 그대로 쓴다. 받는 중에 컨테이너를 요청하면 Docker 가 같은 이미지 pull 을 합쳐 기다린다.
+      - name: PostGIS 이미지 미리 받기
+        run: |
+          (start=$(date +%s); docker pull -q postgis/postgis:17-3.5 > /dev/null 2>&1; echo "pull exit=$? $(( $(date +%s) - start ))s" > /tmp/postgis-pull.log) &
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -50,6 +56,10 @@ jobs:
 
       - name: 테스트
         run: ./gradlew test --no-daemon -PtestShards=4 -PtestShard=${{ matrix.shard }}
+
+      - name: PostGIS 이미지 받기 결과
+        if: always()
+        run: cat /tmp/postgis-pull.log || echo "pull 미완료"
 
       - name: 테스트 리포트 업로드
         if: always()
