@@ -30,7 +30,7 @@ jobs:
       # 한 샤드가 깨져도 나머지 결과를 봐야 원인을 좁힐 수 있다.
       fail-fast: false
       matrix:
-        shard: [0, 1]
+        shard: [0, 1, 2]
     defaults:
       run:
         working-directory: BE
@@ -49,7 +49,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: 테스트
-        run: ./gradlew test --no-daemon -PtestShards=2 -PtestShard=${{ matrix.shard }}
+        run: ./gradlew test --no-daemon -PtestShards=3 -PtestShard=${{ matrix.shard }}
 
       - name: 테스트 리포트 업로드
         if: always()
