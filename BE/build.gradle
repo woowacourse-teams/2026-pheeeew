@@ -67,4 +67,65 @@ dependencies {
 tasks.named('test') {
     useJUnitPlatform()
     systemProperty 'pheeeew.rate-limit.emotion-create.enabled', 'false'
+
+    // 테스트를 여러 러너로 쪼갠다. -PtestShards=4 -PtestShard=0 처럼 넘긴다.
+    // 넘기지 않으면 한 러너가 전부 도는 기존 동작과 같다.
+    int shardCount = (project.findProperty('testShards') ?: '1') as int
+    int shardIndex = (project.findProperty('testShard') ?: '0') as int
+    if (shardCount > 1) {
+        if (shardIndex < 0 || shardIndex >= shardCount) {
+            throw new GradleException("testShard 는 0 이상 ${shardCount} 미만이어야 한다: ${shardIndex}")
+        }
+        // 분배는 실행 시점에 컴파일된 테스트 클래스 목록을 보고 결정한다.
+        doFirst {
+            Properties weights = new Properties()
+            File hint = file('ci-test-weights.properties')
+            if (hint.exists()) {
+                hint.withInputStream { weights.load(it) }
+            }
+            // 테스트가 아닌 지원 클래스도 포함 목록에 넣어야 명명 규칙이 바뀌어도 빠지지 않는다.
+            // 다만 균형 계산은 왜곡하지 않도록 가중치를 0 으로 둔다.
+            Closure<Long> weightOf = { String name ->
+                String recorded = weights.getProperty(name)
+                if (recorded != null) {
+                    return recorded as long
+                }
+                return name.endsWith('Test') ? 1000L : 0L
+            }
+            List<String> classNames = []
+            testClassesDirs.asFileTree.matching { include '**/*.class' }.visit { details ->
+                // 중첩 클래스는 바깥 클래스를 통해 발견되므로 배정 단위에서 뺀다.
+                if (details.file.isFile() && !details.path.contains('$')) {
+                    classNames.add(details.path[0..-7].replace('/', '.'))
+                }
+            }
+            if (classNames.isEmpty()) {
+                throw new GradleException('컴파일된 테스트 클래스를 찾지 못했다.')
+            }
+            // 긴 작업 우선(LPT): 느린 클래스를 먼저 가장 한가한 샤드에 넣는다.
+            classNames.sort { String a, String b ->
+                weightOf(b) <=> weightOf(a) ?: (a <=> b)
+            }
+            long[] load = new long[shardCount]
+            List<String> mine = []
+            classNames.each { String name ->
+                long weight = weightOf(name)
+                int target = 0
+                for (int i = 1; i < shardCount; i++) {
+                    if (load[i] < load[target]) {
+                        target = i
+                    }
+                }
+                load[target] += weight
+                if (target == shardIndex) {
+                    mine.add(name.replace('.', '/') + '.class')
+                }
+            }
+            if (mine.isEmpty()) {
+                throw new GradleException("샤드 ${shardIndex} 에 배정된 클래스가 없다. 분배 기준을 확인한다.")
+            }
+            logger.lifecycle("테스트 샤드 ${shardIndex}/${shardCount}: 클래스 ${mine.size()}개, 가중치 합 ${load[shardIndex]}ms")
+            setIncludes(mine)
+        }
+    }
 }
