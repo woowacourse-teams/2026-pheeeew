@@ -47,7 +47,20 @@ public class EmotionListQueryRepositoryImpl implements EmotionListQueryRepositor
             EmotionSearchFilter filter,
             int limit
     ) {
-        return visibleQuery(snapshotAt, lastCreatedAt, lastId, deviceId, filter, true)
+        return findVisiblePageWithoutBounds(snapshotAt, lastCreatedAt, lastId, deviceId, filter, true, limit);
+    }
+
+    @Override
+    public List<Emotion> findVisiblePageWithoutBounds(
+            Instant snapshotAt,
+            Instant lastCreatedAt,
+            long lastId,
+            Long deviceId,
+            EmotionSearchFilter filter,
+            boolean contentOnly,
+            int limit
+    ) {
+        return visibleQuery(snapshotAt, lastCreatedAt, lastId, deviceId, filter, contentOnly)
                 .limit(limit)
                 .fetch();
     }

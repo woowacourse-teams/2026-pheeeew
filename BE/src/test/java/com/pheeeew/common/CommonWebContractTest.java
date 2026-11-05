@@ -141,6 +141,19 @@ class CommonWebContractTest {
     }
 
     @Test
+    void Accept_가_JSON_이_아니어도_오류는_JSON_본문으로_반환한다() {
+        // given / when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri("/test/pheeeew-exception")
+                .header(HttpHeaders.ACCEPT, "text/event-stream")
+                .exchange();
+
+        // then
+        result.expectHeader().contentTypeCompatibleWith("application/json");
+        오류를_검증한다(result, 400, "COMMON-001", "요청 값이 올바르지 않습니다.");
+    }
+
+    @Test
     void 예상하지_못한_예외는_내부_메시지를_노출하지_않는다() {
         // given / when
         RestTestClient.ResponseSpec result = client.get()
