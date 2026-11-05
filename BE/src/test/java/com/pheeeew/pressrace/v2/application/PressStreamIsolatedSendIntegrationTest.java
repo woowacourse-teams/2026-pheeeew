@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -257,7 +258,7 @@ class PressStreamIsolatedSendIntegrationTest {
     }
 
     @Test
-    void 전송_실행기가_가득_차면_구독을_유지하고_다음_주기에_최신_상태를_보낸다() throws Exception {
+    void 전송_실행기가_가득_차면_구독을_유지하고_이후_주기에_최신_상태를_보낸다() throws Exception {
         // given: 스레드 1개가 첫 구독을 보내는 동안 대기열 1칸이 둘째 구독으로 차서 셋째 구독은 거절된다.
         발행기(1, 1);
         Device other = 기기();
@@ -271,17 +272,40 @@ class PressStreamIsolatedSendIntegrationTest {
         누른다(other, 1);
         발행한다();
 
-        // when
+        // when: 첫 구독은 보낸 뒤 남은 대기를 다시 넣지만 대기열이 둘째 구독으로 차 있어 거절된다.
         gate.countDown();
-        기다린다(() -> 보낸_수(subscribers) == 6);
+        기다린다(() -> 보낸_수(subscribers) == 5);
         List<List<Long>> beforeRetry = 보낸_점수(subscribers);
-        발행한다();
+        발행하며_기다린다(() -> 보낸_수(subscribers) == 7);
 
         // then
-        기다린다(() -> 보낸_수(subscribers) == 7);
-        assertThat(beforeRetry).containsExactlyInAnyOrder(List.of(1L, 2L), List.of(2L), List.of());
+        assertThat(beforeRetry).containsExactlyInAnyOrder(List.of(1L), List.of(2L), List.of());
         assertThat(보낸_점수(subscribers)).containsExactlyInAnyOrder(List.of(1L, 2L), List.of(2L), List.of(2L));
         assertThat(subscribers).allSatisfy(listener -> assertThat(listener.closed.get()).isZero());
+    }
+
+    @Test
+    void 전송이_오래_걸리는_구독도_한_번_보낸_뒤_스레드를_돌려줘_다른_구독이_차례를_얻는다() throws Exception {
+        // given: 전송 스레드 1개를 매 전송이 막히는 구독이 쓰는 동안 다른 구독의 전송이 대기열에 있다.
+        발행기(1, 300, LONG_SEND_TIMEOUT);
+        Device other = 기기();
+        Listener slow = 구독한다(기기(), PressView.ALL);
+        Semaphore permits = new Semaphore(0);
+        slow.blockEachSend(permits);
+        누른다(other, 1);
+        발행한다();
+        assertThat(slow.entries.tryAcquire(5, TimeUnit.SECONDS)).isTrue();
+        Listener normal = 구독한다(기기(), PressView.ALL);
+        누른다(other, 1);
+        발행한다();
+
+        // when: 느린 구독의 첫 전송만 끝낸다. 느린 구독의 대기에는 다음 상태가 남아 있다.
+        permits.release();
+
+        // then
+        기다린다(() -> normal.snapshots.size() == 2);
+        assertThat(slow.entries.tryAcquire(5, TimeUnit.SECONDS)).isTrue();
+        assertThat(slow.snapshots).hasSize(2);
     }
 
     @Test
@@ -365,6 +389,15 @@ class PressStreamIsolatedSendIntegrationTest {
         }
     }
 
+    /** 대기열 1칸을 두고 여러 구독이 다시 넣기를 다툴 수 있어, 조건이 맞을 때까지 발행 주기를 반복한다. */
+    private void 발행하며_기다린다(BooleanSupplier condition) throws InterruptedException {
+        for (int cycle = 0; cycle < 20 && !condition.getAsBoolean(); cycle++) {
+            발행한다();
+            Thread.sleep(50);
+        }
+        assertThat(condition.getAsBoolean()).as("발행 주기를 반복해도 조건이 맞지 않았습니다.").isTrue();
+    }
+
     private Listener 구독한다(Device device, PressView view) {
         Listener listener = new Listener();
         listeners.add(listener);
@@ -412,6 +445,8 @@ class PressStreamIsolatedSendIntegrationTest {
         private final AtomicInteger maxSending = new AtomicInteger();
         private final CountDownLatch entered = new CountDownLatch(1);
         private final ReentrantLock writeLock = new ReentrantLock();
+        private final Semaphore entries = new Semaphore(0);
+        private volatile Semaphore permits;
         private volatile CountDownLatch gate;
         private volatile boolean failing;
 
@@ -422,6 +457,7 @@ class PressStreamIsolatedSendIntegrationTest {
                 enter();
                 try {
                     waitGate();
+                    waitPermit();
                     snapshots.add(screen);
                 } finally {
                     sending.decrementAndGet();
@@ -461,10 +497,19 @@ class PressStreamIsolatedSendIntegrationTest {
             this.gate = gate;
         }
 
+        /** 화면 전송마다 허가 하나를 기다린다. 전송을 시작할 때마다 entries 를 하나 올린다. */
+        private void blockEachSend(Semaphore permits) {
+            this.permits = permits;
+        }
+
         private void release() {
             CountDownLatch current = gate;
             if (current != null) {
                 current.countDown();
+            }
+            Semaphore currentPermits = permits;
+            if (currentPermits != null) {
+                currentPermits.release(Integer.MAX_VALUE / 2);
             }
         }
 
@@ -501,6 +546,22 @@ class PressStreamIsolatedSendIntegrationTest {
                 if (interrupted) {
                     Thread.currentThread().interrupt();
                 }
+            }
+        }
+
+        private void waitPermit() throws IOException {
+            Semaphore current = permits;
+            if (current == null) {
+                return;
+            }
+            entries.release();
+            try {
+                if (!current.tryAcquire(10, TimeUnit.SECONDS)) {
+                    throw new IOException("전송이 풀리지 않았습니다.");
+                }
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                throw new IOException("전송이 중단되었습니다.", exception);
             }
         }
     }
