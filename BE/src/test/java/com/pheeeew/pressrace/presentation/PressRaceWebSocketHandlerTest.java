@@ -303,7 +303,8 @@ class PressRaceWebSocketHandlerTest {
         when(service.initialize(any(), any())).thenReturn(PressSessionResult.of(Map.of(), List.of(), LocalDate.of(2026, 10, 26)));
         when(reader.read()).thenReturn(PressRanking.of(LocalDate.of(2026, 10, 26), Instant.now(), List.of()));
         PressRankingPublisher publisher = new PressRankingPublisher(reader);
-        PressRaceWebSocketHandler handler = new PressRaceWebSocketHandler(service, publisher);
+        PressRaceWebSocketHandler handler = new PressRaceWebSocketHandler(service, publisher,
+                PressSnapshotSender.DEFAULT_PING_INTERVAL_MILLIS, PressSnapshotSender.DEFAULT_HEARTBEAT_TIMEOUT_MILLIS);
         WebSocketSession observer = session("observer", observerId);
         WebSocketSession writer = session("writer", writerId);
         CountDownLatch blocked = new CountDownLatch(1);
@@ -367,7 +368,8 @@ class PressRaceWebSocketHandlerTest {
         private final PressRaceService service = mock(PressRaceService.class);
         private final PressRankingReader reader = mock(PressRankingReader.class);
         private final PressRankingPublisher publisher = new PressRankingPublisher(reader);
-        private final PressRaceWebSocketHandler handler = new PressRaceWebSocketHandler(service, publisher);
+        private final PressRaceWebSocketHandler handler = new PressRaceWebSocketHandler(service, publisher,
+                PressSnapshotSender.DEFAULT_PING_INTERVAL_MILLIS, PressSnapshotSender.DEFAULT_HEARTBEAT_TIMEOUT_MILLIS);
 
         private Protocol() {
             when(service.serverGeneration()).thenReturn(UUID.randomUUID());
