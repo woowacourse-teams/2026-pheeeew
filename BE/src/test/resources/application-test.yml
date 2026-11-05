@@ -1,3 +1,8 @@
 # DB fixture를 완성한 뒤 필요한 테스트에서만 수동 실행기로 유지관리를 시작한다.
 pheeeew.map-cache.maintenance.automatic-start: false
 pheeeew.notification.dispatch.automatic-start: false
+
+# 한 JVM 안에서 컨텍스트가 다시 뜰 때마다 Flyway가 같은 마이그레이션 45개를 다시 검증한다.
+# 첫 컨텍스트가 빈 스키마에 적용한 파일과 같은 파일이므로 그 뒤의 검증은 실패할 수 없다.
+# 전체 실행에서 컨텍스트가 105번 뜨고 검증 1회가 약 123ms 다.
+spring.flyway.validate-on-migrate: false

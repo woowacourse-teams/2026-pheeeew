@@ -44,9 +44,11 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      # 캐시 쓰기 권한은 기본 동작에 맡긴다. 기본 브랜치 push 런에서만 쓰고 PR 런은 읽기만 한다.
-      # 샤드 넷이 같은 키를 두고 동시에 쓰는 문제도 이 기본값이 막아준다.
+      # [실험] 운영에서는 기본 동작(기본 브랜치 push 런만 쓰기)에 맡긴다. 여기서는
+      # 빌드 캐시 효과를 PR 안에서 재려고 샤드 0 에만 쓰기를 허용한다. 측정 후 되돌린다.
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ matrix.shard != 0 }}
 
       - name: 테스트
         run: ./gradlew test --no-daemon -PtestShards=4 -PtestShard=${{ matrix.shard }}
