@@ -78,6 +78,32 @@ data class CollectionHistory(
     val nextCursor: String?,
 )
 
+data class CollectionCalendar(
+    val cards: List<CollectionCard>,
+)
+
+data class CollectionEmotion(
+    val id: Long,
+    val createdAt: String,
+    val state: EmotionState,
+    val contentType: CollectionEmotionContentType,
+    val memo: String?,
+    val audio: CollectionEmotionAudio?,
+)
+
+enum class CollectionEmotionContentType { NONE, MEMO, AUDIO }
+
+data class CollectionEmotionAudio(
+    val playbackUrl: String,
+    val expiresAt: String,
+)
+
+data class CollectionEmotionPage(
+    val items: List<CollectionEmotion>,
+    val hasNext: Boolean,
+    val nextCursor: String?,
+)
+
 data class CollectionHistoryQuery(
     val emotion: EmotionState? = null,
     val limit: Int = DEFAULT_COLLECTION_PAGE_SIZE,
