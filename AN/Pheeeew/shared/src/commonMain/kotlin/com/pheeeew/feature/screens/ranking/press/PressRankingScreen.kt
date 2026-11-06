@@ -28,9 +28,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.MotionDurationScale
@@ -46,19 +48,23 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.component.LoadErrorContent
+import com.pheeeew.core.designsystem.component.RefreshErrorBanner
 import com.pheeeew.feature.emotion.component.rememberTapReducedMotion
 import com.pheeeew.feature.monitoring.product.ProductScreen
 import com.pheeeew.feature.screens.press.measurement.pressRaceDrawMeasurement
+import com.pheeeew.feature.screens.ranking.press.components.EmptyRaceRanking
 import com.pheeeew.feature.screens.ranking.press.components.PressRaceRow
+import com.pheeeew.feature.screens.ranking.press.components.RankingDateSelector
 import com.pheeeew.feature.screens.ranking.press.components.rememberRankingEncouragementMessage
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import dev.zacsweers.metrox.viewmodel.metroViewModel
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_arrow_back
 import pheeeew.shared.generated.resources.press_daily_ranking_back
-import pheeeew.shared.generated.resources.press_daily_ranking_empty
+import pheeeew.shared.generated.resources.press_daily_ranking_refresh_error
 import pheeeew.shared.generated.resources.press_daily_ranking_title
 
 @Composable
@@ -66,7 +72,56 @@ fun PressRankingRoute(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     onRefreshActionChanged: ((() -> Unit)?) -> Unit = {},
+    selectedDate: String? = null,
+    sessionGeneration: Long? = null,
+    onDateSelected: (String?) -> Unit = {},
+    historyEnabled: Boolean = true,
 ) {
+    var today by remember { mutableStateOf(rankingToday()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            today = rankingToday()
+            delay(1_000L)
+        }
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { today = rankingToday() }
+    var calendarOpenRequest by remember { mutableStateOf(0) }
+    val date = selectedDate ?: today
+    val dateSelector: @Composable () -> Unit = {
+        RankingDateSelector(date, today, openRequest = calendarOpenRequest, onOpenRequestHandled = {
+            calendarOpenRequest =
+                0
+        }) {
+            onDateSelected(
+                it.takeUnless { selected ->
+                    selected ==
+                        today
+                },
+            )
+        }
+    }
+    if (selectedDate != null && !historyEnabled) {
+        Column(modifier.fillMaxSize().statusBarsPadding().padding(top = 8.dp)) {
+            androidx.compose.material3.TextButton(onClick = onBack) { Text("뒤로") }
+            dateSelector()
+            Text("일일 순위를 잠시 점검하고 있어요.", Modifier.padding(26.dp))
+        }
+        return
+    }
+    if (selectedDate != null) {
+        DailyPressRankingRoute(
+            date = selectedDate,
+            sessionGeneration = sessionGeneration,
+            refreshRevision = 0,
+            onBack = onBack,
+            modifier = modifier,
+            dateSelector = dateSelector,
+            historical = true,
+            onChooseDate = { calendarOpenRequest++ },
+            onToday = { onDateSelected(null) },
+        )
+        return
+    }
     val viewModel: PressRankingViewModel = metroViewModel()
     val currentOnRefreshActionChanged by rememberUpdatedState(onRefreshActionChanged)
     DisposableEffect(viewModel) {
@@ -77,10 +132,12 @@ fun PressRankingRoute(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     PressRankingScreen(
         onBack = onBack,
-        uiState = uiState,
+        uiState = uiState.forRankingDate(today),
         onRetry = viewModel::onRetry,
         onRefresh = viewModel::onRefresh,
         modifier = modifier.pressRaceDrawMeasurement(uiState.frameKey, viewModel::onFrameDrawn),
+        dateSelector = dateSelector,
+        onChooseDate = { calendarOpenRequest++ },
     )
 }
 
@@ -91,11 +148,16 @@ internal fun DailyPressRankingRoute(
     refreshRevision: Long,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    dateSelector: (@Composable () -> Unit)? = null,
+    historical: Boolean = false,
+    onChooseDate: (() -> Unit)? = null,
+    onToday: (() -> Unit)? = null,
 ) {
     val viewModel: DailyPressRankingViewModel =
         assistedMetroViewModel<DailyPressRankingViewModel, DailyPressRankingViewModel.Factory> {
             create(date, sessionGeneration)
         }
+    LaunchedEffect(viewModel, date) { viewModel.onDateChanged(date) }
     LaunchedEffect(viewModel, sessionGeneration) { viewModel.onSessionChanged(sessionGeneration) }
     LaunchedEffect(viewModel) { viewModel.onResumed() }
     DisposableEffect(viewModel) { onDispose { viewModel.onRouteHidden() } }
@@ -103,14 +165,19 @@ internal fun DailyPressRankingRoute(
         if (refreshRevision > 0L) viewModel.onNotificationReceived()
     }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onResumed() }
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { viewModel.onRouteHidden() }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     PressRankingScreen(
         onBack = onBack,
-        uiState = uiState,
+        uiState = if (uiState.date == date) uiState else PressRankingUiState(date = date),
         onRetry = viewModel::onRetry,
         onRefresh = viewModel::onRefresh,
         modifier = modifier,
         dailyDate = date,
+        dateSelector = dateSelector,
+        historical = historical,
+        onChooseDate = onChooseDate,
+        onToday = onToday,
     )
 }
 
@@ -123,6 +190,10 @@ internal fun PressRankingScreen(
     modifier: Modifier = Modifier,
     rows: List<PressRaceRowModel> = uiState.people.toRaceRows(),
     dailyDate: String? = null,
+    dateSelector: (@Composable () -> Unit)? = null,
+    historical: Boolean = false,
+    onChooseDate: (() -> Unit)? = null,
+    onToday: (() -> Unit)? = null,
 ) {
     val encouragementMessage = rememberRankingEncouragementMessage()
     val listState = remember(uiState.date) { LazyListState() }
@@ -165,7 +236,7 @@ internal fun PressRankingScreen(
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,
                 )
-                if (dailyDate != null) {
+                if (dailyDate != null && dateSelector == null) {
                     Text(
                         dailyDate,
                         fontSize = 12.sp,
@@ -177,12 +248,37 @@ internal fun PressRankingScreen(
             }
             Spacer(Modifier.size(48.dp))
         }
+        dateSelector?.invoke()
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
             val compact = maxHeight < 600.dp
+            if (uiState.status == PressRankingStatus.Ready && rows.isEmpty() && uiState.me == null) {
+                PullToRefreshBox(
+                    isRefreshing = uiState.isRefreshing,
+                    onRefresh = onRefresh,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    LazyColumn(
+                        Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 26.dp, vertical = 20.dp),
+                    ) {
+                        if (uiState.hasRefreshError) {
+                            item {
+                                RefreshErrorBanner(
+                                    stringResource(Res.string.press_daily_ranking_refresh_error),
+                                    onRefresh,
+                                )
+                            }
+                        }
+                        item { EmptyRaceRanking(historical, onChooseDate, onToday, onBack) }
+                        item { Spacer(Modifier.navigationBarsPadding()) }
+                    }
+                }
+                return@BoxWithConstraints
+            }
             Column(Modifier.fillMaxSize().padding(horizontal = 26.dp)) {
                 PressRankingOverview(
                     uiState,
-                    dailyDate,
+                    dailyDate ?: uiState.date.takeIf { dateSelector != null },
                     encouragementMessage,
                     rankWidth,
                     countWidth,
@@ -190,6 +286,7 @@ internal fun PressRankingScreen(
                     onRetry,
                     onRefresh,
                     compact,
+                    historical,
                 )
                 PullToRefreshBox(
                     isRefreshing = uiState.isRefreshing,
@@ -217,14 +314,6 @@ internal fun PressRankingScreen(
                             }
 
                             PressRankingStatus.Ready -> {
-                                if (rows.isEmpty()) {
-                                    item {
-                                        Text(
-                                            stringResource(Res.string.press_daily_ranking_empty),
-                                            Modifier.padding(vertical = 48.dp),
-                                        )
-                                    }
-                                }
                                 itemsIndexed(rows, key = { index, row ->
                                     "${uiState.date}:${row.publicId ?: "preview-$index"}"
                                 }) { _, row ->
