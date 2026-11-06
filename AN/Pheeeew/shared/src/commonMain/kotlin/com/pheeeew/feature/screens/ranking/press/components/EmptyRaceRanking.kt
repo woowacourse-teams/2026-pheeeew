@@ -78,13 +78,13 @@ internal fun MyRaceEmptyCard(
             if (stack) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     copy()
-                    EmptyRaceArtwork(Modifier.size(width = 180.dp, height = 120.dp))
+                    EmptyRaceArtwork(Modifier.size(width = 180.dp, height = 120.dp), showCharacter = false)
                 }
             } else {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.weight(1f)) { copy() }
                     Spacer(Modifier.width(8.dp))
-                    EmptyRaceArtwork(Modifier.size(width = 110.dp, height = 135.dp))
+                    EmptyRaceArtwork(Modifier.size(width = 110.dp, height = 135.dp), showCharacter = false)
                 }
             }
         }
@@ -182,6 +182,7 @@ private fun EmptyRaceAction(
 private fun EmptyRaceArtwork(
     modifier: Modifier = Modifier,
     halo: Boolean = false,
+    showCharacter: Boolean = true,
 ) {
     Box(modifier, contentAlignment = Alignment.Center) {
         if (halo) Box(Modifier.size(135.dp).background(Color(0xFFFFF1B8), CircleShape))
@@ -209,11 +210,13 @@ private fun EmptyRaceArtwork(
                     ),
             )
         }
-        Image(
-            painterResource(Res.drawable.press_blocked_stage_0),
-            contentDescription = null,
-            modifier = Modifier.align(Alignment.CenterStart).size(if (halo) 145.dp else 110.dp),
-        )
+        if (showCharacter) {
+            Image(
+                painterResource(Res.drawable.press_blocked_stage_0),
+                contentDescription = null,
+                modifier = Modifier.align(Alignment.CenterStart).size(if (halo) 145.dp else 110.dp),
+            )
+        }
         Box(Modifier.align(Alignment.CenterEnd).padding(end = 6.dp, top = 35.dp)) {
             RaceFlag(Modifier.size(26.dp))
         }
