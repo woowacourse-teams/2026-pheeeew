@@ -1,11 +1,12 @@
 name: BE CI
 
 on:
-  # 기본 브랜치 push 가 Gradle 캐시를 심는다. gradle/actions 는 기본 브랜치 런에서만
-  # 캐시를 쓰고 PR 런은 읽기 전용이다. 이 트리거가 없으면 아무도 캐시를 갱신하지 않아
-  # 래퍼가 올라간 뒤에도 모든 PR 이 옛 버전 캐시를 영구히 읽는다. 측정: 고정비 41.6초 -> 15.3초.
+  # push 런이 Gradle 캐시를 심고 PR 런은 base 브랜치 캐시를 읽는다. 이 트리거가 없으면 아무도
+  # 캐시를 갱신하지 않아 래퍼가 올라간 뒤에도 모든 PR 이 옛 버전 캐시를 영구히 읽는다.
+  # 측정: 고정비 41.6초 -> 15.3초. BE PR 대부분이 be/dev 로 가므로 be/dev 에도 심는다.
+  # develop 은 BE 변경이 be/dev 머지로만 들어오고 그 PR 은 main 캐시로 충분해 넣지 않는다.
   push:
-    branches: [main]
+    branches: [main, be/dev]
     paths:
       - 'BE/**'
       - '.github/workflows/be-ci.yml'
@@ -50,9 +51,11 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      # 캐시 쓰기 권한은 기본 동작에 맡긴다. 기본 브랜치 push 런에서만 쓰고 PR 런은 읽기만 한다.
-      # 샤드들이 같은 키를 두고 동시에 쓰는 문제도 이 기본값이 막아준다.
+      # push 런(main, be/dev)만 캐시를 쓰고 PR 런은 읽기만 한다. 기본값은 기본 브랜치에서만
+      # 쓰므로 be/dev push 가 캐시를 심으려면 직접 지정해야 한다.
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
 
       - name: 테스트
         # observability 테스트는 샤딩하지 않으므로 첫 샤드에서만 돌린다.
@@ -86,4 +89,5 @@ jobs:
           platforms: linux/arm64
           push: false
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # PR ref 캐시는 같은 PR 재실행에만 쓰여 저장소 한도(10GB)만 차지한다. push 런만 쓴다.
+          cache-to: ${{ github.event_name == 'push' && 'type=gha,mode=max' || '' }}
