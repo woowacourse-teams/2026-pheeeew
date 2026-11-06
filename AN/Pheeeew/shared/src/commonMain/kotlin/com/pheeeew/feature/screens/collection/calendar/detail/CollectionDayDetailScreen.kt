@@ -232,7 +232,7 @@ internal fun CollectionDayDetailScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text("내가 남긴 감정", color = AppColors.GroupInk, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                        emotionCount?.takeIf { currentKey == selectedCardId }?.let {
+                        emotionCount?.takeIf { it > 0 && currentKey == selectedCardId }?.let {
                             Text(
                                 "  $it",
                                 color = AppColors.TextSecondary,
