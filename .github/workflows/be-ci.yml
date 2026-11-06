@@ -24,13 +24,19 @@ permissions:
 
 jobs:
   test:
-    name: 테스트 샤드 ${{ matrix.shard }}
+    name: BE 테스트 (${{ matrix.order }}/5)
     runs-on: ubuntu-latest
     strategy:
       # 한 샤드가 깨져도 나머지 결과를 봐야 원인을 좁힐 수 있다.
       fail-fast: false
+      # shard 는 Gradle 에 넘기는 0부터의 번호, order 는 잡 이름에 보이는 1부터의 번호다.
       matrix:
-        shard: [0, 1, 2, 3, 4]
+        include:
+          - { shard: 0, order: 1 }
+          - { shard: 1, order: 2 }
+          - { shard: 2, order: 3 }
+          - { shard: 3, order: 4 }
+          - { shard: 4, order: 5 }
     defaults:
       run:
         working-directory: BE

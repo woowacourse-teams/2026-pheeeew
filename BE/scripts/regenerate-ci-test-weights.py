@@ -71,12 +71,14 @@ def shard_dirs(run_dir):
 
 
 def download(run_id, into):
+    # 잡 이름은 바뀔 수 있으므로 아티팩트 이름으로 샤드를 찾는다.
     names = subprocess.run(
-        ["gh", "run", "view", run_id, "--json", "jobs", "--jq", ".jobs[].name"],
+        ["gh", "api", f"repos/{{owner}}/{{repo}}/actions/runs/{run_id}/artifacts",
+         "--jq", ".artifacts[].name"],
         check=True, capture_output=True, text=True).stdout.split("\n")
-    shards = sorted({m.group(1) for n in names if (m := re.search(r"샤드 (\d+)", n))})
+    shards = sorted({m.group(1) for n in names if (m := re.fullmatch(r"test-results-shard-(\d+)", n))})
     if not shards:
-        sys.exit(f"런 {run_id} 에 테스트 샤드 잡이 없다")
+        sys.exit(f"런 {run_id} 에 test-results-shard-* 아티팩트가 없다")
     for shard in shards:
         # 아티팩트를 한 번에 받으면 같은 경로가 겹쳐 실패하므로 하나씩 받는다.
         subprocess.run(["gh", "run", "download", run_id, "-n", f"test-results-shard-{shard}",
