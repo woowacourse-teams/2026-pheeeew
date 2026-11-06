@@ -17,6 +17,11 @@ final class PressSnapshotSender {
     private static final int MAX_RESULTS = 32;
     private static final int MAX_RESULT_BYTES = 64 * 1024;
     private static final int RESULT_BURST = 4;
+    // 운영 연결 확인 계약: 15초마다 Ping, 마지막 수신 뒤 45초에 종료한다.
+    static final long DEFAULT_PING_INTERVAL_MILLIS = 15_000;
+    static final long DEFAULT_HEARTBEAT_TIMEOUT_MILLIS = 45_000;
+    private final long pingIntervalNanos;
+    private final long heartbeatTimeoutNanos;
     private final Queue<Control> results = new ArrayDeque<>();
     private int resultCount;
     private int resultBytes;
@@ -36,10 +41,17 @@ final class PressSnapshotSender {
     private boolean closed;
 
     PressSnapshotSender(Object sendMonitor, Executor executor, Consumer<Snapshot> send, Consumer<RuntimeException> failed) {
+        this(sendMonitor, executor, send, failed, DEFAULT_PING_INTERVAL_MILLIS, DEFAULT_HEARTBEAT_TIMEOUT_MILLIS);
+    }
+
+    PressSnapshotSender(Object sendMonitor, Executor executor, Consumer<Snapshot> send, Consumer<RuntimeException> failed,
+            long pingIntervalMillis, long heartbeatTimeoutMillis) {
         this.sendMonitor = sendMonitor;
         this.executor = executor;
         this.send = send;
         this.failed = failed;
+        this.pingIntervalNanos = TimeUnit.MILLISECONDS.toNanos(pingIntervalMillis);
+        this.heartbeatTimeoutNanos = TimeUnit.MILLISECONDS.toNanos(heartbeatTimeoutMillis);
     }
 
     synchronized void offer(Snapshot snapshot) {
@@ -101,9 +113,9 @@ final class PressSnapshotSender {
             }
             if (sendingSince != 0 && now - sendingSince >= TimeUnit.SECONDS.toNanos(2)) {
                 failure = "SEND_TIMEOUT";
-            } else if (now - lastReceived >= TimeUnit.SECONDS.toNanos(45)) {
+            } else if (now - lastReceived >= heartbeatTimeoutNanos) {
                 failure = "HEARTBEAT_TIMEOUT";
-            } else if (canSend && now - lastPing >= TimeUnit.SECONDS.toNanos(15)) {
+            } else if (canSend && now - lastPing >= pingIntervalNanos) {
                 lastPing = now;
                 pingPending = true;
                 ping = sendPing;
