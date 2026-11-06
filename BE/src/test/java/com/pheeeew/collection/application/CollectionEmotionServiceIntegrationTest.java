@@ -8,32 +8,35 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
-import com.pheeeew.collection.domain.repository.CollectionCardRepository;
 import com.pheeeew.collection.domain.CollectionCard;
-import com.pheeeew.collection.exception.CollectionException;
+import com.pheeeew.collection.domain.repository.CollectionCardRepository;
 import com.pheeeew.collection.exception.CollectionErrorCode;
+import com.pheeeew.collection.exception.CollectionException;
 import com.pheeeew.collection.infra.CollectionEmotionCursorCodec;
 import com.pheeeew.device.domain.repository.DeviceRepository;
-import com.pheeeew.emotion.application.AudioUrlIssuer;
 import com.pheeeew.emotion.application.AudioUrlIssuer.PlaybackUrl;
+import com.pheeeew.emotion.application.AudioUrlIssuer;
+import com.pheeeew.emotion.application.dto.EmotionEmojiResult;
 import com.pheeeew.emotion.domain.Audio;
+import com.pheeeew.emotion.domain.EmojiType;
 import com.pheeeew.emotion.domain.Emotion;
 import com.pheeeew.emotion.domain.EmotionState;
+import com.pheeeew.emotion.domain.repository.EmotionEmojiRepository;
 import com.pheeeew.emotion.domain.repository.EmotionRepository;
-import com.pheeeew.emotion.exception.EmotionException;
 import com.pheeeew.emotion.exception.EmotionErrorCode;
+import com.pheeeew.emotion.exception.EmotionException;
 import com.pheeeew.report.domain.EmotionBlock;
 import com.pheeeew.support.PostgisDataJpaTest;
 import jakarta.persistence.EntityManager;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
-import java.util.Base64;
-import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,6 +52,7 @@ class CollectionEmotionServiceIntegrationTest {
     @Autowired private DeviceRepository devices;
     @Autowired private CollectionCardRepository cards;
     @Autowired private EmotionRepository emotions;
+    @Autowired private EmotionEmojiRepository emojis;
     @Autowired private JdbcClient jdbc;
     @Autowired private EntityManager entityManager;
     @MockitoBean private AudioUrlIssuer audioIssuer;
@@ -59,6 +63,39 @@ class CollectionEmotionServiceIntegrationTest {
         검증용_지역_계층을_저장한다(jdbc);
         when(clock.getZone()).thenReturn(ZoneId.of("Asia/Seoul"));
         when(clock.instant()).thenReturn(Instant.parse("2026-11-04T12:00:00Z"));
+    }
+
+    @Test
+    void 감정별_공감_여섯_종류와_인증_기기의_선택_여부를_함께_조회한다() {
+        // given
+        var owner = devices.saveAndFlush(기본_기기_빌더().build());
+        var other = devices.saveAndFlush(기본_기기_빌더().build());
+        var card = cards.saveAndFlush(기본_카드_빌더().deviceId(owner.getId())
+                .cardDate(LocalDate.of(2026, 11, 4)).build());
+        var reacted = 감정을_저장한다(기본_한숨_빌더().deviceId(owner.getId())
+                .state(EmotionState.ANGRY).build(), "2026-11-04T01:00:00Z");
+        감정을_저장한다(기본_한숨_빌더().deviceId(owner.getId())
+                .state(EmotionState.EXHAUSTED).memo("메모").build(), "2026-11-04T00:00:00Z");
+        emojis.saveIfAbsent(reacted.getId(), owner.getId(), "HEART", clock.instant());
+        emojis.saveIfAbsent(reacted.getId(), other.getId(), "HEART", clock.instant());
+        emojis.saveIfAbsent(reacted.getId(), other.getId(), "LAUGH", clock.instant());
+
+        // when
+        var result = service.findEmotions(owner.getPublicId(), card.getPublicId(), null);
+
+        // then
+        assertThat(result.items().getFirst().emojis()).containsExactly(
+                EmotionEmojiResult.of(EmojiType.HEART, 2, true),
+                EmotionEmojiResult.of(EmojiType.LAUGH, 1, false),
+                EmotionEmojiResult.of(EmojiType.CRY, 0, false),
+                EmotionEmojiResult.of(EmojiType.DIZZY, 0, false),
+                EmotionEmojiResult.of(EmojiType.RAGE, 0, false),
+                EmotionEmojiResult.of(EmojiType.SKULL, 0, false));
+        assertThat(result.items().get(1).emojis()).hasSize(6)
+                .allSatisfy(emoji -> {
+                    assertThat(emoji.count()).isZero();
+                    assertThat(emoji.selected()).isFalse();
+                });
     }
 
     @Test

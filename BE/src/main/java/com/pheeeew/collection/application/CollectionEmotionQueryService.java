@@ -4,26 +4,36 @@ import static com.pheeeew.collection.exception.CollectionErrorCode.COLLECTION_CA
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_AUDIO_PLAYBACK_UNAVAILABLE;
 
+import com.pheeeew.collection.application.dto.CollectionDailyEmotionCursor;
+import com.pheeeew.collection.application.dto.CollectionEmotionCursor;
 import com.pheeeew.collection.application.dto.CollectionEmotionPageResult;
 import com.pheeeew.collection.application.dto.CollectionEmotionResult;
-import com.pheeeew.collection.application.dto.CollectionEmotionCursor;
-import com.pheeeew.collection.infra.CollectionEmotionCursorCodec;
 import com.pheeeew.collection.domain.repository.CollectionCardRepository;
 import com.pheeeew.collection.exception.CollectionException;
+import com.pheeeew.collection.infra.CollectionEmotionCursorCodec;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
-import com.pheeeew.emotion.application.AudioUrlIssuer;
 import com.pheeeew.emotion.application.AudioUrlIssuer.PlaybackUrl;
+import com.pheeeew.emotion.application.AudioUrlIssuer;
+import com.pheeeew.emotion.application.dto.EmotionEmojiResult;
+import com.pheeeew.emotion.domain.EmojiType;
 import com.pheeeew.emotion.domain.Emotion;
+import com.pheeeew.emotion.domain.repository.EmotionEmojiRepository;
 import com.pheeeew.emotion.domain.repository.EmotionRepository;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchFilter;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchScope;
 import com.pheeeew.emotion.exception.EmotionException;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
@@ -39,6 +49,7 @@ public class CollectionEmotionQueryService {
     private final DeviceRepository devices;
     private final CollectionCardRepository cards;
     private final EmotionRepository emotions;
+    private final EmotionEmojiRepository emotionEmojis;
     private final ObjectProvider<AudioUrlIssuer> audioUrlIssuer;
     private final Clock clock;
     private final CollectionEmotionCursorCodec cursorCodec;
@@ -48,7 +59,6 @@ public class CollectionEmotionQueryService {
                 .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
         var card = cards.findByPublicIdAndDeviceId(cardId, deviceId)
                 .orElseThrow(() -> new CollectionException(COLLECTION_CARD_NOT_FOUND));
-        var filter = EmotionSearchFilter.of(card.getCardDate(), card.getCardDate(), null, EmotionSearchScope.MY, null);
         Instant now = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
         var cursor = encodedCursor == null
                 ? CollectionEmotionCursor.initial(devicePublicId, cardId, card.getCardDate(), now)
@@ -57,14 +67,57 @@ public class CollectionEmotionQueryService {
             cursor.validateRequest(devicePublicId, cardId, card.getCardDate(), now);
         }
 
-        var found = emotions.findVisiblePageWithoutBounds(cursor.snapshotAt(), cursor.lastCreatedAt(), cursor.lastId(),
+        return findPage(deviceId, card.getCardDate(), cursor.snapshotAt(), cursor.lastCreatedAt(), cursor.lastId(),
+                last -> cursorCodec.encode(cursor.next(last.getCreatedAt(), last.getId())));
+    }
+
+    CollectionEmotionPageResult findByDate(Device device, LocalDate date, String encodedCursor) {
+        Instant now = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
+        var cursor = encodedCursor == null
+                ? CollectionDailyEmotionCursor.initial(device.getPublicId(), date, now)
+                : cursorCodec.decodeDaily(encodedCursor);
+        if (encodedCursor != null) {
+            cursor.validateRequest(device.getPublicId(), date, now);
+        }
+
+        return findPage(device.getId(), date, cursor.snapshotAt(), cursor.lastCreatedAt(), cursor.lastId(),
+                last -> cursorCodec.encodeDaily(cursor.next(last.getCreatedAt(), last.getId())));
+    }
+
+    private CollectionEmotionPageResult findPage(Long deviceId, LocalDate date, Instant snapshotAt,
+            Instant lastCreatedAt, long lastId, Function<Emotion, String> nextCursorEncoder) {
+        var filter = EmotionSearchFilter.of(date, date, null, EmotionSearchScope.MY, null);
+        var found = emotions.findVisiblePageWithoutBounds(snapshotAt, lastCreatedAt, lastId,
                 deviceId, filter, false, PAGE_SIZE + 1);
+
         boolean hasNext = found.size() > PAGE_SIZE;
         var page = hasNext ? found.subList(0, PAGE_SIZE) : found;
-        var items = page.stream().map(emotion -> CollectionEmotionResult.of(emotion, issuePlaybackUrl(emotion))).toList();
-        String nextCursor = hasNext
-                ? cursorCodec.encode(cursor.next(page.getLast().getCreatedAt(), page.getLast().getId())) : null;
+
+        var emojiCounts = findEmojisForPage(page, deviceId);
+        var items = page.stream().map(emotion -> CollectionEmotionResult.of(emotion, issuePlaybackUrl(emotion),
+                List.copyOf(emojiCounts.get(emotion.getId()).values()))).toList();
+        String nextCursor = hasNext ? nextCursorEncoder.apply(page.getLast()) : null;
+
         return CollectionEmotionPageResult.of(items, hasNext, nextCursor);
+    }
+
+    private Map<Long, EnumMap<EmojiType, EmotionEmojiResult>> findEmojisForPage(List<Emotion> page, Long deviceId) {
+        Map<Long, EnumMap<EmojiType, EmotionEmojiResult>> counts = new HashMap<>();
+        for (Emotion emotion : page) {
+            var defaults = new EnumMap<EmojiType, EmotionEmojiResult>(EmojiType.class);
+            for (EmojiType type : EmojiType.values()) {
+                defaults.put(type, EmotionEmojiResult.of(type, 0, false));
+            }
+            counts.put(emotion.getId(), defaults);
+        }
+        if (!page.isEmpty()) {
+            for (var count : emotionEmojis.findCountsForPage(page.stream().map(Emotion::getId).toList(), deviceId)) {
+                EmojiType type = EmojiType.valueOf(count.getEmojiType());
+                counts.get(count.getEmotionId()).put(type,
+                        EmotionEmojiResult.of(type, count.getSelectionCount(), count.getSelected()));
+            }
+        }
+        return counts;
     }
 
     private PlaybackUrl issuePlaybackUrl(Emotion emotion) {
