@@ -553,6 +553,12 @@ internal class CollectionViewModel(
                     calendarEmotionsByDate[date] = calendarEmotionsByDate[date].orEmpty().map {
                         if (it.id == emotionId) updated else it
                     }
+                    if (mutableUiState.value.day.selectedCalendarDate == date) {
+                        refreshedCalendarEmotions =
+                            refreshedCalendarEmotions.map {
+                                if (it.id == emotionId) updated else it
+                            }
+                    }
                     mutableUiState.update { current ->
                         if (current.day.selectedCalendarDate == date) {
                             current.copy(day = current.day.copy(
