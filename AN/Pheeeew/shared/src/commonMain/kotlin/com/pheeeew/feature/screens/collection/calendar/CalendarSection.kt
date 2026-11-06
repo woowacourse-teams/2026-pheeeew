@@ -14,13 +14,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,6 +49,10 @@ import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_arrow_back
 import pheeeew.shared.generated.resources.ic_arrow_forward
 
+private const val CALENDAR_GRID_WEEKS = 6
+private const val CALENDAR_WEEK_DAYS = 7
+private const val CALENDAR_CELL_ASPECT_RATIO = 0.82f
+
 @Composable
 fun CalendarSection(
     month: String,
@@ -57,12 +67,6 @@ fun CalendarSection(
     showRefreshIndicator: Boolean = true,
 ) {
     val cardsByDate = remember(cards) { cards.associateBy { it.period.take(10).replace('.', '-') } }
-    val monthDays =
-        remember(month) {
-            collectionMonthDays(
-                month,
-            )
-        }
     val todayDate =
         currentCollectionTodayDate()
     val todayMonth = todayDate.take(7)
@@ -80,8 +84,6 @@ fun CalendarSection(
                 1,
             )?.takeIf { it <= todayMonth }
         }
-    val cardCount = cards.size
-    val stampCount = cards.sumOf(CollectionCardUiModel::stampCount)
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -96,27 +98,48 @@ fun CalendarSection(
         )
 
         CalendarDayOfWeek()
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(start = 12.dp, end = 12.dp, bottom = 8.dp)
-                    .border(width = 1.dp, color = AppColors.Gray50, shape = RoundedCornerShape(4.dp))
-                    .background(Color.White, shape = RoundedCornerShape(4.dp)),
-        ) {
-            monthDays.chunked(7).forEach { week ->
-                Row(Modifier.fillMaxWidth()) {
-                    week.forEach { day ->
-                        val card = day.date?.let(cardsByDate::get)
-                        CalendarDayCell(
-                            day = day,
-                            card = card,
-                            isToday = day.date == todayDate,
-                            todayDate = todayDate,
-                            hasLoaded = hasLoaded,
-                            onClick = { day.date?.let(onDateClick) },
-                            modifier = Modifier.weight(1f),
-                        )
+        key(month, todayMonth) {
+            val initialPage = collectionMonthIndex(month)
+            val pagerState = rememberPagerState(initialPage = initialPage) { collectionMonthIndex(todayMonth) + 1 }
+            val latestOnMonthChange = rememberUpdatedState(onMonthChange)
+            LaunchedEffect(pagerState) {
+                snapshotFlow { pagerState.settledPage }.collect { page ->
+                    if (page != initialPage) {
+                        latestOnMonthChange.value(collectionMonthFromIndex(page))
+                    }
+                }
+            }
+            HorizontalPager(state = pagerState, modifier = Modifier.fillMaxWidth()) { page ->
+                val pageMonth = collectionMonthFromIndex(page)
+                val monthDays = remember(pageMonth) { collectionMonthDays(pageMonth) }
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(start = 12.dp, end = 12.dp, bottom = 8.dp)
+                            .border(width = 1.dp, color = AppColors.Gray50, shape = RoundedCornerShape(4.dp))
+                            .background(Color.White, shape = RoundedCornerShape(4.dp)),
+                ) {
+                    repeat(CALENDAR_GRID_WEEKS) { week ->
+                        Row(Modifier.fillMaxWidth()) {
+                            repeat(CALENDAR_WEEK_DAYS) dayCell@{ weekday ->
+                                val day = monthDays.getOrNull(week * CALENDAR_WEEK_DAYS + weekday)
+                                if (day == null) {
+                                    Spacer(Modifier.weight(1f).aspectRatio(CALENDAR_CELL_ASPECT_RATIO))
+                                    return@dayCell
+                                }
+                                val card = if (pageMonth == month) day.date?.let(cardsByDate::get) else null
+                                CalendarDayCell(
+                                    day = day,
+                                    card = card,
+                                    isToday = day.date == todayDate,
+                                    todayDate = todayDate,
+                                    hasLoaded = hasLoaded && pageMonth == month,
+                                    onClick = { day.date?.let(onDateClick) },
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -256,7 +279,7 @@ private fun CalendarDayCell(
         }
     Box(
         modifier
-            .aspectRatio(0.82f)
+            .aspectRatio(CALENDAR_CELL_ASPECT_RATIO)
             .clickable(
                 enabled = day.isCurrentMonth && day.date != null && !isFutureDay && hasLoaded,
                 role = Role.Button,

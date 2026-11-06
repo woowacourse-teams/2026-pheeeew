@@ -13,6 +13,15 @@ internal fun currentCollectionTodayDate(): String = koreaCalendarDate(Clock.Syst
 
 internal fun currentCollectionMonth(): String = currentCollectionTodayDate().take(7)
 
+internal fun collectionMonthIndex(month: String): Int =
+    (month.substring(0, 4).toInt() - 1) * 12 + month.substring(5, 7).toInt() - 1
+
+internal fun collectionMonthFromIndex(index: Int): String {
+    val year = index / 12 + 1
+    val month = index % 12 + 1
+    return "${year.toString().padStart(4, '0')}-${month.toString().padStart(2, '0')}"
+}
+
 internal fun collectionMonthDays(month: String): List<CollectionCalendarDay> {
     val year = month.substring(0, 4).toInt()
     val monthNumber = month.substring(5, 7).toInt()

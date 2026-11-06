@@ -24,8 +24,11 @@ import androidx.test.uiautomator.Until
 import com.pheeeew.core.audio.AudioPlaybackState
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.feature.emotion.model.EmotionType
+import com.pheeeew.feature.screens.collection.calendar.CalendarSection
+import com.pheeeew.feature.screens.collection.calendar.currentCollectionMonth
 import com.pheeeew.feature.screens.collection.calendar.detail.CollectionDayAudioState
 import com.pheeeew.feature.screens.collection.calendar.detail.CollectionDayDetailScreen
+import com.pheeeew.feature.screens.collection.calendar.shiftCollectionMonth
 import com.pheeeew.feature.screens.collection.card.CollectionCardUiModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -44,6 +47,59 @@ import kotlin.test.assertTrue
 class CollectionScreenTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val device = UiDevice.getInstance(instrumentation)
+
+    @Test
+    fun calendarSwipesBetweenPastMonthsButNotIntoFuture() {
+        val todayMonth = currentCollectionMonth()
+        val previousMonth = requireNotNull(shiftCollectionMonth(todayMonth, -1))
+        val month = mutableStateOf(todayMonth)
+        val changes = LinkedBlockingQueue<String>()
+        val activity =
+            instrumentation.startActivitySync(
+                Intent(instrumentation.targetContext, ComponentActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            ) as ComponentActivity
+        try {
+            instrumentation.runOnMainSync {
+                activity.setContent {
+                    AppTheme {
+                        CalendarSection(
+                            month = month.value,
+                            cards = emptyList(),
+                            isLoading = false,
+                            error = null,
+                            hasLoaded = true,
+                            onMonthChange = {
+                                month.value = it
+                                changes.offer(it)
+                            },
+                            onRetry = {},
+                            onDateClick = {},
+                        )
+                    }
+                }
+            }
+
+            fun swipeDay(
+                date: String,
+                right: Boolean,
+            ) {
+                val bounds = requireNotNull(device.wait(Until.findObject(By.desc(date)), 5_000)).visibleBounds
+                val y = bounds.centerY()
+                val start = if (right) 30 else device.displayWidth - 30
+                val end = if (right) device.displayWidth - 30 else 30
+                device.swipe(start, y, end, y, 18)
+            }
+            swipeDay("$todayMonth-01", right = false)
+            assertEquals(null, changes.poll(500, TimeUnit.MILLISECONDS))
+            swipeDay("$todayMonth-01", right = true)
+            assertEquals(previousMonth, changes.poll(5, TimeUnit.SECONDS))
+            swipeDay("$previousMonth-01", right = false)
+            assertEquals(todayMonth, changes.poll(5, TimeUnit.SECONDS))
+        } finally {
+            instrumentation.runOnMainSync { activity.finish() }
+        }
+    }
 
     @Test
     fun dayDetailReportsSettledCardAndBack() {
