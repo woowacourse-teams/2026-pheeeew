@@ -42,7 +42,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
@@ -73,6 +72,7 @@ import com.pheeeew.core.designsystem.input.usesNativeTextEditor
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
 import com.pheeeew.feature.screens.map.record.noRippleClickable
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -124,7 +124,7 @@ fun RecordBottomSheet(
         restoreOnSwipeDismissRequest = true,
         shape = AppShapes.BottomSheet,
         containerColor = AppColors.Surface,
-        scrimColor = Color.Black.copy(alpha = 0.3f),
+        scrimColor = AppColors.Black.copy(alpha = 0.3f),
         dragHandle = { SheetDragHandle() },
     ) {
         dismissConfirmationContent()
@@ -234,7 +234,7 @@ private fun RecordBottomSheetContent(
                             keyboardController?.hide()
                         }
                     }
-                }.padding(start = 20.dp, end = 20.dp, bottom = 4.dp),
+                }.padding(start = AppSpacing.xl.dp, end = AppSpacing.xl.dp, bottom = AppSpacing.xs.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -251,7 +251,7 @@ private fun RecordBottomSheetContent(
                     contentDescription = stringResource(selectedEmotion.label),
                     modifier = Modifier.size(44.dp),
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(AppSpacing.sm.dp))
                 Text(
                     text =
                         stringResource(
@@ -268,7 +268,7 @@ private fun RecordBottomSheetContent(
             }
         }
 
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(AppSpacing.xs.dp))
 
         Text(
             text = stringResource(Res.string.record_single_attachment_hint),
@@ -278,7 +278,7 @@ private fun RecordBottomSheetContent(
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(20.dp),
+            horizontalArrangement = Arrangement.spacedBy(AppSpacing.xl.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             RecordInputModeToggle(
@@ -311,12 +311,12 @@ private fun RecordBottomSheetContent(
                             uncheckedColor = AppColors.TextSecondary,
                             checkmarkColor = AppColors.Surface,
                         ),
-                    modifier = Modifier.padding(start = 4.dp),
+                    modifier = Modifier.padding(start = AppSpacing.xs.dp),
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(AppSpacing.xs.dp))
 
         if (inputMode == RecordInputModeUiModel.Memo) {
             MemoPanel(
@@ -327,7 +327,7 @@ private fun RecordBottomSheetContent(
         } else {
             RecordAudioSection(voiceRecorder = voiceRecorder)
         }
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(AppSpacing.xs.dp))
 
         RecordSheetActions(
             onNext = onNext,
@@ -437,7 +437,7 @@ private fun MemoPanel(
                         .height(105.dp)
                         .clip(AppShapes.Input)
                         .border(AppBorders.Standard, AppColors.Border, AppShapes.Input)
-                        .padding(16.dp),
+                        .padding(AppSpacing.lg.dp),
             ) {
                 NativeTextEditor(
                     memo,
@@ -462,7 +462,7 @@ private fun MemoPanel(
                         .height(105.dp)
                         .clip(AppShapes.Input)
                         .border(width = AppBorders.Standard, color = AppColors.Border, shape = AppShapes.Input)
-                        .padding(16.dp),
+                        .padding(AppSpacing.lg.dp),
                 textStyle =
                     LocalTextStyle.current.copy(
                         color = AppColors.TextPrimary,
@@ -476,7 +476,7 @@ private fun MemoPanel(
                                 modifier =
                                     Modifier
                                         .fillMaxWidth()
-                                        .padding(bottom = 20.dp),
+                                        .padding(bottom = AppSpacing.xl.dp),
                             ) {
                                 Text(
                                     text = stringResource(Res.string.record_memo_prompt),

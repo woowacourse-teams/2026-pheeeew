@@ -27,13 +27,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pheeeew.core.designsystem.component.ConfirmDialog
+import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.navigation.PredictiveBackEffect
 import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.usecase.BlockUserUseCase
@@ -206,7 +207,7 @@ fun NearbyEmotionSheet(
         playback.error?.let { NearbyNotice(it, player::stop) }
         if (state.loading) {
             Box(
-                Modifier.fillMaxWidth().weight(1f).padding(bottom = 16.dp),
+                Modifier.fillMaxWidth().weight(1f).padding(bottom = AppSpacing.lg.dp),
                 contentAlignment = Alignment.Center,
             ) { CircularProgressIndicator() }
         } else {
@@ -220,7 +221,11 @@ fun NearbyEmotionSheet(
                             drawRect(
                                 brush =
                                     Brush.verticalGradient(
-                                        colors = listOf(Color(0xFFFAFAFA), Color(0xFFFAFAFA).copy(alpha = 0f)),
+                                        colors =
+                                            listOf(
+                                                AppColors.GroupBackground,
+                                                AppColors.GroupBackground.copy(alpha = 0f),
+                                            ),
                                         endY = fadeHeight,
                                     ),
                                 size = Size(size.width, fadeHeight),
@@ -228,7 +233,7 @@ fun NearbyEmotionSheet(
                         }
                     },
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
+                verticalArrangement = Arrangement.spacedBy(AppSpacing.md.copy(value = 14.dp).dp),
             ) {
                 if (state.items.isEmpty() &&
                     state.error == null

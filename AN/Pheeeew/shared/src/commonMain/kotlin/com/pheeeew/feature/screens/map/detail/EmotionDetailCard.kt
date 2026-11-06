@@ -35,7 +35,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -48,6 +47,7 @@ import com.pheeeew.core.designsystem.component.Snackbar
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.feature.emotion.component.EmotionFeedbackCatalog
 import com.pheeeew.feature.emotion.model.EmotionKind
 import com.pheeeew.feature.screens.map.monitoring.rememberMonitoringForeground
@@ -90,7 +90,7 @@ fun EmotionDetailDialog(
                 onMoreClick,
                 onPlaybackClick,
                 onReactionClick,
-                Modifier.padding(24.dp).pointerInput(Unit) { detectTapGestures(onTap = {}) },
+                Modifier.padding(AppSpacing.xxl.dp).pointerInput(Unit) { detectTapGestures(onTap = {}) },
             )
             Snackbar(
                 message = notice,
@@ -100,7 +100,7 @@ fun EmotionDetailDialog(
                         .align(Alignment.TopCenter)
                         .fillMaxWidth()
                         .statusBarsPadding()
-                        .padding(16.dp),
+                        .padding(AppSpacing.lg.dp),
             )
         }
     }
@@ -120,10 +120,10 @@ fun EmotionDetailCard(
             .widthIn(max = 376.dp)
             .fillMaxWidth()
             .clip(AppShapes.DetailDialog)
-            .background(Color.White)
+            .background(AppColors.White)
             .border(AppBorders.Standard, AppColors.GroupInk, AppShapes.DetailDialog)
-            .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp),
+            .padding(AppSpacing.xxl.dp),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.xxl.dp),
     ) {
         EmotionDetailHeader(uiModel, onDismiss)
         EmotionDetailEmotionHeader(uiModel, onMoreClick)
@@ -154,7 +154,7 @@ private fun EmotionDetailHeader(
             stringResource(uiModel.emotion.label),
             Modifier
                 .background(emotionColor, AppShapes.Pill)
-                .padding(horizontal = 16.dp, vertical = 4.dp),
+                .padding(horizontal = AppSpacing.lg.dp, vertical = AppSpacing.xs.dp),
             color = AppColors.GroupInk,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
@@ -186,8 +186,8 @@ private fun EmotionDetailEmotionHeader(
             Modifier.size(64.dp),
         )
         Column(
-            Modifier.weight(1f).padding(start = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            Modifier.weight(1f).padding(start = AppSpacing.lg.dp),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.xs.dp),
         ) {
             Text(
                 uiModel.nickname,
@@ -221,7 +221,7 @@ private fun EmotionDetailContentSection(
         EmotionDetailContent(uiModel.content, onPlaybackClick)
         EmotionDetailReactions(uiModel.reactions, onReactionClick, true)
         uiModel.reactionError?.let { message ->
-            Text(message, color = Color.Red, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+            Text(message, color = AppColors.Red, fontSize = 12.sp, modifier = Modifier.padding(top = AppSpacing.sm.dp))
         }
     }
 }
@@ -247,7 +247,7 @@ private fun EmotionDetailContent(
                     content.text,
                     Modifier
                         .fillMaxWidth()
-                        .padding(end = 8.dp)
+                        .padding(end = AppSpacing.sm.dp)
                         .verticalScroll(memoScrollState),
                     color = AppColors.GroupInk,
                     fontSize = 14.sp,
@@ -261,16 +261,16 @@ private fun EmotionDetailContent(
                                 .align(Alignment.CenterEnd)
                                 .fillMaxHeight()
                                 .width(4.dp)
-                                .padding(vertical = 2.dp),
+                                .padding(vertical = AppSpacing.xs.copy(value = 2.dp).dp),
                     )
                 }
             }
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(AppSpacing.xxl.dp))
         }
 
         is EmotionDetailContentUiModel.Audio -> {
             EmotionAudioPlayer(content, onPlaybackClick, Modifier.fillMaxWidth())
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(AppSpacing.xxl.dp))
         }
     }
 }
@@ -319,8 +319,8 @@ private fun EmotionDetailReactions(
     onReactionClick: (String) -> Unit,
     enabled: Boolean,
 ) {
-    HorizontalDivider(color = Color(0xFFE7E9E5), thickness = 1.dp)
-    Spacer(Modifier.height(16.dp))
+    HorizontalDivider(color = AppColors.Map.DetailDivider, thickness = AppBorders.Thin)
+    Spacer(Modifier.height(AppSpacing.lg.dp))
     EmotionReactionGrid(reactions, onReactionClick, enabled, Modifier.fillMaxWidth())
 }
 
@@ -350,7 +350,7 @@ private fun EmotionDetailDialogPreview() {
 
 @Composable
 private fun EmotionDetailPreview(content: EmotionDetailContentUiModel) {
-    Box(Modifier.background(Color(0xFFCCCCCC)).padding(24.dp)) {
+    Box(Modifier.background(AppColors.Map.DetailPlaceholder).padding(AppSpacing.xxl.dp)) {
         EmotionDetailCard(EmotionDetailPreviewData.model(content), {}, {}, {}, {})
     }
 }

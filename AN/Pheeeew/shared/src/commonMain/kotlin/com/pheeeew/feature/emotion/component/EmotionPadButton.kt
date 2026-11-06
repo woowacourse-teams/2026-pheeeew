@@ -31,7 +31,6 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.ClipOp
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathOperation
 import androidx.compose.ui.graphics.TransformOrigin
@@ -58,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.emotion.model.EmotionFaceStage
 import com.pheeeew.feature.emotion.model.EmotionFaceVisual
 import com.pheeeew.feature.emotion.model.EmotionKind
@@ -70,8 +70,8 @@ import pheeeew.shared.generated.resources.press_button_face_shadow
 import pheeeew.shared.generated.resources.press_button_silver_base
 
 private val activationKeys = setOf(Key.Enter, Key.NumPadEnter, Key.Spacebar, Key.DirectionCenter)
-private val emotionCountColor = Color(0xFF777C78)
-private val emotionInk = Color(0xFF242725)
+private val emotionCountColor = AppColors.Common.MutedText
+private val emotionInk = AppColors.Emotion.Ink
 
 /** Owns one button's pointer, keyboard, accessibility, and pressed-state behavior. */
 @Composable

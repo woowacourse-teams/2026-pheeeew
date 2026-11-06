@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.feature.screens.ranking.press.PressPersonRank
 import com.pheeeew.feature.screens.ranking.press.samplePressPersonRanks
@@ -18,7 +19,7 @@ internal fun PressPersonRankList(
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.cardGap.dp),
     ) {
         people.forEach { person ->
             PressPersonRankRow(person)

@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
@@ -17,6 +16,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.report_description_hint
@@ -36,8 +37,11 @@ fun ReportDescriptionInput(
             modifier
                 .fillMaxWidth()
                 .heightIn(min = 84.dp, max = 144.dp)
-                .border(AppBorders.Standard, AppColors.GroupInk, RoundedCornerShape(14.dp))
-                .padding(horizontal = 14.dp, vertical = 14.dp),
+                .border(AppBorders.Standard, AppColors.GroupInk, AppShapes.Action)
+                .padding(
+                    horizontal = AppSpacing.md.copy(value = 14.dp).dp,
+                    vertical = AppSpacing.md.copy(value = 14.dp).dp,
+                ),
         textStyle = LocalTextStyle.current.copy(color = AppColors.GroupInk, fontSize = 14.sp),
         maxLines = 5,
         decorationBox = { innerTextField ->

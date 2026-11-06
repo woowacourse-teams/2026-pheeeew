@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.dp
 import com.pheeeew.core.designsystem.component.raisedPressEffect
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.designsystem.theme.AppTheme
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
@@ -32,8 +34,8 @@ import pheeeew.shared.generated.resources.press_ranking_person
 @Composable
 internal fun PressRankingCardSurface(
     modifier: Modifier = Modifier,
-    color: Color = Color.White,
-    shape: RoundedCornerShape = RoundedCornerShape(22.dp),
+    color: Color = AppColors.White,
+    shape: RoundedCornerShape = AppShapes.LargeCard,
     onClick: (() -> Unit)? = null,
     restingOffset: androidx.compose.ui.unit.Dp = 0.dp,
     pressedOffset: androidx.compose.ui.unit.Dp = 2.dp,
@@ -64,7 +66,7 @@ internal fun PressRankingCardSurface(
                             color = AppColors.GroupInk,
                         )
                     }
-                }.padding(bottom = 3.dp)
+                }.padding(bottom = AppSpacing.xs.copy(value = 3.dp).dp)
                 .raisedPressEffect(
                     interactionSource,
                     enabled = onClick != null,
@@ -81,8 +83,8 @@ internal fun PressRankingCardSurface(
 @Composable
 private fun PressRankingCardSurfacePreview() {
     AppTheme {
-        PressRankingCardSurface(Modifier.padding(20.dp)) {
-            Text(stringResource(Res.string.press_ranking_person), Modifier.padding(24.dp))
+        PressRankingCardSurface(Modifier.padding(AppSpacing.xl.dp)) {
+            Text(stringResource(Res.string.press_ranking_person), Modifier.padding(AppSpacing.xxl.dp))
         }
     }
 }

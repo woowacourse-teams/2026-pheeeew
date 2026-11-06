@@ -31,7 +31,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.MotionDurationScale
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -49,6 +48,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.pheeeew.core.designsystem.theme.AppBorders
+import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.feature.emotion.component.EmotionFeedbackCatalog
 import com.pheeeew.feature.emotion.component.formatCount
 import com.pheeeew.feature.emotion.component.rememberTapReducedMotion
@@ -118,13 +120,16 @@ internal fun PressActivityFooter(
         modifier
             .fillMaxWidth()
             .heightIn(min = minimumHeight)
-            .background(Color(0xFFF0F1EB))
-            .padding(horizontal = 10.dp, vertical = 10.dp),
+            .background(AppColors.Press.SubtleSurface)
+            .padding(
+                horizontal = AppSpacing.sm.copy(value = 10.dp).dp,
+                vertical = AppSpacing.sm.copy(value = 10.dp).dp,
+            ),
     ) {
         val chipWidth = maxWidth * 0.52f
         Row(
             Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(AppSpacing.xs.copy(value = 6.dp).dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             ActivityPeople(
@@ -166,7 +171,7 @@ private fun ActivityPeople(
     Row(
         modifier.clearAndSetSemantics { contentDescription = activityText },
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(AppSpacing.xs.dp),
     ) {
         PressActivityLiveIndicator(active, pulseEnabled)
         Row(horizontalArrangement = Arrangement.spacedBy((-5).dp), verticalAlignment = Alignment.CenterVertically) {
@@ -184,13 +189,13 @@ private fun ActivityPeople(
                     Modifier
                         .requiredSize(20.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF202323), CircleShape)
-                        .border(1.dp, Color(0xFFF0F1EB), CircleShape),
+                        .background(AppColors.GroupInk, CircleShape)
+                        .border(AppBorders.Thin, AppColors.Press.SubtleSurface, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         "+${formatCount(overflowCount)}",
-                        color = Color.White,
+                        color = AppColors.White,
                         modifier = Modifier.fillMaxWidth(),
                         style =
                             LocalTextStyle.current.copy(
@@ -225,7 +230,7 @@ private fun ActivityPeople(
                 activityText,
                 style = style,
                 fontSize = fontSize.sp,
-                color = Color(0xFF202323),
+                color = AppColors.GroupInk,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -252,7 +257,7 @@ private fun RaceNoticeChips(notice: PressRaceNotice?) {
         }
     val compact = full.size > 1
     Row(
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(AppSpacing.xs.dp),
         modifier =
             Modifier.clearAndSetSemantics {
                 liveRegion = LiveRegionMode.Polite
@@ -303,11 +308,14 @@ private fun RaceChip(
         fontSize = 10.sp,
         lineHeight = 12.sp,
         fontWeight = FontWeight.Bold,
-        color = if (dark) Color.White else Color(0xFF202323),
+        color = if (dark) AppColors.White else AppColors.GroupInk,
         modifier =
             modifier
-                .background(if (dark) Color(0xFF202323) else Color(0xFFFFE466), CircleShape)
-                .border(1.dp, Color(0xFF202323), CircleShape)
-                .padding(horizontal = 6.dp, vertical = 3.dp),
+                .background(if (dark) AppColors.GroupInk else AppColors.Press.HighlightAccent, CircleShape)
+                .border(AppBorders.Thin, AppColors.GroupInk, CircleShape)
+                .padding(
+                    horizontal = AppSpacing.xs.copy(value = 6.dp).dp,
+                    vertical = AppSpacing.xs.copy(value = 3.dp).dp,
+                ),
     )
 }

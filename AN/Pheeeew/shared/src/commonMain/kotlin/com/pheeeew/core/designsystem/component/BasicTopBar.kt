@@ -17,13 +17,12 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppTypography
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import org.jetbrains.compose.resources.painterResource
 import pheeeew.shared.generated.resources.Res
@@ -83,8 +82,7 @@ fun BasicTopBar(
             text = title,
             color = titleColor,
             fontFamily = titleFontFamily ?: notoSansKrFontFamily(),
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
+            style = AppTypography.basicTopBarTitle(),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = if (titleStartAligned) TextAlign.Start else TextAlign.Center,

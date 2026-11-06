@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.feature.screens.map.record.noRippleClickable
 
 @Composable
@@ -32,9 +33,9 @@ internal fun EmotionReactionGrid(
     enabled: Boolean,
     modifier: Modifier,
 ) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(AppSpacing.sm.dp)) {
         reactions.chunked(3).forEach { row ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(AppSpacing.sm.dp)) {
                 row.forEach { reaction ->
 
                     Row(
@@ -52,7 +53,7 @@ internal fun EmotionReactionGrid(
                                 } else {
                                     Modifier
                                 },
-                            ).padding(vertical = 8.dp, horizontal = 16.dp)
+                            ).padding(vertical = AppSpacing.sm.dp, horizontal = AppSpacing.lg.dp)
                             .noRippleClickable(enabled) { onReactionClick(reaction.id) }
                             .semantics { role = Role.Button },
                         verticalAlignment = Alignment.CenterVertically,

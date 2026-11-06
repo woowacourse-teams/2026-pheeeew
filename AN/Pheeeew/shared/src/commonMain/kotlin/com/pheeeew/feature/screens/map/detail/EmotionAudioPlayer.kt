@@ -12,14 +12,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -32,6 +30,8 @@ import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.feature.screens.map.drawPlaybackWaveform
 import com.pheeeew.feature.screens.map.record.noRippleClickable
 
@@ -41,15 +41,15 @@ internal fun EmotionAudioPlayer(
     onPlaybackClick: () -> Unit,
     modifier: Modifier,
 ) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(AppSpacing.sm.dp)) {
         Row(
             Modifier
                 .fillMaxWidth()
                 .height(80.dp)
-                .border(AppBorders.Standard, AppColors.GroupInk, RoundedCornerShape(12.dp))
-                .padding(horizontal = 16.dp),
+                .border(AppBorders.Standard, AppColors.GroupInk, AppShapes.CompactControl)
+                .padding(horizontal = AppSpacing.lg.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(AppSpacing.lg.dp),
         ) {
             Box(
                 Modifier
@@ -71,12 +71,12 @@ internal fun EmotionAudioPlayer(
                 contentAlignment = Alignment.Center,
             ) {
                 if (audio.isPreparing) {
-                    CircularLoadingIndicator(Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
+                    CircularLoadingIndicator(Modifier.size(24.dp), color = AppColors.White, strokeWidth = 2.dp)
                 } else {
                     Canvas(Modifier.size(24.dp)) {
                         if (audio.isPlaying) {
                             drawRect(
-                                Color.White,
+                                AppColors.White,
                                 Offset(size.width * .2f, size.height * .2f),
                                 Size(size.width * .6f, size.height * .6f),
                             )
@@ -88,7 +88,7 @@ internal fun EmotionAudioPlayer(
                                     lineTo(size.width * .2f, size.height)
                                     close()
                                 },
-                                Color.White,
+                                AppColors.White,
                             )
                         }
                     }
@@ -98,7 +98,7 @@ internal fun EmotionAudioPlayer(
                 drawPlaybackWaveform(
                     audio.waveform,
                     audio.playbackProgress(),
-                    Color(0xFFA3ABA5),
+                    AppColors.Map.AudioInactive,
                     AppColors.RecordSheetRecording,
                 )
             }

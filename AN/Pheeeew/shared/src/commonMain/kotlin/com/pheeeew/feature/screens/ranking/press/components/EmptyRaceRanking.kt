@@ -25,7 +25,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
@@ -36,12 +35,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppBorders
+import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import org.jetbrains.compose.resources.painterResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.press_blocked_stage_0
 
-private val emptyInk = Color(0xFF202323)
-private val emptyMuted = Color(0xFF767D78)
+private val emptyInk = AppColors.GroupInk
+private val emptyMuted = AppColors.Press.RankingMuted
 
 @Composable
 internal fun MyRaceEmptyCard(
@@ -49,11 +52,11 @@ internal fun MyRaceEmptyCard(
     onPress: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    PressRankingCardSurface(modifier, color = Color(0xFFFFF1B8)) {
-        BoxWithConstraints(Modifier.fillMaxWidth().padding(18.dp)) {
+    PressRankingCardSurface(modifier, color = AppColors.Press.EmptyRankingHighlight) {
+        BoxWithConstraints(Modifier.fillMaxWidth().padding(AppSpacing.lg.copy(value = 18.dp).dp)) {
             val stack = maxWidth < 290.dp || LocalDensity.current.fontScale > 1.3f
             val copy: @Composable () -> Unit = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.sm.copy(value = 10.dp).dp)) {
                     EmptyRaceLabel(if (historical) "이날 나의 레이스" else "오늘 나의 레이스")
                     Text(
                         if (historical) "이날은 남긴\n기록이 없어요" else "아직 남긴\n기록이 없어요",
@@ -83,7 +86,7 @@ internal fun MyRaceEmptyCard(
             } else {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.weight(1f)) { copy() }
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(AppSpacing.sm.dp))
                     EmptyRaceArtwork(Modifier.size(width = 110.dp, height = 135.dp), showCharacter = false)
                 }
             }
@@ -101,11 +104,14 @@ internal fun EmptyRaceRanking(
     Column(
         Modifier
             .fillMaxWidth()
-            .background(Color(0xFFFFFAE8), RoundedCornerShape(24.dp))
-            .border(1.dp, Color(0xFFAAA58F), RoundedCornerShape(24.dp))
-            .padding(horizontal = 22.dp, vertical = 28.dp),
+            .background(AppColors.Press.EmptyRankingSurface, AppShapes.SectionCard)
+            .border(AppBorders.Thin, AppColors.Press.EmptyRankingBorder, AppShapes.SectionCard)
+            .padding(
+                horizontal = AppSpacing.xl.copy(value = 22.dp).dp,
+                vertical = AppSpacing.xxl.copy(value = 28.dp).dp,
+            ),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.sectionGap.dp),
     ) {
         EmptyRaceLabel(if (historical) "이날의 레이스" else "오늘의 레이스")
         EmptyRaceArtwork(Modifier.fillMaxWidth().height(160.dp), halo = true)
@@ -143,9 +149,9 @@ private fun EmptyRaceLabel(text: String) {
     Text(
         text,
         Modifier
-            .background(Color(0xFFFFFAE8), RoundedCornerShape(50))
-            .border(1.dp, Color(0xFFC9C1A0), RoundedCornerShape(50))
-            .padding(horizontal = 10.dp, vertical = 3.dp),
+            .background(AppColors.Press.EmptyRankingSurface, RoundedCornerShape(50))
+            .border(AppBorders.Thin, AppColors.Press.EmptyRankingPillBorder, RoundedCornerShape(50))
+            .padding(horizontal = AppSpacing.sm.copy(value = 10.dp).dp, vertical = AppSpacing.xs.copy(value = 3.dp).dp),
         fontSize = 11.sp,
         fontWeight = FontWeight.SemiBold,
         color = emptyInk,
@@ -162,7 +168,7 @@ private fun EmptyRaceAction(
         Modifier
             .fillMaxWidth()
             .heightIn(min = 48.dp)
-            .then(if (outlined) Modifier.border(1.dp, emptyInk, RoundedCornerShape(16.dp)) else Modifier)
+            .then(if (outlined) Modifier.border(AppBorders.Thin, emptyInk, AppShapes.Card) else Modifier)
             .clickable(
                 interactionSource =
                     remember {
@@ -171,7 +177,7 @@ private fun EmptyRaceAction(
                 indication = null,
                 role = Role.Button,
                 onClick = onClick,
-            ).padding(horizontal = 12.dp, vertical = 10.dp),
+            ).padding(horizontal = AppSpacing.md.dp, vertical = AppSpacing.sm.copy(value = 10.dp).dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(text, fontSize = 14.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, color = emptyInk)
@@ -185,7 +191,7 @@ private fun EmptyRaceArtwork(
     showCharacter: Boolean = true,
 ) {
     Box(modifier, contentAlignment = Alignment.Center) {
-        if (halo) Box(Modifier.size(135.dp).background(Color(0xFFFFF1B8), CircleShape))
+        if (halo) Box(Modifier.size(135.dp).background(AppColors.Press.EmptyRankingHighlight, CircleShape))
         Canvas(Modifier.matchParentSize()) {
             val track =
                 Path().apply {
@@ -217,7 +223,12 @@ private fun EmptyRaceArtwork(
                 modifier = Modifier.align(Alignment.CenterStart).size(if (halo) 145.dp else 110.dp),
             )
         }
-        Box(Modifier.align(Alignment.CenterEnd).padding(end = 6.dp, top = 35.dp)) {
+        Box(
+            Modifier
+                .align(
+                    Alignment.CenterEnd,
+                ).padding(end = AppSpacing.xs.copy(value = 6.dp).dp, top = AppSpacing.xxxl.copy(value = 35.dp).dp),
+        ) {
             RaceFlag(Modifier.size(26.dp))
         }
     }

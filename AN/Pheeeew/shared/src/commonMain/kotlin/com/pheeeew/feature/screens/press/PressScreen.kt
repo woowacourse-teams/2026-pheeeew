@@ -17,13 +17,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.audio.PressSoundPlayer
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.domain.model.emotion.EmotionState
@@ -88,8 +88,8 @@ internal fun PressScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Column(Modifier.fillMaxWidth()) {
-            Spacer(Modifier.height(28.dp))
-            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
+            Spacer(Modifier.height(AppSpacing.xxl.copy(value = 28.dp).dp))
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = AppSpacing.screen.dp)) {
                 Text(
                     text = stringResource(Res.string.press_screen_title),
                     color = AppColors.TextPrimary,
@@ -97,10 +97,10 @@ internal fun PressScreen(
                     fontFamily = font,
                     fontWeight = FontWeight.Black,
                 )
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(AppSpacing.xs.dp))
                 Text(
                     text = stringResource(Res.string.press_screen_subtitle),
-                    color = Color(0xFF777C78),
+                    color = AppColors.Common.MutedText,
                     fontSize = 14.sp,
                     fontFamily = font,
                     fontWeight = FontWeight.Medium,
@@ -108,19 +108,23 @@ internal fun PressScreen(
             }
             PressRankingEntry(
                 onClick = onOpenRanking,
-                modifier = Modifier.align(Alignment.End).padding(horizontal = 24.dp),
+                modifier = Modifier.align(Alignment.End).padding(horizontal = AppSpacing.screen.dp),
             )
-            PressNearbyRankingCard(nearbyRanking, Modifier.padding(horizontal = 24.dp), activity = activity)
+            PressNearbyRankingCard(
+                nearbyRanking,
+                Modifier.padding(horizontal = AppSpacing.screen.dp),
+                activity = activity,
+            )
             if (!uiState.isInputEnabled && uiState.isOutcomeUnknown) {
                 Text(
                     stringResource(Res.string.press_race_input_recovery_required),
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                    modifier = Modifier.padding(horizontal = AppSpacing.xxl.dp, vertical = AppSpacing.sm.dp),
                     color = AppColors.TextPrimary,
                     fontFamily = font,
                     fontSize = 12.sp,
                 )
             }
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(AppSpacing.sectionGap.dp))
         }
         BoxWithConstraints(
             modifier = Modifier.fillMaxWidth().weight(1f),
@@ -149,10 +153,10 @@ internal fun PressScreen(
                     accepted
                 },
                 arrangement = EmotionPadArrangement.TwoThree,
-                modifier = Modifier.width(padWidth).padding(horizontal = 16.dp),
+                modifier = Modifier.width(padWidth).padding(horizontal = AppSpacing.lg.dp),
             )
         }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(AppSpacing.xxl.dp))
         Spacer(Modifier.navigationBarsPadding().height(AppBottomNavigationBarOverlaySpace))
     }
 }

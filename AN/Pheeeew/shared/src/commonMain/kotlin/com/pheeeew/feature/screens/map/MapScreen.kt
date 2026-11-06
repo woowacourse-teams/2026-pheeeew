@@ -18,7 +18,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -28,6 +27,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pheeeew.core.audio.VoiceRecorder
 import com.pheeeew.core.designsystem.component.ConfirmDialog
+import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.navigation.FlowBackHandler
 import com.pheeeew.core.permission.AppSettingsLauncher
 import com.pheeeew.domain.model.LocationState
@@ -686,7 +686,7 @@ private fun MapScreenContentPreview() {
     MapScreenContent(
         uiModel = MapUiModel(),
         recordUiModel = RecordBottomSheetUiModel(),
-        mapContent = { _, modifier -> Box(modifier.background(Color(0xFFECEAE5))) },
+        mapContent = { _, modifier -> Box(modifier.background(AppColors.Map.Background)) },
         onListClick = {},
         onSettingClick = {},
         onFilterClick = {},

@@ -18,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.feature.emotion.component.EmotionPad
 import com.pheeeew.feature.emotion.component.PressFaceCatalog
@@ -75,7 +76,7 @@ private fun PressFaceControlsPreview() {
             playbackId++
             visuals = visuals + (selected to EmotionFaceVisual(stage, playbackId))
         }
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.padding(AppSpacing.md.dp), verticalArrangement = Arrangement.spacedBy(AppSpacing.sm.dp)) {
             Text("개발용 수동 조작 · 실제 점수와 무관")
             Row {
                 EmotionKind.entries.forEach { kind ->

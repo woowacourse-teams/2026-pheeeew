@@ -30,7 +30,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -48,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -58,7 +58,7 @@ import pheeeew.shared.generated.resources.bottom_navigation_press
 import pheeeew.shared.generated.resources.nav_collection
 import pheeeew.shared.generated.resources.nav_press
 
-private val NavigationInk = Color(0xFF202323)
+private val NavigationInk = AppColors.GroupInk
 internal val AppBottomNavigationBarHeight = 57.dp
 internal val AppBottomNavigationBarBottomSpacing = 12.dp
 internal val AppBottomNavigationBarContentGap = 12.dp
@@ -92,7 +92,7 @@ internal fun AppBottomNavigationBar(
     BoxWithConstraints(
         modifier =
             modifier
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = AppSpacing.xl.dp)
                 .fillMaxWidth()
                 .wrapContentWidth(Alignment.CenterHorizontally)
                 .widthIn(max = 356.dp)
@@ -100,7 +100,7 @@ internal fun AppBottomNavigationBar(
                 .navigationBarsPadding()
                 .height(AppBottomNavigationBarHeight)
                 .clip(CircleShape)
-                .background(Color.White, CircleShape)
+                .background(AppColors.White, CircleShape)
                 .border(AppBorders.Standard, NavigationInk, CircleShape),
         contentAlignment = Alignment.CenterStart,
     ) {
@@ -150,7 +150,7 @@ internal fun AppBottomNavigationBar(
                             },
                         pressScale = 1f,
                     )
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(AppSpacing.xs.copy(value = 6.dp).dp))
                     Text(
                         text =
                             stringResource(
@@ -215,7 +215,7 @@ private fun DestinationIconView(
                             close()
                         }
                     val stroke = Stroke(width = 1.6f, cap = StrokeCap.Round, join = StrokeJoin.Round)
-                    drawPath(outline, Color.White)
+                    drawPath(outline, AppColors.White)
                     drawPath(outline, NavigationInk, style = stroke)
                     drawLine(NavigationInk, Offset(7.6f, 2.8f), Offset(7.6f, 14.8f), 1.6f, cap = StrokeCap.Round)
                     drawLine(NavigationInk, Offset(12.4f, 5.2f), Offset(12.4f, 17.2f), 1.6f, cap = StrokeCap.Round)
@@ -224,7 +224,7 @@ private fun DestinationIconView(
                 DestinationIcon.Collection -> {
                     val stroke = Stroke(width = 1.5f, cap = StrokeCap.Round, join = StrokeJoin.Round)
                     drawRect(
-                        Color.White,
+                        AppColors.White,
                         Offset(5f, 2f),
                         androidx.compose.ui.geometry
                             .Size(11f, 15f),

@@ -231,7 +231,7 @@ private fun SnackbarSuccessIcon() {
         modifier =
             Modifier
                 .size(18.dp)
-                .background(Color(0xFFFFE36E), CircleShape)
+                .background(AppColors.Core.SnackbarAccent, CircleShape)
                 .border(AppBorders.Standard, AppColors.TextPrimary, CircleShape),
         contentAlignment = Alignment.Center,
     ) {

@@ -14,19 +14,21 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.MotionDurationScale
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppBorders
+import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.feature.emotion.component.rememberTapReducedMotion
 import com.pheeeew.feature.screens.press.PressNearbyRankingUiState
 import com.pheeeew.feature.screens.press.nearbyRankingItemKey
@@ -45,7 +47,7 @@ internal fun PressNearbyRankingRows(state: PressNearbyRankingUiState) {
     LazyColumn(
         modifier = Modifier.fillMaxWidth().height(rowHeight * 3 + 6.dp),
         userScrollEnabled = false,
-        verticalArrangement = Arrangement.spacedBy(3.dp),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.xs.copy(value = 3.dp).dp),
     ) {
         itemsIndexed(state.rows, key = { index, row -> nearbyRankingItemKey(state.date, row, index) }) { _, row ->
             NearbyRankRow(
@@ -75,17 +77,17 @@ internal fun PressNearbyRankingRows(state: PressNearbyRankingUiState) {
 
 @Composable
 private fun PendingRankRow(modifier: Modifier) {
-    val ink = Color(0xFF202323)
-    val muted = Color(0xFF858B85)
+    val ink = AppColors.GroupInk
+    val muted = AppColors.Press.NearbyMuted
     Row(
         modifier
             .fillMaxWidth()
-            .background(Color(0xFFFFF9DD), RoundedCornerShape(12.dp))
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            .background(AppColors.Press.RankBadgeSurface, AppShapes.CompactControl)
+            .padding(horizontal = AppSpacing.sm.copy(value = 10.dp).dp, vertical = AppSpacing.xs.copy(value = 6.dp).dp),
+        horizontalArrangement = Arrangement.spacedBy(AppSpacing.sm.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(26.dp).border(1.dp, muted, CircleShape), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(26.dp).border(AppBorders.Thin, muted, CircleShape), contentAlignment = Alignment.Center) {
             Text("−", color = muted, fontSize = 12.sp)
         }
         Text(

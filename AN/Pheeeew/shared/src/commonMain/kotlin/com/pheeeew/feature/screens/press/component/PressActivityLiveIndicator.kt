@@ -14,9 +14,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
+import com.pheeeew.core.designsystem.theme.AppColors
 
 /** The halo breathes without changing layout or repeatedly announcing activity to accessibility services. */
 @Composable
@@ -49,8 +49,23 @@ internal fun PressActivityLiveIndicator(
                     scaleX = scale
                     scaleY = scale
                     alpha = if (active && pulseEnabled) 1.3f - scale * 0.5f else 1f
-                }.background(if (active) Color(0xFFCEE5D5) else Color(0xFFDFE2DC), CircleShape),
+                }.background(
+                    if (active) {
+                        AppColors.Press.LiveIndicator.ActiveSurface
+                    } else {
+                        AppColors.Press.LiveIndicator.InactiveSurface
+                    },
+                    CircleShape,
+                ),
         )
-        Box(Modifier.size(6.dp).background(if (active) Color(0xFF2DAB6E) else Color(0xFF8A908A), CircleShape))
+        Box(
+            Modifier
+                .size(
+                    6.dp,
+                ).background(
+                    if (active) AppColors.Press.LiveIndicator.Active else AppColors.Press.LiveIndicator.Inactive,
+                    CircleShape,
+                ),
+        )
     }
 }

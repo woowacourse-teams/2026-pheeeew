@@ -14,11 +14,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.component.AppBottomNavigationBar
 import com.pheeeew.feature.component.AppDestination
 import org.jetbrains.compose.resources.DrawableResource
@@ -44,7 +44,7 @@ internal fun OnboardingAppCapture(
                         Alignment.BottomCenter,
                     ).fillMaxWidth()
                     .height(maxHeight * 0.105f)
-                    .background(Color.White),
+                    .background(AppColors.White),
                 contentAlignment = Alignment.Center,
             ) {
                 CompositionLocalProvider(LocalDensity provides Density(density.density * scale, 1f)) {

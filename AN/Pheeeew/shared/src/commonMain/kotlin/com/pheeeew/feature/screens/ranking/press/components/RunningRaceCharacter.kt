@@ -10,11 +10,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.dp
+import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.emotion.component.rememberTapReducedMotion
 import com.pheeeew.feature.emotion.model.EmotionKind
 import org.jetbrains.compose.resources.DrawableResource
@@ -96,7 +96,7 @@ internal fun RunningRaceCharacter(
         }
     if (resource == null) {
         Canvas(visibilityModifier) {
-            drawCircle(Color(0xFFB9BDB8), radius = size.minDimension * 0.22f)
+            drawCircle(AppColors.Press.RunningCharacter, radius = size.minDimension * 0.22f)
         }
     } else {
         Image(

@@ -28,7 +28,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -38,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.notification.NotificationAuthorization
 import com.pheeeew.core.notification.NotificationKind
 import com.pheeeew.core.notification.NotificationPreferences
@@ -72,14 +72,14 @@ internal fun NotificationSettingsScreen(
     ) {
         SettingsHeader(onBackClick = onBackClick, title = stringResource(Res.string.notification_permission_title))
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())) {
-            Spacer(Modifier.height(30.dp))
+            Spacer(Modifier.height(AppSpacing.xxxl.copy(value = 30.dp).dp))
 
             Row(
                 modifier =
                     Modifier
                         .fillMaxWidth()
                         .heightIn(min = 64.dp)
-                        .padding(horizontal = 24.dp)
+                        .padding(horizontal = AppSpacing.screen.dp)
                         .semantics(mergeDescendants = true) {}
                         .toggleable(
                             value = NotificationKind.entries.all { state.checked(it) },
@@ -93,7 +93,7 @@ internal fun NotificationSettingsScreen(
                 Text(
                     text = stringResource(Res.string.notification_all_toggle),
                 )
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(AppSpacing.lg.dp))
                 Switch(
                     modifier =
                         Modifier.clearAndSetSemantics {}.drawWithContent {
@@ -110,15 +110,15 @@ internal fun NotificationSettingsScreen(
                     colors =
                         SwitchDefaults.colors(
                             checkedTrackColor = AppColors.Primary,
-                            checkedThumbColor = Color.White,
+                            checkedThumbColor = AppColors.White,
                             checkedBorderColor = AppColors.TextPrimary,
-                            uncheckedThumbColor = Color.White,
-                            uncheckedTrackColor = Color.White,
+                            uncheckedThumbColor = AppColors.White,
+                            uncheckedTrackColor = AppColors.White,
                             uncheckedBorderColor = AppColors.TextPrimary,
                             disabledCheckedTrackColor = AppColors.Gray100,
-                            disabledCheckedThumbColor = Color.White,
-                            disabledUncheckedTrackColor = Color.White,
-                            disabledUncheckedThumbColor = Color.White,
+                            disabledCheckedThumbColor = AppColors.White,
+                            disabledUncheckedTrackColor = AppColors.White,
+                            disabledUncheckedThumbColor = AppColors.White,
                         ),
                 )
             }
@@ -151,7 +151,7 @@ private fun NotificationSettingsRows(
             onCheckedChange = { enabled -> onToggle(kind, enabled) },
         )
     }
-    Column(Modifier.padding(bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(Modifier.padding(bottom = AppSpacing.md.dp), verticalArrangement = Arrangement.spacedBy(AppSpacing.sm.dp)) {
         if (state.failed && state.preferences == null) {
             Text(stringResource(Res.string.notification_settings_failed), fontSize = 12.sp)
             TextButton(onClick = onRetry, enabled = !state.busy) {
@@ -182,7 +182,7 @@ private fun NotificationToggleRow(
                     onValueChange = onCheckedChange,
                 ),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(AppSpacing.cardGap.dp),
     ) {
         Text(title, modifier = Modifier.weight(1f), color = AppColors.GroupInk, fontSize = 14.sp)
         Switch(
@@ -199,10 +199,10 @@ private fun NotificationToggleRow(
             colors =
                 SwitchDefaults.colors(
                     checkedTrackColor = AppColors.Primary,
-                    checkedThumbColor = Color.White,
+                    checkedThumbColor = AppColors.White,
                     checkedBorderColor = AppColors.TextPrimary,
-                    uncheckedThumbColor = Color.White,
-                    uncheckedTrackColor = Color.White,
+                    uncheckedThumbColor = AppColors.White,
+                    uncheckedTrackColor = AppColors.White,
                     uncheckedBorderColor = AppColors.TextPrimary,
                 ),
         )

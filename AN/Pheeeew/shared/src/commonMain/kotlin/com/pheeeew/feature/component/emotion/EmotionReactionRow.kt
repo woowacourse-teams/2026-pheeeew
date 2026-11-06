@@ -17,7 +17,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -25,6 +24,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.domain.model.emotion.ReactionCount
@@ -55,28 +56,30 @@ internal fun EmotionReactionRow(
             }
     val reactionMenuMode = menuMode?.takeIf { it == EmotionActionsMenuMode.Reactions }
     FlowRow(
-        Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+        Modifier.fillMaxWidth().padding(horizontal = AppSpacing.sm.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp, if (isMine) Alignment.End else Alignment.Start),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.xs.dp),
     ) {
         visibleReactions.forEach { reaction ->
             Row(
                 Modifier
                     .height(24.dp)
-                    .background(if (reaction.selected) Color(0xFFFFE987) else Color(0xFFF2F2F2), RoundedCornerShape(50))
-                    .clickable(enabled = !busy && onReact != null, role = Role.Button) {
+                    .background(
+                        if (reaction.selected) AppColors.Emotion.ReactionSelected else AppColors.Emotion.ReactionIdle,
+                        RoundedCornerShape(50),
+                    ).clickable(enabled = !busy && onReact != null, role = Role.Button) {
                         onReact?.invoke(reaction.type)
                     }.semantics {
                         contentDescription =
                             "${reaction.type.label} ${reaction.count}개, ${if (reaction.selected) "선택됨" else "선택 안 됨"}"
-                    }.padding(horizontal = 7.dp),
+                    }.padding(horizontal = AppSpacing.sm.copy(value = 7.dp).dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(AppSpacing.xs.dp),
             ) {
                 Text(reaction.type.glyph, fontSize = 14.sp)
                 Text(
                     reaction.count.toString(),
-                    color = Color.Black,
+                    color = AppColors.Black,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                 )
@@ -87,7 +90,7 @@ internal fun EmotionReactionRow(
                 Box(
                     Modifier
                         .size(24.dp)
-                        .background(Color(0xFFF2F2F2), CircleShape)
+                        .background(AppColors.Emotion.ReactionIdle, CircleShape)
                         .clickable(
                             enabled = !busy && onOpenMenu != null,
                             role = Role.Button,
@@ -98,7 +101,7 @@ internal fun EmotionReactionRow(
                     Icon(
                         painterResource(Res.drawable.ic_plus),
                         contentDescription = addReactionDescription,
-                        tint = Color.Black,
+                        tint = AppColors.Black,
                         modifier = Modifier.size(14.dp),
                     )
                 }

@@ -9,16 +9,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.feature.screens.settings.SettingsTheme
 import org.jetbrains.compose.resources.stringResource
@@ -41,15 +42,15 @@ internal fun NicknameDialogContent(
     isBusy: Boolean = false,
     inputEnabled: Boolean = true,
 ) {
-    val shape = RoundedCornerShape(22.dp)
+    val shape = AppShapes.LargeCard
     Column(
         modifier =
             modifier
                 .widthIn(max = 356.dp)
                 .fillMaxWidth()
                 .clip(shape)
-                .background(Color.White)
-                .padding(horizontal = 24.dp, vertical = 24.dp),
+                .background(AppColors.White)
+                .padding(horizontal = AppSpacing.xxl.dp, vertical = AppSpacing.xxl.dp),
     ) {
         Text(
             text = title ?: stringResource(Res.string.settings_nickname_dialog_title),
@@ -58,7 +59,7 @@ internal fun NicknameDialogContent(
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
         )
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(AppSpacing.lg.copy(value = 18.dp).dp))
         NicknameInputField(
             value = nickname,
             onValueChange = onNicknameChange,
@@ -67,7 +68,7 @@ internal fun NicknameDialogContent(
             isError = message != null,
         )
         if (message != null) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(AppSpacing.sm.dp))
             Text(
                 text = message,
                 color = SettingsColors.Error,
@@ -76,10 +77,10 @@ internal fun NicknameDialogContent(
                 lineHeight = 18.sp,
             )
         }
-        Spacer(Modifier.height(30.dp))
+        Spacer(Modifier.height(AppSpacing.xxxl.copy(value = 30.dp).dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(AppSpacing.cardGap.dp),
         ) {
             if (onDismiss != null) {
                 NicknameDialogButton(

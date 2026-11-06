@@ -18,6 +18,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -33,7 +34,7 @@ fun ReportStampPrompt(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier.fillMaxWidth().padding(top = 8.dp, bottom = 24.dp),
+        modifier = modifier.fillMaxWidth().padding(top = AppSpacing.sm.dp, bottom = AppSpacing.xxl.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Image(
@@ -41,7 +42,7 @@ fun ReportStampPrompt(
             contentDescription = stringResource(Res.string.report_stamp_accessibility),
             modifier = Modifier.size(56.dp),
         )
-        Spacer(Modifier.width(16.dp))
+        Spacer(Modifier.width(AppSpacing.lg.dp))
         Column {
             Text(
                 text = stringResource(Res.string.report_prompt_title),
@@ -49,7 +50,7 @@ fun ReportStampPrompt(
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
             )
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(AppSpacing.xs.dp))
             Text(
                 text = stringResource(Res.string.report_prompt_message),
                 color = AppColors.TextSecondary,

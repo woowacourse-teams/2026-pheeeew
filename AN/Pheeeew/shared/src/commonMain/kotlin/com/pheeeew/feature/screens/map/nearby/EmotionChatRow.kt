@@ -14,9 +14,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.domain.model.emotion.EmotionContentType
 import com.pheeeew.domain.model.emotion.EmotionReactionType
@@ -134,9 +135,9 @@ private fun NearbyEmotionRowsPreview() {
     val emotions = remember { nearbyPreviewItems() }
     AppTheme {
         LazyColumn(
-            modifier = Modifier.fillMaxSize().background(Color(0xFFFAFAFA)),
+            modifier = Modifier.fillMaxSize().background(AppColors.GroupBackground),
             contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.lg.dp),
         ) {
             items(emotions, key = { it.id }) { NearbyPreviewRow(it) }
         }
@@ -174,7 +175,7 @@ private fun NearbyAllReactionsPreview() {
             )
         }
     AppTheme {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(Modifier.padding(AppSpacing.lg.dp), verticalArrangement = Arrangement.spacedBy(AppSpacing.lg.dp)) {
             NearbyPreviewRow(emotion)
             NearbyPreviewRow(emotion.copy(id = 5L, isMine = false, reactions = emotion.reactions.dropLast(1)))
         }
@@ -189,7 +190,7 @@ private fun NearbyMemoSizePreview() {
             nearbyPreviewItems().first { it.contentType == EmotionContentType.MEMO }.copy(reactions = emptyList())
         }
     AppTheme {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(Modifier.padding(AppSpacing.lg.dp), verticalArrangement = Arrangement.spacedBy(AppSpacing.lg.dp)) {
             NearbyPreviewRow(emotion.copy(memo = "휴…"))
             NearbyPreviewRow(emotion.copy(id = 7L))
             NearbyPreviewRow(

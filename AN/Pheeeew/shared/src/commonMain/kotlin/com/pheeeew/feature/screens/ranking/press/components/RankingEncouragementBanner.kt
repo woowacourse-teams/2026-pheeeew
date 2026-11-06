@@ -7,16 +7,18 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppBorders
+import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
@@ -50,15 +52,15 @@ internal fun RankingEncouragementBanner(
     message: StringResource = rememberRankingEncouragementMessage(),
     compact: Boolean = false,
 ) {
-    val shape = RoundedCornerShape(16.dp)
+    val shape = AppShapes.Card
     Row(
         modifier
             .fillMaxWidth()
-            .background(Color(0xFFF0F1EB), shape)
-            .border(1.dp, Color(0xFFDFE3D9), shape)
-            .padding(horizontal = 16.dp, vertical = if (compact) 8.dp else 12.dp),
+            .background(AppColors.Press.SubtleSurface, shape)
+            .border(AppBorders.Thin, AppColors.Press.RankingCardBorder, shape)
+            .padding(horizontal = AppSpacing.lg.dp, vertical = if (compact) AppSpacing.sm.dp else AppSpacing.md.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(AppSpacing.sm.copy(value = 10.dp).dp),
     ) {
         RaceFlag(Modifier.size(20.dp))
         Text(
@@ -67,7 +69,7 @@ internal fun RankingEncouragementBanner(
             fontSize = if (compact) 13.sp else 14.sp,
             lineHeight = if (compact) 18.sp else 20.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF202323),
+            color = AppColors.GroupInk,
         )
     }
 }

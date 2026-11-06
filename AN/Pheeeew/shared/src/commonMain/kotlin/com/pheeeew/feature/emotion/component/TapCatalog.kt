@@ -2,6 +2,7 @@ package com.pheeeew.feature.emotion.component
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.emotion.model.EmotionKind
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
@@ -77,7 +78,7 @@ internal object TapCatalog {
         when (kind) {
             EmotionKind.Blocked -> {
                 TapEmotion(
-                    color = Color(0xFFF8D3C0),
+                    color = AppColors.Emotion.TapPalette.Frustrated,
                     face = EmotionFeedbackCatalog.face(kind),
                     texts =
                         listOf(
@@ -92,7 +93,7 @@ internal object TapCatalog {
 
             EmotionKind.Annoyed -> {
                 TapEmotion(
-                    color = Color(0xFFF3C7D6),
+                    color = AppColors.Emotion.TapPalette.Annoyed,
                     face = EmotionFeedbackCatalog.face(kind),
                     texts =
                         listOf(
@@ -107,7 +108,7 @@ internal object TapCatalog {
 
             EmotionKind.Tired -> {
                 TapEmotion(
-                    color = Color(0xFFE1D9F0),
+                    color = AppColors.Emotion.TapPalette.Tired,
                     face = EmotionFeedbackCatalog.face(kind),
                     texts =
                         listOf(
@@ -122,7 +123,7 @@ internal object TapCatalog {
 
             EmotionKind.Defeated -> {
                 TapEmotion(
-                    color = Color(0xFFCCE5F2),
+                    color = AppColors.Emotion.TapPalette.Discouraged,
                     face = EmotionFeedbackCatalog.face(kind),
                     texts =
                         listOf(
@@ -137,7 +138,7 @@ internal object TapCatalog {
 
             EmotionKind.Angry -> {
                 TapEmotion(
-                    color = Color(0xFFF5BEB3),
+                    color = AppColors.Emotion.TapPalette.Angry,
                     face = EmotionFeedbackCatalog.face(kind),
                     texts =
                         listOf(

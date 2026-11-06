@@ -11,10 +11,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import com.pheeeew.core.designsystem.theme.AppColors
 
 /** Native map projection in density-independent screen coordinates. */
 data class HighlightedPinPosition(
@@ -44,7 +44,9 @@ internal fun RegisteredPinHighlight(
     // This overlay only draws, so map gestures and pin taps pass through it.
     Canvas(Modifier.fillMaxSize().clipToBounds()) {
         drawCircle(
-            color = Color(0xFF398CFF).copy(alpha = 0.5f * (1f - pulse.value)),
+            color =
+                AppColors.Map.Pin.Pulse
+                    .copy(alpha = 0.5f * (1f - pulse.value)),
             radius = (24f * scale + 30f * pulse.value).dp.toPx(),
             center = center,
             style = Stroke(width = 2.dp.toPx()),
@@ -53,12 +55,12 @@ internal fun RegisteredPinHighlight(
         val badgeOffset = (EMOTION_PIN_SIZE / 2 - 3.dp).toPx()
         val badgeCenter = center + Offset(badgeOffset, -badgeOffset)
         drawCircle(
-            color = Color.White,
+            color = AppColors.White,
             radius = 7.dp.toPx(),
             center = badgeCenter,
         )
         drawCircle(
-            color = Color(0xFFFF3B30),
+            color = AppColors.Map.Pin.Danger,
             radius = 5.dp.toPx(),
             center = badgeCenter,
         )

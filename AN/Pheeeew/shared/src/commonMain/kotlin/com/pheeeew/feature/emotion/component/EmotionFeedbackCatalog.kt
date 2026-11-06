@@ -1,6 +1,7 @@
 package com.pheeeew.feature.emotion.component
 
 import androidx.compose.ui.graphics.Color
+import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.emotion.model.EmotionKind
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
@@ -80,11 +81,11 @@ internal object EmotionFeedbackCatalog {
 
     fun color(emotion: EmotionKind): Color =
         when (emotion) {
-            EmotionKind.Blocked -> Color(0xFFF2B6A3)
-            EmotionKind.Annoyed -> Color(0xFFE8B5C4)
-            EmotionKind.Tired -> Color(0xFFCDC7E4)
-            EmotionKind.Defeated -> Color(0xFFAFCBDD)
-            EmotionKind.Angry -> Color(0xFFEA9E92)
+            EmotionKind.Blocked -> AppColors.Emotion.Feedback.Blocked
+            EmotionKind.Annoyed -> AppColors.Emotion.Feedback.Annoyed
+            EmotionKind.Tired -> AppColors.Emotion.Feedback.Tired
+            EmotionKind.Defeated -> AppColors.Emotion.Feedback.Defeated
+            EmotionKind.Angry -> AppColors.Emotion.Feedback.Angry
         }
 
     fun face(emotion: EmotionKind): DrawableResource =

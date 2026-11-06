@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.feature.component.AppBottomNavigationBarOverlaySpace
 import com.pheeeew.feature.screens.map.record.EmotionBubbleCluster
 import com.pheeeew.feature.screens.map.record.EmotionPromptLabel
@@ -69,7 +70,7 @@ private const val EMOTION_PROMPT_DAMPING_RATIO = 0.8205f
 private const val EMOTION_PROMPT_STIFFNESS = 380f
 private val MAP_CONTROL_BOTTOM_SPACE = AppBottomNavigationBarOverlaySpace + 24.dp
 private val MAP_BOTTOM_BAR_LIFT = MAP_CONTROL_BOTTOM_SPACE - 56.dp
-private val MAP_CONTROL_TINT = Color(0xFF2670F8)
+private val MAP_CONTROL_TINT = AppColors.Map.ControlTint
 
 @Composable
 fun MapOverlay(
@@ -124,7 +125,7 @@ fun MapOverlay(
                 Modifier
                     .fillMaxSize()
                     .statusBarsPadding()
-                    .padding(16.dp),
+                    .padding(AppSpacing.lg.dp),
         ) {
             AnimatedVisibility(
                 visible = isEmotionSelectorExpanded || (!isMapCameraMoving && !promptVisibility.isHidden),
@@ -176,8 +177,10 @@ fun MapOverlay(
                                     color = AppColors.Border,
                                     shape = RoundedCornerShape(100.dp),
                                 ).clickable(onClick = onListClick)
-                                .padding(horizontal = 24.dp, vertical = 10.dp)
-                                .align(Alignment.Center),
+                                .padding(
+                                    horizontal = AppSpacing.xxl.dp,
+                                    vertical = AppSpacing.sm.copy(value = 10.dp).dp,
+                                ).align(Alignment.Center),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Icon(
@@ -185,7 +188,7 @@ fun MapOverlay(
                             contentDescription = stringResource(Res.string.map_open_list),
                             modifier = Modifier.size(24.dp),
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(AppSpacing.md.dp))
                         Text(
                             text = stringResource(Res.string.map_nearby_emotions),
                             fontSize = 16.sp,
@@ -205,9 +208,9 @@ fun MapOverlay(
                     modifier =
                         Modifier
                             .align(Alignment.TopEnd)
-                            .padding(top = 60.dp),
+                            .padding(top = AppSpacing.xxxl.copy(value = 60.dp).dp),
                     horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(AppSpacing.cardGap.dp),
                 ) {
                     val filterStateDescription =
                         stringResource(
@@ -250,7 +253,7 @@ fun MapOverlay(
                     Modifier
                         .fillMaxSize()
                         .statusBarsPadding()
-                        .padding(16.dp),
+                        .padding(AppSpacing.lg.dp),
             ) {
                 EmotionBubbleCluster(
                     isExpanded = isEmotionSelectorExpanded,
@@ -328,7 +331,7 @@ private fun MapOverlayPreviewContent(
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(Color(0xFFECEAE5)),
+                .background(AppColors.Map.Background),
     ) {
         MapOverlay(
             onListClick = {},

@@ -35,7 +35,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -46,6 +45,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.pheeeew.core.designsystem.component.SheetDragHandle
+import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.designsystem.theme.AppTheme
 
 internal const val NEARBY_COLLAPSED_MAP_HEIGHT_FRACTION = 0.55f
@@ -176,7 +177,7 @@ internal fun NearbySheetLayout(
                                 }
                             },
                     shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-                    color = Color(0xFFFAFAFA),
+                    color = AppColors.GroupBackground,
                     shadowElevation = 12.dp,
                 ) {
                     Column(
@@ -245,7 +246,7 @@ private fun NearbySheetPreviewContent(
     var expanded by remember { mutableStateOf(initialExpanded) }
     val emotions = remember { nearbyPreviewItems() }
     AppTheme {
-        Box(Modifier.fillMaxSize().background(Color(0xFFE4EBE4))) {
+        Box(Modifier.fillMaxSize().background(AppColors.Map.NearbySheetBackground)) {
             NearbySheetLayout(
                 visible = true,
                 expanded = expanded,
@@ -261,7 +262,7 @@ private fun NearbySheetPreviewContent(
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth().weight(1f),
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(AppSpacing.lg.dp),
                 ) {
                     if (empty) {
                         item {

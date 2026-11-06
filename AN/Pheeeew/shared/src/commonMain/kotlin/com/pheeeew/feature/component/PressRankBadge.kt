@@ -11,6 +11,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppColors
 import org.jetbrains.compose.resources.painterResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.press_ranking_medal_1
@@ -22,7 +23,7 @@ import pheeeew.shared.generated.resources.press_ranking_medal_3
 internal fun PressRankBadge(
     rank: Long,
     modifier: Modifier = Modifier,
-    numberColor: Color = Color(0xFF767D78),
+    numberColor: Color = AppColors.Press.RankingMuted,
     numberSize: TextUnit = 12.sp,
 ) {
     val medal =

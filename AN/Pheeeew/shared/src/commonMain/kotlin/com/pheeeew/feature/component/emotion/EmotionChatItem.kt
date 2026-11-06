@@ -15,20 +15,20 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.domain.model.emotion.ReactionCount
@@ -58,10 +58,16 @@ internal fun EmotionChatItem(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(start = if (item.isMine) 16.dp else 0.dp, end = if (item.isMine) 0.dp else 16.dp),
+                .padding(
+                    start = if (item.isMine) AppSpacing.lg.dp else 0.dp,
+                    end = if (item.isMine) 0.dp else AppSpacing.lg.dp,
+                ),
         horizontalAlignment = alignment,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(AppSpacing.sm.dp),
+        ) {
             if (!item.isMine) EmotionFace(item)
             Text(
                 if (item.isMine) "${item.nickname} · 나" else item.nickname,
@@ -71,14 +77,19 @@ internal fun EmotionChatItem(
             )
             if (item.isMine) EmotionFace(item)
         }
-        Spacer(Modifier.height(2.dp))
+        Spacer(Modifier.height(AppSpacing.xs.copy(value = 2.dp).dp))
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = if (item.isMine) Arrangement.End else Arrangement.Start,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (item.isMine) MessageTime(item.timeLabel, Modifier.align(Alignment.Bottom).padding(bottom = 6.dp))
-            Box(Modifier.weight(1f, fill = false).padding(horizontal = 8.dp)) {
+            if (item.isMine) {
+                MessageTime(
+                    item.timeLabel,
+                    Modifier.align(Alignment.Bottom).padding(bottom = AppSpacing.xs.copy(value = 6.dp).dp),
+                )
+            }
+            Box(Modifier.weight(1f, fill = false).padding(horizontal = AppSpacing.sm.dp)) {
                 Row(
                     Modifier
                         .then(
@@ -86,16 +97,16 @@ internal fun EmotionChatItem(
                         ).border(
                             AppBorders.Standard,
                             if (focused) AppColors.Primary else BubbleBorder,
-                            RoundedCornerShape(16.dp),
-                        ).background(Color.White, RoundedCornerShape(16.dp))
+                            AppShapes.Card,
+                        ).background(AppColors.White, AppShapes.Card)
                         .combinedClickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
                             onClick = { onOpenOnMap?.invoke() },
                             onLongClick = { onOpenMenu?.invoke(EmotionActionsMenuMode.Actions) },
-                        ).padding(12.dp),
+                        ).padding(AppSpacing.md.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(AppSpacing.sm.copy(value = 10.dp).dp),
                 ) {
                     Column(
                         if (item.content is EmotionChatContentUiModel.EmotionOnly) {
@@ -148,9 +159,14 @@ internal fun EmotionChatItem(
                     onReport = onReport,
                 )
             }
-            if (!item.isMine) MessageTime(item.timeLabel, Modifier.align(Alignment.Bottom).padding(bottom = 6.dp))
+            if (!item.isMine) {
+                MessageTime(
+                    item.timeLabel,
+                    Modifier.align(Alignment.Bottom).padding(bottom = AppSpacing.xs.copy(value = 6.dp).dp),
+                )
+            }
         }
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(AppSpacing.xs.dp))
         EmotionReactionRow(
             isMine = item.isMine,
             reactions = item.reactions,
@@ -175,16 +191,16 @@ private fun MessageTime(
     label: String,
     modifier: Modifier,
 ) {
-    Text(label, modifier.widthIn(max = 48.dp), fontSize = 10.sp, color = Color.Gray)
+    Text(label, modifier.widthIn(max = 48.dp), fontSize = 10.sp, color = AppColors.Gray)
 }
 
-private val BubbleBorder = Color(0xFFE8E8E8)
+private val BubbleBorder = AppColors.BorderLight
 
 @Preview(name = "공통 감정 아이템 · 텍스트", widthDp = 402, showBackground = true)
 @Composable
 private fun EmotionChatItemTextPreview() {
     AppTheme {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(Modifier.padding(AppSpacing.lg.dp), verticalArrangement = Arrangement.spacedBy(AppSpacing.lg.dp)) {
             EmotionChatItem(
                 item = sampleEmotionChatItem(),
                 menuMode = null,
@@ -223,7 +239,7 @@ private fun EmotionChatItemTextPreview() {
 @Composable
 private fun EmotionChatItemAudioPreview() {
     AppTheme {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(Modifier.padding(AppSpacing.lg.dp), verticalArrangement = Arrangement.spacedBy(AppSpacing.lg.dp)) {
             EmotionChatItem(
                 item = sampleEmotionChatItem().copy(content = EmotionChatContentUiModel.Audio(null)),
                 menuMode = null,

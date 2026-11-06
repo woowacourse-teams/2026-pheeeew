@@ -36,6 +36,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pheeeew.core.designsystem.component.Snackbar
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.core.navigation.PredictiveBackContent
@@ -105,7 +106,7 @@ fun SettingsScreen(
             modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(AppSpacing.xxxl.dp))
 
             SettingsSectionTitle(stringResource(Res.string.settings_profile_section))
             SettingsCard {
@@ -116,7 +117,7 @@ fun SettingsScreen(
                     onClick = onNicknameClick,
                 )
             }
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(AppSpacing.xxxl.dp))
 
             SettingsSectionTitle(stringResource(Res.string.settings_app_section))
             SettingsCard {
@@ -129,7 +130,7 @@ fun SettingsScreen(
                 notificationPermissionContent()
             }
 
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(AppSpacing.xxxl.dp))
             SettingsSectionTitle(stringResource(Res.string.settings_help_section))
             SettingsCard {
                 SettingsActionRow(
@@ -154,7 +155,7 @@ fun SettingsScreen(
 
             settingsContent()
 
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(AppSpacing.xxxl.dp))
             ContactCard(onClick = onContactClick)
         }
     }
@@ -378,8 +379,8 @@ fun SettingsScreen(
                     Modifier
                         .align(Alignment.TopCenter)
                         .statusBarsPadding()
-                        .padding(top = 64.dp)
-                        .padding(16.dp),
+                        .padding(top = AppSpacing.xxxl.copy(value = 64.dp).dp)
+                        .padding(AppSpacing.lg.dp),
                 snackbar = { data ->
                     Snackbar(
                         message = data.visuals.message,
@@ -392,7 +393,7 @@ fun SettingsScreen(
 
             SnackbarHost(
                 hostState = snackbarHostState,
-                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(16.dp),
+                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(AppSpacing.lg.dp),
                 snackbar = { data ->
                     Snackbar(
                         message = data.visuals.message,

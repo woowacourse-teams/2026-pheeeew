@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.component.BasicTopBar
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
@@ -103,7 +104,7 @@ private fun LegalDocumentLoading(modifier: Modifier = Modifier) {
                 fontFamily = notoSansKrFontFamily(),
                 fontSize = 14.sp,
                 color = AppColors.GroupInk,
-                modifier = Modifier.padding(top = 16.dp),
+                modifier = Modifier.padding(top = AppSpacing.lg.dp),
             )
         }
     }
@@ -120,7 +121,7 @@ private fun LegalDocumentErrorContent(
             modifier
                 .fillMaxSize()
                 .background(AppColors.Background)
-                .padding(24.dp)
+                .padding(AppSpacing.xxl.dp)
                 .semantics { liveRegion = LiveRegionMode.Assertive },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -139,9 +140,9 @@ private fun LegalDocumentErrorContent(
             fontSize = 14.sp,
             color = AppColors.TextSecondary,
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 8.dp),
+            modifier = Modifier.padding(top = AppSpacing.sm.dp),
         )
-        TextButton(onClick = onRetry, modifier = Modifier.padding(top = 8.dp)) {
+        TextButton(onClick = onRetry, modifier = Modifier.padding(top = AppSpacing.sm.dp)) {
             Text(
                 text = stringResource(Res.string.legal_retry),
                 fontFamily = notoSansKrFontFamily(),
@@ -163,13 +164,13 @@ private fun BoxScope.LegalDocumentBlockedNavigationNotice(
             modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(AppSpacing.lg.dp)
                 .semantics { liveRegion = LiveRegionMode.Assertive },
         color = AppColors.Surface,
         contentColor = AppColors.GroupInk,
     ) {
         Row(
-            modifier = Modifier.padding(start = 16.dp, end = 4.dp),
+            modifier = Modifier.padding(start = AppSpacing.lg.dp, end = AppSpacing.xs.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
@@ -177,7 +178,7 @@ private fun BoxScope.LegalDocumentBlockedNavigationNotice(
                 fontFamily = notoSansKrFontFamily(),
                 fontSize = 14.sp,
                 color = AppColors.GroupInk,
-                modifier = Modifier.weight(1f).padding(vertical = 16.dp),
+                modifier = Modifier.weight(1f).padding(vertical = AppSpacing.lg.dp),
             )
             TextButton(onClick = onDismiss) {
                 Text(

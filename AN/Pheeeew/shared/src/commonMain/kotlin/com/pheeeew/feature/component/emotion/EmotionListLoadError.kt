@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Surface
@@ -18,13 +17,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.component.raisedButtonBorder
+import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.domain.model.emotion.EmotionState
 import org.jetbrains.compose.resources.painterResource
@@ -32,8 +33,8 @@ import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.emotion_list_retry
 
-private val ErrorInk = Color(0xFF252826)
-private val ErrorSecondary = Color(0xFF70766F)
+private val ErrorInk = AppColors.Feedback.ErrorInk
+private val ErrorSecondary = AppColors.Feedback.SecondaryText
 
 @Composable
 internal fun EmotionListLoadError(
@@ -45,11 +46,11 @@ internal fun EmotionListLoadError(
 ) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(20.dp),
-        color = Color.Transparent,
+        shape = AppShapes.CardSurface,
+        color = AppColors.Transparent,
     ) {
         Column(
-            Modifier.fillMaxWidth().padding(16.dp),
+            Modifier.fillMaxWidth().padding(AppSpacing.card.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
         ) {
@@ -90,7 +91,7 @@ private fun EmotionListRetryButton(onClick: () -> Unit) {
         shape = CircleShape,
         colors =
             ButtonDefaults.buttonColors(
-                containerColor = Color.White,
+                containerColor = AppColors.White,
                 contentColor = ErrorInk,
             ),
     ) {
@@ -107,7 +108,7 @@ private fun EmotionListLoadErrorPreview() {
             message = "연결 상태를 확인해 주세요.",
             hasItems = false,
             onRetry = {},
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(AppSpacing.lg.dp),
         )
     }
 }
@@ -121,7 +122,7 @@ private fun EmotionListEmptyPreview() {
             message = null,
             hasItems = false,
             onRetry = null,
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(AppSpacing.lg.dp),
         )
     }
 }

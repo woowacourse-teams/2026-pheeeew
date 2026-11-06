@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -20,6 +19,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.map_refresh_nearby
@@ -32,7 +33,7 @@ internal fun NearbySheetHeader(
 ) {
     val refreshDescription = stringResource(Res.string.map_refresh_nearby)
     Row(
-        Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 8.dp),
+        Modifier.fillMaxWidth().padding(start = AppSpacing.xl.dp, end = AppSpacing.xl.dp, bottom = AppSpacing.sm.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -45,10 +46,10 @@ internal fun NearbySheetHeader(
         Box(
             Modifier
                 .height(32.dp)
-                .clip(RoundedCornerShape(12.dp))
+                .clip(AppShapes.CompactControl)
                 .semantics { contentDescription = refreshDescription }
                 .clickable(enabled = !loading, role = Role.Button, onClick = onRefresh)
-                .padding(horizontal = 8.dp),
+                .padding(horizontal = AppSpacing.sm.dp),
             contentAlignment = Alignment.Center,
         ) {
             Text(

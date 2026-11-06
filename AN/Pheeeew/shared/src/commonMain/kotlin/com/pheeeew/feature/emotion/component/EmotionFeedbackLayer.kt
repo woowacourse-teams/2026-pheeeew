@@ -16,7 +16,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
@@ -26,11 +25,12 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.feature.emotion.model.EmotionKind
 import org.jetbrains.compose.resources.painterResource
 
-private val TapInk = Color(0xFF242725)
+private val TapInk = AppColors.Emotion.Ink
 
 /** Draws the short-lived reactions independently from the input controls. */
 @Composable
@@ -93,7 +93,13 @@ internal fun EmotionFeedbackLayer(
                                 val radius = CornerRadius(12 * d)
                                 drawRoundRect(TapInk, Offset(1 * d, 4 * d), size, radius)
                                 drawRoundRect(
-                                    if (reaction.kind == TapReactionKind.Plus) Color(0xFFFFE36E) else emotion.color,
+                                    if (reaction.kind ==
+                                        TapReactionKind.Plus
+                                    ) {
+                                        AppColors.Core.SnackbarAccent
+                                    } else {
+                                        emotion.color
+                                    },
                                     cornerRadius = radius,
                                 )
                                 drawRoundRect(

@@ -32,7 +32,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -46,8 +45,10 @@ import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.component.BasicTopBar
 import com.pheeeew.core.designsystem.component.SheetDragHandle
 import com.pheeeew.core.designsystem.component.raisedButtonBorder
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.feature.screens.map.overlay.MapControlButton
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
@@ -206,9 +207,9 @@ fun RecordLocationSelectionContent(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(start = 24.dp, end = 24.dp, bottom = 12.dp)
-                        .border(1.dp, AppColors.TextSecondary.copy(alpha = 0.35f), AppShapes.Pill)
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                        .padding(start = AppSpacing.xxl.dp, end = AppSpacing.xxl.dp, bottom = AppSpacing.md.dp)
+                        .border(AppBorders.Thin, AppColors.TextSecondary.copy(alpha = 0.35f), AppShapes.Pill)
+                        .padding(horizontal = AppSpacing.md.dp, vertical = AppSpacing.xs.copy(value = 6.dp).dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -234,7 +235,7 @@ fun RecordLocationSelectionContent(
                 contentDescription = stringResource(Res.string.map_current_location),
                 onClick = onMyLocationClick,
                 enabled = !isRequestingLocation && !isSubmitting,
-                modifier = Modifier.padding(end = 20.dp, bottom = 12.dp),
+                modifier = Modifier.padding(end = AppSpacing.xl.dp, bottom = AppSpacing.md.dp),
             )
             Column(
                 modifier =
@@ -243,13 +244,13 @@ fun RecordLocationSelectionContent(
                         .background(AppColors.Surface, AppShapes.BottomSheet)
                         .noRippleClickable {}
                         .navigationBarsPadding()
-                        .padding(horizontal = 24.dp),
+                        .padding(horizontal = AppSpacing.screen.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 SheetDragHandle()
                 Text(
                     text = stringResource(Res.string.record_location_confirm),
-                    modifier = Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 24.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top = AppSpacing.xxl.dp, bottom = AppSpacing.xxl.dp),
                     color = AppColors.GroupInk,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
@@ -281,7 +282,7 @@ fun RecordLocationSelectionContent(
                         fontWeight = FontWeight.Bold,
                     )
                 }
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(AppSpacing.xxl.dp))
             }
         }
     }
@@ -301,7 +302,7 @@ private fun RecordLocationMovedPreview() {
 
 @Composable
 private fun RecordLocationPreview(selected: GeoCoordinate) {
-    Box(Modifier.fillMaxSize().background(Color(0xFFECEAE5))) {
+    Box(Modifier.fillMaxSize().background(AppColors.Map.Background)) {
         RecordLocationSelectionContent(
             origin = GeoCoordinate(37.5665, 126.9780),
             selectedCoordinate = selected,

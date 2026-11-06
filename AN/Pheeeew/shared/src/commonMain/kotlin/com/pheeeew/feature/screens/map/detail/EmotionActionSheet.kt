@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -25,6 +24,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.pheeeew.core.designsystem.component.AppDialog
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
 
 @Composable
 internal fun EmotionActionSheet(
@@ -38,15 +39,15 @@ internal fun EmotionActionSheet(
         Box(Modifier.fillMaxSize().clickable(onClick = onCancelClick), contentAlignment = Alignment.BottomCenter) {
             Column(Modifier.fillMaxWidth().navigationBarsPadding()) {
                 Surface(
-                    modifier = Modifier.padding(horizontal = 10.dp),
-                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.padding(horizontal = AppSpacing.sm.copy(value = 10.dp).dp),
+                    shape = AppShapes.ActionSheet,
                     color = AppColors.Surface,
                     contentColor = AppColors.GroupInk,
                     shadowElevation = 12.dp,
                 ) {
                     Column {
                         if (isMine) {
-                            ActionItem("삭제하기", Color(0xFFE26962), onDeleteClick)
+                            ActionItem("삭제하기", AppColors.Error, onDeleteClick)
                         } else {
                             ActionItem("신고하기", AppColors.Error, onReportClick)
                             HorizontalDivider(color = AppColors.Gray100)
@@ -54,10 +55,10 @@ internal fun EmotionActionSheet(
                         }
                     }
                 }
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(AppSpacing.sm.copy(value = 10.dp).dp))
                 Surface(
-                    modifier = Modifier.padding(horizontal = 10.dp),
-                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.padding(horizontal = AppSpacing.sm.copy(value = 10.dp).dp),
+                    shape = AppShapes.ActionSheet,
                     color = AppColors.Surface,
                     contentColor = AppColors.GroupInk,
                     shadowElevation = 12.dp,
@@ -82,7 +83,7 @@ private fun ActionItem(
                 .heightIn(
                     min = 56.dp,
                 ).clickable(onClick = onClick)
-                .padding(horizontal = 20.dp),
+                .padding(horizontal = AppSpacing.xl.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(text = text, color = color, fontSize = 16.sp, fontWeight = FontWeight.Bold)

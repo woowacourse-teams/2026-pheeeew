@@ -12,6 +12,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
@@ -31,7 +32,7 @@ internal fun RecordStampDragGuide(modifier: Modifier = Modifier) {
         )
         Text(
             text = stringResource(Res.string.record_drag_stamp),
-            modifier = Modifier.padding(bottom = 6.dp),
+            modifier = Modifier.padding(bottom = AppSpacing.xs.copy(value = 6.dp).dp),
             color = AppColors.GroupInk,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,

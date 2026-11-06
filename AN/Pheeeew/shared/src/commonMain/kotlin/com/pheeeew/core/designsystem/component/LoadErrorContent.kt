@@ -22,7 +22,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -82,7 +81,7 @@ fun LoadErrorContent(
                     .height(50.dp)
                     .raisedButtonBorder(shape, interactionSource = interactionSource)
                     .clip(shape)
-                    .background(Color.White)
+                    .background(AppColors.White)
                     .clickable(
                         interactionSource = interactionSource,
                         indication = null,

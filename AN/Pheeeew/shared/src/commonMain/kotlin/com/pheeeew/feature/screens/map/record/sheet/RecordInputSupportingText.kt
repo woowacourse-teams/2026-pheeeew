@@ -10,6 +10,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppSpacing
 
 @Composable
 internal fun RecordInputSupportingText(
@@ -19,7 +20,7 @@ internal fun RecordInputSupportingText(
 ) {
     Text(
         text = text,
-        modifier = Modifier.fillMaxWidth().padding(top = 2.dp, end = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = AppSpacing.xs.copy(value = 2.dp).dp, end = AppSpacing.xs.dp),
         color = color,
         fontSize = 12.sp,
         textAlign = textAlign,

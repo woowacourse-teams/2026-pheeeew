@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.feature.component.SoapBubble
 import com.pheeeew.feature.component.stamp.GroupStamp
@@ -58,7 +59,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 private const val SPLASH_DURATION_MILLIS = 2_000
-private val SplashBackground = Color(0xFFFFFDFD)
+private val SplashBackground = AppColors.Splash.Background
 
 /** Plays once, then holds the finished artwork while the startup checks finish. */
 @Composable
@@ -184,7 +185,7 @@ private fun SplashArtwork(
             ) {
                 Text(
                     text = stringResource(Res.string.onboarding_brand),
-                    color = Color(0xFF202522),
+                    color = AppColors.Splash.Title,
                     fontWeight = FontWeight.Bold,
                     fontSize = (64f * scale / fontScale).sp,
                     lineHeight = (80f * scale / fontScale).sp,
@@ -216,7 +217,7 @@ private fun BubbleReflections(modifier: Modifier) {
             drawArc(
                 brush =
                     Brush.linearGradient(
-                        listOf(Color(0x7095C9DD), Color(0x40FFFFFF)),
+                        listOf(AppColors.Splash.LightWashStart, AppColors.Splash.LightWashEnd),
                         start = Offset(0f, 130f),
                         end = Offset(100f, 0f),
                     ),
@@ -231,13 +232,13 @@ private fun BubbleReflections(modifier: Modifier) {
                 path = leftReflection,
                 brush =
                     Brush.linearGradient(
-                        listOf(Color(0xB398BED2), Color(0xCCFFFFFF)),
+                        listOf(AppColors.Splash.DeepWashStart, AppColors.Splash.DeepWashEnd),
                         start = Offset(25f, 22f),
                         end = Offset(12f, 100f),
                     ),
             )
             drawArc(
-                color = Color.White.copy(alpha = 0.9f),
+                color = AppColors.White.copy(alpha = 0.9f),
                 startAngle = 166f,
                 sweepAngle = 79f,
                 useCenter = false,
@@ -246,7 +247,7 @@ private fun BubbleReflections(modifier: Modifier) {
                 style = Stroke(4f),
             )
             drawArc(
-                color = Color.White.copy(alpha = 0.8f),
+                color = AppColors.White.copy(alpha = 0.8f),
                 startAngle = -23f,
                 sweepAngle = 80f,
                 useCenter = false,
