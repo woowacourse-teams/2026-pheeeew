@@ -24,7 +24,13 @@ permissions:
 
 jobs:
   test:
+    name: 테스트 샤드 ${{ matrix.shard }}
     runs-on: ubuntu-latest
+    strategy:
+      # 한 샤드가 깨져도 나머지 결과를 봐야 원인을 좁힐 수 있다.
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4]
     defaults:
       run:
         working-directory: BE
@@ -39,16 +45,17 @@ jobs:
           java-version: '21'
 
       # 캐시 쓰기 권한은 기본 동작에 맡긴다. 기본 브랜치 push 런에서만 쓰고 PR 런은 읽기만 한다.
+      # 샤드들이 같은 키를 두고 동시에 쓰는 문제도 이 기본값이 막아준다.
       - uses: gradle/actions/setup-gradle@v4
 
       - name: 테스트
-        run: ./gradlew test --no-daemon
+        run: ./gradlew test --no-daemon -PtestShards=5 -PtestShard=${{ matrix.shard }}
 
       - name: 테스트 리포트 업로드
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results
+          name: test-results-shard-${{ matrix.shard }}
           path: |
             BE/build/reports/tests/test
             BE/observability/build/reports/tests/test
