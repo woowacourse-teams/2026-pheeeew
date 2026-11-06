@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+*.log
+*.json
+*.png
+*.xml
+*.xml.gz
+*.csv

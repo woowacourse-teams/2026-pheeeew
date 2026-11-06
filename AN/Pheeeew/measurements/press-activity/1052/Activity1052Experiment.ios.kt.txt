@@ -1,0 +1,26 @@
+package com.pheeeew
+
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.window.ComposeUIViewController
+import com.pheeeew.feature.screens.press.component.*
+import kotlinx.coroutines.delay
+import platform.Foundation.NSProcessInfo
+
+fun Activity1052ViewController() = ComposeUIViewController {
+    val mode = NSProcessInfo.processInfo.environment["ACTIVITY1052_MODE"] as? String ?: "baseline"
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        if (mode == "baseline") BaselineActivityIndicator(true, true)
+        else CandidateActivityIndicator(true, true)
+    }
+    LaunchedEffect(Unit) {
+        delay(5000)
+        Activity1052Counter.compositions = 0
+        println("ACTIVITY1052 start mode=$mode")
+        delay(30000)
+        println("ACTIVITY1052 end mode=$mode compositions=${Activity1052Counter.compositions}")
+    }
+}

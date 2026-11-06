@@ -1,0 +1,35 @@
+package com.pheeeew
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.window.ComposeUIViewController
+import com.pheeeew.feature.screens.press.component.*
+import com.pheeeew.feature.screens.press.*
+import com.pheeeew.core.designsystem.theme.AppTheme
+import kotlinx.coroutines.delay
+import platform.Foundation.NSProcessInfo
+
+fun Activity1052DeviceViewController(onStart: () -> Unit, onEnd: (Int) -> Unit) = ComposeUIViewController {
+    val env = NSProcessInfo.processInfo.environment
+    Activity1052Counter.baseline = env["ACTIVITY1052_MODE"] == "baseline"
+    Activity1052Counter.enabled = env["ACTIVITY1052_COUNTER"] != "0"
+    AppTheme {
+        if (env["ACTIVITY1052_SCENE"] == "full") {
+            PressScreen(PressUiState(isLoadingMy = false, isLoadingAll = false), { true }, {},
+                nearbyRanking = temporaryNearbyRanking, activity = temporaryPressActivity)
+        } else {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                PressActivityLiveIndicator(true, true)
+            }
+        }
+    }
+    LaunchedEffect(Unit) {
+        delay(5000)
+        Activity1052Counter.compositions = 0
+        onStart()
+        delay(30000)
+        onEnd(Activity1052Counter.compositions)
+    }
+}

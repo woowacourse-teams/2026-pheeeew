@@ -1,0 +1,7 @@
+package com.pheeeew.feature.screens.press.component
+import androidx.compose.runtime.Composable
+@Composable
+internal fun PressActivityLiveIndicator(active: Boolean, pulseEnabled: Boolean) {
+    if (Activity1052Counter.baseline) BaselineActivityIndicator(active, pulseEnabled)
+    else CandidateActivityIndicator(active, pulseEnabled)
+}

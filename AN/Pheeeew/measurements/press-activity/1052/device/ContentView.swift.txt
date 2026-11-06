@@ -1,0 +1,77 @@
+import UIKit
+import SwiftUI
+import Shared
+
+struct ComposeView: UIViewControllerRepresentable {
+    private static let foundationMapFactory = FoundationMapFactory()
+
+    func makeUIViewController(context: Self.Context) -> UIViewController {
+        if ProcessInfo.processInfo.environment["ACTIVITY1052_MODE"] != nil {
+            UIApplication.shared.isIdleTimerDisabled = true
+            let probe = Activity1052CPUProbe()
+            return Activity1052DeviceKt.Activity1052DeviceViewController(
+                onStart: { probe.start() },
+                onEnd: { count in probe.finish(compositions: Int(count.intValue)) }
+            )
+        }
+        FoundationIosMapBridge.shared.registerFactory(factory: Self.foundationMapFactory)
+#if DEBUG
+        return DebugMainViewControllerKt.DebugMainViewController()
+#else
+        return MainViewControllerKt.MainViewController()
+#endif
+    }
+
+    func updateUIViewController(_ uiViewController: UIViewController, context: Self.Context) {}
+}
+
+struct ContentView: View {
+    var body: some View {
+        ComposeView()
+            .ignoresSafeArea()
+    }
+}
+
+// Temporary device-only experiment; archived and removed after measurement.
+private final class Activity1052CPUProbe {
+    private var timer: Timer?
+    private var samples: [[String: Any]] = []
+    private var started = 0.0, initialCPU = 0.0, lastTime = 0.0, lastCPU = 0.0
+    private func cpu() -> Double {
+        var usage = rusage()
+        precondition(getrusage(RUSAGE_SELF, &usage) == 0)
+        return Double(usage.ru_utime.tv_sec + usage.ru_stime.tv_sec)
+            + Double(usage.ru_utime.tv_usec + usage.ru_stime.tv_usec) / 1_000_000
+    }
+    func start() {
+        started = ProcessInfo.processInfo.systemUptime
+        initialCPU = cpu(); lastTime = started; lastCPU = initialCPU
+        timer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in self?.sample() }
+        print("ACTIVITY1052_DEVICE start")
+    }
+    private func sample() {
+        let now = ProcessInfo.processInfo.systemUptime, current = cpu()
+        let wall = now-lastTime
+        if wall > 0 {
+            samples.append(["elapsedSeconds": now-started, "intervalSeconds": wall,
+                "cpuSeconds": current-lastCPU, "cpuPercentOneCore": 100*(current-lastCPU)/wall])
+        }
+        lastTime = now; lastCPU = current
+    }
+    func finish(compositions: Int) {
+        timer?.invalidate(); timer = nil
+        sample()
+        let env = ProcessInfo.processInfo.environment
+        let result: [String: Any] = ["mode": env["ACTIVITY1052_MODE"] ?? "?",
+            "scene": env["ACTIVITY1052_SCENE"] ?? "isolated",
+            "counterEnabled": env["ACTIVITY1052_COUNTER"] != "0",
+            "wallSeconds": lastTime-started, "cpuSeconds": lastCPU-initialCPU,
+            "cpuPercentOneCore": 100*(lastCPU-initialCPU)/(lastTime-started),
+            "compositions": compositions, "samples": samples,
+            "applicationState": UIApplication.shared.applicationState.rawValue,
+            "thermalState": ProcessInfo.processInfo.thermalState.rawValue,
+            "lowPowerMode": ProcessInfo.processInfo.isLowPowerModeEnabled]
+        let data = try! JSONSerialization.data(withJSONObject: result, options: [.sortedKeys])
+        print("ACTIVITY1052_DEVICE result=" + String(data: data, encoding: .utf8)!)
+    }
+}
