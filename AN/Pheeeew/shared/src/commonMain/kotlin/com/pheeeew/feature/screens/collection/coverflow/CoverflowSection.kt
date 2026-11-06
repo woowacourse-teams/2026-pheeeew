@@ -177,7 +177,10 @@ private fun CollectionCenteredState(
     )
 }
 
-internal fun Modifier.coverFlowItem(pagerState: PagerState, page: Int): Modifier =
+internal fun Modifier.coverFlowItem(
+    pagerState: PagerState,
+    page: Int,
+): Modifier =
     layout { measurable, constraints ->
         val placeable = measurable.measure(constraints)
         layout(placeable.width, placeable.height) {

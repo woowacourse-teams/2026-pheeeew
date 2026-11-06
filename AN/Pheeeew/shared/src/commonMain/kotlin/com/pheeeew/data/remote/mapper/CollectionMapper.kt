@@ -2,10 +2,10 @@ package com.pheeeew.data.remote.mapper
 
 import com.pheeeew.data.remote.dto.CollectionActivityProgressDto
 import com.pheeeew.data.remote.dto.CollectionCalendarDto
-import com.pheeeew.data.remote.dto.CollectionDailyDto
 import com.pheeeew.data.remote.dto.CollectionCardDto
 import com.pheeeew.data.remote.dto.CollectionCardReferenceDto
 import com.pheeeew.data.remote.dto.CollectionCountsDto
+import com.pheeeew.data.remote.dto.CollectionDailyDto
 import com.pheeeew.data.remote.dto.CollectionEmotionDto
 import com.pheeeew.data.remote.dto.CollectionEmotionPageDto
 import com.pheeeew.data.remote.dto.CollectionHistoryDto
@@ -24,9 +24,9 @@ import com.pheeeew.domain.model.collection.CollectionHistory
 import com.pheeeew.domain.model.collection.CollectionImages
 import com.pheeeew.domain.model.collection.CollectionToday
 import com.pheeeew.domain.model.collection.CollectionTodayItem
-import com.pheeeew.domain.model.emotion.EmotionState
-import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.domain.model.emotion.EmotionReaction
+import com.pheeeew.domain.model.emotion.EmotionReactionType
+import com.pheeeew.domain.model.emotion.EmotionState
 import kotlin.time.Instant
 
 internal class CollectionContractException(
@@ -128,7 +128,10 @@ internal object CollectionMapper {
         )
     }
 
-    fun toDailyEmotions(dto: CollectionDailyDto, requestedDate: String): CollectionEmotionPage {
+    fun toDailyEmotions(
+        dto: CollectionDailyDto,
+        requestedDate: String,
+    ): CollectionEmotionPage {
         requireDate(dto.date, "daily.date")
         if (dto.date != requestedDate || dto.pressCount < 0L) {
             throw CollectionContractException("daily")
@@ -153,12 +156,14 @@ internal object CollectionMapper {
                 if (dto.audio != null) throw CollectionContractException("emotions.audio")
                 null
             }
-        val emojis = dto.emojis.map { emoji ->
-            val type = runCatching { EmotionReactionType.valueOf(emoji.type) }
-                .getOrElse { throw CollectionContractException("emotions.emojis.type") }
-            if (emoji.count < 0L) throw CollectionContractException("emotions.emojis.count")
-            EmotionReaction(type, emoji.count, emoji.selected)
-        }
+        val emojis =
+            dto.emojis.map { emoji ->
+                val type =
+                    runCatching { EmotionReactionType.valueOf(emoji.type) }
+                        .getOrElse { throw CollectionContractException("emotions.emojis.type") }
+                if (emoji.count < 0L) throw CollectionContractException("emotions.emojis.count")
+                EmotionReaction(type, emoji.count, emoji.selected)
+            }
         if (emojis.map { it.type }.distinct().size != emojis.size) {
             throw CollectionContractException("emotions.emojis")
         }
@@ -172,9 +177,10 @@ internal object CollectionMapper {
             contentType = contentType,
             memo = dto.memo.takeIf { contentType == CollectionEmotionContentType.MEMO },
             audio = audio,
-            emojis = EmotionReactionType.entries.map { type ->
-                emojis.firstOrNull { it.type == type } ?: EmotionReaction(type, 0L, false)
-            },
+            emojis =
+                EmotionReactionType.entries.map { type ->
+                    emojis.firstOrNull { it.type == type } ?: EmotionReaction(type, 0L, false)
+                },
         )
     }
 

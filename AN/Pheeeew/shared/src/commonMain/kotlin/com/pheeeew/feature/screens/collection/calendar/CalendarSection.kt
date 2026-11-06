@@ -257,8 +257,11 @@ private fun CalendarDayCell(
     Box(
         modifier
             .aspectRatio(0.82f)
-            .clickable(enabled = day.isCurrentMonth && day.date != null && !isFutureDay && hasLoaded, role = Role.Button, onClick = onClick)
-            .semantics(mergeDescendants = true) {
+            .clickable(
+                enabled = day.isCurrentMonth && day.date != null && !isFutureDay && hasLoaded,
+                role = Role.Button,
+                onClick = onClick,
+            ).semantics(mergeDescendants = true) {
                 contentDescription =
                     buildString {
                         append(day.date ?: day.dayOfMonth)

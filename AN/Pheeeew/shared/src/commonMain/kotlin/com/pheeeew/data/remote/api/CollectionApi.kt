@@ -5,10 +5,10 @@ import com.pheeeew.core.network.ApiRequestExecutor
 import com.pheeeew.core.network.ApiResult
 import com.pheeeew.core.network.RequestKind
 import com.pheeeew.data.remote.dto.CollectionCalendarDto
-import com.pheeeew.data.remote.dto.CollectionDailyDto
 import com.pheeeew.data.remote.dto.CollectionCardDto
 import com.pheeeew.data.remote.dto.CollectionCardReferenceDto
 import com.pheeeew.data.remote.dto.CollectionClaimRequestDto
+import com.pheeeew.data.remote.dto.CollectionDailyDto
 import com.pheeeew.data.remote.dto.CollectionEmotionPageDto
 import com.pheeeew.data.remote.dto.CollectionHistoryDto
 import com.pheeeew.data.remote.dto.CollectionTodayDto
@@ -108,10 +108,11 @@ internal class CollectionApi(
                 method = HttpMethod.Get,
                 path = "$COLLECTION_PATH/daily",
                 kind = RequestKind.READ,
-                queryParameters = buildMap {
-                    put("date", date)
-                    cursor?.let { put("cursor", it) }
-                },
+                queryParameters =
+                    buildMap {
+                        put("date", date)
+                        cursor?.let { put("cursor", it) }
+                    },
                 monitoringEndpoint = "collection_daily",
             ),
         ) { response -> response.body<CollectionDailyDto>() }

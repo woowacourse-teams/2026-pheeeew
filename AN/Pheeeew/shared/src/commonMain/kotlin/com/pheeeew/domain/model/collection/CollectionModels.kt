@@ -1,7 +1,7 @@
 package com.pheeeew.domain.model.collection
 
-import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.emotion.EmotionReaction
+import com.pheeeew.domain.model.emotion.EmotionState
 
 data class CollectionImages(
     val characterUrl: String,
