@@ -1,6 +1,14 @@
 name: BE CI
 
 on:
+  # 기본 브랜치 push 가 Gradle 캐시를 심는다. gradle/actions 는 기본 브랜치 런에서만
+  # 캐시를 쓰고 PR 런은 읽기 전용이다. 이 트리거가 없으면 아무도 캐시를 갱신하지 않아
+  # 래퍼가 올라간 뒤에도 모든 PR 이 옛 버전 캐시를 영구히 읽는다. 측정: 고정비 41.6초 -> 15.3초.
+  push:
+    branches: [main]
+    paths:
+      - 'BE/**'
+      - '.github/workflows/be-ci.yml'
   pull_request:
     branches: [main, be/dev, develop]
     paths:
@@ -30,6 +38,7 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      # 캐시 쓰기 권한은 기본 동작에 맡긴다. 기본 브랜치 push 런에서만 쓰고 PR 런은 읽기만 한다.
       - uses: gradle/actions/setup-gradle@v4
 
       - name: 테스트
