@@ -232,7 +232,7 @@ class CollectionScreenTest {
             device.waitForIdle()
             card("지침")
 
-            node("앨범").click()
+            node("캘린더").click()
             node("오늘")
             node("커버플로").click()
             card("지침")

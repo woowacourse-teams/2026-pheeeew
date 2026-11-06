@@ -271,7 +271,7 @@
     <string name="collection_tomorrow_card_message">컬렉션 카드는 하루에 하나만 발급받을 수 있어요!\n내일 도전해보세요!</string>
     <string name="collection_tomorrow_card_accessibility_description">내일 발급할 수 있는 컬렉션 카드 안내</string>
     <string name="collection_cover_flow">커버플로</string>
-    <string name="collection_album">앨범</string>
+    <string name="collection_calendar">캘린더</string>
     <string name="collection_day_cards_error">컬렉션을 불러오지 못했어요</string>
     <string name="collection_day_emotions_error">감정을 불러오지 못했어요</string>
     <string name="collection_day_emotions_empty">이날은 남긴 감정이 없어요</string>

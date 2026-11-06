@@ -73,13 +73,13 @@ import com.pheeeew.feature.screens.collection.coverflow.CoverflowSection
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
-import pheeeew.shared.generated.resources.collection_album
+import pheeeew.shared.generated.resources.collection_calendar
 import pheeeew.shared.generated.resources.collection_card_count
 import pheeeew.shared.generated.resources.collection_cover_flow
 import pheeeew.shared.generated.resources.collection_notification_outdated
 import pheeeew.shared.generated.resources.collection_subtitle
 import pheeeew.shared.generated.resources.collection_title
-import pheeeew.shared.generated.resources.ic_collection_album
+import pheeeew.shared.generated.resources.ic_calendar
 import pheeeew.shared.generated.resources.ic_collection_cover_flow
 
 @Composable
@@ -395,7 +395,7 @@ private fun CollectionViewModeToggle(
                                 if (mode == CollectionViewMode.COVER_FLOW) {
                                     Res.drawable.ic_collection_cover_flow
                                 } else {
-                                    Res.drawable.ic_collection_album
+                                    Res.drawable.ic_calendar
                                 },
                             ),
                         contentDescription = null,
@@ -408,7 +408,7 @@ private fun CollectionViewModeToggle(
                                 if (mode == CollectionViewMode.COVER_FLOW) {
                                     Res.string.collection_cover_flow
                                 } else {
-                                    Res.string.collection_album
+                                    Res.string.collection_calendar
                                 },
                             ),
                         color = if (selected) AppColors.TextPrimary else AppColors.TextSecondary,
