@@ -2,9 +2,9 @@ package com.pheeeew.core.network
 
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.darwin.Darwin
-import kotlin.native.Platform
 import platform.Foundation.NSBundle
 import platform.Foundation.NSProcessInfo
+import kotlin.native.Platform
 
 internal expect val isSimulatorTarget: Boolean
 
@@ -25,11 +25,12 @@ internal fun createIosApiEngine(baseUrl: String): HttpClientEngine {
     // CONNECT carries end-to-end TLS. This does not alter trust evaluation or log traffic.
     return Darwin.create {
         configureSession {
-            connectionProxyDictionary = mapOf(
-                "HTTPSEnable" to 1,
-                "HTTPSProxy" to "127.0.0.1",
-                "HTTPSPort" to 18771,
-            )
+            connectionProxyDictionary =
+                mapOf(
+                    "HTTPSEnable" to 1,
+                    "HTTPSProxy" to "127.0.0.1",
+                    "HTTPSPort" to 18771,
+                )
         }
     }
 }
