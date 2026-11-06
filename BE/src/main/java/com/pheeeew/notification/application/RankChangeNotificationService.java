@@ -25,7 +25,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class RankChangeNotificationService {
 
-    private static final int NOTIFIED_RANK_LIMIT = 5;
     private static final Duration ROUND_INTERVAL = Duration.ofMinutes(5);
     private static final Duration EARLY_START_TOLERANCE = Duration.ofSeconds(30);
     private static final int RETENTION_DAYS = 7;
@@ -86,15 +85,12 @@ public class RankChangeNotificationService {
     }
 
     private void saveSnapshot(Instant roundAt, Map<Long, Integer> currentRanks) {
-        currentRanks.forEach((deviceId, rank) -> {
-            if (rank <= NOTIFIED_RANK_LIMIT) {
-                notificationRankSnapshotRepository.save(NotificationRankSnapshot.builder()
+        currentRanks.forEach((deviceId, rank) -> notificationRankSnapshotRepository.save(
+                NotificationRankSnapshot.builder()
                         .roundAt(roundAt)
                         .deviceId(deviceId)
                         .rank(rank)
-                        .build());
-            }
-        });
+                        .build()));
     }
 
     private void saveDroppedOutbox(
@@ -107,7 +103,7 @@ public class RankChangeNotificationService {
         Instant expiresAt = roundAt.plus(ROUND_INTERVAL);
         previousRanks.forEach((deviceId, previousRank) -> {
             Integer currentRank = currentRanks.get(deviceId);
-            if (isDroppedFromTop(previousRank, currentRank)) {
+            if (isDropped(previousRank, currentRank)) {
                 rankDroppedOutboxRepository.save(RankDroppedOutbox.builder()
                         .deviceId(deviceId)
                         .targetDate(targetDate)
@@ -122,7 +118,7 @@ public class RankChangeNotificationService {
         });
     }
 
-    private boolean isDroppedFromTop(int previousRank, Integer currentRank) {
-        return previousRank <= NOTIFIED_RANK_LIMIT && currentRank != null && currentRank > previousRank;
+    private boolean isDropped(int previousRank, Integer currentRank) {
+        return currentRank != null && currentRank > previousRank;
     }
 }
