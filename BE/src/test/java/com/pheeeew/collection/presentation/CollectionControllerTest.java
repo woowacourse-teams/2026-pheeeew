@@ -15,7 +15,6 @@ import com.pheeeew.auth.presentation.config.AuthWebMvcConfig;
 import com.pheeeew.auth.presentation.resolver.CurrentDeviceArgumentResolver;
 import com.pheeeew.collection.application.CollectionClaimService;
 import com.pheeeew.collection.application.CollectionDailyQueryService;
-import com.pheeeew.collection.application.CollectionEmotionQueryService;
 import com.pheeeew.collection.application.CollectionQueryService;
 import com.pheeeew.collection.application.dto.CollectionCardDetailResult;
 import com.pheeeew.collection.application.dto.CollectionCardResult;
@@ -88,9 +87,6 @@ class CollectionControllerTest {
     private CollectionClaimService claims;
 
     @MockitoBean
-    private CollectionEmotionQueryService collectionEmotions;
-
-    @MockitoBean
     private CollectionDailyQueryService daily;
 
     @MockitoBean
@@ -99,6 +95,15 @@ class CollectionControllerTest {
     @BeforeEach
     void setUp() {
         when(jwtDecoder.decode("access-token")).thenReturn(AccessTokenFixture.액세스_토큰_클레임(DEVICE_PUBLIC_ID));
+    }
+
+    @Test
+    void 제거한_카드_기반_감정_목록_경로는_기본_보안_정책으로_차단한다() {
+        // when / then
+        client.get().uri("/api/v1/collection-cards/20769cf2-1f8a-4b62-8dbe-5b594d5ffb5d/emotions")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
+                .expectStatus().isForbidden();
+        verifyNoInteractions(service, daily, claims);
     }
 
     @Test
@@ -186,9 +191,9 @@ class CollectionControllerTest {
     }
 
     @Test
-    void 기존_카드_감정_목록의_각_항목에_공감_정보를_반환한다() {
+    void 날짜_상세_감정_목록의_각_항목에_공감_정보를_반환한다() {
         // given
-        UUID cardId = UUID.randomUUID();
+        LocalDate date = LocalDate.of(2026, 11, 4);
         var emotion = EmotionFixture.저장된_기본_한숨(42L, Instant.parse("2026-11-04T01:00:00Z"));
         var counts = List.of(EmotionEmojiResult.of(EmojiType.HEART, 2, true),
                 EmotionEmojiResult.of(EmojiType.LAUGH, 1, false),
@@ -196,13 +201,14 @@ class CollectionControllerTest {
                 EmotionEmojiResult.of(EmojiType.DIZZY, 0, false),
                 EmotionEmojiResult.of(EmojiType.RAGE, 0, false),
                 EmotionEmojiResult.of(EmojiType.SKULL, 0, false));
-        when(collectionEmotions.findEmotions(DEVICE_PUBLIC_ID, cardId, null))
-                .thenReturn(CollectionEmotionPageResult.of(List.of(CollectionEmotionResult.of(emotion, null, counts)), false, null));
+        when(daily.findDaily(DEVICE_PUBLIC_ID, date, null))
+                .thenReturn(CollectionDailyResult.of(date, null, 0, CollectionEmotionPageResult.of(
+                        List.of(CollectionEmotionResult.of(emotion, null, counts)), false, null)));
 
         // when / then
-        client.get().uri("/api/v1/collection-cards/" + cardId + "/emotions")
+        client.get().uri("/api/v1/collection-cards/daily?date=2026-11-04")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
-                .expectStatus().isOk().expectBody().jsonPath("$.items[0].emojis").isEqualTo(List.of(
+                .expectStatus().isOk().expectBody().jsonPath("$.emotions.items[0].emojis").isEqualTo(List.of(
                         Map.of("type", "HEART", "count", 2, "selected", true),
                         Map.of("type", "LAUGH", "count", 1, "selected", false),
                         Map.of("type", "CRY", "count", 0, "selected", false),
@@ -212,9 +218,9 @@ class CollectionControllerTest {
     }
 
     @Test
-    void 카드의_감정_목록은_지도정보_없이_내용유형과_페이지정보를_반환한다() {
+    void 날짜_상세의_감정_목록은_지도정보_없이_내용유형과_페이지정보를_반환한다() {
         // given
-        UUID cardId = UUID.fromString("20769cf2-1f8a-4b62-8dbe-5b594d5ffb5d");
+        LocalDate date = LocalDate.of(2026, 11, 4);
         var emotion = EmotionFixture.기본_한숨_빌더().state(EmotionState.IRRITATED).memo("짜증난 하루").build();
         setField(emotion, "id", 42L);
         setField(emotion, "createdAt", Instant.parse("2026-11-04T01:00:00Z"));
@@ -224,10 +230,11 @@ class CollectionControllerTest {
         setField(audio, "state", EmotionState.ANGRY);
         var playback = PlaybackUrl.of("https://audio.example/recording", Instant.parse("2026-11-04T02:00:00Z"));
         var emptyEmojis = Arrays.stream(EmojiType.values()).map(type -> EmotionEmojiResult.of(type, 0, false)).toList();
-        when(collectionEmotions.findEmotions(DEVICE_PUBLIC_ID, cardId, "previous"))
-                .thenReturn(CollectionEmotionPageResult.of(List.of(CollectionEmotionResult.of(emotion, null, emptyEmojis),
-                        CollectionEmotionResult.of(none, null, emptyEmojis),
-                        CollectionEmotionResult.of(audio, playback, emptyEmojis)), true, "next"));
+        when(daily.findDaily(DEVICE_PUBLIC_ID, date, "previous"))
+                .thenReturn(CollectionDailyResult.of(date, null, 0, CollectionEmotionPageResult.of(
+                        List.of(CollectionEmotionResult.of(emotion, null, emptyEmojis),
+                                CollectionEmotionResult.of(none, null, emptyEmojis),
+                                CollectionEmotionResult.of(audio, playback, emptyEmojis)), true, "next")));
         String expectedEmojis = """
                 [{"type":"HEART","count":0,"selected":false},{"type":"LAUGH","count":0,"selected":false},
                  {"type":"CRY","count":0,"selected":false},{"type":"DIZZY","count":0,"selected":false},
@@ -235,16 +242,16 @@ class CollectionControllerTest {
                 """;
 
         // when / then
-        client.get().uri("/api/v1/collection-cards/" + cardId + "/emotions?cursor=previous&devicePublicId=" + UUID.randomUUID())
+        client.get().uri("/api/v1/collection-cards/daily?date=2026-11-04&cursor=previous&devicePublicId=" + UUID.randomUUID())
                 .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
                 .expectStatus().isOk().expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
                 .expectBody().json("""
-                        {"items":[{"id":42,"createdAt":"2026-11-04T01:00:00Z","state":"IRRITATED",
+                        {"date":"2026-11-04","card":null,"pressCount":0,"emotions":{"items":[{"id":42,"createdAt":"2026-11-04T01:00:00Z","state":"IRRITATED",
                          "contentType":"MEMO","memo":"짜증난 하루","audio":null,"emojis":%s},
                          {"id":43,"createdAt":"2026-11-04T00:00:00Z","state":"EXHAUSTED","contentType":"NONE","memo":null,"audio":null,"emojis":%s},
                          {"id":44,"createdAt":"2026-11-03T23:00:00Z","state":"ANGRY","contentType":"AUDIO","memo":null,
                           "audio":{"playbackUrl":"https://audio.example/recording","expiresAt":"2026-11-04T02:00:00Z"},"emojis":%s}],
-                         "hasNext":true,"nextCursor":"next"}
+                         "hasNext":true,"nextCursor":"next"}}
                         """.formatted(expectedEmojis, expectedEmojis, expectedEmojis), JsonCompareMode.STRICT);
     }
 
@@ -277,7 +284,7 @@ class CollectionControllerTest {
         client.get().uri("/api/v1/collection-cards/calendar?" + query)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
                 .expectStatus().isBadRequest().expectBody().jsonPath("$.code").isEqualTo("COMMON-001");
-        verifyNoInteractions(service, collectionEmotions);
+        verifyNoInteractions(service, daily);
     }
 
     @ParameterizedTest
@@ -295,48 +302,36 @@ class CollectionControllerTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"/api/v1/collection-cards/calendar?month=2026-11",
-            "/api/v1/collection-cards/20769cf2-1f8a-4b62-8dbe-5b594d5ffb5d/emotions",
             "/api/v1/collection-cards/daily?date=2026-11-05"})
     void 캘린더와_일별_감정도_기기_인증이_필요하다(String uri) {
         // when / then
         client.get().uri(uri).exchange().expectStatus().isUnauthorized()
                 .expectBody().jsonPath("$.code").isEqualTo("AUTH-001");
-        verifyNoInteractions(service, collectionEmotions);
-    }
-
-    @Test
-    void 일별_감정의_잘못된_UUID와_너무_긴_커서는_조회_전에_거절한다() {
-        // when / then
-        for (String uri : List.of("/api/v1/collection-cards/invalid/emotions",
-                "/api/v1/collection-cards/20769cf2-1f8a-4b62-8dbe-5b594d5ffb5d/emotions?cursor=" + "a".repeat(2049))) {
-            client.get().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
-                    .expectStatus().isBadRequest().expectBody().jsonPath("$.code").isEqualTo("COMMON-001");
-        }
-        verifyNoInteractions(collectionEmotions);
+        verifyNoInteractions(service, daily);
     }
 
     @ParameterizedTest
-    @CsvSource({"COLLECTION_CARD_NOT_FOUND,404,COLLECTION-005", "COLLECTION_INVALID_CURSOR,400,COLLECTION-007"})
-    void 일별_감정_소유권과_커서_오류를_공통_응답으로_반환한다(CollectionErrorCode error, int status, String code) {
+    @CsvSource({"COLLECTION_ASSETS_NOT_READY,503,COLLECTION-004", "COLLECTION_INVALID_CURSOR,400,COLLECTION-007"})
+    void 날짜_상세의_자산과_커서_오류를_공통_응답으로_반환한다(CollectionErrorCode error, int status, String code) {
         // given
-        UUID cardId = UUID.randomUUID();
-        when(collectionEmotions.findEmotions(DEVICE_PUBLIC_ID, cardId, null)).thenThrow(new CollectionException(error));
+        LocalDate date = LocalDate.of(2026, 11, 5);
+        when(daily.findDaily(DEVICE_PUBLIC_ID, date, null)).thenThrow(new CollectionException(error));
 
         // when / then
-        client.get().uri("/api/v1/collection-cards/" + cardId + "/emotions")
+        client.get().uri("/api/v1/collection-cards/daily?date=2026-11-05")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
                 .expectStatus().isEqualTo(status).expectBody().jsonPath("$.code").isEqualTo(code);
     }
 
     @Test
-    void 일별_감정_녹음_발급_오류는_503으로_반환한다() {
+    void 날짜_상세의_녹음_발급_오류는_503으로_반환한다() {
         // given
-        UUID cardId = UUID.randomUUID();
-        when(collectionEmotions.findEmotions(DEVICE_PUBLIC_ID, cardId, null))
+        LocalDate date = LocalDate.of(2026, 11, 5);
+        when(daily.findDaily(DEVICE_PUBLIC_ID, date, null))
                 .thenThrow(new EmotionException(EmotionErrorCode.EMOTION_AUDIO_PLAYBACK_UNAVAILABLE));
 
         // when / then
-        client.get().uri("/api/v1/collection-cards/" + cardId + "/emotions")
+        client.get().uri("/api/v1/collection-cards/daily?date=2026-11-05")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
                 .expectStatus().isEqualTo(503).expectBody().jsonPath("$.code").isEqualTo("EMOTION-009");
     }

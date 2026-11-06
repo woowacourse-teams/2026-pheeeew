@@ -22,11 +22,15 @@ import com.pheeeew.common.exception.PheeeewException;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.emotion.application.AudioUrlIssuer;
+import com.pheeeew.emotion.application.dto.EmotionEmojiResult;
 import com.pheeeew.emotion.domain.Audio;
+import com.pheeeew.emotion.domain.EmojiType;
 import com.pheeeew.emotion.domain.Emotion;
 import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.emotion.domain.repository.EmotionEmojiRepository;
 import com.pheeeew.emotion.domain.repository.EmotionRepository;
+import com.pheeeew.emotion.exception.EmotionErrorCode;
+import com.pheeeew.emotion.exception.EmotionException;
 import com.pheeeew.report.domain.EmotionBlock;
 import com.pheeeew.support.PostgisDataJpaTest;
 import jakarta.persistence.EntityManager;
@@ -59,7 +63,6 @@ class CollectionDailyServiceIntegrationTest {
     private static final LocalDate DATE = LocalDate.of(2026, 11, 5);
 
     @Autowired private CollectionDailyQueryService service;
-    @Autowired private CollectionEmotionQueryService cardEmotions;
     @Autowired private DeviceRepository devices;
     @Autowired private CollectionCardRepository cards;
     @Autowired private EmotionRepository emotions;
@@ -78,7 +81,7 @@ class CollectionDailyServiceIntegrationTest {
     }
 
     @Test
-    void 날짜_카드_커서는_교차_사용할_수_없고_기존_카드_커서_형식은_계속_허용한다() throws Exception {
+    void 날짜_커서는_다른_기기와_날짜_다른_용도의_커서와_변조를_거절한다() throws Exception {
         // given
         var owner = devices.saveAndFlush(기본_기기_빌더().build());
         var other = devices.saveAndFlush(기본_기기_빌더().build());
@@ -94,11 +97,7 @@ class CollectionDailyServiceIntegrationTest {
         String legacyCursor = 기존_형식으로_서명한다(legacyPayload);
 
         // when / then
-        var oldPage = cardEmotions.findEmotions(owner.getPublicId(), card.getPublicId(), legacyCursor);
-        assertThat(oldPage.items()).extracting(item -> item.id()).containsExactly(ids.get(1), ids.getFirst());
         assertThatThrownBy(() -> service.findDaily(owner.getPublicId(), DATE, legacyCursor))
-                .hasFieldOrPropertyWithValue("errorCode", CollectionErrorCode.COLLECTION_INVALID_CURSOR);
-        assertThatThrownBy(() -> cardEmotions.findEmotions(owner.getPublicId(), card.getPublicId(), dailyCursor))
                 .hasFieldOrPropertyWithValue("errorCode", CollectionErrorCode.COLLECTION_INVALID_CURSOR);
         assertThatThrownBy(() -> service.findDaily(owner.getPublicId(), DATE.minusDays(1), dailyCursor))
                 .hasFieldOrPropertyWithValue("errorCode", CollectionErrorCode.COLLECTION_INVALID_CURSOR);
@@ -309,6 +308,78 @@ class CollectionDailyServiceIntegrationTest {
         assertThat(second.emotions().items()).extracting(item -> item.id()).containsExactly(ids.get(1), ids.getFirst());
         assertThat(second.emotions().hasNext()).isFalse();
         assertThat(second.emotions().nextCursor()).isNull();
+    }
+
+    @Test
+    void 감정별_공감_여섯_종류와_인증_기기의_선택_여부를_함께_조회한다() {
+        // given
+        var owner = devices.saveAndFlush(기본_기기_빌더().build());
+        var other = devices.saveAndFlush(기본_기기_빌더().build());
+        var reacted = 감정을_저장한다(기본_한숨_빌더().deviceId(owner.getId())
+                .state(EmotionState.ANGRY).build(), "2026-11-05T01:00:00Z");
+        감정을_저장한다(기본_한숨_빌더().deviceId(owner.getId())
+                .state(EmotionState.EXHAUSTED).memo("메모").build(), "2026-11-05T00:00:00Z");
+        emojis.saveIfAbsent(reacted.getId(), owner.getId(), "HEART", clock.instant());
+        emojis.saveIfAbsent(reacted.getId(), other.getId(), "HEART", clock.instant());
+        emojis.saveIfAbsent(reacted.getId(), other.getId(), "LAUGH", clock.instant());
+
+        // when
+        var result = service.findDaily(owner.getPublicId(), DATE, null).emotions();
+
+        // then
+        assertThat(result.items().getFirst().emojis()).containsExactly(
+                EmotionEmojiResult.of(EmojiType.HEART, 2, true),
+                EmotionEmojiResult.of(EmojiType.LAUGH, 1, false),
+                EmotionEmojiResult.of(EmojiType.CRY, 0, false),
+                EmotionEmojiResult.of(EmojiType.DIZZY, 0, false),
+                EmotionEmojiResult.of(EmojiType.RAGE, 0, false),
+                EmotionEmojiResult.of(EmojiType.SKULL, 0, false));
+        assertThat(result.items().get(1).emojis()).hasSize(6)
+                .allSatisfy(emoji -> {
+                    assertThat(emoji.count()).isZero();
+                    assertThat(emoji.selected()).isFalse();
+                });
+    }
+
+    @Test
+    void 다음_페이지에서도_삭제와_차단을_반영한다() {
+        // given
+        var owner = devices.saveAndFlush(기본_기기_빌더().build());
+        var deleted = 감정을_저장한다(기본_한숨_빌더().deviceId(owner.getId())
+                .state(EmotionState.ANGRY).build(), "2026-11-05T00:00:00Z");
+        var blocked = 감정을_저장한다(기본_한숨_빌더().deviceId(owner.getId())
+                .state(EmotionState.ANGRY).build(), "2026-11-05T00:00:00Z");
+        for (int i = 0; i < 50; i++) {
+            감정을_저장한다(기본_한숨_빌더().deviceId(owner.getId()).state(EmotionState.ANGRY).build(),
+                    "2026-11-05T01:00:00Z");
+        }
+        var first = service.findDaily(owner.getPublicId(), DATE, null).emotions();
+        deleted.delete();
+        entityManager.persist(EmotionBlock.builder().blockerDeviceId(owner.getId()).emotionId(blocked.getId()).build());
+        entityManager.flush();
+
+        // when
+        var second = service.findDaily(owner.getPublicId(), DATE, first.nextCursor()).emotions();
+
+        // then
+        assertThat(first.hasNext()).isTrue();
+        assertThat(second.items()).isEmpty();
+        assertThat(second.hasNext()).isFalse();
+        assertThat(second.nextCursor()).isNull();
+    }
+
+    @Test
+    void 녹음_재생_URL_발급_실패는_기존_503_오류로_반환한다() {
+        // given
+        var owner = devices.saveAndFlush(기본_기기_빌더().build());
+        감정을_저장한다(기본_한숨_빌더().deviceId(owner.getId()).state(EmotionState.ANGRY)
+                .audio(Audio.builder().objectKey("private/unavailable").build()).build(), "2026-11-05T00:00:00Z");
+        when(audioIssuer.issuePlayback("private/unavailable")).thenThrow(new IllegalStateException("발급 실패"));
+
+        // when / then
+        assertThatThrownBy(() -> service.findDaily(owner.getPublicId(), DATE, null).emotions())
+                .isInstanceOf(EmotionException.class)
+                .hasFieldOrPropertyWithValue("errorCode", EmotionErrorCode.EMOTION_AUDIO_PLAYBACK_UNAVAILABLE);
     }
 
     private Emotion 감정을_저장한다(Device owner, String createdAt) {

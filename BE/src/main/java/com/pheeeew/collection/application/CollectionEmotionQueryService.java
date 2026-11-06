@@ -1,19 +1,12 @@
 package com.pheeeew.collection.application;
 
-import static com.pheeeew.collection.exception.CollectionErrorCode.COLLECTION_CARD_NOT_FOUND;
-import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_AUDIO_PLAYBACK_UNAVAILABLE;
 
 import com.pheeeew.collection.application.dto.CollectionDailyEmotionCursor;
-import com.pheeeew.collection.application.dto.CollectionEmotionCursor;
 import com.pheeeew.collection.application.dto.CollectionEmotionPageResult;
 import com.pheeeew.collection.application.dto.CollectionEmotionResult;
-import com.pheeeew.collection.domain.repository.CollectionCardRepository;
-import com.pheeeew.collection.exception.CollectionException;
 import com.pheeeew.collection.infra.CollectionEmotionCursorCodec;
 import com.pheeeew.device.domain.Device;
-import com.pheeeew.device.domain.repository.DeviceRepository;
-import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.emotion.application.AudioUrlIssuer.PlaybackUrl;
 import com.pheeeew.emotion.application.AudioUrlIssuer;
 import com.pheeeew.emotion.application.dto.EmotionEmojiResult;
@@ -32,8 +25,6 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
-import java.util.function.Function;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
@@ -46,30 +37,11 @@ public class CollectionEmotionQueryService {
 
     private static final int PAGE_SIZE = 50;
 
-    private final DeviceRepository devices;
-    private final CollectionCardRepository cards;
     private final EmotionRepository emotions;
     private final EmotionEmojiRepository emotionEmojis;
     private final ObjectProvider<AudioUrlIssuer> audioUrlIssuer;
     private final Clock clock;
     private final CollectionEmotionCursorCodec cursorCodec;
-
-    public CollectionEmotionPageResult findEmotions(UUID devicePublicId, UUID cardId, String encodedCursor) {
-        Long deviceId = devices.findByPublicId(devicePublicId).map(Device::getId)
-                .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
-        var card = cards.findByPublicIdAndDeviceId(cardId, deviceId)
-                .orElseThrow(() -> new CollectionException(COLLECTION_CARD_NOT_FOUND));
-        Instant now = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
-        var cursor = encodedCursor == null
-                ? CollectionEmotionCursor.initial(devicePublicId, cardId, card.getCardDate(), now)
-                : cursorCodec.decode(encodedCursor);
-        if (encodedCursor != null) {
-            cursor.validateRequest(devicePublicId, cardId, card.getCardDate(), now);
-        }
-
-        return findPage(deviceId, card.getCardDate(), cursor.snapshotAt(), cursor.lastCreatedAt(), cursor.lastId(),
-                last -> cursorCodec.encode(cursor.next(last.getCreatedAt(), last.getId())));
-    }
 
     CollectionEmotionPageResult findByDate(Device device, LocalDate date, String encodedCursor) {
         Instant now = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
@@ -80,23 +52,18 @@ public class CollectionEmotionQueryService {
             cursor.validateRequest(device.getPublicId(), date, now);
         }
 
-        return findPage(device.getId(), date, cursor.snapshotAt(), cursor.lastCreatedAt(), cursor.lastId(),
-                last -> cursorCodec.encodeDaily(cursor.next(last.getCreatedAt(), last.getId())));
-    }
-
-    private CollectionEmotionPageResult findPage(Long deviceId, LocalDate date, Instant snapshotAt,
-            Instant lastCreatedAt, long lastId, Function<Emotion, String> nextCursorEncoder) {
         var filter = EmotionSearchFilter.of(date, date, null, EmotionSearchScope.MY, null);
-        var found = emotions.findVisiblePageWithoutBounds(snapshotAt, lastCreatedAt, lastId,
-                deviceId, filter, false, PAGE_SIZE + 1);
+        var found = emotions.findVisiblePageWithoutBounds(cursor.snapshotAt(), cursor.lastCreatedAt(), cursor.lastId(),
+                device.getId(), filter, false, PAGE_SIZE + 1);
 
         boolean hasNext = found.size() > PAGE_SIZE;
         var page = hasNext ? found.subList(0, PAGE_SIZE) : found;
 
-        var emojiCounts = findEmojisForPage(page, deviceId);
+        var emojiCounts = findEmojisForPage(page, device.getId());
         var items = page.stream().map(emotion -> CollectionEmotionResult.of(emotion, issuePlaybackUrl(emotion),
                 List.copyOf(emojiCounts.get(emotion.getId()).values()))).toList();
-        String nextCursor = hasNext ? nextCursorEncoder.apply(page.getLast()) : null;
+        String nextCursor = hasNext
+                ? cursorCodec.encodeDaily(cursor.next(page.getLast().getCreatedAt(), page.getLast().getId())) : null;
 
         return CollectionEmotionPageResult.of(items, hasNext, nextCursor);
     }

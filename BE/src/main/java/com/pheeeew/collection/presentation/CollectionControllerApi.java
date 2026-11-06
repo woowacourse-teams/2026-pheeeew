@@ -6,8 +6,6 @@ import com.pheeeew.collection.presentation.dto.CollectionCardResponse;
 import com.pheeeew.collection.presentation.dto.CollectionClaimRequest;
 import com.pheeeew.collection.presentation.dto.CollectionDailyRequest;
 import com.pheeeew.collection.presentation.dto.CollectionDailyResponse;
-import com.pheeeew.collection.presentation.dto.CollectionEmotionRequest;
-import com.pheeeew.collection.presentation.dto.CollectionEmotionResponse;
 import com.pheeeew.collection.presentation.dto.CollectionHistoryRequest;
 import com.pheeeew.collection.presentation.dto.CollectionHistoryResponse;
 import com.pheeeew.collection.presentation.dto.CollectionTodayResponse;
@@ -47,7 +45,7 @@ public interface CollectionControllerApi {
             각 공감의 count는 전체 선택 수, selected는 인증 기기의 선택 여부이며 기록이 없으면 0과 false입니다.
 
             다음 페이지에는 같은 date와 emotions.nextCursor를 cursor로 전달합니다.
-            변조된 커서, 다른 기기·날짜의 커서와 기존 카드 기반 API의 커서는 400입니다.
+            변조되거나 다른 기기·날짜·용도의 커서는 400입니다.
             최초 조회 이후 작성한 감정은 후속 페이지에 끼워 넣지 않으며 새로고침에서는 cursor를 생략합니다.
             최초 조회 전 작성됐지만 저장이 늦어진 감정은 아직 읽지 않은 위치에 포함될 수 있습니다.
             공감 수·카드·프레스는 커서로 고정하지 않습니다. 마지막·빈 페이지는 hasNext=false, nextCursor=null입니다.
@@ -66,39 +64,6 @@ public interface CollectionControllerApi {
     ResponseEntity<CollectionDailyResponse> findDaily(
             @Parameter(hidden = true) UUID devicePublicId,
             @ParameterObject CollectionDailyRequest request
-    );
-
-    @Operation(summary = "카드 날짜의 본인 감정 목록 조회", description = """
-            본인 카드의 한국 시간 기준 활동 날짜에 등록한 본인 감정을 조회합니다.
-            날짜 범위는 해당 일 00:00 이상, 다음 날 00:00 미만입니다. 카드 감정과 관계없이 다섯 감정과
-            NONE·MEMO·AUDIO를 모두 포함하며 삭제·차단된 감정은 제외합니다. 별도의 조회 기간 만료는 없습니다.
-            카드 소유권은 매 페이지 확인합니다. 없는 카드와 다른 기기의 카드는 모두 404입니다.
-
-            createdAt 내림차순, 같은 시각이면 ID 내림차순으로 최대 50개를 반환합니다.
-            다음 페이지는 같은 cardId로 nextCursor를 그대로 전달합니다. 다른 기기·카드의 커서나 변조된 커서는 400입니다.
-            최초 조회 이후 작성한 감정은 후속 페이지에 포함하지 않고, 삭제·차단은 매 페이지 반영합니다.
-            첫 조회 전에 작성했지만 저장 완료가 늦어진 감정은 아직 읽지 않은 위치에 포함될 수 있습니다.
-            이미 읽은 위치의 늦은 저장 기록은 새로고침으로 확인합니다.
-            카드 발급 후 추가한 감정은 cursor 없이 첫 페이지를 재조회하면 반영됩니다.
-            마지막 페이지와 빈 결과는 hasNext=false, nextCursor=null입니다. 인증 서명 키 교체로 커서가 무효화되면 첫 페이지부터 재조회합니다.
-
-            응답은 감정 ID·작성 시각·상태·내용 유형·메모·녹음·공감 정보를 제공합니다.
-            emojis는 HEART, LAUGH, CRY, DIZZY, RAGE, SKULL 순서의 6종입니다.
-            count는 전체 선택 수, selected는 인증 기기의 선택 여부이며 기록이 없으면 0과 false입니다.
-            AUDIO의 audio.playbackUrl은 1시간 유효하며 만료 시 목록을 재조회합니다. 나머지 유형의 audio는 null입니다.
-            조회는 카드나 기록을 생성하지 않으며 카드 정보는 기존 카드 상세 API로 조회합니다. 응답은 no-store입니다.
-            """, security = @SecurityRequirement(name = "bearerAuth"))
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "일별 본인 감정과 다음 페이지 커서"),
-            @ApiResponse(responseCode = "400", description = "잘못된 카드 UUID·커서 또는 COLLECTION-007: 커서 변조·다른 기기/카드에서 재사용"),
-            @ApiResponse(responseCode = "401", description = "유효한 기기 인증 없음"),
-            @ApiResponse(responseCode = "404", description = "COLLECTION-005: 없는 카드 또는 다른 기기 카드"),
-            @ApiResponse(responseCode = "503", description = "EMOTION-009: 녹음 재생 URL 발급 불가")
-    })
-    ResponseEntity<CursorResponse<CollectionEmotionResponse>> findEmotions(
-            @Parameter(hidden = true) UUID devicePublicId,
-            @Parameter(description = "본인 기기가 수령한 카드의 공개 식별자") UUID cardId,
-            @ParameterObject CollectionEmotionRequest request
     );
 
     @Operation(summary = "컬렉션 캘린더 월 조회", description = """

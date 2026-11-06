@@ -3,7 +3,6 @@ package com.pheeeew.collection.presentation;
 import com.pheeeew.auth.presentation.annotation.CurrentDevice;
 import com.pheeeew.collection.application.CollectionClaimService;
 import com.pheeeew.collection.application.CollectionDailyQueryService;
-import com.pheeeew.collection.application.CollectionEmotionQueryService;
 import com.pheeeew.collection.application.CollectionQueryService;
 import com.pheeeew.collection.presentation.dto.CollectionCalendarRequest;
 import com.pheeeew.collection.presentation.dto.CollectionCardDetailResponse;
@@ -11,8 +10,6 @@ import com.pheeeew.collection.presentation.dto.CollectionCardResponse;
 import com.pheeeew.collection.presentation.dto.CollectionClaimRequest;
 import com.pheeeew.collection.presentation.dto.CollectionDailyRequest;
 import com.pheeeew.collection.presentation.dto.CollectionDailyResponse;
-import com.pheeeew.collection.presentation.dto.CollectionEmotionRequest;
-import com.pheeeew.collection.presentation.dto.CollectionEmotionResponse;
 import com.pheeeew.collection.presentation.dto.CollectionHistoryRequest;
 import com.pheeeew.collection.presentation.dto.CollectionHistoryResponse;
 import com.pheeeew.collection.presentation.dto.CollectionTodayResponse;
@@ -42,7 +39,6 @@ public class CollectionController implements CollectionControllerApi {
 
     private final CollectionQueryService collectionQueryService;
     private final CollectionClaimService collectionClaimService;
-    private final CollectionEmotionQueryService collectionEmotionQueryService;
     private final CollectionDailyQueryService collectionDailyQueryService;
 
     @Override
@@ -53,19 +49,6 @@ public class CollectionController implements CollectionControllerApi {
     ) {
         var result = collectionDailyQueryService.findDaily(devicePublicId, request.parsedDate(), request.cursor());
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(CollectionDailyResponse.from(result));
-    }
-
-    @Override
-    @GetMapping("/{cardId}/emotions")
-    public ResponseEntity<CursorResponse<CollectionEmotionResponse>> findEmotions(
-            @CurrentDevice UUID devicePublicId,
-            @PathVariable UUID cardId,
-            @Valid @ModelAttribute CollectionEmotionRequest request
-    ) {
-        var page = collectionEmotionQueryService.findEmotions(devicePublicId, cardId, request.cursor());
-        var items = page.items().stream().map(CollectionEmotionResponse::from).toList();
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
-                .body(CursorResponse.of(items, page.hasNext(), page.nextCursor()));
     }
 
     @Override

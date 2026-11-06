@@ -5,7 +5,6 @@ import com.pheeeew.emotion.domain.EmotionState;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,8 +12,6 @@ import org.springframework.data.repository.query.Param;
 public interface CollectionCardRepository extends JpaRepository<CollectionCard, Long> {
 
     Optional<CollectionCard> findByDeviceIdAndCardDate(Long deviceId, LocalDate cardDate);
-
-    Optional<CollectionCard> findByPublicIdAndDeviceId(UUID publicId, Long deviceId);
 
     @Query("""
             SELECT card.combinationIndex FROM CollectionCard card
