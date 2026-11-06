@@ -50,6 +50,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 test_dev_connect_proxy.py
 
 ## 다음 실험 전 확인
 
+- 보관한 Xcode 공용 스킴은 `disablePerformanceAntipatternChecker=YES` 상태다. 다음 측정에서 진단 옵션을 기록하고 모든 비교 실행에 동일하게 적용한다.
 - 탭 그리기 계측의 128회 한도와 각 도구의 기록 제한을 500회·예열·반복 조건에 맞게 조정한다. 이번 보관 커밋에는 새 조건 대응을 포함하지 않았다.
 - 회차별 로그를 분리하고 입력 수·HTTP 요청 수·상태 수신 수·그리기 수를 따로 집계한다.
 - Android와 iOS의 시작·종료 지점 및 계측 오버헤드를 확인한다.
