@@ -14,4 +14,5 @@ data class CollectionCardUiModel(
     val characterImageUrl: String? = null,
     val textStampImageUrl: String? = null,
     val roundStampImageUrl: String? = null,
+    val collectionDate: String? = null,
 )

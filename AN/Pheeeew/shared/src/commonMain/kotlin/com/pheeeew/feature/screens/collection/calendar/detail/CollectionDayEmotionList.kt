@@ -58,13 +58,12 @@ import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.domain.model.collection.CollectionEmotionContentType
 import com.pheeeew.domain.model.emotion.EmotionReactionType
+import com.pheeeew.feature.component.emotion.EmotionListLoadError
 import com.pheeeew.feature.emotion.model.EmotionType
 import com.pheeeew.feature.screens.collection.CollectionDayEmojiUiModel
+import com.pheeeew.feature.screens.collection.CollectionDayEmotionContent
 import com.pheeeew.feature.screens.collection.CollectionDayEmotionUiModel
 import com.pheeeew.feature.screens.collection.CollectionPreviewTheme
-import com.pheeeew.feature.component.emotion.EmotionListLoadError
-import kotlin.time.Clock
-import kotlin.time.Instant
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import org.jetbrains.compose.resources.painterResource
@@ -82,11 +81,8 @@ import pheeeew.shared.generated.resources.ic_emotion_irritated
 import pheeeew.shared.generated.resources.ic_plus
 
 internal fun LazyListScope.collectionDayEmotionItems(
-    emotions: List<CollectionDayEmotionUiModel>,
+    content: CollectionDayEmotionContent,
     nickname: String,
-    isLoadingEmotions: Boolean,
-    isLoadingNextEmotions: Boolean,
-    emotionsError: String?,
     audio: CollectionDayAudioState,
     onRetryEmotions: () -> Unit,
     onDeleteEmotion: (Long) -> Unit = {},
@@ -94,65 +90,77 @@ internal fun LazyListScope.collectionDayEmotionItems(
     onReact: (Long, EmotionReactionType) -> Unit = { _, _ -> },
     pendingReactionIds: Set<Long> = emptySet(),
 ) {
-    if (emotionsError != null && emotions.isEmpty()) {
-        item(key = "emotion-error") {
-            EmotionListLoadError(
-                title = stringResource(Res.string.collection_day_emotions_error),
-                message = emotionsError,
-                hasItems = false,
-                icon = Res.drawable.ic_emotion_discouraged,
-                onRetry = onRetryEmotions,
-                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-            )
+    when (content) {
+        CollectionDayEmotionContent.Waiting -> {
+            Unit
         }
-    } else if (isLoadingEmotions && emotions.isEmpty()) {
-        item(key = "emotion-loading") {
-            Box(Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = AppColors.Primary)
-            }
-        }
-    } else if (emotions.isEmpty()) {
-        item(key = "emotion-empty") {
-            EmotionListLoadError(
-                title = stringResource(Res.string.collection_day_emotions_empty),
-                message = null,
-                hasItems = false,
-                onRetry = null,
-                icon = Res.drawable.ic_emotion_exhausted,
-                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-            )
-        }
-    } else {
-        items(emotions, key = CollectionDayEmotionUiModel::id) { emotion ->
-            CollectionDayEmotionRow(
-                emotion = emotion,
-                nickname = nickname,
-                isAudioActive = audio.activeId == emotion.id,
-                isAudioPreparing = audio.preparing && audio.activeId == emotion.id,
-                audioPlaybackState = audio.playback,
-                audioError = audio.error.takeIf { audio.activeId == emotion.id },
-                onAudioClick = { audio.onClick(emotion.id) },
-                onDeleteClick = { onDeleteEmotion(emotion.id) },
-                onReact = { type -> onReact(emotion.id, type) },
-                reactionBusy = emotion.id in pendingReactionIds,
-            )
-        }
-        if (isLoadingNextEmotions) {
-            item(key = "emotion-next-loading") {
-                Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(Modifier.size(20.dp), color = AppColors.Primary)
-                }
-            }
-        } else if (emotionsError != null) {
-            item(key = "emotion-next-error") {
+
+        is CollectionDayEmotionContent.Error -> {
+            item(key = "emotion-error") {
                 EmotionListLoadError(
                     title = stringResource(Res.string.collection_day_emotions_error),
-                    message = emotionsError,
-                    hasItems = true,
-                    onRetry = onRetryNextEmotions,
+                    message = content.message,
+                    hasItems = false,
                     icon = Res.drawable.ic_emotion_discouraged,
+                    onRetry = onRetryEmotions,
                     modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
                 )
+            }
+        }
+
+        CollectionDayEmotionContent.Loading -> {
+            item(key = "emotion-loading") {
+                Box(Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = AppColors.Primary)
+                }
+            }
+        }
+
+        CollectionDayEmotionContent.Empty -> {
+            item(key = "emotion-empty") {
+                EmotionListLoadError(
+                    title = stringResource(Res.string.collection_day_emotions_empty),
+                    message = null,
+                    hasItems = false,
+                    onRetry = null,
+                    icon = Res.drawable.ic_emotion_exhausted,
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                )
+            }
+        }
+
+        is CollectionDayEmotionContent.Items -> {
+            items(content.items, key = CollectionDayEmotionUiModel::id) { emotion ->
+                CollectionDayEmotionRow(
+                    emotion = emotion,
+                    nickname = nickname,
+                    isAudioActive = audio.activeId == emotion.id,
+                    isAudioPreparing = audio.preparing && audio.activeId == emotion.id,
+                    audioPlaybackState = audio.playback,
+                    audioError = audio.error.takeIf { audio.activeId == emotion.id },
+                    onAudioClick = { audio.onClick(emotion.id) },
+                    onDeleteClick = { onDeleteEmotion(emotion.id) },
+                    onReact = { type -> onReact(emotion.id, type) },
+                    reactionBusy = emotion.id in pendingReactionIds,
+                )
+            }
+            if (content.loadingMore) {
+                item(key = "emotion-next-loading") {
+                    Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(Modifier.size(20.dp), color = AppColors.Primary)
+                    }
+                }
+            } else if (content.appendError != null) {
+                item(key = "emotion-next-error") {
+                    EmotionListLoadError(
+                        title = stringResource(Res.string.collection_day_emotions_error),
+                        message = content.appendError,
+                        hasItems = true,
+                        onRetry = onRetryNextEmotions,
+                        icon = Res.drawable.ic_emotion_discouraged,
+                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                    )
+                }
             }
         }
     }
@@ -191,7 +199,7 @@ private fun CollectionDayEmotionRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                formatCollectionEmotionTime(emotion.createdAt),
+                emotion.timeLabel,
                 modifier = Modifier.align(Alignment.Bottom).padding(bottom = 6.dp).widthIn(max = 48.dp),
                 color = Color.Gray,
                 fontSize = 10.sp,
@@ -319,7 +327,8 @@ private fun CollectionEmotionReactionRow(
         if (EmotionReactionType.entries.any { type -> visible.none { it.type == type } }) {
             Box {
                 Box(
-                    Modifier.size(24.dp)
+                    Modifier
+                        .size(24.dp)
                         .background(Color(0xFFF2F2F2), CircleShape)
                         .clickable(enabled = !busy, role = Role.Button, onClick = onOpenPicker)
                         .semantics { contentDescription = addDescription },
@@ -356,7 +365,11 @@ private fun CollectionEmotionReactionMenu(
         Column(Modifier.padding(8.dp)) {
             if (onDelete != null) {
                 Row(
-                    Modifier.fillMaxWidth().height(44.dp).shadow(5.dp, shape).clip(shape)
+                    Modifier
+                        .fillMaxWidth()
+                        .height(44.dp)
+                        .shadow(5.dp, shape)
+                        .clip(shape)
                         .background(Color.White)
                         .clickable(enabled = !busy, role = Role.Button, onClick = onDelete)
                         .padding(horizontal = 20.dp),
@@ -369,15 +382,22 @@ private fun CollectionEmotionReactionMenu(
                 Spacer(Modifier.height(8.dp))
             }
             Row(
-                Modifier.fillMaxWidth().shadow(5.dp, shape).clip(shape)
-                    .background(Color.White).padding(horizontal = 8.dp),
+                Modifier
+                    .fillMaxWidth()
+                    .shadow(5.dp, shape)
+                    .clip(shape)
+                    .background(Color.White)
+                    .padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 EmotionReactionType.entries.forEach { type ->
                     val selected = reactions.any { it.type == type && it.selected }
                     val action = if (selected) "공감 완료" else "공감"
                     Box(
-                        Modifier.weight(1f).height(44.dp).clip(CircleShape)
+                        Modifier
+                            .weight(1f)
+                            .height(44.dp)
+                            .clip(CircleShape)
                             .clickable(
                                 enabled = !busy,
                                 role = Role.Button,
@@ -551,33 +571,6 @@ private fun DrawScope.drawWaveformBars(
     }
 }
 
-private fun formatCollectionEmotionTime(createdAt: String): String {
-    val timestamp = Instant.parse(createdAt)
-    val seconds = (Clock.System.now() - timestamp).inWholeSeconds.coerceAtLeast(0)
-    return when {
-        seconds < 60 -> {
-            "방금 전"
-        }
-
-        seconds < 3600 -> {
-            "${seconds / 60}분 전"
-        }
-
-        seconds < 86400 -> {
-            "${seconds / 3600}시간 전"
-        }
-
-        seconds < 4 * 86400 -> {
-            "${seconds / 86400}일 전"
-        }
-
-        else -> {
-            val kst = Instant.fromEpochMilliseconds(timestamp.toEpochMilliseconds() + 9 * 60 * 60 * 1000L)
-            kst.toString().substringBefore('T').replace('-', '.')
-        }
-    }
-}
-
 private fun EmotionType.toDrawable() =
     when (this) {
         EmotionType.FRUSTRATED -> Res.drawable.ic_emotion_frustrated
@@ -594,59 +587,58 @@ private fun CollectionDayEmotionListPreview() {
         val playback = remember { MutableStateFlow(AudioPlaybackState.Empty) }
         LazyColumn {
             collectionDayEmotionItems(
-                emotions =
-                    listOf(
-                        CollectionDayEmotionUiModel(
-                            id = 3,
-                            createdAt = "2026-10-15T11:42:00Z",
-                            emotion = EmotionType.EXHAUSTED,
-                            contentType = CollectionEmotionContentType.MEMO,
-                            memo = "오늘은 여기까지만.",
-                            playbackUrl = null,
-                            playbackExpiresAt = null,
-                            emojis = listOf(CollectionDayEmojiUiModel(EmotionReactionType.HEART, 2, true)),
-                        ),
-                        CollectionDayEmotionUiModel(
-                            id = 2,
-                            createdAt = "2026-10-15T11:42:00Z",
-                            emotion = EmotionType.EXHAUSTED,
-                            contentType = CollectionEmotionContentType.AUDIO,
-                            memo = null,
-                            playbackUrl = null,
-                            playbackExpiresAt = null,
-                        ),
-                        CollectionDayEmotionUiModel(
-                            id = 4,
-                            createdAt = "2026-10-15T11:42:00Z",
-                            emotion = EmotionType.EXHAUSTED,
-                            contentType = CollectionEmotionContentType.MEMO,
-                            memo = "오늘은 여기까지만.",
-                            playbackUrl = null,
-                            playbackExpiresAt = null,
-                        ),
-                        CollectionDayEmotionUiModel(
-                            id = 5,
-                            createdAt = "2026-10-15T11:42:00Z",
-                            emotion = EmotionType.EXHAUSTED,
-                            contentType = CollectionEmotionContentType.MEMO,
-                            memo = "오늘은 여기까지만.",
-                            playbackUrl = null,
-                            playbackExpiresAt = null,
-                        ),
-                        CollectionDayEmotionUiModel(
-                            id = 1,
-                            createdAt = "2026-10-15T11:42:00Z",
-                            emotion = EmotionType.EXHAUSTED,
-                            contentType = CollectionEmotionContentType.MEMO,
-                            memo = "오늘은 여기까지만.",
-                            playbackUrl = null,
-                            playbackExpiresAt = null,
+                content =
+                    CollectionDayEmotionContent.Items(
+                        listOf(
+                            CollectionDayEmotionUiModel(
+                                id = 3,
+                                timeLabel = "방금 전",
+                                emotion = EmotionType.EXHAUSTED,
+                                contentType = CollectionEmotionContentType.MEMO,
+                                memo = "오늘은 여기까지만.",
+                                playbackUrl = null,
+                                playbackExpiresAt = null,
+                                emojis = listOf(CollectionDayEmojiUiModel(EmotionReactionType.HEART, 2, true)),
+                            ),
+                            CollectionDayEmotionUiModel(
+                                id = 2,
+                                timeLabel = "방금 전",
+                                emotion = EmotionType.EXHAUSTED,
+                                contentType = CollectionEmotionContentType.AUDIO,
+                                memo = null,
+                                playbackUrl = null,
+                                playbackExpiresAt = null,
+                            ),
+                            CollectionDayEmotionUiModel(
+                                id = 4,
+                                timeLabel = "방금 전",
+                                emotion = EmotionType.EXHAUSTED,
+                                contentType = CollectionEmotionContentType.MEMO,
+                                memo = "오늘은 여기까지만.",
+                                playbackUrl = null,
+                                playbackExpiresAt = null,
+                            ),
+                            CollectionDayEmotionUiModel(
+                                id = 5,
+                                timeLabel = "방금 전",
+                                emotion = EmotionType.EXHAUSTED,
+                                contentType = CollectionEmotionContentType.MEMO,
+                                memo = "오늘은 여기까지만.",
+                                playbackUrl = null,
+                                playbackExpiresAt = null,
+                            ),
+                            CollectionDayEmotionUiModel(
+                                id = 1,
+                                timeLabel = "방금 전",
+                                emotion = EmotionType.EXHAUSTED,
+                                contentType = CollectionEmotionContentType.MEMO,
+                                memo = "오늘은 여기까지만.",
+                                playbackUrl = null,
+                                playbackExpiresAt = null,
+                            ),
                         ),
                     ),
                 nickname = "오늘도히유",
-                isLoadingEmotions = false,
-                isLoadingNextEmotions = false,
-                emotionsError = null,
                 audio = CollectionDayAudioState(null, playback, false, null) {},
                 onRetryEmotions = {},
             )

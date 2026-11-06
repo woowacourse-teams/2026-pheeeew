@@ -126,7 +126,7 @@ internal data class CollectionCarouselItem(
 
 data class CollectionDayEmotionUiModel(
     val id: Long,
-    val createdAt: String,
+    val timeLabel: String,
     val emotion: EmotionType,
     val contentType: CollectionEmotionContentType,
     val memo: String?,

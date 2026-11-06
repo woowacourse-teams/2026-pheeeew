@@ -24,33 +24,29 @@ import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.monitoring.EventValue
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.navigation.CollectionDayDestination
-import com.pheeeew.domain.model.collection.CollectionEmotion
-import com.pheeeew.feature.emotion.model.EmotionType
+import com.pheeeew.feature.component.emotion.EmotionListLoadError
 import com.pheeeew.feature.monitoring.product.ProductEvents
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import com.pheeeew.feature.screens.collection.CollectionCardActionError
 import com.pheeeew.feature.screens.collection.CollectionCardDialog
 import com.pheeeew.feature.screens.collection.CollectionCardExportState
-import com.pheeeew.feature.screens.collection.CollectionDayEmotionUiModel
-import com.pheeeew.feature.screens.collection.CollectionDayEmojiUiModel
+import com.pheeeew.feature.screens.collection.CollectionDayDetailUiState
+import com.pheeeew.feature.screens.collection.CollectionDayEmotionContent
+import com.pheeeew.feature.screens.collection.CollectionDayRetryTarget
 import com.pheeeew.feature.screens.collection.CollectionImageAction
 import com.pheeeew.feature.screens.collection.CollectionImageActionOutcome
 import com.pheeeew.feature.screens.collection.CollectionViewModel
-import com.pheeeew.feature.component.emotion.EmotionListLoadError
 import com.pheeeew.feature.screens.collection.calendar.CollectionRetryState
-import com.pheeeew.feature.screens.collection.calendar.collectionMonthDays
-import com.pheeeew.feature.screens.collection.calendar.currentCollectionTodayDate
 import com.pheeeew.feature.screens.collection.rememberCollectionCardImageActions
-import com.pheeeew.feature.screens.collection.todayProgress
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
-import pheeeew.shared.generated.resources.collection_day_cards_error
-import pheeeew.shared.generated.resources.ic_emotion_discouraged
-import pheeeew.shared.generated.resources.ic_emotion_frustrated
 import pheeeew.shared.generated.resources.app_cancel
+import pheeeew.shared.generated.resources.collection_day_cards_error
 import pheeeew.shared.generated.resources.emotion_delete_action
 import pheeeew.shared.generated.resources.emotion_delete_confirm
 import pheeeew.shared.generated.resources.emotion_delete_notice
+import pheeeew.shared.generated.resources.ic_emotion_discouraged
+import pheeeew.shared.generated.resources.ic_emotion_frustrated
 import kotlin.uuid.Uuid
 
 @Composable
@@ -64,16 +60,19 @@ internal fun CollectionDayRoute(
     onSelectedCardChanged: (String) -> Unit,
     onBack: () -> Unit,
 ) {
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val detailState =
+        remember(viewModel, destination, restoredCardId) {
+            viewModel.calendarDetailUiState(destination.month, restoredCardId ?: destination.cardId)
+        }
+    val state by detailState.collectAsStateWithLifecycle(initialValue = CollectionDayDetailUiState())
     var expandedCardId by rememberSaveable { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val telemetry = remember(monitoring) { ProductMonitoring(monitoring, "collection") }
-    val day = state.day
-    if (day.emotionDeleteTargetId != null) {
+    if (state.deleteTargetId != null) {
         val notice = stringResource(Res.string.emotion_delete_notice)
         ConfirmDialog(
             title = stringResource(Res.string.emotion_delete_confirm),
-            content = if (day.emotionDeleteFailed) "$notice\n\n삭제하지 못했어요. 다시 시도해 주세요." else notice,
+            content = if (state.deleteFailed) "$notice\n\n삭제하지 못했어요. 다시 시도해 주세요." else notice,
             confirmText = stringResource(Res.string.emotion_delete_action),
             cancelText = stringResource(Res.string.app_cancel),
             onConfirm = viewModel::confirmEmotionDeletion,
@@ -103,12 +102,13 @@ internal fun CollectionDayRoute(
         viewModel.openCalendarDay(destination.month, restoredCardId ?: destination.cardId)
     }
 
-    val cards = state.calendarCards.takeIf { state.calendarMonth == destination.month }.orEmpty()
-    val selectedDate = day.selectedCalendarDate
-    val todayDate = currentCollectionTodayDate()
-    val todayProgress = state.todayProgress.takeIf { state.today?.date == todayDate }
-    val dates = collectionMonthDays(destination.month).filter { it.isCurrentMonth }.mapNotNull { it.date }
-        .filter { it <= todayDate }.asReversed()
+    val cards = state.cards
+    val selectedDate = state.selectedDate
+    val cardError = state.cardLoadError
+    val isCommonError = cardError?.retryTarget == CollectionDayRetryTarget.All
+    val retryCardLoad: () -> Unit = {
+        cardError?.let { viewModel.retryCalendarDetailCards(it.retryTarget) }
+    }
     LaunchedEffect(selectedDate) {
         selectedDate?.let(onSelectedCardChanged)
     }
@@ -119,22 +119,23 @@ internal fun CollectionDayRoute(
 
     Box(Modifier.fillMaxSize().background(AppColors.GroupBackground).statusBarsPadding()) {
         if (selectedDate == null) {
-            if (state.isLoadingCalendar || state.calendarMonth != destination.month) {
+            if (state.isLoadingCalendar) {
                 CircularLoadingIndicator(Modifier.align(Alignment.Center), color = AppColors.Primary)
             } else {
-                val error = state.calendarError
-                if (error != null) {
-                    val isCommonError = state.commonError != null
+                if (cardError != null) {
                     Column(Modifier.fillMaxSize()) {
-                        val date = (restoredCardId ?: destination.cardId).takeIf { it in dates }
-                        val title = date?.let { "${it.substring(5, 7)}월 ${it.substring(8, 10)}일" } ?: "컬렉션"
-                        CollectionDayHeader(title = title, onBack = onBack)
+                        CollectionDayHeader(title = state.errorHeader, onBack = onBack)
                         EmotionListLoadError(
                             title = stringResource(Res.string.collection_day_cards_error),
-                            message = error,
+                            message = cardError.message,
                             hasItems = false,
-                            icon = if (isCommonError) Res.drawable.ic_emotion_frustrated else Res.drawable.ic_emotion_discouraged,
-                            onRetry = if (state.commonError != null) viewModel::refresh else viewModel::retryCalendar,
+                            icon =
+                                if (isCommonError) {
+                                    Res.drawable.ic_emotion_frustrated
+                                } else {
+                                    Res.drawable.ic_emotion_discouraged
+                                },
+                            onRetry = retryCardLoad,
                             modifier = Modifier.weight(1f).fillMaxWidth(),
                         )
                     }
@@ -148,7 +149,7 @@ internal fun CollectionDayRoute(
                 }
             }
         } else {
-            val emotions = remember(day.calendarEmotions) { day.calendarEmotions.map { it.toUiModel() } }
+            val emotions = (state.emotionContent as? CollectionDayEmotionContent.Items)?.items.orEmpty()
             val audio =
                 rememberCollectionDayAudio(
                     sessionGeneration,
@@ -157,37 +158,23 @@ internal fun CollectionDayRoute(
                     requireNotNull(viewModel.audioLoader),
                 )
             CollectionDayDetailScreen(
-                cards = cards,
+                pages = state.pages,
                 selectedCardId = selectedDate,
-                dates = dates,
-                todayDate = todayDate,
-                todayProgress = todayProgress,
+                todayDate = state.todayDate,
+                todayProgress = state.todayProgress,
                 isLoadingToday = state.isLoadingToday,
                 todayClaimError = state.claimError,
-                cardLoadError = state.calendarError ?: state.todayError.takeIf { selectedDate == todayDate },
-                isCommonError = state.commonError != null,
-                onRetryCardLoad = when {
-                    state.commonError != null -> viewModel::refresh
-                    state.calendarError != null -> viewModel::retryCalendar
-                    else -> viewModel::refreshToday
-                },
+                cardLoadError = cardError?.message,
+                isCommonError = isCommonError,
+                onRetryCardLoad = retryCardLoad,
                 onClaimToday = { emotion ->
                     telemetry.emit(ProductEvents.COLLECTION_CLAIM_CLICKED)
                     viewModel.claim(emotion)
                 },
                 onRetryTodayClaim = viewModel::retryClaim,
-                nickname = state.nickname ?: "나",
-                emotions = emotions,
-                emotionCount =
-                    day.calendarEmotions.size.takeIf {
-                        day.calendarEmotionsLoaded && day.calendarEmotionsError == null &&
-                            !day.hasNextCalendarEmotions
-                    },
-                isLoadingEmotions = day.isLoadingCalendarEmotions,
-                emotionsLoaded = day.calendarEmotionsLoaded,
-                isLoadingNextEmotions = day.isLoadingNextCalendarEmotions,
-                emotionsError = day.calendarEmotionsError,
-                hasNextEmotions = day.hasNextCalendarEmotions,
+                nickname = state.nickname,
+                emotionContent = state.emotionContent,
+                emotionCount = state.emotionCount,
                 audio = audio,
                 onBack = onBack,
                 onCardSettled = viewModel::selectCalendarDate,
@@ -197,8 +184,8 @@ internal fun CollectionDayRoute(
                 onRetryNextEmotions = viewModel::retryNextCalendarEmotions,
                 onDeleteEmotion = viewModel::requestEmotionDeletion,
                 onReactToEmotion = viewModel::reactToCalendarEmotion,
-                pendingReactionIds = day.pendingReactionIds,
-                reactionError = day.calendarReactionError,
+                pendingReactionIds = state.pendingReactionIds,
+                reactionError = state.reactionError,
             )
         }
     }
@@ -258,15 +245,3 @@ internal fun CollectionDayRoute(
         onCancelCapture = export::cancelCapture,
     )
 }
-
-private fun CollectionEmotion.toUiModel(): CollectionDayEmotionUiModel =
-    CollectionDayEmotionUiModel(
-        id = id,
-        createdAt = createdAt,
-        emotion = EmotionType.valueOf(state.name),
-        contentType = contentType,
-        memo = memo,
-        playbackUrl = audio?.playbackUrl,
-        playbackExpiresAt = audio?.expiresAt,
-        emojis = emojis.map { CollectionDayEmojiUiModel(it.type, it.count, it.selected) },
-    )

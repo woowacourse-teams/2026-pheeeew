@@ -25,12 +25,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,10 +46,11 @@ import com.pheeeew.domain.model.collection.CollectionEmotionContentType
 import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.feature.component.emotion.EmotionListLoadError
 import com.pheeeew.feature.emotion.model.EmotionType
+import com.pheeeew.feature.screens.collection.CollectionDayEmotionContent
 import com.pheeeew.feature.screens.collection.CollectionDayEmotionUiModel
+import com.pheeeew.feature.screens.collection.CollectionDayPageUiModel
 import com.pheeeew.feature.screens.collection.CollectionPreviewTheme
 import com.pheeeew.feature.screens.collection.CollectionProgressUiModel
-import com.pheeeew.feature.screens.collection.calendar.collectionDayOfWeek
 import com.pheeeew.feature.screens.collection.card.CollectionCard
 import com.pheeeew.feature.screens.collection.card.CollectionCardUiModel
 import com.pheeeew.feature.screens.collection.card.CollectionProgressCard
@@ -72,15 +70,11 @@ import pheeeew.shared.generated.resources.ic_emotion_frustrated
 
 @Composable
 internal fun CollectionDayDetailScreen(
-    cards: List<CollectionCardUiModel>,
+    pages: List<CollectionDayPageUiModel>,
     selectedCardId: String,
     nickname: String,
-    emotions: List<CollectionDayEmotionUiModel>,
+    emotionContent: CollectionDayEmotionContent,
     emotionCount: Int?,
-    isLoadingEmotions: Boolean,
-    isLoadingNextEmotions: Boolean,
-    emotionsError: String?,
-    hasNextEmotions: Boolean,
     audio: CollectionDayAudioState,
     onBack: () -> Unit,
     onCardSettled: (String) -> Unit,
@@ -89,9 +83,7 @@ internal fun CollectionDayDetailScreen(
     onRetryEmotions: () -> Unit,
     onDeleteEmotion: (Long) -> Unit = {},
     modifier: Modifier = Modifier,
-    emotionsLoaded: Boolean = true,
     onRetryNextEmotions: () -> Unit = onRetryEmotions,
-    dates: List<String> = cards.map { it.id },
     todayDate: String? = null,
     todayProgress: CollectionProgressUiModel? = null,
     isLoadingToday: Boolean = false,
@@ -105,18 +97,15 @@ internal fun CollectionDayDetailScreen(
     isCommonError: Boolean = false,
     onRetryCardLoad: () -> Unit = {},
 ) {
+    val dates = remember(pages) { pages.map { it.date } }
     val initialPage = dates.indexOf(selectedCardId).coerceAtLeast(0)
     val pagerState = rememberPagerState(initialPage = initialPage, pageCount = { dates.size.coerceAtLeast(1) })
     val latestCardSettled by rememberUpdatedState(onCardSettled)
     val listState = rememberLazyListState()
-    var lastLoadedDayWasEmpty by remember { mutableStateOf(false) }
-    SideEffect {
-        if (emotionsLoaded || emotionsError != null) {
-            lastLoadedDayWasEmpty = emotionsLoaded && emotions.isEmpty() && emotionsError == null
-        }
-    }
-    // Keep the same empty item in the list until the next date has a result.
-    val retainEmptyState = lastLoadedDayWasEmpty && !emotionsLoaded && emotionsError == null
+
+    fun canInteractWithEmotions(): Boolean =
+        !pagerState.isScrollInProgress && dates.getOrNull(pagerState.settledPage) == selectedCardId
+
     LaunchedEffect(selectedCardId) { listState.scrollToItem(0) }
     LaunchedEffect(pagerState, dates) {
         snapshotFlow { pagerState.settledPage }
@@ -124,15 +113,16 @@ internal fun CollectionDayDetailScreen(
             .drop(1)
             .collect { page -> dates.getOrNull(page)?.let { latestCardSettled(it) } }
     }
-    LaunchedEffect(listState, emotions.size, isLoadingNextEmotions, hasNextEmotions, emotionsError) {
+    val emotionItems = emotionContent as? CollectionDayEmotionContent.Items
+    LaunchedEffect(listState, selectedCardId, emotionItems?.items?.size, emotionItems?.canLoadMore) {
         snapshotFlow {
             listState.layoutInfo.visibleItemsInfo
                 .lastOrNull()
                 ?.index
         }.distinctUntilChanged()
             .collect { index ->
-                if (hasNextEmotions && !isLoadingNextEmotions && emotionsError == null && index != null &&
-                    index >= emotions.size
+                if (emotionItems != null && emotionItems.canLoadMore && index != null &&
+                    index >= emotionItems.items.size
                 ) {
                     onLoadMoreEmotions()
                 }
@@ -142,24 +132,8 @@ internal fun CollectionDayDetailScreen(
     Column(
         modifier.fillMaxSize().background(AppColors.GroupBackground).navigationBarsPadding(),
     ) {
-        val currentKey = dates.getOrNull(pagerState.currentPage) ?: selectedCardId
-        val currentCard = cards.firstOrNull { it.id == currentKey || it.period.take(10).replace('.', '-') == currentKey }
-        val date =
-            (currentCard?.period ?: currentKey)
-                .take(10)
-                .replace('.', '-')
-        val parts = date.split('-')
-        val year = parts.getOrNull(0)?.toIntOrNull()
-        val month = parts.getOrNull(1)?.toIntOrNull()
-        val day = parts.getOrNull(2)?.toIntOrNull()
-        val hasDate =
-            year != null && year in 1..9999 &&
-                month != null && month in 1..12 && day != null && day in 1..31
-
-        CollectionDayHeader(
-            title = if (hasDate) "${parts[1].padStart(2, '0')}월 ${parts[2].padStart(2, '0')}일" else null,
-            onBack = onBack,
-        )
+        val selectedPage = pages.firstOrNull { it.date == selectedCardId }
+        CollectionDayHeader(title = selectedPage?.title, onBack = onBack)
         LazyColumn(
             state = listState,
             modifier = Modifier.weight(1f).fillMaxWidth(),
@@ -167,13 +141,9 @@ internal fun CollectionDayDetailScreen(
         ) {
             item(key = "card-header") {
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                    if (hasDate) {
-                        val normalizedDate = "${parts[0].padStart(
-                            4,
-                            '0',
-                        )}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}"
+                    selectedPage?.let {
                         Text(
-                            text = "${year}년 · ${collectionDayOfWeek(normalizedDate)}",
+                            text = it.subtitle,
                             modifier = Modifier.padding(bottom = 16.dp),
                             color = AppColors.TextSecondary,
                             fontSize = 12.sp,
@@ -188,7 +158,12 @@ internal fun CollectionDayDetailScreen(
                                 title = stringResource(Res.string.collection_day_cards_error),
                                 message = cardLoadError,
                                 hasItems = false,
-                                icon = if (isCommonError) Res.drawable.ic_emotion_frustrated else Res.drawable.ic_emotion_discouraged,
+                                icon =
+                                    if (isCommonError) {
+                                        Res.drawable.ic_emotion_frustrated
+                                    } else {
+                                        Res.drawable.ic_emotion_discouraged
+                                    },
                                 onRetry = onRetryCardLoad,
                                 modifier = Modifier.fillMaxWidth().heightIn(min = cardHeight),
                             )
@@ -201,8 +176,8 @@ internal fun CollectionDayDetailScreen(
                                 pageSpacing = maxWidth * 0.04f,
                                 key = { index -> dates.getOrNull(index) ?: "empty-$index" },
                             ) { page ->
-                                val date = dates.getOrNull(page) ?: return@HorizontalPager
-                                val card = cards.firstOrNull { it.id == date || it.period.take(10).replace('.', '-') == date }
+                                val pageModel = pages.getOrNull(page) ?: return@HorizontalPager
+                                val card = pageModel.card
                                 if (card != null) {
                                     CollectionCard(
                                         uiModel = card,
@@ -212,7 +187,7 @@ internal fun CollectionDayDetailScreen(
                                                 .coverFlowItem(pagerState, page)
                                                 .clickable(role = Role.Button) { onOpenCard(card.id) },
                                     )
-                                } else if (date == todayDate && todayProgress != null) {
+                                } else if (pageModel.date == todayDate && todayProgress != null) {
                                     CollectionProgressCard(
                                         progress = todayProgress,
                                         isLoading = isLoadingToday,
@@ -232,7 +207,13 @@ internal fun CollectionDayDetailScreen(
                     Text(
                         text = stringResource(Res.string.collection_card_action_hint),
                         modifier =
-                            if (currentCard != null && cardLoadError == null) Modifier else Modifier.alpha(0f).clearAndSetSemantics {},
+                            if (selectedPage?.card != null &&
+                                cardLoadError == null
+                            ) {
+                                Modifier
+                            } else {
+                                Modifier.alpha(0f).clearAndSetSemantics {}
+                            },
                         color = AppColors.TextSecondary,
                         fontSize = 10.sp,
                     )
@@ -256,27 +237,26 @@ internal fun CollectionDayDetailScreen(
                     }
                 }
             }
-            if (emotionsLoaded || isLoadingEmotions || emotionsError != null || emotions.isNotEmpty() || retainEmptyState) {
+            if (emotionContent != CollectionDayEmotionContent.Waiting) {
                 collectionDayEmotionItems(
-                    emotions = emotions,
+                    content = emotionContent,
                     nickname = nickname,
-                    isLoadingEmotions = isLoadingEmotions && !retainEmptyState,
-                    isLoadingNextEmotions = isLoadingNextEmotions,
-                    emotionsError = emotionsError,
                     audio = audio,
                     onRetryEmotions = onRetryEmotions,
-                    onDeleteEmotion = onDeleteEmotion,
+                    onDeleteEmotion = { if (canInteractWithEmotions()) onDeleteEmotion(it) },
                     onRetryNextEmotions = onRetryNextEmotions,
-                    onReact = onReactToEmotion,
+                    onReact = { id, type -> if (canInteractWithEmotions()) onReactToEmotion(id, type) },
                     pendingReactionIds = pendingReactionIds,
                 )
-                if (reactionError != null) item(key = "emotion-reaction-error") {
-                    Text(
-                        text = reactionError,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
-                        color = AppColors.RecordSheetRecording,
-                        textAlign = TextAlign.Center,
-                    )
+                if (reactionError != null) {
+                    item(key = "emotion-reaction-error") {
+                        Text(
+                            text = reactionError,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+                            color = AppColors.RecordSheetRecording,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
                 }
             }
         }
@@ -284,7 +264,10 @@ internal fun CollectionDayDetailScreen(
 }
 
 @Composable
-internal fun CollectionDayHeader(title: String?, onBack: () -> Unit) {
+internal fun CollectionDayHeader(
+    title: String?,
+    onBack: () -> Unit,
+) {
     Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
         Box(
             modifier =
@@ -319,84 +302,94 @@ internal fun CollectionDayHeader(title: String?, onBack: () -> Unit) {
 private fun CollectionDayDetailScreenPreview() {
     CollectionPreviewTheme {
         CollectionDayDetailScreen(
-            cards =
+            pages =
                 listOf(
-                    CollectionCardUiModel(
-                        id = "preview-card",
-                        period = "2026.10.15",
-                        title = "오늘도히유",
-                        emotion = EmotionType.EXHAUSTED,
-                        pressLabel = "프레스",
-                        pressCount = 128,
-                        stampLabel = "스탬프",
-                        stampCount = 3,
+                    CollectionDayPageUiModel(
+                        date = "2026-10-15",
+                        title = "10월 15일",
+                        subtitle = "2026년 · 목요일",
+                        card =
+                            CollectionCardUiModel(
+                                id = "preview-card",
+                                period = "2026.10.15",
+                                title = "오늘도히유",
+                                emotion = EmotionType.EXHAUSTED,
+                                pressLabel = "프레스",
+                                pressCount = 128,
+                                stampLabel = "스탬프",
+                                stampCount = 3,
+                            ),
                     ),
-                    CollectionCardUiModel(
-                        id = "preview-card-next",
-                        period = "2026.10.14",
-                        title = "오늘도히유",
-                        emotion = EmotionType.EXHAUSTED,
-                        pressLabel = "프레스",
-                        pressCount = 96,
-                        stampLabel = "스탬프",
-                        stampCount = 2,
+                    CollectionDayPageUiModel(
+                        date = "2026-10-14",
+                        title = "10월 14일",
+                        subtitle = "2026년 · 수요일",
+                        card =
+                            CollectionCardUiModel(
+                                id = "preview-card-next",
+                                period = "2026.10.14",
+                                title = "오늘도히유",
+                                emotion = EmotionType.EXHAUSTED,
+                                pressLabel = "프레스",
+                                pressCount = 96,
+                                stampLabel = "스탬프",
+                                stampCount = 2,
+                            ),
                     ),
                 ),
-            selectedCardId = "preview-card",
+            selectedCardId = "2026-10-15",
             nickname = "오늘도히유",
-            emotions =
-                listOf(
-                    CollectionDayEmotionUiModel(
-                        id = 3,
-                        createdAt = "2026-10-15T11:42:00Z",
-                        emotion = EmotionType.EXHAUSTED,
-                        contentType = CollectionEmotionContentType.MEMO,
-                        memo = "오늘은 여기까지만.",
-                        playbackUrl = null,
-                        playbackExpiresAt = null,
-                    ),
-                    CollectionDayEmotionUiModel(
-                        id = 2,
-                        createdAt = "2026-10-15T11:42:00Z",
-                        emotion = EmotionType.EXHAUSTED,
-                        contentType = CollectionEmotionContentType.MEMO,
-                        memo = "오늘은 여기까지만.",
-                        playbackUrl = null,
-                        playbackExpiresAt = null,
-                    ),
-                    CollectionDayEmotionUiModel(
-                        id = 4,
-                        createdAt = "2026-10-15T11:42:00Z",
-                        emotion = EmotionType.EXHAUSTED,
-                        contentType = CollectionEmotionContentType.MEMO,
-                        memo = "오늘은 여기까지만.",
-                        playbackUrl = null,
-                        playbackExpiresAt = null,
-                    ),
-                    CollectionDayEmotionUiModel(
-                        id = 5,
-                        createdAt = "2026-10-15T11:42:00Z",
-                        emotion = EmotionType.EXHAUSTED,
-                        contentType = CollectionEmotionContentType.MEMO,
-                        memo = "오늘은 여기까지만.",
-                        playbackUrl = null,
-                        playbackExpiresAt = null,
-                    ),
-                    CollectionDayEmotionUiModel(
-                        id = 1,
-                        createdAt = "2026-10-15T11:42:00Z",
-                        emotion = EmotionType.EXHAUSTED,
-                        contentType = CollectionEmotionContentType.MEMO,
-                        memo = "오늘은 여기까지만.",
-                        playbackUrl = null,
-                        playbackExpiresAt = null,
+            emotionContent =
+                CollectionDayEmotionContent.Items(
+                    listOf(
+                        CollectionDayEmotionUiModel(
+                            id = 3,
+                            timeLabel = "방금 전",
+                            emotion = EmotionType.EXHAUSTED,
+                            contentType = CollectionEmotionContentType.MEMO,
+                            memo = "오늘은 여기까지만.",
+                            playbackUrl = null,
+                            playbackExpiresAt = null,
+                        ),
+                        CollectionDayEmotionUiModel(
+                            id = 2,
+                            timeLabel = "방금 전",
+                            emotion = EmotionType.EXHAUSTED,
+                            contentType = CollectionEmotionContentType.MEMO,
+                            memo = "오늘은 여기까지만.",
+                            playbackUrl = null,
+                            playbackExpiresAt = null,
+                        ),
+                        CollectionDayEmotionUiModel(
+                            id = 4,
+                            timeLabel = "방금 전",
+                            emotion = EmotionType.EXHAUSTED,
+                            contentType = CollectionEmotionContentType.MEMO,
+                            memo = "오늘은 여기까지만.",
+                            playbackUrl = null,
+                            playbackExpiresAt = null,
+                        ),
+                        CollectionDayEmotionUiModel(
+                            id = 5,
+                            timeLabel = "방금 전",
+                            emotion = EmotionType.EXHAUSTED,
+                            contentType = CollectionEmotionContentType.MEMO,
+                            memo = "오늘은 여기까지만.",
+                            playbackUrl = null,
+                            playbackExpiresAt = null,
+                        ),
+                        CollectionDayEmotionUiModel(
+                            id = 1,
+                            timeLabel = "방금 전",
+                            emotion = EmotionType.EXHAUSTED,
+                            contentType = CollectionEmotionContentType.MEMO,
+                            memo = "오늘은 여기까지만.",
+                            playbackUrl = null,
+                            playbackExpiresAt = null,
+                        ),
                     ),
                 ),
             emotionCount = 1,
-            isLoadingEmotions = false,
-            isLoadingNextEmotions = false,
-            emotionsError = null,
-            hasNextEmotions = false,
             audio =
                 CollectionDayAudioState(
                     null,
@@ -458,17 +451,16 @@ private fun CollectionDayFeedbackPreview(
         val date = "2026-10-15"
         val playback = remember { MutableStateFlow(AudioPlaybackState.Empty) }
         CollectionDayDetailScreen(
-            cards = emptyList(),
+            pages = listOf(CollectionDayPageUiModel(date, "10월 15일", "2026년 · 목요일")),
             selectedCardId = date,
-            dates = listOf(date),
             nickname = "오늘도히유",
-            emotions = emptyList(),
+            emotionContent =
+                when {
+                    emotionError != null -> CollectionDayEmotionContent.Error(emotionError)
+                    cardError != null -> CollectionDayEmotionContent.Waiting
+                    else -> CollectionDayEmotionContent.Empty
+                },
             emotionCount = 0.takeIf { cardError == null && emotionError == null },
-            isLoadingEmotions = false,
-            isLoadingNextEmotions = false,
-            emotionsError = emotionError,
-            emotionsLoaded = cardError == null && emotionError == null,
-            hasNextEmotions = false,
             audio = CollectionDayAudioState(null, playback, false, null) {},
             cardLoadError = cardError,
             onBack = {},
