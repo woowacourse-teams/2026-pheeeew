@@ -282,10 +282,14 @@ class PressRaceWebSocketIntegrationTest {
 
         // then
         assertThat(updated.path("nearby").get(0).path("score").longValue()).isEqualTo(3);
+        assertThat(updated.path("nearby").get(0).path("representativeState").stringValue()).isEqualTo("ANGRY");
+        assertThat(initial.path("me").has("representativeState")).isTrue();
+        assertThat(initial.path("me").path("representativeState").isNull()).isTrue();
         assertThat(updated.path("activeCount").intValue()).isEqualTo(1);
         assertThat(httpUpdated.path("activeCount").intValue()).isEqualTo(2);
         assertThat(httpUpdated.path("me").path("score").longValue()).isEqualTo(2);
         assertThat(httpUpdated.path("me").path("rank").longValue()).isEqualTo(2);
+        assertThat(httpUpdated.path("me").path("representativeState").stringValue()).isEqualTo("EXHAUSTED");
         assertThat(httpUpdated.path("snapshotVersion").isString()).isTrue();
         assertThat(Long.parseLong(httpUpdated.path("snapshotVersion").stringValue()))
                 .isGreaterThan(Long.parseLong(initial.path("snapshotVersion").stringValue()));

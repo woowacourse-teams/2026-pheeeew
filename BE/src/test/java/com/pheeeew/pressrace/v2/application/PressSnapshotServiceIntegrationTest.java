@@ -88,6 +88,39 @@ class PressSnapshotServiceIntegrationTest {
     }
 
     @Test
+    void 각_순위_항목에_오늘_가장_많이_누른_감정을_담고_어제_기록은_섞지_않으며_공동_최다는_정해진_순서로_고르고_미참여는_비운다() {
+        // given
+        Device exhausted = 기기();
+        Device tied = 기기();
+        Device observer = 기기();
+        emotionPressService.press(exhausted.getPublicId(), Map.of(EmotionState.ANGRY, 2));
+        emotionPressService.press(exhausted.getPublicId(), Map.of(EmotionState.EXHAUSTED, 3));
+        emotionPressService.press(tied.getPublicId(), Map.of(EmotionState.IRRITATED, 2));
+        emotionPressService.press(tied.getPublicId(), Map.of(EmotionState.DISCOURAGED, 2));
+        jdbc.sql("""
+                INSERT INTO device_daily_presses(press_date, state, device_id, press_count, created_at, updated_at)
+                VALUES ((clock_timestamp() AT TIME ZONE 'Asia/Seoul')::date - 1, 'ANGRY', :id, 10,
+                        clock_timestamp(), clock_timestamp())
+                """).param("id", exhausted.getId()).update();
+
+        // when
+        PressScreen exhaustedScreen = pressSnapshotService.findSnapshot(exhausted.getPublicId(), PressView.ALL);
+        PressScreen observerScreen = pressSnapshotService.findSnapshot(observer.getPublicId(), PressView.ALL);
+
+        // then
+        assertThat(exhaustedScreen.top100()).extracting(PressRanker::score, PressRanker::representativeState)
+                .containsExactly(
+                        tuple(5L, EmotionState.EXHAUSTED),
+                        tuple(4L, EmotionState.DISCOURAGED)
+                );
+        assertThat(exhaustedScreen.me().representativeState()).isEqualTo(EmotionState.EXHAUSTED);
+        assertThat(observerScreen.me().participating()).isFalse();
+        assertThat(observerScreen.me().representativeState()).isNull();
+        assertThat(observerScreen.nearby()).extracting(PressRanker::representativeState)
+                .containsExactly(EmotionState.EXHAUSTED, EmotionState.DISCOURAGED);
+    }
+
+    @Test
     void 같은_점수는_공동_순위이고_공개_ID_오름차순으로_표시한다() {
         // given
         Device first = 기기();

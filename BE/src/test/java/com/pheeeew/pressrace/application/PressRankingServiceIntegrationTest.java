@@ -3,11 +3,13 @@ package com.pheeeew.pressrace.application;
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.spy;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
+import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.pressrace.domain.PressRanking;
 import com.pheeeew.pressrace.domain.PressView;
 import com.pheeeew.pressrace.exception.PressRaceException;
@@ -58,6 +60,8 @@ class PressRankingServiceIntegrationTest {
 
     @AfterEach
     void cleanup() {
+        created.forEach(device -> jdbc.sql("DELETE FROM device_daily_presses WHERE device_id = :id")
+                .param("id", device.getId()).update());
         created.forEach(device -> devices.deleteById(device.getId()));
         jdbc.sql("UPDATE press_race_control SET active_server_generation = NULL, enabled = FALSE, activation_date = NULL")
                 .update();
@@ -83,6 +87,39 @@ class PressRankingServiceIntegrationTest {
         assertThat(updated.forDevice(second.getPublicId(), PressView.ALL).me().nickname()).isEqualTo("바뀐이름");
         assertThat(updated.forDevice(first.getPublicId(), PressView.ALL).me().rank()).isEqualTo(1);
         assertThat(updated.forDevice(second.getPublicId(), PressView.ALL).me().rank()).isEqualTo(1);
+    }
+
+    @Test
+    void 순위_항목에_오늘_가장_많이_누른_감정을_담고_어제_기록은_섞지_않으며_공동_최다는_정해진_순서로_고르고_미참여는_비운다() {
+        // given
+        Device exhausted = participant("00000000-0000-0000-0000-000000000011", 5);
+        pressed(exhausted, EmotionState.ANGRY, 2);
+        pressed(exhausted, EmotionState.EXHAUSTED, 3);
+        jdbc.sql("""
+                INSERT INTO device_daily_presses(press_date, state, device_id, press_count, created_at, updated_at)
+                VALUES ((clock_timestamp() AT TIME ZONE 'Asia/Seoul')::date - 1, 'ANGRY', :id, 10,
+                        clock_timestamp(), clock_timestamp())
+                """).param("id", exhausted.getId()).update();
+        Device tied = participant("00000000-0000-0000-0000-000000000012", 4);
+        pressed(tied, EmotionState.IRRITATED, 2);
+        pressed(tied, EmotionState.DISCOURAGED, 2);
+        Device observer = devices.save(기본_기기_빌더().build());
+        created.add(observer);
+
+        // when
+        PressRanking ranking = reader.read();
+
+        // then
+        assertThat(ranking.forDevice(exhausted.getPublicId(), PressView.ALL).top100())
+                .extracting(PressRanking.Member::score, PressRanking.Member::representativeState)
+                .containsExactly(tuple(5L, EmotionState.EXHAUSTED), tuple(4L, EmotionState.DISCOURAGED));
+        assertThat(ranking.forDevice(tied.getPublicId(), PressView.PRESS).me().representativeState())
+                .isEqualTo(EmotionState.DISCOURAGED);
+        var observerScreen = ranking.forDevice(observer.getPublicId(), PressView.PRESS);
+        assertThat(observerScreen.me().participating()).isFalse();
+        assertThat(observerScreen.me().representativeState()).isNull();
+        assertThat(observerScreen.nearby()).extracting(PressRanking.Member::representativeState)
+                .containsExactly(EmotionState.EXHAUSTED, EmotionState.DISCOURAGED);
     }
 
     @Test
@@ -370,5 +407,13 @@ class PressRankingServiceIntegrationTest {
                 VALUES (:id, (clock_timestamp() AT TIME ZONE 'Asia/Seoul')::date, :total, clock_timestamp(), :publicId)
                 """).param("id", device.getId()).param("total", total).param("publicId", UUID.fromString(publicId)).update();
         return device;
+    }
+
+    private void pressed(Device device, EmotionState state, int count) {
+        jdbc.sql("""
+                INSERT INTO device_daily_presses(press_date, state, device_id, press_count, created_at, updated_at)
+                VALUES ((clock_timestamp() AT TIME ZONE 'Asia/Seoul')::date, :state, :id, :count,
+                        clock_timestamp(), clock_timestamp())
+                """).param("state", state.name()).param("id", device.getId()).param("count", count).update();
     }
 }
