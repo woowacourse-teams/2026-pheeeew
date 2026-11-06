@@ -27,19 +27,20 @@ jobs:
   test:
     # push 런은 컴파일만 해서 캐시를 심는다. 같은 SHA 에 PR 런과 함께 붙어도 구분되게 이름을 나눈다.
     # setup-gradle 캐시 키는 표시 이름이 아니라 잡 ID(test)와 워크플로 이름·matrix 해시로 만든다.
-    name: ${{ github.event_name == 'push' && 'BE 캐시 준비' || 'BE 테스트' }} (${{ matrix.order }}/5)
+    name: ${{ github.event_name == 'push' && 'BE 캐시 준비' || 'BE 테스트' }} (${{ matrix.order }}/4)
     runs-on: ubuntu-latest
     strategy:
       # 한 샤드가 깨져도 나머지 결과를 봐야 원인을 좁힐 수 있다.
       fail-fast: false
       # shard 는 Gradle 에 넘기는 0부터의 번호, order 는 잡 이름에 보이는 1부터의 번호다.
+      # 4샤드: 캐시 적용 후 5회 측정에서 3 -> 4 는 -17초(편차보다 큼), 4 -> 5 는 -4초(편차 안)에
+      # 러너 사용량 +14% 라 4에서 멈췄다. 샤드 수를 바꾸면 -PtestShards 도 같이 바꾼다.
       matrix:
         include:
           - { shard: 0, order: 1 }
           - { shard: 1, order: 2 }
           - { shard: 2, order: 3 }
           - { shard: 3, order: 4 }
-          - { shard: 4, order: 5 }
     defaults:
       run:
         working-directory: BE
@@ -62,7 +63,7 @@ jobs:
       - name: 테스트
         if: github.event_name == 'pull_request'
         # observability 테스트는 샤딩하지 않으므로 첫 샤드에서만 돌린다.
-        run: ./gradlew ${{ matrix.shard == 0 && 'test' || ':test' }} --no-daemon -PtestShards=5 -PtestShard=${{ matrix.shard }}
+        run: ./gradlew ${{ matrix.shard == 0 && 'test' || ':test' }} --no-daemon -PtestShards=4 -PtestShard=${{ matrix.shard }}
 
       # push 런은 캐시만 심는다. 같은 트리를 머지 전 PR 런이 이미 테스트했고, be/dev 가 head 인
       # develop PR 이 열려 있으면 그 PR 런과 테스트가 겹친다. 잡 이름과 매트릭스를 그대로 둬야
