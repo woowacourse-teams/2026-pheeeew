@@ -6,6 +6,7 @@ import androidx.lifecycle.LifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.pheeeew.data.press.race.PressRaceDiagnostic
 import com.pheeeew.data.press.race.PressRaceView
+import com.pheeeew.data.press.race.PressRaceViewActivation
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -16,7 +17,7 @@ class PressRaceLifecycleBindingTest {
         val lifecycle = TestLifecycle(Lifecycle.State.RESUMED)
         val targets = mutableListOf<PressRaceView?>()
         val reasons = mutableListOf<PressRaceDiagnostic>()
-        val binding = PressRaceLifecycleBinding(lifecycle, targets::add, reasons::add)
+        val binding = PressRaceLifecycleBinding(lifecycle, { target, _ -> targets.add(target) }, reasons::add)
         binding.attach()
         binding.update(PressRaceView.PRESS, true)
         lifecycle.event(Lifecycle.Event.ON_PAUSE)
@@ -38,7 +39,7 @@ class PressRaceLifecycleBindingTest {
     fun screenSwitchDoesNotInsertDisconnectAndRecompositionDoesNotRetry() {
         val lifecycle = TestLifecycle(Lifecycle.State.RESUMED)
         val targets = mutableListOf<PressRaceView?>()
-        val binding = PressRaceLifecycleBinding(lifecycle, targets::add)
+        val binding = PressRaceLifecycleBinding(lifecycle, { target, _ -> targets.add(target) })
         binding.attach()
         binding.update(PressRaceView.PRESS, true)
         repeat(5) { binding.update(PressRaceView.PRESS, true) }
@@ -54,7 +55,7 @@ class PressRaceLifecycleBindingTest {
     fun backgroundClosesOnceAndReturnUsesLatestRequestedView() {
         val lifecycle = TestLifecycle(Lifecycle.State.RESUMED)
         val targets = mutableListOf<PressRaceView?>()
-        val binding = PressRaceLifecycleBinding(lifecycle, targets::add)
+        val binding = PressRaceLifecycleBinding(lifecycle, { target, _ -> targets.add(target) })
         binding.attach()
         binding.update(PressRaceView.PRESS, true)
         lifecycle.event(Lifecycle.Event.ON_PAUSE)
@@ -71,7 +72,7 @@ class PressRaceLifecycleBindingTest {
     fun readinessAndNonRaceDestinationGateConnection() {
         val lifecycle = TestLifecycle(Lifecycle.State.RESUMED)
         val targets = mutableListOf<PressRaceView?>()
-        val binding = PressRaceLifecycleBinding(lifecycle, targets::add)
+        val binding = PressRaceLifecycleBinding(lifecycle, { target, _ -> targets.add(target) })
         binding.attach()
         binding.update(PressRaceView.PRESS, false)
         assertTrue(targets.isEmpty())
@@ -88,7 +89,7 @@ class PressRaceLifecycleBindingTest {
     fun disposalDetachesObserverWithoutClosingTheSharedClient() {
         val lifecycle = TestLifecycle(Lifecycle.State.RESUMED)
         val targets = mutableListOf<PressRaceView?>()
-        val binding = PressRaceLifecycleBinding(lifecycle, targets::add)
+        val binding = PressRaceLifecycleBinding(lifecycle, { target, _ -> targets.add(target) })
         binding.attach()
         binding.attach()
         binding.update(PressRaceView.PRESS, true)
@@ -104,7 +105,7 @@ class PressRaceLifecycleBindingTest {
     fun initiallyStoppedScreenDoesNotConnectBeforeResume() {
         val lifecycle = TestLifecycle(Lifecycle.State.CREATED)
         val targets = mutableListOf<PressRaceView?>()
-        val binding = PressRaceLifecycleBinding(lifecycle, targets::add)
+        val binding = PressRaceLifecycleBinding(lifecycle, { target, _ -> targets.add(target) })
         binding.update(PressRaceView.ALL, true)
         binding.attach()
         lifecycle.event(Lifecycle.Event.ON_START)
@@ -115,6 +116,57 @@ class PressRaceLifecycleBindingTest {
         lifecycle.event(Lifecycle.Event.ON_STOP)
         lifecycle.event(Lifecycle.Event.ON_DESTROY)
         assertEquals(listOf<PressRaceView?>(PressRaceView.ALL, null), targets)
+        binding.dispose()
+    }
+
+    @Test
+    fun activationClockIsCapturedOnNullToActiveTransitionsOnly() {
+        val lifecycle = TestLifecycle(Lifecycle.State.RESUMED)
+        val activations = mutableListOf<Pair<PressRaceView?, PressRaceViewActivation?>>()
+        var time = 10L
+        val binding =
+            PressRaceLifecycleBinding(
+                lifecycle = lifecycle,
+                onView = { view, activation -> activations += view to activation },
+                monotonicClock = { time },
+            )
+        binding.attach()
+        binding.update(PressRaceView.PRESS, true)
+        repeat(3) { binding.update(PressRaceView.PRESS, true) }
+        time = 20L
+        binding.update(PressRaceView.ALL, true)
+        time = 30L
+        binding.update(null, true)
+        time = 40L
+        binding.update(PressRaceView.PRESS, true)
+
+        assertEquals(10L, activations[0].second?.startedAtMillis)
+        assertEquals(null, activations[1].second)
+        assertEquals(null, activations[2].second)
+        assertEquals(40L, activations[3].second?.startedAtMillis)
+        binding.dispose()
+    }
+
+    @Test
+    fun activationClockFailureDoesNotEscapeOrSuppressTheActiveTarget() {
+        val lifecycle = TestLifecycle(Lifecycle.State.RESUMED)
+        val activations = mutableListOf<PressRaceViewActivation?>()
+        val targets = mutableListOf<PressRaceView?>()
+        val binding =
+            PressRaceLifecycleBinding(
+                lifecycle = lifecycle,
+                onView = { view, activation ->
+                    targets += view
+                    activations += activation
+                },
+                monotonicClock = { error("diagnostic clock") },
+            )
+        binding.attach()
+        binding.update(PressRaceView.PRESS, true)
+
+        assertEquals(listOf<PressRaceView?>(PressRaceView.PRESS), targets)
+        assertTrue(activations.single() != null)
+        assertEquals(null, activations.single()?.startedAtMillis)
         binding.dispose()
     }
 }

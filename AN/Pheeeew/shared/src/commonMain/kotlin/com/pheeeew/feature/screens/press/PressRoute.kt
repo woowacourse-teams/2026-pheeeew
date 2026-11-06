@@ -35,5 +35,6 @@ internal fun PressRoute(
         nearbyRanking = uiState.nearbyRanking,
         activity = uiState.activity,
         faceVisuals = faceDemo.visuals,
+        debugTapDrawProbeEnabled = viewModel.debugTapDrawProbeEnabled,
     )
 }

@@ -23,6 +23,8 @@ internal class PressViewModel(
     rankings: PressRaceRankings,
     private val measurements: PressRaceMeasurements = PressRaceMeasurements(),
 ) : ViewModel() {
+    val debugTapDrawProbeEnabled: Boolean get() = measurements.isEnabled
+
     // A recreated screen may borrow ranking cache but never replays an already published alert.
     private val initialFrameKey =
         rankings.state.value.session.currentSnapshot

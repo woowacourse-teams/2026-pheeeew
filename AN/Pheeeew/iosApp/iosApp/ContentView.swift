@@ -20,6 +20,13 @@ struct ComposeView: UIViewControllerRepresentable {
 struct ContentView: View {
     var body: some View {
         ComposeView()
+#if DEBUG
+            .background {
+                if DebugDisplayLinkCallbackDiagnosticsHost.isEnabled {
+                    DebugDisplayLinkCallbackDiagnosticsHost()
+                }
+            }
+#endif
             .ignoresSafeArea()
     }
 }

@@ -325,14 +325,30 @@ internal class TapFeedbackState<K>(
         now: Double,
         width: Double,
         height: Double,
-    ) {
-        advance(now)
-        while (particles.size >= capacity) particles.removeAt(0)
-        particles += TapParticle(++nextId, key, reaction, flight, now, width, height)
+        onExpired: ((Long) -> Unit)? = null,
+        onEvicted: ((Long) -> Unit)? = null,
+    ): Long {
+        advance(now, onExpired)
+        while (particles.size >= capacity) {
+            val removedParticle = particles.removeAt(0)
+            onEvicted?.invoke(removedParticle.id)
+        }
+        val particleId = ++nextId
+        particles += TapParticle(particleId, key, reaction, flight, now, width, height)
+        return particleId
     }
 
-    fun advance(now: Double) {
+    fun advance(
+        now: Double,
+        onExpired: ((Long) -> Unit)? = null,
+    ) {
+        if (onExpired == null) {
+            particles.removeAll { now - it.started >= it.flight.duration }
+            return
+        }
+        val expiredParticleIds = particles.filter { now - it.started >= it.flight.duration }.map { it.id }
         particles.removeAll { now - it.started >= it.flight.duration }
+        expiredParticleIds.forEach(onExpired)
     }
 
     fun clear() {

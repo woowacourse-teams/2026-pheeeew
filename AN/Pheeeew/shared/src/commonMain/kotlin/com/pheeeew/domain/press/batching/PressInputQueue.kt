@@ -17,6 +17,9 @@ internal class PressInputQueue(
     private var flushDeadline: PressMonotonicMillis? = null
     private var firstEmotionIndex = 0
 
+    /** Diagnostic consumers may use the exact queued press count as a safe correlation boundary. */
+    val pendingPressCount: Long get() = accumulator.size
+
     init {
         require(maxPerEmotion > 0 && maxTotal > 0)
     }

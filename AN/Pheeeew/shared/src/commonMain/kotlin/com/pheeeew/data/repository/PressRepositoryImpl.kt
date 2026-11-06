@@ -3,6 +3,7 @@ package com.pheeeew.data.repository
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.data.press.delivery.PressDeliveryPolicy
+import com.pheeeew.data.press.race.PressRaceMeasurements
 import com.pheeeew.data.press.retry.PressRetryPolicy
 import com.pheeeew.data.press.session.PressSession
 import com.pheeeew.domain.model.emotion.EmotionState
@@ -37,6 +38,7 @@ internal class PressRepositoryImpl(
             Clock.System.now().toEpochMilliseconds(),
         )
     },
+    measurements: PressRaceMeasurements = PressRaceMeasurements(),
 ) : PressRepository {
     private val session =
         PressSession(
@@ -53,6 +55,7 @@ internal class PressRepositoryImpl(
             nowMillis = nowMillis,
             monitoring = monitoring,
             wallClock = wallClock,
+            measurements = measurements,
         )
 
     override val state = session.state

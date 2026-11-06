@@ -236,6 +236,7 @@ internal interface ApiBindings {
                 scope,
                 connectivity = connectivity.isConnected,
                 monitoring = monitoring,
+                measurements = measurements,
             )
         }
 
@@ -243,11 +244,16 @@ internal interface ApiBindings {
     @SingleIn(AppScope::class)
     fun providePressRaceMeasurements(build: DeviceSessionBuildConfig): PressRaceMeasurements =
         PressRaceMeasurements(
-            build.isDebug && build.pressInputMode == PressInputMode.WEBSOCKET_DEVELOPMENT,
+            build.isDebug,
             sink = { sample ->
                 println(
-                    "[PressRaceMeasure] kind=${sample.kind} sample=${sample.sample} " +
-                        "ms=${sample.millis} presses=${sample.presses} outcome=${sample.outcome}",
+                    "[PressRaceMeasure] source=${sample.source} kind=${sample.kind} sample=${sample.sample} " +
+                        "ms=${sample.millis} observedAt=${sample.observedAtMillis} " +
+                        "path=${sample.networkPathState} pathAtSocketLoss=${sample.networkPathAtSocketLoss} " +
+                        "presses=${sample.presses} attempt=${sample.attempt} " +
+                        "attemptResult=${sample.attemptResult} retryAfterMs=${sample.retryAfterMillis} " +
+                        "recoveryResult=${sample.recoveryOutcome} failedAttempts=${sample.failedAttempts} " +
+                        "outcome=${sample.outcome}",
                 )
             },
         )
@@ -264,12 +270,14 @@ internal interface ApiBindings {
         @SessionWork scope: CoroutineScope,
         build: DeviceSessionBuildConfig,
         measurements: PressRaceMeasurements,
+        connectivity: ConnectivityObserver,
     ): PressRaceSession =
         PressRaceSession(
             transport,
             session,
             scope,
             measurements = measurements,
+            connectivity = connectivity.isConnected,
             diagnostics =
                 PressRaceDiagnostics { event, connection ->
                     if (build.isDebug && build.pressInputMode == PressInputMode.WEBSOCKET_DEVELOPMENT) {

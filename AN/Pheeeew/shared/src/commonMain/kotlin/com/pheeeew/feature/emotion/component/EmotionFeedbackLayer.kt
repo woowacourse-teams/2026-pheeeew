@@ -13,6 +13,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -38,6 +39,7 @@ internal fun EmotionFeedbackLayer(
     particles: List<TapParticle<EmotionKind>>,
     frameTime: State<Double>,
     padPosition: State<Offset>,
+    drawProbe: EmotionTapDrawProbe? = null,
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
@@ -45,6 +47,7 @@ internal fun EmotionFeedbackLayer(
     Box(modifier = modifier) {
         particles.forEach { particle ->
             key(particle.id) {
+                val activeDrawProbe = drawProbe?.takeIf { it.isEnabled }
                 val reaction = particle.reaction
                 val emotion = TapCatalog.emotion(particle.key)
                 // Alpha compositing clips to the layer bounds, so include the sticker shadow.
@@ -53,24 +56,33 @@ internal fun EmotionFeedbackLayer(
                         TapReactionKind.Text, TapReactionKind.Plus -> 4.dp
                         else -> 0.dp
                     }
+                val layerModifier =
+                    Modifier
+                        .requiredSize(
+                            particle.width.dp + shadowPadding * 2,
+                            particle.height.dp + shadowPadding * 2,
+                        ).graphicsLayer {
+                            val transform = particle.flight.sample(frameTime.value - particle.started)
+                            val left = particle.flight.left - padPosition.value.x - shadowPadding.value
+                            val top = particle.flight.top - padPosition.value.y - shadowPadding.value
+                            translationX = ((left + transform.x) * density.density).toFloat()
+                            translationY = ((top + transform.y) * density.density).toFloat()
+                            scaleX = transform.scale.toFloat()
+                            scaleY = scaleX
+                            rotationZ = transform.rotation.toFloat()
+                            alpha = transform.alpha.toFloat()
+                        }
+                val drawModifier =
+                    if (activeDrawProbe != null) {
+                        layerModifier.drawWithContent {
+                            drawContent()
+                            activeDrawProbe.particleDrawn(particle.id)
+                        }
+                    } else {
+                        layerModifier
+                    }
                 Box(
-                    modifier =
-                        Modifier
-                            .requiredSize(
-                                particle.width.dp + shadowPadding * 2,
-                                particle.height.dp + shadowPadding * 2,
-                            ).graphicsLayer {
-                                val transform = particle.flight.sample(frameTime.value - particle.started)
-                                val left = particle.flight.left - padPosition.value.x - shadowPadding.value
-                                val top = particle.flight.top - padPosition.value.y - shadowPadding.value
-                                translationX = ((left + transform.x) * density.density).toFloat()
-                                translationY = ((top + transform.y) * density.density).toFloat()
-                                scaleX = transform.scale.toFloat()
-                                scaleY = scaleX
-                                rotationZ = transform.rotation.toFloat()
-                                alpha = transform.alpha.toFloat()
-                            }.padding(shadowPadding)
-                            .testTag("tap-particle"),
+                    modifier = drawModifier.padding(shadowPadding).testTag("tap-particle"),
                     contentAlignment = Alignment.Center,
                 ) {
                     when (reaction.kind) {

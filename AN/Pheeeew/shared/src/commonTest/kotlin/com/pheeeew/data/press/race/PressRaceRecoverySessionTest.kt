@@ -15,6 +15,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
@@ -36,6 +37,208 @@ class PressRaceRecoverySessionTest {
         PressRaceReconnectPolicy({ 0.0 }),
         noticeClock = { testScheduler.currentTime },
     )
+
+    @Test
+    fun socketLossRecoveryMeasuresFromOpenSocketFailureToPublishedBaselineAndSeparatesPathStatus() =
+        runTest {
+            var monotonicTime = 100L
+            val measurements = PressRaceMeasurements(true, { monotonicTime })
+            val path = MutableStateFlow(true)
+            val transport = RecoveryTransport()
+            val session =
+                PressRaceSession(
+                    transport,
+                    RecoveryTokens(),
+                    backgroundScope,
+                    PressRaceReconnectPolicy({ 0.0 }),
+                    measurements = measurements,
+                    connectivity = path,
+                )
+
+            session.setView(PressRaceView.PRESS)
+            runCurrent()
+            val first = transport.sockets.single()
+            first.incoming.send(baseline(results = "[]"))
+            first.incoming.send(rank())
+            runCurrent()
+            assertEquals(PressRacePhase.Ready, session.state.value.phase)
+
+            // The observer still reports a satisfied path at the actual WebSocket close.
+            monotonicTime = 200L
+            first.finish(null)
+            runCurrent()
+            advanceTimeBy(500)
+            runCurrent()
+            assertEquals(2, transport.sockets.size)
+
+            monotonicTime = 250L
+            path.value = false
+            runCurrent()
+            monotonicTime = 400L
+            path.value = true
+            runCurrent()
+
+            // A second opened socket also closes before publishing a baseline; keep the first loss time.
+            monotonicTime = 450L
+            transport.sockets.last().finish(null)
+            runCurrent()
+            advanceTimeBy(1_000)
+            runCurrent()
+            assertEquals(3, transport.sockets.size)
+            val recovered = transport.sockets.last()
+            recovered.incoming.send(baseline(results = "[]"))
+            runCurrent()
+            monotonicTime = 750L
+            recovered.incoming.send(rank())
+            runCurrent()
+
+            val pathRecovery = measurements.samples.single {
+                it.kind == PressRaceMeasureKind.NetworkPathUnavailableToAvailable
+            }
+            assertEquals(150L, pathRecovery.millis)
+            assertEquals(PressRaceMeasureSource.NetworkPath, pathRecovery.source)
+            val socketRecovery = measurements.samples.single {
+                it.kind == PressRaceMeasureKind.SocketLossToValidatedBaseline
+            }
+            assertEquals(550L, socketRecovery.millis)
+            assertEquals(1, socketRecovery.failedAttempts)
+            assertEquals(PressRaceNetworkPathState.Available, socketRecovery.networkPathAtSocketLoss)
+            assertEquals(PressRaceMeasureSource.WebSocket, socketRecovery.source)
+            assertEquals(PressRacePhase.Ready, session.state.value.phase)
+            session.close()
+        }
+
+    @Test
+    fun failedUpgradeBeforeSocketOpenIsNotMeasuredAsSocketLoss() =
+        runTest {
+            val transport = RecoveryTransport().apply { failure = PressRaceUpgradeException(503) }
+            val measurements = PressRaceMeasurements(true)
+            val session =
+                PressRaceSession(
+                    transport,
+                    RecoveryTokens(),
+                    backgroundScope,
+                    PressRaceReconnectPolicy({ 0.0 }),
+                    measurements = measurements,
+                )
+            session.setView(PressRaceView.PRESS)
+            runCurrent()
+
+            assertTrue(measurements.samples.none {
+                it.kind == PressRaceMeasureKind.SocketLossDetected ||
+                    it.kind == PressRaceMeasureKind.SocketLossToValidatedBaseline
+            })
+            session.close()
+        }
+
+    @Test
+    fun measurementClockFailureDoesNotBreakSocketSnapshotPublication() =
+        runTest {
+            val transport = RecoveryTransport()
+            val measurements = PressRaceMeasurements(true, { throw IllegalStateException("diagnostic clock") })
+            val session =
+                PressRaceSession(
+                    transport,
+                    RecoveryTokens(),
+                    backgroundScope,
+                    PressRaceReconnectPolicy({ 0.0 }),
+                    measurements = measurements,
+                )
+            session.setView(PressRaceView.PRESS, session.viewActivation())
+            runCurrent()
+            val socket = transport.sockets.single()
+            socket.incoming.send(baseline(results = "[]"))
+            runCurrent()
+            socket.incoming.send(rank())
+            runCurrent()
+
+            assertEquals(PressRacePhase.Ready, session.state.value.phase)
+            assertTrue(session.state.value.currentSnapshot != null)
+            assertTrue(measurements.samples.isEmpty())
+            session.close()
+        }
+
+    @Test
+    fun lifecycleActivationCompletesAtCurrentBaselinePublicationAndReentryStaysSeparate() =
+        runTest {
+            var monotonicTime = 100L
+            val measurements = PressRaceMeasurements(true, { monotonicTime })
+            val transport = RecoveryTransport()
+            val session =
+                PressRaceSession(
+                    transport,
+                    RecoveryTokens(),
+                    backgroundScope,
+                    PressRaceReconnectPolicy({ 0.0 }),
+                    measurements = measurements,
+                )
+
+            session.setView(PressRaceView.PRESS, PressRaceViewActivation(50L))
+            runCurrent()
+            val first = transport.sockets.single()
+            first.incoming.send(baseline(results = "[]"))
+            runCurrent()
+            first.incoming.send(rank(baseline = false))
+            runCurrent()
+            assertTrue(measurements.samples.isEmpty())
+            monotonicTime = 250L
+            first.incoming.send(rank())
+            runCurrent()
+            assertEquals(200L, measurements.samples.single().millis)
+            assertEquals(PressRaceMeasureKind.FirstViewActivationToSnapshot, measurements.samples.single().kind)
+
+            // Disposing a lifecycle binding sends the inactive target; a later binding entry is session-level reentry.
+            session.setView(null)
+            runCurrent()
+            session.setView(PressRaceView.PRESS, PressRaceViewActivation(300L))
+            runCurrent()
+            val second = transport.sockets.last()
+            second.incoming.send(baseline(results = "[]"))
+            runCurrent()
+            monotonicTime = 360L
+            second.incoming.send(rank())
+            runCurrent()
+
+            assertEquals(2, measurements.samples.size)
+            assertEquals(60L, measurements.samples.last().millis)
+            assertEquals(PressRaceMeasureKind.ReentryViewActivationToSnapshot, measurements.samples.last().kind)
+            session.close()
+        }
+
+    @Test
+    fun activeViewSwitchCancelsPendingLifecycleLatencyWithoutStartingAnotherEntry() =
+        runTest {
+            var monotonicTime = 100L
+            val measurements = PressRaceMeasurements(true, { monotonicTime })
+            val transport = RecoveryTransport()
+            val session =
+                PressRaceSession(
+                    transport,
+                    RecoveryTokens(),
+                    backgroundScope,
+                    PressRaceReconnectPolicy({ 0.0 }),
+                    measurements = measurements,
+                )
+            session.setView(PressRaceView.PRESS, PressRaceViewActivation(50L))
+            runCurrent()
+            val socket = transport.sockets.single()
+            socket.incoming.send(baseline(results = "[]"))
+            runCurrent()
+
+            // Contract: active-to-active tab changes cancel lifecycle entry timing; they do not create an entry.
+            session.setView(PressRaceView.ALL)
+            runCurrent()
+            monotonicTime = 250L
+            socket.incoming.send(rank(version = "2").replace("\"view\":\"PRESS\"", "\"view\":\"ALL\""))
+            runCurrent()
+
+            assertEquals(PressRaceView.ALL, session.state.value.snapshot?.view)
+            assertTrue(measurements.samples.none {
+                it.kind == PressRaceMeasureKind.FirstViewActivationToSnapshot ||
+                    it.kind == PressRaceMeasureKind.ReentryViewActivationToSnapshot
+            })
+            session.close()
+        }
 
     @Test
     fun failureBlocksInputAndNoticeBeforeSlowSocketCloseFinishes() =

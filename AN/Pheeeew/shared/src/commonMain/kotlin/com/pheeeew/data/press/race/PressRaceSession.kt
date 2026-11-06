@@ -20,8 +20,10 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -38,6 +40,7 @@ internal class PressRaceSession(
     private val diagnostics: PressRaceDiagnostics = PressRaceDiagnostics { _, _ -> },
     private val noticeClock: () -> Long = newPressRaceClock(),
     private val measurements: PressRaceMeasurements = PressRaceMeasurements(),
+    private val connectivity: Flow<Boolean>? = null,
 ) : PressRaceInputPort {
     private val scope = CoroutineScope(parentScope.coroutineContext + SupervisorJob(parentScope.coroutineContext[Job]))
     private val events = Channel<Event>(Channel.UNLIMITED)
@@ -45,6 +48,7 @@ internal class PressRaceSession(
     override val state = mutableState.asStateFlow()
     private val closed = MutableStateFlow(false)
     private val currentEpoch = MutableStateFlow(0L)
+    private val observedNetworkPath = MutableStateFlow(PressRaceNetworkPathState.Unknown)
     private var epoch: Long
         get() = currentEpoch.value
         set(value) {
@@ -119,6 +123,8 @@ internal class PressRaceSession(
     private var watchdog: Job? = null
     private var initPending: Set<String> = emptySet()
     private var dateFloor: String? = null
+    /** Session-scoped so replacing the lifecycle binding cannot turn a return into a first entry. */
+    private var hasActivatedView = false
 
     private fun armWatchdog() {
         watchdog?.cancel()
@@ -133,6 +139,26 @@ internal class PressRaceSession(
     }
 
     init {
+        connectivity?.takeIf { measurements.isEnabled }?.let { updates ->
+            scope.launch {
+                try {
+                    updates.collect { available ->
+                        val path =
+                            if (available) {
+                                PressRaceNetworkPathState.Available
+                            } else {
+                                PressRaceNetworkPathState.Unavailable
+                            }
+                        observedNetworkPath.value = path
+                        events.send(Event.NetworkPath(path, measurements.nowMillis()))
+                    }
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    // Path observation is diagnostic-only; it cannot change connection or retry behavior.
+                }
+            }
+        }
         scope.launch {
             for (event in events) {
                 if (closed.value) break
@@ -143,6 +169,10 @@ internal class PressRaceSession(
                             trace(PressRaceDiagnostic.NoticeExpired)
                             publish { it.copy(notice = null) }
                         }
+                    }
+
+                    is Event.NetworkPath -> {
+                        measurements.networkPathObserved(event.path, event.atMillis)
                     }
 
                     is Event.Refresh -> {
@@ -185,7 +215,7 @@ internal class PressRaceSession(
                     }
 
                     is Event.Target -> {
-                        target(event.view)
+                        target(event.view, event.activation)
                     }
 
                     is Event.Opened -> {
@@ -219,6 +249,22 @@ internal class PressRaceSession(
                     is Event.Failed -> {
                         if (event.epoch == epoch) {
                             event.token?.let { usedToken = it }
+                            val view = state.value.view
+                            if (event.socketLoss != null && view != null) {
+                                measurements.socketLossDetected(
+                                    view = view,
+                                    epoch = event.epoch,
+                                    atMillis = event.socketLoss.atMillis,
+                                    networkPath = event.socketLoss.networkPath,
+                                )
+                            } else {
+                                measurements.socketRecoveryAttemptFailed(
+                                    view = view,
+                                    epoch = event.epoch,
+                                    atMillis = measurements.nowMillis(),
+                                    networkPath = observedNetworkPath.value,
+                                )
+                            }
                             fail(event.failure)
                         }
                     }
@@ -230,9 +276,16 @@ internal class PressRaceSession(
     /** Visibility reasons are fixed metadata; recording cannot change session ownership. */
     fun noteVisibility(event: PressRaceDiagnostic) = trace(event)
 
+    /** Capture entry time only when the debug recorder is enabled, using its shared monotonic origin. */
+    fun viewActivation(): PressRaceViewActivation? =
+        if (measurements.isEnabled) PressRaceViewActivation(measurements.nowMillis()) else null
+
     /** null means inactive. Repeated requests for an active view are idempotent; failures retry only explicitly. */
-    fun setView(view: PressRaceView?) {
-        if (!closed.value) events.trySend(Event.Target(view))
+    fun setView(
+        view: PressRaceView?,
+        activation: PressRaceViewActivation? = null,
+    ) {
+        if (!closed.value) events.trySend(Event.Target(view, activation))
     }
 
     /** Explicit user refresh; ignored outside the active view and while initialization is in flight. */
@@ -251,11 +304,16 @@ internal class PressRaceSession(
         startConnection()
     }
 
-    private suspend fun target(view: PressRaceView?) {
+    private suspend fun target(
+        view: PressRaceView?,
+        activation: PressRaceViewActivation?,
+    ) {
         val current = state.value
         if (current.view == view && current.phase !in setOf(PressRacePhase.Failed, PressRacePhase.Settled)) return
         clearNotices()
         if (view == null) {
+            measurements.cancelViewActivation()
+            measurements.cancelSocketRecovery()
             trace(PressRaceDiagnostic.Inactive)
             stopConnection()
             endpoint = PressRaceEndpoint.Competition
@@ -273,6 +331,14 @@ internal class PressRaceSession(
             }
             return
         }
+        val startsLifecycleActivation = activation != null && current.view == null
+        val isReentry = startsLifecycleActivation && hasActivatedView
+        if (startsLifecycleActivation) hasActivatedView = true
+        // Active-to-active switches cancel the pending lifecycle sample; only null-to-active starts one.
+        if (current.view != view) {
+            measurements.cancelViewActivation()
+            measurements.cancelSocketRecovery()
+        }
         publish { it.copy(view = view, isAwaitingSnapshot = true) }
         if (current.phase == PressRacePhase.Ready) {
             send(PressRaceProtocol.changeView(view))
@@ -281,15 +347,23 @@ internal class PressRaceSession(
             manualRestart()
         } else if (reconnect != null) {
             // One reservation follows the newest desired view; no duplicate connect jobs.
+            activation
+                ?.takeIf { current.view == null }
+                ?.let { measurements.beginViewActivation(view, it, isReentry, epoch) }
             return
         } else if (current.phase != PressRacePhase.Connecting && current.phase != PressRacePhase.Initializing) {
             if (!identityInvalid) startConnection()
         }
+        activation
+            ?.takeIf { current.view == null }
+            ?.let { measurements.beginViewActivation(view, it, isReentry, epoch) }
     }
 
     private fun startConnection(rejected: AccessToken? = null) {
         clearNotices()
         val attempt = ++epoch
+        measurements.viewActivationEpochChanged(attempt)
+        measurements.socketRecoveryEpochChanged(attempt, state.value.view)
         snapshots.reset()
         publish { it.copy(phase = PressRacePhase.Connecting, ready = null, isAwaitingSnapshot = true) }
         val mode = endpoint
@@ -376,20 +450,34 @@ internal class PressRaceSession(
                         val text = socket.receive() ?: break
                         events.send(Event.Text(attempt, text, measurements.nowMillis()))
                     }
-                    events.send(Event.Failed(attempt, closeFailure(socket.awaitCloseReason())))
+                    val loss = socketLossObservation()
+                    events.send(Event.Failed(attempt, closeFailure(socket.awaitCloseReason()), socketLoss = loss))
                 } catch (cancelled: CancellationException) {
                     if (!currentCoroutineContext().isActive) throw cancelled
+                    val loss = socketLossObservation()
                     val reason = runCatching { socket.awaitCloseReason() }.getOrNull()
-                    events.trySend(Event.Failed(attempt, closeFailure(reason)))
+                    events.trySend(Event.Failed(attempt, closeFailure(reason), socketLoss = loss))
                 } catch (_: Exception) {
-                    events.trySend(Event.Failed(attempt, PressRaceFailure(PressRaceFailureKind.Transport)))
+                    events.trySend(
+                        Event.Failed(
+                            attempt,
+                            PressRaceFailure(PressRaceFailureKind.Transport),
+                            socketLoss = socketLossObservation(),
+                        ),
+                    )
                 }
             }
     }
 
+    /** This marker is created only by receive/send failure callbacks after a socket was opened. */
+    private fun socketLossObservation(): SocketLossObservation? {
+        if (!measurements.isEnabled) return null
+        return SocketLossObservation(measurements.nowMillis(), observedNetworkPath.value)
+    }
+
     private suspend fun message(
         text: String,
-        receivedAt: Long,
+        receivedAt: Long?,
     ) {
         try {
             when (val message = PressRaceProtocol.decode(text)) {
@@ -426,7 +514,7 @@ internal class PressRaceSession(
                         startConnection()
                         return
                     }
-                    measurements.received(snapshot.frameKey(), receivedAt)
+                    receivedAt?.let { measurements.received(snapshot.frameKey(), it) }
                     val notice = noticeFor(snapshot)
                     dateFloor = snapshot.date
                     if (snapshot.baseline) trace(PressRaceDiagnostic.BaselineReceived)
@@ -444,6 +532,8 @@ internal class PressRaceSession(
                             dateFloor = dateFloor,
                         )
                     }
+                    if (snapshot.baseline) measurements.viewActivationSnapshotPublished(snapshot, epoch)
+                    if (snapshot.baseline) measurements.socketRecoveryBaselinePublished(snapshot, epoch)
                 }
 
                 is PressRaceMessage.Error -> {
@@ -553,9 +643,21 @@ internal class PressRaceSession(
                     }
                 } catch (cancelled: CancellationException) {
                     if (!currentCoroutineContext().isActive) throw cancelled
-                    events.trySend(Event.Failed(attempt, PressRaceFailure(PressRaceFailureKind.Transport)))
+                    events.trySend(
+                        Event.Failed(
+                            attempt,
+                            PressRaceFailure(PressRaceFailureKind.Transport),
+                            socketLoss = socketLossObservation(),
+                        ),
+                    )
                 } catch (_: Exception) {
-                    events.trySend(Event.Failed(attempt, PressRaceFailure(PressRaceFailureKind.Transport)))
+                    events.trySend(
+                        Event.Failed(
+                            attempt,
+                            PressRaceFailure(PressRaceFailureKind.Transport),
+                            socketLoss = socketLossObservation(),
+                        ),
+                    )
                 }
             }
     }
@@ -673,6 +775,7 @@ internal class PressRaceSession(
         outgoing.value?.cancel()
         outgoing.value = null
         currentEpoch.value++
+        measurements.cancelSocketRecovery()
         events.close()
         scope.cancel()
         transport.close()
@@ -698,7 +801,17 @@ internal class PressRaceSession(
         val completion: CompletableDeferred<Boolean>? = null,
     )
 
+    private data class SocketLossObservation(
+        val atMillis: Long?,
+        val networkPath: PressRaceNetworkPathState,
+    )
+
     private sealed interface Event {
+        data class NetworkPath(
+            val path: PressRaceNetworkPathState,
+            val atMillis: Long?,
+        ) : Event
+
         data class ExpireNotice(
             val epoch: Long,
             val id: Long,
@@ -714,6 +827,7 @@ internal class PressRaceSession(
 
         data class Target(
             val view: PressRaceView?,
+            val activation: PressRaceViewActivation?,
         ) : Event
 
         data class Opened(
@@ -725,7 +839,7 @@ internal class PressRaceSession(
         data class Text(
             val epoch: Long,
             val text: String,
-            val receivedAt: Long,
+            val receivedAt: Long?,
         ) : Event
 
         data class Reconnect(
@@ -737,6 +851,7 @@ internal class PressRaceSession(
             val epoch: Long,
             val failure: PressRaceFailure,
             val token: AccessToken? = null,
+            val socketLoss: SocketLossObservation? = null,
         ) : Event
     }
 }

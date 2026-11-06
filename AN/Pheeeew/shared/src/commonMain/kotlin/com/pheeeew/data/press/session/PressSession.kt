@@ -11,6 +11,10 @@ import com.pheeeew.data.press.delivery.PressWriteState
 import com.pheeeew.data.press.read.PressReadContext
 import com.pheeeew.data.press.read.PressReadCoordinator
 import com.pheeeew.data.press.read.PressReadEvent
+import com.pheeeew.data.press.race.PressRaceHttpAttemptResult
+import com.pheeeew.data.press.race.PressHttpInputMeasurements
+import com.pheeeew.data.press.race.PressRaceMeasurements
+import com.pheeeew.data.press.race.PressRaceRecoveryOutcome
 import com.pheeeew.data.press.retry.PressRetryPolicy
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.press.AllDailyPressSnapshot
@@ -56,11 +60,14 @@ internal class PressSession(
     private val nowMillis: () -> PressMonotonicMillis,
     private val monitoring: Monitoring,
     private val wallClock: () -> PressEpochMillis,
+    measurements: PressRaceMeasurements = PressRaceMeasurements(),
 ) : PressDeliveryHost {
     // 공개 상태와 입력·쓰기·조회 협력 객체를 보관한다.
     private val mutableState = MutableStateFlow(PressSessionState())
     val state = mutableState.asStateFlow()
     private val inputQueue = PressInputQueue(batchMaxPerEmotion, batchMaxTotal, flushDelayMillis)
+    private val httpMeasurements =
+        PressHttpInputMeasurements(measurements, pendingQueuePressCount = { inputQueue.pendingPressCount })
     private val writeSession = PressWriteSession()
     private val reads =
         PressReadCoordinator(
@@ -110,14 +117,16 @@ internal class PressSession(
             return PressAcceptance.NumericLimit
         }
         val inputTime = wallClock()
+        val acceptedAt = nowMillis()
         val acceptance =
-            when (val result = inputQueue.accept(emotion, inputTime, nowMillis())) {
+            when (val result = inputQueue.accept(emotion, inputTime, acceptedAt)) {
                 PressQueueAcceptance.NumericLimit -> {
                     mutableState.update { it.copy(notice = PressSessionNotice.NumericLimit) }
                     return PressAcceptance.NumericLimit
                 }
 
                 is PressQueueAcceptance.Accepted -> {
+                    httpMeasurements.tap(emotion, inputTime.value)
                     result
                 }
             }
@@ -184,6 +193,7 @@ internal class PressSession(
     /** 다음 묶음과 정산 기준 스냅샷을 하나의 보류 쓰기로 만든다. */
     private fun newWrite(): PressWriteState? {
         val nextBatch = inputQueue.takeBatch() ?: return null
+        httpMeasurements.batch(nextBatch)
         return PressWriteState(PressPendingWrite(nextBatch, checkNotNull(mutableState.value.myToday)), nowMillis())
     }
 
@@ -213,15 +223,18 @@ internal class PressSession(
     /** 전송 중 상태를 화면에 즉시 노출한다. */
     override fun onSending(write: PressWriteState) {
         publish(mutableState.value.copy(isSending = true))
+        httpMeasurements.firstSend(write.pending.batch)
     }
 
     /** 전송 결과를 쓰기 원장과 공개 상태에 반영하고 다음 전송 결정을 돌려준다. */
     override suspend fun onSendResult(
         write: PressWriteState,
         result: PressSendResult,
-    ): PressDeliveryDecision =
-        when (result) {
+    ): PressDeliveryDecision {
+        recordHttpAttemptResult(write, result)
+        return when (result) {
             is PressSendResult.Accepted -> {
+                httpMeasurements.finalResult(write.pending.batch, "APPLIED")
                 runCatching {
                     monitoring.recordSuccessfulActivity(
                         ActivityType.PERSONAL_PRESS,
@@ -246,6 +259,7 @@ internal class PressSession(
             }
 
             PressSendResult.Rejected -> {
+                httpMeasurements.finalResult(write.pending.batch, "REJECTED")
                 writeSession.reject(write)
                 pausedNotice = PressSessionNotice.Rejected
                 publish(mutableState.value.copy(isSending = false, notice = pausedNotice))
@@ -281,9 +295,40 @@ internal class PressSession(
                 }
             }
         }
+    }
+
+    private fun recordHttpAttemptResult(
+        write: PressWriteState,
+        result: PressSendResult,
+    ) {
+        when (result) {
+            is PressSendResult.Accepted ->
+                httpMeasurements.attemptResult(write.pending.batch, PressRaceHttpAttemptResult.Applied)
+
+            PressSendResult.Rejected ->
+                httpMeasurements.attemptResult(write.pending.batch, PressRaceHttpAttemptResult.Rejected)
+
+            PressSendResult.NotSent ->
+                httpMeasurements.attemptResult(write.pending.batch, PressRaceHttpAttemptResult.NotSent)
+
+            is PressSendResult.RetryAfter ->
+                httpMeasurements.attemptResult(
+                    write.pending.batch,
+                    PressRaceHttpAttemptResult.RetryAfter,
+                    result.delayMillis.value,
+                )
+
+            PressSendResult.ContractPending ->
+                httpMeasurements.attemptResult(write.pending.batch, PressRaceHttpAttemptResult.ContractPending)
+
+            PressSendResult.OutcomeUnknown ->
+                httpMeasurements.attemptResult(write.pending.batch, PressRaceHttpAttemptResult.OutcomeUnknown)
+        }
+    }
 
     /** 취소된 요청은 처리 불명으로 보존하고 멱등성 유효 기간 안에서만 재시도한다. */
     override fun onSendCancelled(write: PressWriteState): Boolean {
+        httpMeasurements.attemptResult(write.pending.batch, PressRaceHttpAttemptResult.Cancelled)
         writeSession.markRetryPending(write, uncertain = true)
         pausedNotice = PressSessionNotice.OutcomeUnknown
         publish(mutableState.value.copy(isSending = false, notice = pausedNotice))
@@ -354,20 +399,25 @@ internal class PressSession(
         val personalSnapshot = event.personal
         val aggregateSnapshot = event.aggregate
         if (writeOutcomeUnknownAtReadStart && personalSnapshot != null) {
+            val unknownBatch = writeSession.pendingUnknownBatch()
             when (writeSession.resolveUnknown(personalSnapshot, canRetryUnknown())) {
                 PressWriteResolution.Confirmed -> {
+                    unknownBatch?.let { httpMeasurements.recoveryResult(it, PressRaceRecoveryOutcome.Applied) }
                     reads.markAggregateRefreshPending()
                     delivery.resetRetryState()
                     pausedNotice = null
                 }
 
                 PressWriteResolution.Retired -> {
+                    unknownBatch?.let { httpMeasurements.recoveryResult(it, PressRaceRecoveryOutcome.Retired) }
                     pausedNotice = null
                     delivery.resetRetryState()
                 }
 
-                is PressWriteResolution.Pending, null -> {
-                }
+                is PressWriteResolution.Pending ->
+                    unknownBatch?.let { httpMeasurements.recoveryResult(it, PressRaceRecoveryOutcome.Pending) }
+
+                null -> Unit
             }
         }
         val readablePersonalSnapshot =

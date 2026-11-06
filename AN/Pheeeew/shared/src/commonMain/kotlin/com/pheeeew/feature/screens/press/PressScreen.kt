@@ -63,6 +63,7 @@ internal fun PressScreen(
     nearbyRanking: PressNearbyRankingUiState = PressNearbyRankingUiState(status = PressNearbyRankingStatus.Unavailable),
     activity: PressActivityUiState? = null,
     faceVisuals: Map<EmotionKind, EmotionFaceVisual> = emptyMap(),
+    debugTapDrawProbeEnabled: Boolean = false,
 ) {
     val feedbackScope = rememberCoroutineScope()
     val font = notoSansKrFontFamily()
@@ -150,6 +151,7 @@ internal fun PressScreen(
                 },
                 arrangement = EmotionPadArrangement.TwoThree,
                 modifier = Modifier.width(padWidth).padding(horizontal = 16.dp),
+                debugTapDrawProbeEnabled = debugTapDrawProbeEnabled,
             )
         }
         Spacer(Modifier.height(24.dp))

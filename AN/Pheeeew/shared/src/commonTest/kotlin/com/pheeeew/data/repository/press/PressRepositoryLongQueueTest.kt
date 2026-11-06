@@ -4,6 +4,12 @@ import com.pheeeew.core.monitoring.ActivityType
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.data.press.delivery.PressDeliveryPolicy
+import com.pheeeew.data.press.race.PressRaceHttpAttemptResult
+import com.pheeeew.data.press.race.PressRaceMeasureKind
+import com.pheeeew.data.press.race.PressRaceMeasureOutcome
+import com.pheeeew.data.press.race.PressRaceMeasureSource
+import com.pheeeew.data.press.race.PressRaceMeasurements
+import com.pheeeew.data.press.race.PressRaceRecoveryOutcome
 import com.pheeeew.data.press.retry.PressRetryPolicy
 import com.pheeeew.data.repository.PressRepositoryImpl
 import com.pheeeew.domain.model.emotion.EmotionState
@@ -245,6 +251,65 @@ class PressRepositoryLongQueueTest {
         }
 
     @Test
+    fun `snapshot-confirmed unknown batch records one recovery result and releases recorder slot`() =
+        runTest {
+            val server = Server()
+            val sender = Sender(server, PressSendResult.OutcomeUnknown, applyBeforeUnknown = true)
+            val measurements = PressRaceMeasurements(true, { testScheduler.currentTime })
+            val repository = repository(server, sender, measurements = measurements)
+
+            repository.refreshToday()
+            runCurrent()
+            repository.accept(EmotionState.FRUSTRATED)
+            runCurrent()
+
+            assertFalse(repository.state.value.isOutcomeUnknown)
+            assertEquals(1, measurements.samples.count { it.kind == PressRaceMeasureKind.RecoveryResult })
+            assertEquals(
+                PressRaceRecoveryOutcome.Applied,
+                measurements.samples.single { it.kind == PressRaceMeasureKind.RecoveryResult }.recoveryOutcome,
+            )
+            assertEquals(PressRaceMeasureSource.Http, measurements.samples.last().source)
+            assertEquals(0, measurements.pendingInputCount)
+        }
+
+    @Test
+    fun `each real retry records its response with one sanitized batch correlation`() =
+        runTest {
+            val server = Server()
+            val sender =
+                Sender(
+                    server,
+                    PressSendResult.NotSent,
+                    PressSendResult.RetryAfter(PressDelayMillis(5_000L)),
+                )
+            val measurements = PressRaceMeasurements(true, { testScheduler.currentTime })
+            val repository = repository(server, sender, measurements = measurements)
+
+            repository.refreshToday()
+            runCurrent()
+            repository.accept(EmotionState.FRUSTRATED)
+            runCurrent()
+            advanceTimeBy(6_000L)
+            runCurrent()
+
+            val attempts = measurements.samples.filter { it.kind == PressRaceMeasureKind.SendAttemptResult }
+            assertEquals(3, sender.batches.size)
+            assertEquals(listOf(1, 2, 3), attempts.map { it.attempt })
+            assertEquals(
+                listOf(
+                    PressRaceHttpAttemptResult.NotSent,
+                    PressRaceHttpAttemptResult.RetryAfter,
+                    PressRaceHttpAttemptResult.Applied,
+                ),
+                attempts.map { it.attemptResult },
+            )
+            assertEquals(listOf(null, 5_000L, null), attempts.map { it.retryAfterMillis })
+            assertEquals(1, attempts.map { it.sample }.distinct().size)
+            assertEquals(PressRaceMeasureKind.FinalAck, measurements.samples.last().kind)
+        }
+
+    @Test
     fun `unconfirmed batch retires without replay and drains later input`() =
         runTest {
             val server = Server()
@@ -278,7 +343,8 @@ class PressRepositoryLongQueueTest {
         runTest {
             val server = Server()
             val sender = Sender(server, PressSendResult.OutcomeUnknown, applyBeforeUnknown = false)
-            val repository = repository(server, sender)
+            val measurements = PressRaceMeasurements(true, { testScheduler.currentTime })
+            val repository = repository(server, sender, measurements = measurements)
             repository.refreshToday()
             runCurrent()
             repository.accept(EmotionState.ANGRY)
@@ -292,6 +358,10 @@ class PressRepositoryLongQueueTest {
             assertFalse(repository.state.value.isOutcomeUnknown)
             assertEquals(0L, repository.state.value.optimisticAllPressCount)
             assertEquals(1, sender.batches.size)
+            val recovery = measurements.samples.filter { it.kind == PressRaceMeasureKind.RecoveryResult }
+            assertTrue(recovery.isNotEmpty())
+            assertEquals(PressRaceRecoveryOutcome.Retired, recovery.last().recoveryOutcome)
+            assertEquals(0, measurements.pendingInputCount)
         }
 
     @Test
@@ -541,6 +611,7 @@ class PressRepositoryLongQueueTest {
         server: Server,
         sender: Sender,
         connectivity: MutableStateFlow<Boolean>? = null,
+        measurements: PressRaceMeasurements = PressRaceMeasurements(),
     ) = PressRepositoryImpl(
         server,
         sender,
@@ -550,6 +621,7 @@ class PressRepositoryLongQueueTest {
         retryPolicy = PressRetryPolicy(jitter = { 1.0 }),
         deliveryPolicy = PressDeliveryPolicy(minRequestIntervalMillis = PressDelayMillis(10L)),
         nowMillis = { PressMonotonicMillis(testScheduler.currentTime) },
+        measurements = measurements,
     )
 
     private class Server : PressStatisticsDataSource {

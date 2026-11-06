@@ -5,6 +5,7 @@ import com.pheeeew.data.press.delivery.PressWriteState
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.press.AllDailyPressSnapshot
 import com.pheeeew.domain.model.press.MyDailyPressSnapshot
+import com.pheeeew.domain.model.press.PressBatch
 import com.pheeeew.domain.press.settlement.PressReconciler
 import com.pheeeew.domain.press.settlement.PressWriteCounts
 import com.pheeeew.domain.press.settlement.PressWriteLedger
@@ -35,6 +36,8 @@ internal class PressWriteSession {
     fun isAwaitingSnapshot(): Boolean = pendingWrite?.phase == PressWritePhase.AwaitingSnapshot
 
     fun isInFlight(): Boolean = pendingWrite?.phase == PressWritePhase.InFlight
+
+    fun pendingUnknownBatch(): PressBatch? = pendingWrite?.takeIf { it.uncertain }?.pending?.batch
 
     fun acceptedPressCoverageAtReadStart(): Long =
         if (isOutcomeUnknown()) 0L else ledger.acceptedPressCoverageAtReadStart()

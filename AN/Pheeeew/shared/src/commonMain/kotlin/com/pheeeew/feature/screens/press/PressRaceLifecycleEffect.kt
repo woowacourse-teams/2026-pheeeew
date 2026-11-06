@@ -10,6 +10,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pheeeew.data.press.race.PressRaceDiagnostic
 import com.pheeeew.data.press.race.PressRaceSession
 import com.pheeeew.data.press.race.PressRaceView
+import com.pheeeew.data.press.race.PressRaceViewActivation
+import com.pheeeew.data.press.race.newPressRaceClock
 
 /** One effect at App's composition root, never one per animated navigation destination. */
 @Composable
@@ -21,7 +23,12 @@ internal fun PressRaceLifecycleEffect(
 ) {
     val binding =
         remember(session, lifecycle) {
-            PressRaceLifecycleBinding(lifecycle, session::setView, session::noteVisibility)
+            PressRaceLifecycleBinding(
+                lifecycle = lifecycle,
+                onView = { target, activation -> session.setView(target, activation) },
+                onVisibility = session::noteVisibility,
+                activationFactory = session::viewActivation,
+            )
         }
     DisposableEffect(binding) {
         binding.attach()
@@ -33,14 +40,17 @@ internal fun PressRaceLifecycleEffect(
 /** Main-thread lifecycle adapter. Deduplication prevents recomposition from implicitly retrying a failure. */
 internal class PressRaceLifecycleBinding(
     private val lifecycle: Lifecycle,
-    private val onView: (PressRaceView?) -> Unit,
+    private val onView: (PressRaceView?, PressRaceViewActivation?) -> Unit,
     private val onVisibility: (PressRaceDiagnostic) -> Unit = {},
+    private val monotonicClock: (() -> Long)? = null,
+    private val activationFactory: (() -> PressRaceViewActivation?)? = null,
 ) {
     private var requested: PressRaceView? = null
     private var enabled = false
     private var delivered: PressRaceView? = null
     private var attached = false
     private var disposed = false
+    private val defaultMonotonicClock by lazy { newPressRaceClock() }
     private val observer = LifecycleEventObserver { _, _ -> synchronize() }
 
     fun attach() {
@@ -64,6 +74,7 @@ internal class PressRaceLifecycleBinding(
         if (!attached || disposed) return
         val target = requested.takeIf { enabled && lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) }
         if (target != delivered) {
+            val wasInactive = delivered == null
             if (target == null) {
                 onVisibility(
                     when {
@@ -75,8 +86,21 @@ internal class PressRaceLifecycleBinding(
                 )
             }
             delivered = target
-            onView(target)
+            val activation =
+                if (target != null && wasInactive) {
+                    captureActivation()
+                } else {
+                    null
+                }
+            onView(target, activation)
         }
+    }
+
+    private fun captureActivation(): PressRaceViewActivation? {
+        val factory = activationFactory
+        if (factory != null) return runCatching { factory() }.getOrElse { PressRaceViewActivation(null) }
+        val clock = monotonicClock ?: runCatching { defaultMonotonicClock }.getOrNull()
+        return PressRaceViewActivation(clock?.let { runCatching { it() }.getOrNull() })
     }
 
     fun dispose() {
@@ -86,7 +110,7 @@ internal class PressRaceLifecycleBinding(
         if (delivered != null) {
             onVisibility(PressRaceDiagnostic.BindingDisposed)
             delivered = null
-            onView(null)
+            onView(null, null)
         }
     }
 }

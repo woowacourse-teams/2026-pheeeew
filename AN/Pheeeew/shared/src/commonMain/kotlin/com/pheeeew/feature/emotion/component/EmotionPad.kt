@@ -60,6 +60,7 @@ internal fun EmotionPad(
     modifier: Modifier = Modifier,
     reducedMotionOverride: Boolean? = null,
     faceVisuals: Map<EmotionKind, EmotionFaceVisual> = emptyMap(),
+    debugTapDrawProbeEnabled: Boolean = false,
 ) {
     val reducedMotion = reducedMotionOverride ?: rememberTapReducedMotion()
     val mark = remember { TimeSource.Monotonic.markNow() }
@@ -67,6 +68,10 @@ internal fun EmotionPad(
     fun now(): Double = mark.elapsedNow().inWholeNanoseconds / 1_000_000.0
 
     val feedback = remember { TapFeedbackState<EmotionKind>() }
+    val drawProbe =
+        remember(debugTapDrawProbeEnabled) {
+            if (debugTapDrawProbeEnabled) EmotionTapDrawProbe(enabled = true) else null
+        }
     val buzzer = faceVisuals.isNotEmpty()
     val motions = remember(buzzer) { EmotionKind.entries.associateWith { TapButtonMotion(buzzer = buzzer) } }
     val random = remember { TapRandom() }
@@ -95,7 +100,8 @@ internal fun EmotionPad(
         frameRequests.trySend(Unit)
     }
 
-    fun settle() {
+    fun settle(reason: String) {
+        drawProbe?.cancelAll(reason)
         feedback.clear()
         motions.values.forEach { it.reset() }
         frameTime.value = now()
@@ -104,16 +110,18 @@ internal fun EmotionPad(
 
     LaunchedEffect(enabled, preserveFeedbackWhileDisabled) {
         if (!enabled && !preserveFeedbackWhileDisabled) {
+            drawProbe?.cancelAll("input_disabled")
             feedback.clear()
             tick++
         }
     }
     LaunchedEffect(reduce, focused) {
-        if (reduce || !focused) settle()
+        if (reduce || !focused) settle("reduced_motion_or_unfocused")
     }
-    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { settle() }
-    DisposableEffect(Unit) {
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { settle("lifecycle_stopped") }
+    DisposableEffect(drawProbe) {
         onDispose {
+            drawProbe?.close()
             feedback.clear()
             motions.values.forEach { it.reset() }
         }
@@ -126,7 +134,18 @@ internal fun EmotionPad(
                 withFrameNanos { }
                 val time = now()
                 val previousParticleCount = feedback.particles.size
-                feedback.advance(time)
+                val activeDrawProbe = drawProbe?.takeIf { it.isEnabled }
+                if (activeDrawProbe != null) {
+                    feedback.advance(time) { particleId ->
+                        activeDrawProbe.particleRemoved(
+                            particleId,
+                            EmotionTapDrawProbe.RemovalOutcome.Missing,
+                            "expired_before_draw",
+                        )
+                    }
+                } else {
+                    feedback.advance(time)
+                }
                 motions.values.forEach { it.sample(time) }
                 frameTime.value = time
                 if (feedback.particles.size != previousParticleCount) tick++
@@ -172,6 +191,7 @@ internal fun EmotionPad(
             originX: Float,
             originY: Float,
             pointer: Offset?,
+            tapToken: EmotionTapDrawProbe.Token?,
         ) {
             val reaction = TapCatalog.pick(kind, random, localizedTapTexts, plusOne)
             val measured =
@@ -216,7 +236,35 @@ internal fun EmotionPad(
                     combo = combo,
                     reduced = reduce,
                 )
-            feedback.add(kind, reaction, flight, timeOfTap, width, height)
+            val activeDrawProbe = drawProbe?.takeIf { it.isEnabled }
+            val particleId =
+                if (activeDrawProbe != null) {
+                    feedback.add(
+                        kind,
+                        reaction,
+                        flight,
+                        timeOfTap,
+                        width,
+                        height,
+                        onExpired = { removedParticleId ->
+                            activeDrawProbe.particleRemoved(
+                                removedParticleId,
+                                EmotionTapDrawProbe.RemovalOutcome.Missing,
+                                "expired_before_draw",
+                            )
+                        },
+                        onEvicted = { removedParticleId ->
+                            activeDrawProbe.particleRemoved(
+                                removedParticleId,
+                                EmotionTapDrawProbe.RemovalOutcome.Evicted,
+                                "capacity_84",
+                            )
+                        },
+                    )
+                } else {
+                    feedback.add(kind, reaction, flight, timeOfTap, width, height)
+                }
+            activeDrawProbe?.particleAdded(tapToken, particleId)
             refresh()
         }
 
@@ -246,21 +294,28 @@ internal fun EmotionPad(
                     now = ::now,
                     onMotionChanged = ::refresh,
                     onTap = { pointer ->
-                        val accepted = callback(kind)
-                        dispatchEmotionTapFeedback(
-                            accepted = accepted,
-                            allowVisualFeedbackWhenRejected = allowVisualFeedbackWhenRejected,
-                            hapticFeedback = hapticFeedback,
-                        ) {
-                            // Start visual feedback now; the ViewModel persists accepted taps asynchronously.
-                            addReaction(kind, originX, originY, pointer)
-                            val acknowledge = feedbackAcknowledgement()
-                            if (acknowledge != null) {
-                                scope.launch {
-                                    withFrameNanos { }
-                                    if (currentFocused) acknowledge()
+                        val tap = invokeEmotionTapCallback(drawProbe) { callback(kind) }
+                        val acceptedTapToken = tap.token.takeIf { tap.accepted }
+                        try {
+                            dispatchEmotionTapFeedback(
+                                accepted = tap.accepted,
+                                allowVisualFeedbackWhenRejected = allowVisualFeedbackWhenRejected,
+                                hapticFeedback = hapticFeedback,
+                            ) {
+                                // Start visual feedback now; the ViewModel persists accepted taps asynchronously.
+                                addReaction(kind, originX, originY, pointer, acceptedTapToken)
+                                val acknowledge = feedbackAcknowledgement()
+                                if (acknowledge != null) {
+                                    scope.launch {
+                                        withFrameNanos { }
+                                        if (currentFocused) acknowledge()
+                                    }
                                 }
                             }
+                            drawProbe?.feedbackCompleted(acceptedTapToken)
+                        } catch (failure: Throwable) {
+                            drawProbe?.feedbackThrew(acceptedTapToken)
+                            throw failure
                         }
                     },
                     modifier =
@@ -273,6 +328,7 @@ internal fun EmotionPad(
                 particles = particles,
                 frameTime = frameTime,
                 padPosition = padPositionState,
+                drawProbe = drawProbe,
                 modifier = Modifier.fillMaxSize(),
             )
         }
