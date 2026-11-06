@@ -1,6 +1,5 @@
 package com.pheeeew.support;
 
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.springframework.boot.flyway.autoconfigure.FlywayMigrationStrategy;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -11,7 +10,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 public class SharedPostgisTestConfiguration {
 
     // 컨테이너가 JVM 당 하나이므로 스키마도 JVM 당 한 번만 만들면 된다.
-    private static final AtomicBoolean MIGRATED = new AtomicBoolean();
+    private static boolean migrated;
 
     /**
      * 같은 JVM 의 두 번째 컨텍스트부터 Flyway 를 건너뛴다.
@@ -25,8 +24,12 @@ public class SharedPostgisTestConfiguration {
     @Bean
     FlywayMigrationStrategy migrateOncePerJvm() {
         return flyway -> {
-            if (MIGRATED.compareAndSet(false, true)) {
-                flyway.migrate();
+            // 실패하면 표시를 남기지 않아 다음 컨텍스트가 다시 마이그레이션한다.
+            synchronized (SharedPostgisTestConfiguration.class) {
+                if (!migrated) {
+                    flyway.migrate();
+                    migrated = true;
+                }
             }
         };
     }

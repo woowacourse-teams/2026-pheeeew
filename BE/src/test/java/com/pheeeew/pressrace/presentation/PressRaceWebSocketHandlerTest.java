@@ -4,6 +4,7 @@ import static com.pheeeew.pressrace.fixture.PressRankingFixture.OBSERVER_ID;
 import static com.pheeeew.pressrace.fixture.PressRankingFixture.순위;
 import static com.pheeeew.pressrace.fixture.PressRankingFixture.참가자;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -289,6 +290,18 @@ class PressRaceWebSocketHandlerTest {
             protocol.publish(14, 13);
             assertOvertakes(current.snapshot(), 1, 0);
         }
+    }
+
+    @Test
+    void heartbeat_타임아웃이_Ping_뒤_응답_여유를_1초_미만으로_남기면_시작하지_않는다() {
+        PressRaceService service = mock(PressRaceService.class);
+        PressRankingPublisher publisher = mock(PressRankingPublisher.class);
+
+        assertThatThrownBy(() -> new PressRaceWebSocketHandler(service, publisher, 50, 75))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new PressRaceWebSocketHandler(service, publisher, 1_000, 1_999))
+                .isInstanceOf(IllegalArgumentException.class);
+        new PressRaceWebSocketHandler(service, publisher, 1_000, 2_000);
     }
 
     @Test
