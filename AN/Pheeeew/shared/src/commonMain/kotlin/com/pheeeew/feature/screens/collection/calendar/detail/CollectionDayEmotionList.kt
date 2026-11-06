@@ -49,7 +49,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -63,7 +62,7 @@ import com.pheeeew.feature.emotion.model.EmotionType
 import com.pheeeew.feature.screens.collection.CollectionDayEmojiUiModel
 import com.pheeeew.feature.screens.collection.CollectionDayEmotionUiModel
 import com.pheeeew.feature.screens.collection.CollectionPreviewTheme
-import com.pheeeew.feature.screens.collection.calendar.CollectionRetryState
+import com.pheeeew.feature.component.emotion.EmotionListLoadError
 import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -72,6 +71,7 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.collection_day_emotions_empty
+import pheeeew.shared.generated.resources.collection_day_emotions_error
 import pheeeew.shared.generated.resources.emotion_chat_add_reaction
 import pheeeew.shared.generated.resources.emotion_delete_action
 import pheeeew.shared.generated.resources.ic_emotion_angry
@@ -96,10 +96,13 @@ internal fun LazyListScope.collectionDayEmotionItems(
 ) {
     if (emotionsError != null && emotions.isEmpty()) {
         item(key = "emotion-error") {
-            CollectionRetryState(
+            EmotionListLoadError(
+                title = stringResource(Res.string.collection_day_emotions_error),
                 message = emotionsError,
+                hasItems = false,
+                icon = Res.drawable.ic_emotion_discouraged,
                 onRetry = onRetryEmotions,
-                modifier = Modifier.fillMaxWidth().height(180.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
             )
         }
     } else if (isLoadingEmotions && emotions.isEmpty()) {
@@ -110,11 +113,13 @@ internal fun LazyListScope.collectionDayEmotionItems(
         }
     } else if (emotions.isEmpty()) {
         item(key = "emotion-empty") {
-            Text(
-                stringResource(Res.string.collection_day_emotions_empty),
-                modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
-                color = AppColors.TextSecondary,
-                textAlign = TextAlign.Center,
+            EmotionListLoadError(
+                title = stringResource(Res.string.collection_day_emotions_empty),
+                message = null,
+                hasItems = false,
+                onRetry = null,
+                icon = Res.drawable.ic_emotion_exhausted,
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
             )
         }
     } else {
@@ -140,11 +145,13 @@ internal fun LazyListScope.collectionDayEmotionItems(
             }
         } else if (emotionsError != null) {
             item(key = "emotion-next-error") {
-                Text(
-                    emotionsError,
-                    modifier = Modifier.fillMaxWidth().clickable(onClick = onRetryNextEmotions).padding(16.dp),
-                    color = AppColors.RecordSheetRecording,
-                    textAlign = TextAlign.Center,
+                EmotionListLoadError(
+                    title = stringResource(Res.string.collection_day_emotions_error),
+                    message = emotionsError,
+                    hasItems = true,
+                    onRetry = onRetryNextEmotions,
+                    icon = Res.drawable.ic_emotion_discouraged,
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
                 )
             }
         }

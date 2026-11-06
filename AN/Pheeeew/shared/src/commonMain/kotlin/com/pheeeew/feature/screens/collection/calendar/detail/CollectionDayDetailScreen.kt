@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -43,6 +44,7 @@ import com.pheeeew.core.audio.AudioPlaybackState
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.domain.model.collection.CollectionEmotionContentType
 import com.pheeeew.domain.model.emotion.EmotionReactionType
+import com.pheeeew.feature.component.emotion.EmotionListLoadError
 import com.pheeeew.feature.emotion.model.EmotionType
 import com.pheeeew.feature.screens.collection.CollectionDayEmotionUiModel
 import com.pheeeew.feature.screens.collection.CollectionPreviewTheme
@@ -60,7 +62,10 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.collection_card_action_hint
+import pheeeew.shared.generated.resources.collection_day_cards_error
 import pheeeew.shared.generated.resources.ic_arrow_back
+import pheeeew.shared.generated.resources.ic_emotion_discouraged
+import pheeeew.shared.generated.resources.ic_emotion_frustrated
 
 @Composable
 internal fun CollectionDayDetailScreen(
@@ -93,6 +98,9 @@ internal fun CollectionDayDetailScreen(
     onReactToEmotion: (Long, EmotionReactionType) -> Unit = { _, _ -> },
     pendingReactionIds: Set<Long> = emptySet(),
     reactionError: String? = null,
+    cardLoadError: String? = null,
+    isCommonError: Boolean = false,
+    onRetryCardLoad: () -> Unit = {},
 ) {
     val initialPage = dates.indexOf(selectedCardId).coerceAtLeast(0)
     val pagerState = rememberPagerState(initialPage = initialPage, pageCount = { dates.size.coerceAtLeast(1) })
@@ -137,33 +145,10 @@ internal fun CollectionDayDetailScreen(
             year != null && year in 1..9999 &&
                 month != null && month in 1..12 && day != null && day in 1..31
 
-        Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-            Box(
-                modifier =
-                    Modifier
-                        .align(Alignment.CenterStart)
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .clickable(role = Role.Button, onClick = onBack)
-                        .padding(4.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    painter = painterResource(Res.drawable.ic_arrow_back),
-                    contentDescription = "달력으로 돌아가기",
-                    tint = AppColors.GroupInk,
-                )
-            }
-            if (hasDate) {
-                Text(
-                    text = "${parts[1].padStart(2, '0')}월 ${parts[2].padStart(2, '0')}일",
-                    modifier = Modifier.align(Alignment.Center).padding(horizontal = 44.dp),
-                    color = AppColors.TextPrimary,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-        }
+        CollectionDayHeader(
+            title = if (hasDate) "${parts[1].padStart(2, '0')}월 ${parts[2].padStart(2, '0')}일" else null,
+            onBack = onBack,
+        )
         LazyColumn(
             state = listState,
             modifier = Modifier.weight(1f).fillMaxWidth(),
@@ -187,45 +172,56 @@ internal fun CollectionDayDetailScreen(
                     BoxWithConstraints(Modifier.fillMaxWidth()) {
                         val cardWidth = maxWidth * 0.65f
                         val cardHeight = cardWidth / 0.75f
-                        HorizontalPager(
-                            state = pagerState,
-                            modifier = Modifier.fillMaxWidth().height(cardHeight),
-                            pageSize = PageSize.Fixed(cardWidth),
-                            contentPadding = PaddingValues(horizontal = (maxWidth - cardWidth) / 2),
-                            pageSpacing = maxWidth * 0.04f,
-                            key = { index -> dates.getOrNull(index) ?: "empty-$index" },
-                        ) { page ->
-                            val date = dates.getOrNull(page) ?: return@HorizontalPager
-                            val card = cards.firstOrNull { it.id == date || it.period.take(10).replace('.', '-') == date }
-                            if (card != null) {
-                                CollectionCard(
-                                    uiModel = card,
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .coverFlowItem(pagerState, page)
-                                            .clickable(role = Role.Button) { onOpenCard(card.id) },
-                                )
-                            } else if (date == todayDate && todayProgress != null) {
-                                CollectionProgressCard(
-                                    progress = todayProgress,
-                                    isLoading = isLoadingToday,
-                                    error = todayClaimError,
-                                    onClaim = { onClaimToday(todayProgress.emotion) },
-                                    onRetry = onRetryTodayClaim,
-                                    modifier = Modifier.fillMaxWidth().coverFlowItem(pagerState, page),
-                                )
-                            } else {
-                                CollectionUnissuedCard(
-                                    modifier = Modifier.fillMaxWidth().coverFlowItem(pagerState, page),
-                                )
+                        if (cardLoadError != null) {
+                            EmotionListLoadError(
+                                title = stringResource(Res.string.collection_day_cards_error),
+                                message = cardLoadError,
+                                hasItems = false,
+                                icon = if (isCommonError) Res.drawable.ic_emotion_frustrated else Res.drawable.ic_emotion_discouraged,
+                                onRetry = onRetryCardLoad,
+                                modifier = Modifier.fillMaxWidth().heightIn(min = cardHeight),
+                            )
+                        } else {
+                            HorizontalPager(
+                                state = pagerState,
+                                modifier = Modifier.fillMaxWidth().height(cardHeight),
+                                pageSize = PageSize.Fixed(cardWidth),
+                                contentPadding = PaddingValues(horizontal = (maxWidth - cardWidth) / 2),
+                                pageSpacing = maxWidth * 0.04f,
+                                key = { index -> dates.getOrNull(index) ?: "empty-$index" },
+                            ) { page ->
+                                val date = dates.getOrNull(page) ?: return@HorizontalPager
+                                val card = cards.firstOrNull { it.id == date || it.period.take(10).replace('.', '-') == date }
+                                if (card != null) {
+                                    CollectionCard(
+                                        uiModel = card,
+                                        modifier =
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .coverFlowItem(pagerState, page)
+                                                .clickable(role = Role.Button) { onOpenCard(card.id) },
+                                    )
+                                } else if (date == todayDate && todayProgress != null) {
+                                    CollectionProgressCard(
+                                        progress = todayProgress,
+                                        isLoading = isLoadingToday,
+                                        error = todayClaimError,
+                                        onClaim = { onClaimToday(todayProgress.emotion) },
+                                        onRetry = onRetryTodayClaim,
+                                        modifier = Modifier.fillMaxWidth().coverFlowItem(pagerState, page),
+                                    )
+                                } else {
+                                    CollectionUnissuedCard(
+                                        modifier = Modifier.fillMaxWidth().coverFlowItem(pagerState, page),
+                                    )
+                                }
                             }
                         }
                     }
                     Text(
                         text = stringResource(Res.string.collection_card_action_hint),
                         modifier =
-                            if (currentCard != null) Modifier else Modifier.alpha(0f).clearAndSetSemantics {},
+                            if (currentCard != null && cardLoadError == null) Modifier else Modifier.alpha(0f).clearAndSetSemantics {},
                         color = AppColors.TextSecondary,
                         fontSize = 10.sp,
                     )
@@ -274,6 +270,37 @@ internal fun CollectionDayDetailScreen(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+internal fun CollectionDayHeader(title: String?, onBack: () -> Unit) {
+    Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Box(
+            modifier =
+                Modifier
+                    .align(Alignment.CenterStart)
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .clickable(role = Role.Button, onClick = onBack)
+                    .padding(4.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(Res.drawable.ic_arrow_back),
+                contentDescription = "달력으로 돌아가기",
+                tint = AppColors.GroupInk,
+            )
+        }
+        if (title != null) {
+            Text(
+                text = title,
+                modifier = Modifier.align(Alignment.Center).padding(horizontal = 44.dp),
+                color = AppColors.TextPrimary,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+            )
         }
     }
 }
@@ -368,6 +395,73 @@ private fun CollectionDayDetailScreenPreview() {
                     false,
                     null,
                 ) {},
+            onBack = {},
+            onCardSettled = {},
+            onOpenCard = {},
+            onLoadMoreEmotions = {},
+            onRetryEmotions = {},
+        )
+    }
+}
+
+@Preview(name = "날짜 상세 · 전체 오류", widthDp = 402, heightDp = 850, showBackground = true)
+@Composable
+private fun CollectionDayCommonErrorPreview() {
+    CollectionPreviewTheme {
+        Column(Modifier.fillMaxSize().background(AppColors.GroupBackground)) {
+            CollectionDayHeader(title = "10월 15일", onBack = {})
+            EmotionListLoadError(
+                title = stringResource(Res.string.collection_day_cards_error),
+                message = "인터넷 연결을 확인하고 다시 시도해 주세요.",
+                hasItems = false,
+                icon = Res.drawable.ic_emotion_frustrated,
+                onRetry = {},
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+            )
+        }
+    }
+}
+
+@Preview(name = "날짜 상세 · 카드 오류", widthDp = 402, heightDp = 850, showBackground = true)
+@Composable
+private fun CollectionDayCardErrorPreview() {
+    CollectionDayFeedbackPreview(cardError = "이번 달 카드를 불러오지 못했어요.")
+}
+
+@Preview(name = "날짜 상세 · 감정 오류", widthDp = 402, heightDp = 850, showBackground = true)
+@Composable
+private fun CollectionDayEmotionErrorPreview() {
+    CollectionDayFeedbackPreview(emotionError = "서버 응답을 확인할 수 없어요.")
+}
+
+@Preview(name = "날짜 상세 · 남긴 감정 없음", widthDp = 402, heightDp = 850, showBackground = true)
+@Composable
+private fun CollectionDayEmptyEmotionsPreview() {
+    CollectionDayFeedbackPreview()
+}
+
+@Composable
+private fun CollectionDayFeedbackPreview(
+    cardError: String? = null,
+    emotionError: String? = null,
+) {
+    CollectionPreviewTheme {
+        val date = "2026-10-15"
+        val playback = remember { MutableStateFlow(AudioPlaybackState.Empty) }
+        CollectionDayDetailScreen(
+            cards = emptyList(),
+            selectedCardId = date,
+            dates = listOf(date),
+            nickname = "오늘도히유",
+            emotions = emptyList(),
+            emotionCount = 0.takeIf { cardError == null && emotionError == null },
+            isLoadingEmotions = false,
+            isLoadingNextEmotions = false,
+            emotionsError = emotionError,
+            emotionsLoaded = cardError == null && emotionError == null,
+            hasNextEmotions = false,
+            audio = CollectionDayAudioState(null, playback, false, null) {},
+            cardLoadError = cardError,
             onBack = {},
             onCardSettled = {},
             onOpenCard = {},
