@@ -1,7 +1,6 @@
 package com.pheeeew.feature.screens.ranking.press.components
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -36,12 +35,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.feature.component.PressRankBadge
 import com.pheeeew.feature.component.rememberCountUp
-import com.pheeeew.feature.emotion.component.EmotionFeedbackCatalog
-import com.pheeeew.feature.emotion.model.EmotionKind
 import com.pheeeew.feature.screens.ranking.press.PressRaceRowModel
 import com.pheeeew.feature.screens.ranking.press.raceCountText
 import com.pheeeew.feature.screens.ranking.press.raceTrackPosition
-import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.press_race_column_count
@@ -51,9 +47,6 @@ import pheeeew.shared.generated.resources.press_race_column_track
 import pheeeew.shared.generated.resources.press_race_me
 import pheeeew.shared.generated.resources.press_race_my_row_description
 import pheeeew.shared.generated.resources.press_race_row_description
-
-// Decorative markers until product enables representative emotion display.
-private val raceFaces = listOf(EmotionKind.Blocked, EmotionKind.Annoyed, EmotionKind.Tired)
 
 private val ink = Color(0xFF202323)
 private val muted = Color(0xFF767D78)
@@ -190,10 +183,11 @@ internal fun PressRaceRow(
                         }
                     },
             ) {
-                Image(
-                    painterResource(EmotionFeedbackCatalog.face(raceFaces[row.markerIndex.mod(raceFaces.size)])),
-                    contentDescription = null,
+                RunningRaceCharacter(
+                    emotion = row.emotion,
                     modifier = Modifier.fillMaxSize(),
+                    reducedMotion = reducedMotion,
+                    phaseSeed = row.publicId?.hashCode() ?: row.markerIndex,
                 )
             }
         }

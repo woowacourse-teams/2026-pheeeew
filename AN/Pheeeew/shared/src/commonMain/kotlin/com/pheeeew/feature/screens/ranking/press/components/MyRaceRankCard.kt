@@ -1,7 +1,6 @@
 package com.pheeeew.feature.screens.ranking.press.components
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -41,10 +40,8 @@ import androidx.compose.ui.unit.sp
 import com.pheeeew.feature.screens.ranking.press.PressPersonRank
 import com.pheeeew.feature.screens.ranking.press.PressRankingStatus
 import com.pheeeew.feature.screens.ranking.press.raceCountText
-import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
-import pheeeew.shared.generated.resources.press_blocked_stage_0
 import pheeeew.shared.generated.resources.press_my_rank_count
 import pheeeew.shared.generated.resources.press_my_rank_description
 import pheeeew.shared.generated.resources.press_my_rank_empty
@@ -71,6 +68,7 @@ internal fun MyRaceRankCard(
     modifier: Modifier = Modifier,
     compact: Boolean = false,
     historical: Boolean = false,
+    reducedMotion: Boolean = false,
 ) {
     if (status == PressRankingStatus.Ready && me == null) {
         MyRaceEmptyCard(historical, onPress, modifier)
@@ -259,7 +257,12 @@ internal fun MyRaceRankCard(
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(0.55f), horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(Modifier.fillMaxWidth().height(80.dp), contentAlignment = Alignment.Center) {
-                        Image(painterResource(Res.drawable.press_blocked_stage_0), null, Modifier.requiredSize(140.dp))
+                        RunningRaceCharacter(
+                            me.emotion,
+                            Modifier.requiredSize(110.dp),
+                            reducedMotion = reducedMotion,
+                            phaseSeed = me.publicId?.hashCode() ?: 0,
+                        )
                         if (me.rank == 1L) {
                             Text(
                                 "✦",
