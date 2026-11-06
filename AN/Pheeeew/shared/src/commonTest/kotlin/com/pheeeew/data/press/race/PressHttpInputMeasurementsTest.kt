@@ -172,19 +172,19 @@ class PressHttpInputMeasurementsTest {
         val occurredAt = 1_800_000_000_000L
         val probe = PressHttpInputMeasurements(measurements)
 
-        repeat(171) { index ->
+        repeat(1366) { index ->
             val id = "ws-$index"
             measurements.tap(id)
             measurements.firstSend(id)
             measurements.finalResult(id, "APPLIED")
         }
-        assertEquals(513, logged.size)
+        assertEquals(4097, logged.size)
         assertEquals(PressRaceMeasureKind.SinkLimitReached, logged.last().kind)
 
         repeat(10_000) { probe.tap(EmotionState.FRUSTRATED, occurredAt) }
         probe.tap(EmotionState.FRUSTRATED, occurredAt)
 
-        assertEquals(514, logged.size)
+        assertEquals(4098, logged.size)
         assertEquals(PressRaceMeasureKind.CoverageGap, logged.last().kind)
         assertEquals(10_001, logged.last().presses)
         assertEquals(PressRaceMeasureSource.Http, logged.last().source)

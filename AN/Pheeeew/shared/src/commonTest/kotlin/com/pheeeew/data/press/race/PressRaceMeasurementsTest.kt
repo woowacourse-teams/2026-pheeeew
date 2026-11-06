@@ -67,15 +67,41 @@ class PressRaceMeasurementsTest {
             measurements.finalResult(id, "REJECTED")
         }
         assertEquals(128, measurements.samples.size)
-        assertEquals(513, printed.size)
-        assertEquals(1, printed.count { it.kind == PressRaceMeasureKind.SinkLimitReached })
-        assertEquals(PressRaceMeasureSource.Recorder, printed.last().source)
+        assertEquals(600, printed.size)
+        assertTrue(printed.none { it.kind == PressRaceMeasureKind.SinkLimitReached })
 
         measurements.coverageGap(PressRaceMeasureSource.Http, 3)
-        assertEquals(514, printed.size)
-        assertEquals(1, printed.count { it.kind == PressRaceMeasureKind.SinkLimitReached })
+        assertEquals(601, printed.size)
         assertEquals(1, printed.count { it.kind == PressRaceMeasureKind.CoverageGap })
         assertEquals(PressRaceMeasureSource.Http, printed.last().source)
+    }
+
+    @Test
+    fun longRoundSinkCapacityIsFiniteAndReportsTheLimitWithoutTruncatingSilently() {
+        val printed = mutableListOf<PressRaceMeasureSample>()
+        val measurements = PressRaceMeasurements(true, { 0L }, printed::add)
+
+        repeat(2049) { index ->
+            val key = PressRaceFrameKey("s", "c", "2026-10-27", PressRaceView.PRESS, "$index")
+            measurements.received(key, 0L)
+            measurements.uiApplied(key)
+            measurements.drawn(key)
+        }
+
+        assertEquals(4097, printed.size)
+        assertEquals(4096, printed.count { it.kind != PressRaceMeasureKind.SinkLimitReached })
+        assertEquals(1, printed.count { it.kind == PressRaceMeasureKind.SinkLimitReached })
+        assertEquals(128, measurements.samples.size)
+
+        val another = PressRaceFrameKey("s", "c", "2026-10-27", PressRaceView.PRESS, "after-limit")
+        measurements.received(another, 0L)
+        measurements.uiApplied(another)
+        measurements.drawn(another)
+        assertEquals(4097, printed.size)
+        measurements.coverageGap(PressRaceMeasureSource.Http, 2)
+        assertEquals(4098, printed.size)
+        assertEquals(1, printed.count { it.kind == PressRaceMeasureKind.SinkLimitReached })
+        assertEquals(1, printed.count { it.kind == PressRaceMeasureKind.CoverageGap })
     }
 
     @Test

@@ -149,6 +149,7 @@ internal class EmotionTapDrawProbe(
         }
         val elapsed = elapsedMicros(sample)
         val callback = sample.callbackMicros
+        val callbackStart = " callbackStartUs=${sample.startedAtMicros}"
         val detail =
             when (outcome) {
                 "drawn" -> {
@@ -160,13 +161,14 @@ internal class EmotionTapDrawProbe(
                 else -> " elapsedUs=${elapsed ?: "unknown"}"
             }
         val acceptance = sample.accepted?.let { " accepted=$it" } ?: ""
-        emit("sample=${sample.id} outcome=$outcome${acceptance}${reason?.let { " reason=$it" } ?: ""}$detail")
+        emit("sample=${sample.id} outcome=$outcome${acceptance}${reason?.let { " reason=$it" } ?: ""}$callbackStart$detail")
     }
 
     private fun reportOverflow(reason: String) {
         if (overflowReported) return
         overflowReported = true
-        emit("outcome=overflow reason=$reason limit=$MAX_PENDING_SAMPLES samples=$MAX_SAMPLES")
+        val limit = if (reason == "sample_limit") MAX_SAMPLES else MAX_PENDING_SAMPLES
+        emit("outcome=overflow reason=$reason limit=$limit samples=$MAX_SAMPLES")
     }
 
     private fun emit(message: String) {
@@ -181,7 +183,8 @@ internal class EmotionTapDrawProbe(
 
     private companion object {
         const val MAX_PENDING_SAMPLES = 84
-        const val MAX_SAMPLES = 128
+        // 50 warmup callbacks plus 500 measured callbacks in one fresh app process.
+        const val MAX_SAMPLES = 550
     }
 }
 

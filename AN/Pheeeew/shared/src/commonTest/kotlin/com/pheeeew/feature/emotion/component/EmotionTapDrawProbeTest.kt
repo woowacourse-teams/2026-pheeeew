@@ -26,8 +26,32 @@ class EmotionTapDrawProbeTest {
         assertEquals(1, output.size)
         assertTrue(output.single().contains("outcome=drawn"))
         assertTrue(output.single().contains("callbackUs=12"))
+        assertTrue(output.single().contains("callbackStartUs=100"))
         assertTrue(output.single().contains("tapToDrawUs=87"))
         assertTrue(output.single().contains("drawAfterCallbackUs=75"))
+    }
+
+    @Test
+    fun freshRoundRecordsFiftyWarmupAndFiveHundredMeasuredCallbacksWithoutTruncation() {
+        var nowMicros = 0L
+        val output = mutableListOf<String>()
+        val probe = EmotionTapDrawProbe(true, { nowMicros }, output::add)
+
+        repeat(50 + 500) { index ->
+            nowMicros += 1_000L
+            val callback = invokeEmotionTapCallback(probe) { true }
+            val particleId = index.toLong() + 1L
+            probe.particleAdded(callback.token, particleId)
+            probe.particleDrawn(particleId)
+        }
+
+        assertEquals(550, output.size)
+        assertTrue(output.first().contains("sample=1 outcome=drawn accepted=true callbackStartUs=1000"))
+        assertTrue(output.last().contains("sample=550 outcome=drawn accepted=true callbackStartUs=550000"))
+        assertTrue(output.none { it.contains("outcome=overflow") })
+
+        assertEquals(null, probe.begin())
+        assertTrue(output.last().contains("outcome=overflow reason=sample_limit limit=550 samples=550"))
     }
 
     @Test

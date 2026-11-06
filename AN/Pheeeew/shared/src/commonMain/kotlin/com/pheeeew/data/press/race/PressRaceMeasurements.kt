@@ -637,7 +637,7 @@ internal class PressRaceMeasurements(
             val old = state.value
             val changed = block(old)
             val valid = changed.added.filter { it.millis >= 0 }
-            val emitted = valid.take((512 - old.emitted).coerceAtLeast(0))
+            val emitted = valid.take((MAX_SINK_SAMPLES - old.emitted).coerceAtLeast(0))
             val next =
                 changed.state.copy(
                     samples = (old.samples + valid).takeLast(128),
@@ -645,9 +645,14 @@ internal class PressRaceMeasurements(
                 )
             if (state.compareAndSet(old, next)) {
                 emitted.forEach { sample -> runCatching { sink(sample) } }
-                if (old.emitted < 512 && next.emitted == 512) sinkLimitReached()
+                if (old.emitted < MAX_SINK_SAMPLES && next.emitted == MAX_SINK_SAMPLES) sinkLimitReached()
                 return
             }
         }
+    }
+
+    private companion object {
+        // A single 500-input round can emit multiple HTTP/WS and UI observations per input.
+        const val MAX_SINK_SAMPLES = 4096
     }
 }
