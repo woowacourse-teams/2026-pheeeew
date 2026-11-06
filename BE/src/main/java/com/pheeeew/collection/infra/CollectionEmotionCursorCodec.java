@@ -3,7 +3,7 @@ package com.pheeeew.collection.infra;
 import static com.pheeeew.collection.exception.CollectionErrorCode.COLLECTION_INVALID_CURSOR;
 
 import com.pheeeew.auth.infra.jwt.JwtProperties;
-import com.pheeeew.collection.application.dto.CollectionEmotionCursor;
+import com.pheeeew.collection.application.dto.CollectionDailyEmotionCursor;
 import com.pheeeew.collection.exception.CollectionException;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
@@ -20,7 +20,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class CollectionEmotionCursorCodec {
 
-    private static final String VERSION = "collection-emotions-1";
+    private static final String DAILY_VERSION = "collection-daily-emotions-1";
     private static final String ALGORITHM = "SHA256withRSA";
     private static final int MAX_CURSOR_LENGTH = 2048;
 
@@ -32,10 +32,23 @@ public class CollectionEmotionCursorCodec {
         this.publicKey = properties.publicKey();
     }
 
-    public String encode(CollectionEmotionCursor cursor) {
-        byte[] payload = String.join("|", VERSION, cursor.deviceId().toString(), cursor.cardId().toString(),
-                cursor.date().toString(), cursor.snapshotAt().toString(), cursor.lastCreatedAt().toString(),
-                Long.toString(cursor.lastId())).getBytes(StandardCharsets.UTF_8);
+    public String encodeDaily(CollectionDailyEmotionCursor cursor) {
+        return sign(String.join("|", DAILY_VERSION, cursor.deviceId().toString(), cursor.date().toString(),
+                cursor.snapshotAt().toString(), cursor.lastCreatedAt().toString(), Long.toString(cursor.lastId())));
+    }
+
+    public CollectionDailyEmotionCursor decodeDaily(String encoded) {
+        String[] fields = verifiedFields(encoded);
+        try {
+            return CollectionDailyEmotionCursor.of(UUID.fromString(fields[1]), LocalDate.parse(fields[2]),
+                    Instant.parse(fields[3]), Instant.parse(fields[4]), Long.parseLong(fields[5]));
+        } catch (IllegalArgumentException | DateTimeException exception) {
+            throw new CollectionException(COLLECTION_INVALID_CURSOR);
+        }
+    }
+
+    private String sign(String value) {
+        byte[] payload = value.getBytes(StandardCharsets.UTF_8);
         try {
             Signature signer = Signature.getInstance(ALGORITHM);
             signer.initSign(privateKey);
@@ -47,7 +60,7 @@ public class CollectionEmotionCursorCodec {
         }
     }
 
-    public CollectionEmotionCursor decode(String encoded) {
+    private String[] verifiedFields(String encoded) {
         if (encoded == null || encoded.isBlank() || encoded.length() > MAX_CURSOR_LENGTH) {
             throw new CollectionException(COLLECTION_INVALID_CURSOR);
         }
@@ -64,12 +77,11 @@ public class CollectionEmotionCursorCodec {
                 throw new CollectionException(COLLECTION_INVALID_CURSOR);
             }
             String[] fields = new String(payload, StandardCharsets.UTF_8).split("\\|", -1);
-            if (fields.length != 7 || !VERSION.equals(fields[0])) {
+            if (fields.length != 6 || !DAILY_VERSION.equals(fields[0])) {
                 throw new CollectionException(COLLECTION_INVALID_CURSOR);
             }
-            return CollectionEmotionCursor.of(UUID.fromString(fields[1]), UUID.fromString(fields[2]),
-                    LocalDate.parse(fields[3]), Instant.parse(fields[4]), Instant.parse(fields[5]), Long.parseLong(fields[6]));
-        } catch (GeneralSecurityException | IllegalArgumentException | DateTimeException exception) {
+            return fields;
+        } catch (GeneralSecurityException | IllegalArgumentException exception) {
             throw new CollectionException(COLLECTION_INVALID_CURSOR);
         }
     }
