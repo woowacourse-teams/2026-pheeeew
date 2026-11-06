@@ -54,7 +54,9 @@ import com.pheeeew.feature.monitoring.product.ProductScreen
 import com.pheeeew.feature.screens.press.measurement.pressRaceDrawMeasurement
 import com.pheeeew.feature.screens.ranking.press.components.EmptyRaceRanking
 import com.pheeeew.feature.screens.ranking.press.components.PressRaceRow
+import com.pheeeew.feature.screens.ranking.press.components.ProvideRaceAnimationClock
 import com.pheeeew.feature.screens.ranking.press.components.RankingDateSelector
+import com.pheeeew.feature.screens.ranking.press.components.raceAnimationViewport
 import com.pheeeew.feature.screens.ranking.press.components.rememberRankingEncouragementMessage
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import dev.zacsweers.metrox.viewmodel.metroViewModel
@@ -198,7 +200,8 @@ internal fun PressRankingScreen(
     val encouragementMessage = rememberRankingEncouragementMessage()
     val listState = remember(uiState.date) { LazyListState() }
     val scope = rememberCoroutineScope()
-    val reducedMotion = rememberTapReducedMotion() || scope.coroutineContext[MotionDurationScale]?.scaleFactor == 0f
+    val motionScale = scope.coroutineContext[MotionDurationScale]?.scaleFactor ?: 1f
+    val reducedMotion = rememberTapReducedMotion() || motionScale == 0f
     val fontScale = LocalDensity.current.fontScale
     val rankWidth = ((rows.maxOfOrNull { it.rank.toString().length } ?: 1) * 8f * fontScale).coerceIn(28f, 80f).dp
     val textMeasurer = rememberTextMeasurer()
@@ -213,136 +216,141 @@ internal fun PressRankingScreen(
                 } ?: 0
             (widestCount.toDp() + 12.dp).coerceIn(40.dp, 140.dp)
         }
-    Column(modifier.fillMaxSize().background(Color(0xFFFAFAFA)).statusBarsPadding()) {
-        Row(
-            Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = 8.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
-                Icon(
-                    painterResource(Res.drawable.ic_arrow_back),
-                    contentDescription = backLabel,
-                    modifier = Modifier.size(24.dp),
-                )
-            }
-            Column(
-                Modifier.weight(1f).padding(horizontal = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+    ProvideRaceAnimationClock(reducedMotion, motionScale) { animationClock ->
+        Column(modifier.fillMaxSize().background(Color(0xFFFAFAFA)).statusBarsPadding()) {
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = 8.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    stringResource(Res.string.press_daily_ranking_title),
-                    fontSize = 20.sp,
-                    lineHeight = 28.sp,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center,
-                )
-                if (dailyDate != null && dateSelector == null) {
-                    Text(
-                        dailyDate,
-                        fontSize = 12.sp,
-                        lineHeight = 18.sp,
-                        color = Color(0xFF767D78),
-                        textAlign = TextAlign.Center,
+                IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
+                    Icon(
+                        painterResource(Res.drawable.ic_arrow_back),
+                        contentDescription = backLabel,
+                        modifier = Modifier.size(24.dp),
                     )
                 }
-            }
-            Spacer(Modifier.size(48.dp))
-        }
-        dateSelector?.invoke()
-        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
-            val compact = maxHeight < 600.dp
-            if (uiState.status == PressRankingStatus.Ready && rows.isEmpty() && uiState.me == null) {
-                PullToRefreshBox(
-                    isRefreshing = uiState.isRefreshing,
-                    onRefresh = onRefresh,
-                    modifier = Modifier.fillMaxSize(),
+                Column(
+                    Modifier.weight(1f).padding(horizontal = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    LazyColumn(
-                        Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(horizontal = 26.dp, vertical = 20.dp),
-                    ) {
-                        if (uiState.hasRefreshError) {
-                            item {
-                                RefreshErrorBanner(
-                                    stringResource(Res.string.press_daily_ranking_refresh_error),
-                                    onRefresh,
-                                )
-                            }
-                        }
-                        item { EmptyRaceRanking(historical, onChooseDate, onToday, onBack) }
-                        item { Spacer(Modifier.navigationBarsPadding()) }
+                    Text(
+                        stringResource(Res.string.press_daily_ranking_title),
+                        fontSize = 20.sp,
+                        lineHeight = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                    )
+                    if (dailyDate != null && dateSelector == null) {
+                        Text(
+                            dailyDate,
+                            fontSize = 12.sp,
+                            lineHeight = 18.sp,
+                            color = Color(0xFF767D78),
+                            textAlign = TextAlign.Center,
+                        )
                     }
                 }
-                return@BoxWithConstraints
+                Spacer(Modifier.size(48.dp))
             }
-            Column(Modifier.fillMaxSize().padding(horizontal = 26.dp)) {
-                PullToRefreshBox(
-                    isRefreshing = uiState.isRefreshing,
-                    onRefresh = onRefresh,
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                ) {
-                    LazyColumn(
+            dateSelector?.invoke()
+            BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+                val compact = maxHeight < 600.dp
+                if (uiState.status == PressRankingStatus.Ready && rows.isEmpty() && uiState.me == null) {
+                    PullToRefreshBox(
+                        isRefreshing = uiState.isRefreshing,
+                        onRefresh = onRefresh,
                         modifier = Modifier.fillMaxSize(),
-                        state = listState,
-                        contentPadding = PaddingValues(bottom = 24.dp),
                     ) {
-                        item(key = "overview") {
-                            PressRankingOverview(
-                                uiState,
-                                dailyDate ?: uiState.date.takeIf { dateSelector != null },
-                                encouragementMessage,
-                                rankWidth,
-                                countWidth,
-                                onBack,
-                                onRetry,
-                                onRefresh,
-                                compact,
-                                historical,
-                            )
-                        }
-                        item(key = "overview-spacing") { Spacer(Modifier.size(8.dp)) }
-                        when (uiState.status) {
-                            PressRankingStatus.Loading -> {
+                        LazyColumn(
+                            Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(horizontal = 26.dp, vertical = 20.dp),
+                        ) {
+                            if (uiState.hasRefreshError) {
                                 item {
-                                    Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
-                                        CircularLoadingIndicator(color = Color(0xFF202323))
-                                    }
-                                }
-                            }
-
-                            PressRankingStatus.Failed -> {
-                                item {
-                                    LoadErrorContent(onRetry, Modifier.padding(top = 48.dp))
-                                }
-                            }
-
-                            PressRankingStatus.Ready -> {
-                                itemsIndexed(rows, key = { index, row ->
-                                    "${uiState.date}:${row.publicId ?: "preview-$index"}"
-                                }) { _, row ->
-                                    PressRaceRow(
-                                        row,
-                                        rankWidth,
-                                        countWidth,
-                                        Modifier.animateItem(
-                                            fadeInSpec = if (reducedMotion) null else tween(150),
-                                            placementSpec =
-                                                if (reducedMotion) {
-                                                    null
-                                                } else {
-                                                    tween(
-                                                        300,
-                                                        easing = CubicBezierEasing(0.22f, 0.7f, 0.25f, 1f),
-                                                    )
-                                                },
-                                            fadeOutSpec = if (reducedMotion) null else tween(150),
-                                        ),
-                                        reducedMotion = reducedMotion,
+                                    RefreshErrorBanner(
+                                        stringResource(Res.string.press_daily_ranking_refresh_error),
+                                        onRefresh,
                                     )
                                 }
                             }
+                            item { EmptyRaceRanking(historical, onChooseDate, onToday, onBack) }
+                            item { Spacer(Modifier.navigationBarsPadding()) }
                         }
-                        item { Spacer(Modifier.navigationBarsPadding()) }
+                    }
+                    return@BoxWithConstraints
+                }
+                Column(Modifier.fillMaxSize().padding(horizontal = 26.dp)) {
+                    PullToRefreshBox(
+                        isRefreshing = uiState.isRefreshing,
+                        onRefresh = onRefresh,
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                    ) {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize().raceAnimationViewport(animationClock),
+                            state = listState,
+                            contentPadding = PaddingValues(bottom = 24.dp),
+                        ) {
+                            item(key = "overview") {
+                                PressRankingOverview(
+                                    uiState,
+                                    dailyDate ?: uiState.date.takeIf { dateSelector != null },
+                                    encouragementMessage,
+                                    rankWidth,
+                                    countWidth,
+                                    onBack,
+                                    onRetry,
+                                    onRefresh,
+                                    compact,
+                                    historical,
+                                )
+                            }
+                            item(key = "overview-spacing") { Spacer(Modifier.size(8.dp)) }
+                            when (uiState.status) {
+                                PressRankingStatus.Loading -> {
+                                    item {
+                                        Box(
+                                            Modifier.fillMaxWidth().padding(48.dp),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            CircularLoadingIndicator(color = Color(0xFF202323))
+                                        }
+                                    }
+                                }
+
+                                PressRankingStatus.Failed -> {
+                                    item {
+                                        LoadErrorContent(onRetry, Modifier.padding(top = 48.dp))
+                                    }
+                                }
+
+                                PressRankingStatus.Ready -> {
+                                    itemsIndexed(rows, key = { index, row ->
+                                        "${uiState.date}:${row.publicId ?: "preview-$index"}"
+                                    }) { _, row ->
+                                        PressRaceRow(
+                                            row,
+                                            rankWidth,
+                                            countWidth,
+                                            Modifier.animateItem(
+                                                fadeInSpec = if (reducedMotion) null else tween(150),
+                                                placementSpec =
+                                                    if (reducedMotion) {
+                                                        null
+                                                    } else {
+                                                        tween(
+                                                            300,
+                                                            easing = CubicBezierEasing(0.22f, 0.7f, 0.25f, 1f),
+                                                        )
+                                                    },
+                                                fadeOutSpec = if (reducedMotion) null else tween(150),
+                                            ),
+                                            reducedMotion = reducedMotion,
+                                        )
+                                    }
+                                }
+                            }
+                            item { Spacer(Modifier.navigationBarsPadding()) }
+                        }
                     }
                 }
             }

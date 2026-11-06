@@ -13,6 +13,7 @@ import com.pheeeew.data.press.race.PressRaceView
 import com.pheeeew.feature.emotion.model.EmotionKind
 import com.pheeeew.feature.screens.ranking.press.PressRankingStatus
 import com.pheeeew.feature.screens.ranking.press.PressRankingViewModel
+import com.pheeeew.feature.screens.ranking.press.components.runningRaceResource
 import com.pheeeew.feature.screens.ranking.press.toRaceRows
 import com.pheeeew.feature.screens.ranking.press.toRankingUiState
 import kotlinx.coroutines.Dispatchers
@@ -30,6 +31,41 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PressRankingViewModelTest {
+    @Test
+    fun everyApiEmotionSelectsItsRunnerWithoutChangingParticipantData() {
+        val base = rankingState()
+        val snapshot = requireNotNull(base.all)
+        val cases =
+            mapOf(
+                "ANGRY" to EmotionKind.Angry,
+                "DISCOURAGED" to EmotionKind.Defeated,
+                "EXHAUSTED" to EmotionKind.Tired,
+                "FRUSTRATED" to EmotionKind.Blocked,
+                "IRRITATED" to EmotionKind.Annoyed,
+            )
+        val resources = mutableSetOf<Any>()
+        for ((raw, expected) in cases) {
+            val changed = snapshot.copy(top100 = snapshot.top100.map { it.copy(representativeState = raw) })
+            val rows =
+                base
+                    .copy(all = changed)
+                    .toRankingUiState()
+                    .people
+                    .toRaceRows()
+            assertTrue(rows.isNotEmpty())
+            assertTrue(rows.all { it.emotion == expected })
+            assertEquals(snapshot.top100.map { it.publicId }, rows.map { it.publicId })
+            assertEquals(snapshot.top100.map { it.rank }, rows.map { it.rank })
+            for (second in listOf(false, true)) {
+                val resource = requireNotNull(runningRaceResource(rows.first().emotion, second))
+                assertTrue(resources.add(resource), "Each emotion and pose needs its own asset")
+            }
+        }
+        assertEquals(10, resources.size)
+        assertNull(runningRaceResource(null, false))
+        assertNull(runningRaceResource(null, true))
+    }
+
     @Test
     fun wsRepresentativeEmotionUpdatesWithoutChangingRankOrIdentityAndSurvivesCache() {
         val base = rankingState()
