@@ -1,5 +1,6 @@
 package com.pheeeew.pressrace.v2.fixture;
 
+import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.pressrace.v2.domain.PressParticipant;
 import com.pheeeew.pressrace.v2.domain.PressSnapshot;
 import java.time.Instant;
@@ -25,7 +26,7 @@ public final class PressSnapshotFixture {
     }
 
     public static PressParticipant 참가자(long id, UUID publicId, long score, Instant lastAppliedAt) {
-        return PressParticipant.of(기기(id), publicId, "별" + id, score, lastAppliedAt);
+        return PressParticipant.of(기기(id), publicId, "별" + id, score, lastAppliedAt, EmotionState.ANGRY);
     }
 
     public static List<PressParticipant> 점수가_내림차순인_참가자들(int count) {

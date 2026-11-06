@@ -1,7 +1,8 @@
 # 실시간 프레스 폴링 연동
 
 관련 이슈: [#1098](https://github.com/woowacourse-teams/2026-pheeeew/issues/1098) (기본 폴링),
-[#1100](https://github.com/woowacourse-teams/2026-pheeeew/issues/1100) (캐시 적용 폴링).
+[#1100](https://github.com/woowacourse-teams/2026-pheeeew/issues/1100) (캐시 적용 폴링),
+[#1127](https://github.com/woowacourse-teams/2026-pheeeew/issues/1127) (대표 감정).
 앱이 일정 주기로 일반 HTTP 조회를 보내 실시간 프레스 화면의 순위와 최근 활동 인원을 받는 방식입니다.
 이 문서는 BE의 계약과 앱 연동 방법을 설명합니다. 실제 앱 연동 검증 기록은 아닙니다.
 
@@ -53,12 +54,13 @@ Authorization: Bearer <access token>
     "nickname": "스타크",
     "score": 42,
     "rank": 2,
-    "participating": true
+    "participating": true,
+    "representativeState": "ANGRY"
   },
   "nearby": [
-    {"publicId": "1b0e2f0a-3c4d-4e5f-8a9b-0c1d2e3f4a5b", "nickname": "익명", "score": 57, "rank": 1, "participating": true},
-    {"publicId": "0f4c7a52-8f0e-4a8c-9a37-6d2f3b1d2e11", "nickname": "스타크", "score": 42, "rank": 2, "participating": true},
-    {"publicId": "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d", "nickname": "별", "score": 42, "rank": 2, "participating": true}
+    {"publicId": "1b0e2f0a-3c4d-4e5f-8a9b-0c1d2e3f4a5b", "nickname": "익명", "score": 57, "rank": 1, "participating": true, "representativeState": "EXHAUSTED"},
+    {"publicId": "0f4c7a52-8f0e-4a8c-9a37-6d2f3b1d2e11", "nickname": "스타크", "score": 42, "rank": 2, "participating": true, "representativeState": "ANGRY"},
+    {"publicId": "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d", "nickname": "별", "score": 42, "rank": 2, "participating": true, "representativeState": "DISCOURAGED"}
   ],
   "top100": []
 }
@@ -83,8 +85,9 @@ Authorization: Bearer <access token>
 | `score` | 오늘 반영된 감정 프레스 합계 |
 | `rank` | 점수만으로 정한 공동 순위 |
 | `participating` | 오늘 점수가 양수이면 `true` |
+| `representativeState` | 오늘(KST) 가장 많이 누른 감정. 공동 최다는 `ANGRY → DISCOURAGED → EXHAUSTED → FRUSTRATED → IRRITATED` 순으로 고름. 점수와 순위에는 영향 없음 |
 
-미참여한 `me`는 `publicId=null`, `nickname=null`, `score=0`, `rank=null`, `participating=false`입니다.
+미참여한 `me`는 `publicId=null`, `nickname=null`, `score=0`, `rank=null`, `participating=false`, `representativeState=null`입니다.
 목록이 비어도 200이며 `nearby=[]`, `top100=[]`입니다.
 
 ### 순위

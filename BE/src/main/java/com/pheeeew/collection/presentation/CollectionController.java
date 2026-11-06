@@ -2,23 +2,23 @@ package com.pheeeew.collection.presentation;
 
 import com.pheeeew.auth.presentation.annotation.CurrentDevice;
 import com.pheeeew.collection.application.CollectionClaimService;
+import com.pheeeew.collection.application.CollectionDailyQueryService;
 import com.pheeeew.collection.application.CollectionQueryService;
-import com.pheeeew.collection.application.CollectionEmotionQueryService;
-import com.pheeeew.collection.presentation.dto.CollectionEmotionRequest;
-import com.pheeeew.collection.presentation.dto.CollectionEmotionResponse;
-import com.pheeeew.collection.presentation.dto.CollectionCardDetailResponse;
 import com.pheeeew.collection.presentation.dto.CollectionCalendarRequest;
-import com.pheeeew.common.presentation.dto.CursorResponse;
+import com.pheeeew.collection.presentation.dto.CollectionCardDetailResponse;
 import com.pheeeew.collection.presentation.dto.CollectionCardResponse;
 import com.pheeeew.collection.presentation.dto.CollectionClaimRequest;
+import com.pheeeew.collection.presentation.dto.CollectionDailyRequest;
+import com.pheeeew.collection.presentation.dto.CollectionDailyResponse;
 import com.pheeeew.collection.presentation.dto.CollectionHistoryRequest;
 import com.pheeeew.collection.presentation.dto.CollectionHistoryResponse;
 import com.pheeeew.collection.presentation.dto.CollectionTodayResponse;
 import com.pheeeew.common.exception.CommonErrorCode;
 import com.pheeeew.common.exception.PheeeewException;
+import com.pheeeew.common.presentation.dto.CursorResponse;
 import jakarta.validation.Valid;
-import java.util.UUID;
 import java.time.YearMonth;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
@@ -39,19 +39,16 @@ public class CollectionController implements CollectionControllerApi {
 
     private final CollectionQueryService collectionQueryService;
     private final CollectionClaimService collectionClaimService;
-    private final CollectionEmotionQueryService collectionEmotionQueryService;
+    private final CollectionDailyQueryService collectionDailyQueryService;
 
     @Override
-    @GetMapping("/{cardId}/emotions")
-    public ResponseEntity<CursorResponse<CollectionEmotionResponse>> findEmotions(
+    @GetMapping("/daily")
+    public ResponseEntity<CollectionDailyResponse> findDaily(
             @CurrentDevice UUID devicePublicId,
-            @PathVariable UUID cardId,
-            @Valid @ModelAttribute CollectionEmotionRequest request
+            @Valid @ModelAttribute CollectionDailyRequest request
     ) {
-        var page = collectionEmotionQueryService.findEmotions(devicePublicId, cardId, request.cursor());
-        var items = page.items().stream().map(CollectionEmotionResponse::from).toList();
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
-                .body(CursorResponse.of(items, page.hasNext(), page.nextCursor()));
+        var result = collectionDailyQueryService.findDaily(devicePublicId, request.parsedDate(), request.cursor());
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(CollectionDailyResponse.from(result));
     }
 
     @Override
