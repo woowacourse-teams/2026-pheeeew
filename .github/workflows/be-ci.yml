@@ -58,11 +58,19 @@ jobs:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
 
       - name: 테스트
+        if: github.event_name == 'pull_request'
         # observability 테스트는 샤딩하지 않으므로 첫 샤드에서만 돌린다.
         run: ./gradlew ${{ matrix.shard == 0 && 'test' || ':test' }} --no-daemon -PtestShards=5 -PtestShard=${{ matrix.shard }}
 
+      # push 런은 캐시만 심는다. 같은 트리를 머지 전 PR 런이 이미 테스트했고, be/dev 가 head 인
+      # develop PR 이 열려 있으면 그 PR 런과 테스트가 겹친다. 잡 이름과 매트릭스를 그대로 둬야
+      # 캐시 키가 PR 런의 같은 샤드와 맞는다.
+      - name: 캐시 준비 (컴파일만)
+        if: github.event_name == 'push'
+        run: ./gradlew testClasses --no-daemon
+
       - name: 테스트 리포트 업로드
-        if: always()
+        if: always() && github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: test-results-shard-${{ matrix.shard }}
