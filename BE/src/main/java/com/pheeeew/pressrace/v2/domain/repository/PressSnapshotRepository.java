@@ -1,5 +1,6 @@
 package com.pheeeew.pressrace.v2.domain.repository;
 
+import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.pressrace.v2.domain.PressParticipant;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -27,9 +28,24 @@ public class PressSnapshotRepository {
 
     public List<PressParticipant> findParticipants(LocalDate pressDate) {
         return jdbc.sql("""
-                        SELECT d.public_id AS device_public_id, s.public_id, d.nickname, s.total, s.last_applied_at
+                        SELECT d.public_id AS device_public_id, s.public_id, d.nickname, s.total, s.last_applied_at,
+                               representative.state AS representative_state
                         FROM press_daily_scores s
                         JOIN devices d ON d.id = s.device_id
+                        LEFT JOIN LATERAL (
+                            SELECT p.state
+                            FROM device_daily_presses p
+                            WHERE p.press_date = s.press_date AND p.device_id = s.device_id
+                            ORDER BY p.press_count DESC,
+                                     CASE p.state
+                                         WHEN 'ANGRY' THEN 1
+                                         WHEN 'DISCOURAGED' THEN 2
+                                         WHEN 'EXHAUSTED' THEN 3
+                                         WHEN 'FRUSTRATED' THEN 4
+                                         WHEN 'IRRITATED' THEN 5
+                                     END
+                            LIMIT 1
+                        ) representative ON TRUE
                         WHERE s.press_date = :pressDate
                         """)
                 .param("pressDate", pressDate)
@@ -38,8 +54,13 @@ public class PressSnapshotRepository {
                         row.getObject("public_id", UUID.class),
                         row.getString("nickname"),
                         row.getLong("total"),
-                        row.getObject("last_applied_at", OffsetDateTime.class).toInstant()
+                        row.getObject("last_applied_at", OffsetDateTime.class).toInstant(),
+                        toState(row.getString("representative_state"))
                 ))
                 .list();
+    }
+
+    private EmotionState toState(String state) {
+        return state == null ? null : EmotionState.valueOf(state);
     }
 }

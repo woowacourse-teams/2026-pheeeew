@@ -81,7 +81,9 @@ class PressSnapshotControllerTest {
                 .jsonPath("$.me.score").isEqualTo(4)
                 .jsonPath("$.me.rank").isEqualTo(2)
                 .jsonPath("$.me.participating").isEqualTo(true)
+                .jsonPath("$.me.representativeState").isEqualTo("ANGRY")
                 .jsonPath("$.nearby.length()").isEqualTo(2)
+                .jsonPath("$.nearby[0].representativeState").isEqualTo("ANGRY")
                 .jsonPath("$.nearby[0].rank").isEqualTo(1)
                 .jsonPath("$.top100").isEmpty()
                 .jsonPath("$.snapshotVersion").doesNotExist()
@@ -108,6 +110,7 @@ class PressSnapshotControllerTest {
                 .jsonPath("$.me.rank").value(value -> assertThat(value).isNull())
                 .jsonPath("$.me.score").isEqualTo(0)
                 .jsonPath("$.me.participating").isEqualTo(false)
+                .jsonPath("$.me.representativeState").value(value -> assertThat(value).isNull())
                 .jsonPath("$.top100.length()").isEqualTo(2)
                 .jsonPath("$.top100[1].publicId").isEqualTo("00000000-0000-0000-0000-000000000002");
     }

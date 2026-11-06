@@ -1,5 +1,6 @@
 package com.pheeeew.pressrace.fixture;
 
+import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.pressrace.domain.PressRanking;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -21,7 +22,8 @@ public final class PressRankingFixture {
     }
 
     public static PressRanking.Participant 참가자(long id, UUID publicId, long score, Instant appliedAt) {
-        return PressRanking.Participant.of(new UUID(1, id), publicId, "별" + id, score, appliedAt);
+        return PressRanking.Participant.of(new UUID(1, id), publicId, "별" + id, score, appliedAt,
+                EmotionState.ANGRY);
     }
 
     public static List<PressRanking.Participant> 점수가_내림차순인_참가자들(int count) {
