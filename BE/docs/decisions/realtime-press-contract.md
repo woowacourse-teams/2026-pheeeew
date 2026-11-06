@@ -264,7 +264,7 @@ DB 저장 전 서버가 종료되면 앱의 재시도가 필요하다. 서버 �
 | `baseline` | 최초·재초기화·화면 전환·날짜 전환의 완전한 기준 상태이면 `true`. 이후 일반 화면 갱신은 `false` |
 | `overtakes` | 이번 송신 전환의 `passed`(추월 인원), `passedBy`(추월당한 인원). 각각 0 이상의 정수이며 기준 상태는 항상 `0/0` |
 
-목록 원소와 `me`는 `publicId`, `nickname`, `score`, `rank`, `participating`으로 구성한다. 참여자의 `publicId`는 해당 날짜의 공개 UUID이며 닉네임이 없는 참여자는 `익명`이다. 미참여 `me`는 `publicId=null, nickname=null, score=0, rank=null, participating=false`다. 인증 UUID·DB 기기 PK는 보내지 않는다.
+목록 원소와 `me`는 `publicId`, `nickname`, `score`, `rank`, `participating`, `representativeState`로 구성한다. 참여자의 `publicId`는 해당 날짜의 공개 UUID이며 닉네임이 없는 참여자는 `익명`이다. `representativeState`는 그날(KST) 가장 많이 누른 감정이고, 공동 최다는 `ANGRY → DISCOURAGED → EXHAUSTED → FRUSTRATED → IRRITATED` 순으로 고른다([#1127](https://github.com/woowacourse-teams/2026-pheeeew/issues/1127), 기준은 [#1000](https://github.com/woowacourse-teams/2026-pheeeew/issues/1000)과 같다). 점수와 순위에는 영향을 주지 않는다. 미참여 `me`는 `publicId=null, nickname=null, score=0, rank=null, participating=false, representativeState=null`다. 인증 UUID, DB 기기 PK는 보내지 않는다.
 
 각 메시지에는 기존 공통 봉투의 `v`, `type`, `serverGeneration`, `connectionGeneration`도 포함한다. `snapshotVersion`은 송신하지 않은 공통 갱신 때문에 건너뛸 수 있다. 생성 시각·번호만 바뀌면 반복 송신하지 않는다. `baseline`은 실제 앱 표시 완료를 뜻하지 않는다.
 
