@@ -243,15 +243,17 @@ class CollectionViewModelTest {
                     object : CollectionRepository by base {
                         override suspend fun findCalendar(month: String): CollectionResult<CollectionCalendar> =
                             CollectionResult.Success(
-                                CollectionCalendar(base.history("first").cards + base.history("second").cards),
+                                CollectionCalendar(
+                                    base.history("first").cards + base.history("second", date = "2026-10-28").cards,
+                                ),
                             )
 
-                        override suspend fun findEmotions(
-                            cardId: String,
+                        override suspend fun findDailyEmotions(
+                            date: String,
                             cursor: String?,
                         ): CollectionResult<CollectionEmotionPage> =
                             when {
-                                cardId == "second" -> {
+                                date == "2026-10-28" -> {
                                     CollectionResult.Success(
                                         CollectionEmotionPage(emptyList(), false, null),
                                     )
@@ -269,8 +271,7 @@ class CollectionViewModelTest {
                 val viewModel = CollectionViewModel(repository)
                 store.put("collection", viewModel)
                 viewModel.onSessionChanged(1L, "나")
-                runCurrent()
-                viewModel.selectCalendarCard("first")
+                viewModel.openCalendarDay("2026-10", "first")
                 runCurrent()
                 viewModel.selectCalendarCard("second")
                 runCurrent()
@@ -309,8 +310,8 @@ class CollectionViewModelTest {
                         override suspend fun findCalendar(month: String): CollectionResult<CollectionCalendar> =
                             CollectionResult.Success(CollectionCalendar(base.history("card").cards))
 
-                        override suspend fun findEmotions(
-                            cardId: String,
+                        override suspend fun findDailyEmotions(
+                            date: String,
                             cursor: String?,
                         ): CollectionResult<CollectionEmotionPage> {
                             cursors += cursor
@@ -338,7 +339,7 @@ class CollectionViewModelTest {
                 val viewModel = CollectionViewModel(repository)
                 store.put("collection", viewModel)
                 viewModel.onSessionChanged(1L, "나")
-                viewModel.openCalendarDay(viewModel.uiState.value.calendarMonth, "card")
+                viewModel.openCalendarDay("2026-10", "card")
                 runCurrent()
                 viewModel.loadNextCalendarEmotions()
                 runCurrent()
@@ -379,8 +380,8 @@ class CollectionViewModelTest {
                         override suspend fun findCalendar(month: String): CollectionResult<CollectionCalendar> =
                             CollectionResult.Success(CollectionCalendar(base.history("card").cards))
 
-                        override suspend fun findEmotions(
-                            cardId: String,
+                        override suspend fun findDailyEmotions(
+                            date: String,
                             cursor: String?,
                         ): CollectionResult<CollectionEmotionPage> =
                             if (++requests == 1) {
@@ -393,7 +394,7 @@ class CollectionViewModelTest {
                 store.put("collection", viewModel)
                 for (generation in 1L..2L) {
                     viewModel.onSessionChanged(generation, "나")
-                    viewModel.openCalendarDay(viewModel.uiState.value.calendarMonth, "card")
+                    viewModel.openCalendarDay("2026-10", "card")
                     runCurrent()
                 }
                 val stale =
@@ -473,21 +474,23 @@ class CollectionViewModelTest {
             cursor: String?,
         ): CollectionResult<CollectionEmotionPage> = findEmotions(date, cursor)
 
-        fun history(cardId: String) =
-            CollectionHistory(
-                nickname = "오늘도히유",
-                cards =
-                    listOf(
-                        CollectionCard(
-                            reference = reference(cardId, EmotionState.EXHAUSTED),
-                            stampCount = 1,
-                            pressCount = 100,
-                        ),
+        fun history(
+            cardId: String,
+            date: String = "2026-10-27",
+        ) = CollectionHistory(
+            nickname = "오늘도히유",
+            cards =
+                listOf(
+                    CollectionCard(
+                        reference = reference(cardId, EmotionState.EXHAUSTED).copy(date = date),
+                        stampCount = 1,
+                        pressCount = 100,
                     ),
-                counts = CollectionCounts(total = 1, byEmotion = mapOf(EmotionState.EXHAUSTED to 1)),
-                hasNext = false,
-                nextCursor = null,
-            )
+                ),
+            counts = CollectionCounts(total = 1, byEmotion = mapOf(EmotionState.EXHAUSTED to 1)),
+            hasNext = false,
+            nextCursor = null,
+        )
 
         private fun today(): CollectionToday =
             CollectionToday(
