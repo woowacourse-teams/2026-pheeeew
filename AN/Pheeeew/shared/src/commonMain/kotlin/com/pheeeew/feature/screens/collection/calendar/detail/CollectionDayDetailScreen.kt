@@ -25,9 +25,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -106,6 +109,14 @@ internal fun CollectionDayDetailScreen(
     val pagerState = rememberPagerState(initialPage = initialPage, pageCount = { dates.size.coerceAtLeast(1) })
     val latestCardSettled by rememberUpdatedState(onCardSettled)
     val listState = rememberLazyListState()
+    var lastLoadedDayWasEmpty by remember { mutableStateOf(false) }
+    SideEffect {
+        if (emotionsLoaded || emotionsError != null) {
+            lastLoadedDayWasEmpty = emotionsLoaded && emotions.isEmpty() && emotionsError == null
+        }
+    }
+    // Keep the same empty item in the list until the next date has a result.
+    val retainEmptyState = lastLoadedDayWasEmpty && !emotionsLoaded && emotionsError == null
     LaunchedEffect(selectedCardId) { listState.scrollToItem(0) }
     LaunchedEffect(pagerState, dates) {
         snapshotFlow { pagerState.settledPage }
@@ -232,7 +243,7 @@ internal fun CollectionDayDetailScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text("내가 남긴 감정", color = AppColors.GroupInk, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                        emotionCount?.takeIf { it > 0 && currentKey == selectedCardId }?.let {
+                        emotionCount?.takeIf { it > 0 }?.let {
                             Text(
                                 "  $it",
                                 color = AppColors.TextSecondary,
@@ -245,13 +256,11 @@ internal fun CollectionDayDetailScreen(
                     }
                 }
             }
-            if (currentKey == selectedCardId &&
-                (emotionsLoaded || isLoadingEmotions || emotionsError != null || emotions.isNotEmpty())
-            ) {
+            if (emotionsLoaded || isLoadingEmotions || emotionsError != null || emotions.isNotEmpty() || retainEmptyState) {
                 collectionDayEmotionItems(
                     emotions = emotions,
                     nickname = nickname,
-                    isLoadingEmotions = isLoadingEmotions,
+                    isLoadingEmotions = isLoadingEmotions && !retainEmptyState,
                     isLoadingNextEmotions = isLoadingNextEmotions,
                     emotionsError = emotionsError,
                     audio = audio,
