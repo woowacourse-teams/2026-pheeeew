@@ -68,6 +68,7 @@ internal fun MyRaceRankCard(
     modifier: Modifier = Modifier,
     compact: Boolean = false,
     historical: Boolean = false,
+    reducedMotion: Boolean = false,
 ) {
     if (status == PressRankingStatus.Ready && me == null) {
         MyRaceEmptyCard(historical, onPress, modifier)
@@ -259,6 +260,7 @@ internal fun MyRaceRankCard(
                         RunningRaceCharacter(
                             me.emotion,
                             Modifier.requiredSize(110.dp),
+                            reducedMotion = reducedMotion,
                             phaseSeed = me.publicId?.hashCode() ?: 0,
                         )
                         if (me.rank == 1L) {

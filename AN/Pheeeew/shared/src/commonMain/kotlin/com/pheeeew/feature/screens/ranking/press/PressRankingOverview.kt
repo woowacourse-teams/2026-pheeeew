@@ -38,12 +38,21 @@ internal fun PressRankingOverview(
     onRefresh: () -> Unit,
     compact: Boolean,
     historical: Boolean = false,
+    reducedMotion: Boolean = false,
 ) {
     Column(Modifier.fillMaxWidth()) {
         Spacer(Modifier.height(if (compact) 8.dp else 16.dp))
         RankingEncouragementBanner(message = encouragement, compact = compact)
         Spacer(Modifier.height(if (compact) 8.dp else 16.dp))
-        MyRaceRankCard(state.me, state.status, onBack, onRetry, compact = compact, historical = historical)
+        MyRaceRankCard(
+            state.me,
+            state.status,
+            onBack,
+            onRetry,
+            compact = compact,
+            historical = historical,
+            reducedMotion = reducedMotion,
+        )
         Spacer(Modifier.height(if (compact) 12.dp else 20.dp))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(

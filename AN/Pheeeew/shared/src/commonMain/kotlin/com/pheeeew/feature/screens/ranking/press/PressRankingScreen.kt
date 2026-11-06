@@ -302,6 +302,7 @@ internal fun PressRankingScreen(
                                     onRefresh,
                                     compact,
                                     historical,
+                                    reducedMotion,
                                 )
                             }
                             item(key = "overview-spacing") { Spacer(Modifier.size(8.dp)) }
