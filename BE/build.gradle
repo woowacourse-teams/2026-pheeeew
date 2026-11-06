@@ -72,7 +72,7 @@ tasks.named('test') {
     // 플레이키를 다시 확인하려는 것이고, 캐시가 적중하면 테스트가 돌지 않는다.
     outputs.cacheIf { false }
 
-    // 테스트를 여러 러너로 쪼갠다. -PtestShards=5 -PtestShard=0 처럼 넘긴다.
+    // 테스트를 여러 러너로 쪼갠다. -PtestShards=4 -PtestShard=0 처럼 넘긴다.
     // 넘기지 않으면 한 러너가 전부 도는 기존 동작과 같다.
     int shardCount = (project.findProperty('testShards') ?: '1') as int
     int shardIndex = (project.findProperty('testShard') ?: '0') as int
