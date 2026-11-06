@@ -36,6 +36,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -47,6 +48,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.WebSocketSession;
@@ -310,31 +312,53 @@ class PressTransportWebSocketIntegrationTest {
         throw new AssertionError("수신하지 못한 WS 메시지: " + type);
     }
 
-    @Test
-    void 실제_Ping을_받아도_Pong을_보내지_않으면_마지막_수신_45초에_종료한다() throws Exception {
-        // given: 초기화 전 실제 인증 소켓도 연결 확인 대상이다. 읽기만 하고 Pong은 보내지 않는다.
-        Device device = createDevice();
-        rawSocket = openNonReadingSocket(tokens.issue(device.getPublicId()).accessToken());
-        rawSocket.setSoTimeout(20_000);
-        long connectedAt = System.nanoTime();
+    // 운영 값(15초 Ping, 45초 종료)은 PressSnapshotSenderTest와 PressRaceWebSocketHandlerTest가 가짜 시각으로 검증한다.
+    // 여기서는 같은 계약을 실제 소켓으로 확인하되 벽시계를 줄이려 짧은 값을 주입한다.
+    // 바깥 클래스의 다른 테스트가 짧은 타임아웃에 끊기지 않도록 별도 컨텍스트로 둔다.
+    @Nested
+    @TestPropertySource(properties = {
+            "pheeeew.press-race.heartbeat-ping-interval-millis=1000",
+            "pheeeew.press-race.heartbeat-timeout-millis=3000"
+    })
+    class 짧은_연결_확인_주기 {
 
-        // when: 서버 송신은 정상 수신 시각을 연장하지 않는다.
-        RawControlFrame firstPing = readControlFrame(rawSocket);
-        assertThat(firstPing.opcode()).isEqualTo(9);
-        assertThat(Duration.ofNanos(System.nanoTime() - connectedAt)).isBetween(Duration.ofSeconds(14), Duration.ofSeconds(20));
-        RawControlFrame secondPing = readControlFrame(rawSocket);
-        assertThat(secondPing.opcode()).isEqualTo(9);
-        assertThat(Duration.ofNanos(System.nanoTime() - connectedAt)).isBetween(Duration.ofSeconds(28), Duration.ofSeconds(36));
-        RawControlFrame closed = readControlFrame(rawSocket);
+        private static final Duration PING_INTERVAL = Duration.ofSeconds(1);
+        private static final Duration HEARTBEAT_TIMEOUT = Duration.ofSeconds(3);
+        // 감시 주기 100ms와 실행 지연을 흡수한다. 송신이 수신 시각을 연장하면 종료가 2초 이상 늦어진다.
+        private static final Duration EARLY = Duration.ofMillis(100);
+        private static final Duration LATE = Duration.ofMillis(1500);
 
-        // then: 송신 설정이 아닌 실제 제어 프레임과 종료 사유를 확인한다.
-        assertThat(closed.opcode()).isEqualTo(8);
-        assertThat(closed.payload().length).isGreaterThanOrEqualTo(2);
-        int code = ((closed.payload()[0] & 0xff) << 8) | (closed.payload()[1] & 0xff);
-        assertThat(code).isEqualTo(1008);
-        assertThat(new String(closed.payload(), 2, closed.payload().length - 2, StandardCharsets.UTF_8))
-                .isEqualTo("HEARTBEAT_TIMEOUT");
-        assertThat(Duration.ofNanos(System.nanoTime() - connectedAt)).isBetween(Duration.ofSeconds(44), Duration.ofSeconds(50));
+        @Test
+        void 실제_Ping을_받아도_Pong을_보내지_않으면_마지막_수신_뒤_유휴_타임아웃에_종료한다() throws Exception {
+            // given: 초기화 전 실제 인증 소켓도 연결 확인 대상이다. 읽기만 하고 Pong은 보내지 않는다.
+            Device device = createDevice();
+            rawSocket = openNonReadingSocket(tokens.issue(device.getPublicId()).accessToken());
+            rawSocket.setSoTimeout(10_000);
+            long connectedAt = System.nanoTime();
+
+            // when: 서버 송신은 정상 수신 시각을 연장하지 않는다.
+            RawControlFrame firstPing = readControlFrame(rawSocket);
+            assertThat(firstPing.opcode()).isEqualTo(9);
+            assertElapsed(connectedAt, PING_INTERVAL);
+            RawControlFrame secondPing = readControlFrame(rawSocket);
+            assertThat(secondPing.opcode()).isEqualTo(9);
+            assertElapsed(connectedAt, PING_INTERVAL.multipliedBy(2));
+            RawControlFrame closed = readControlFrame(rawSocket);
+
+            // then: 송신 설정이 아닌 실제 제어 프레임과 종료 사유를 확인한다.
+            assertThat(closed.opcode()).isEqualTo(8);
+            assertThat(closed.payload().length).isGreaterThanOrEqualTo(2);
+            int code = ((closed.payload()[0] & 0xff) << 8) | (closed.payload()[1] & 0xff);
+            assertThat(code).isEqualTo(1008);
+            assertThat(new String(closed.payload(), 2, closed.payload().length - 2, StandardCharsets.UTF_8))
+                    .isEqualTo("HEARTBEAT_TIMEOUT");
+            assertElapsed(connectedAt, HEARTBEAT_TIMEOUT);
+        }
+
+        private void assertElapsed(long since, Duration expected) {
+            assertThat(Duration.ofNanos(System.nanoTime() - since))
+                    .isBetween(expected.minus(EARLY), expected.plus(LATE));
+        }
     }
 
     private RawControlFrame readControlFrame(Socket socket) throws Exception {

@@ -31,6 +31,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 import org.springframework.scheduling.support.DelegatingErrorHandlingRunnable;
@@ -71,10 +72,24 @@ public class PressRaceWebSocketHandler extends AbstractWebSocketHandler {
     private final Map<UUID, MessageBucket> messageBuckets = new HashMap<>();
     private final Object[] connectionLocks = new Object[128];
     private final Object admissionMonitor = new Object();
+    private static final long MIN_PONG_WINDOW_MILLIS = 1_000;
+    private final long pingIntervalMillis;
+    private final long heartbeatTimeoutMillis;
 
-    public PressRaceWebSocketHandler(PressRaceService service, PressRankingPublisher rankingPublisher) {
+    public PressRaceWebSocketHandler(PressRaceService service, PressRankingPublisher rankingPublisher,
+            @Value("${pheeeew.press-race.heartbeat-ping-interval-millis:"
+                    + PressSnapshotSender.DEFAULT_PING_INTERVAL_MILLIS + "}") long pingIntervalMillis,
+            @Value("${pheeeew.press-race.heartbeat-timeout-millis:"
+                    + PressSnapshotSender.DEFAULT_HEARTBEAT_TIMEOUT_MILLIS + "}") long heartbeatTimeoutMillis) {
+        // Ping 은 유지 관리 주기(100ms)마다 보내므로 타임아웃과의 간격이 짧으면 정상 클라이언트도
+        // 응답할 기회 없이 끊긴다. 주기 지연과 왕복 시간을 넉넉히 덮도록 1초 이상 벌린다.
+        if (pingIntervalMillis <= 0 || heartbeatTimeoutMillis - pingIntervalMillis < MIN_PONG_WINDOW_MILLIS) {
+            throw new IllegalArgumentException("heartbeat 타임아웃은 Ping 주기보다 1초 이상 길어야 한다.");
+        }
         this.service = service;
         this.rankingPublisher = rankingPublisher;
+        this.pingIntervalMillis = pingIntervalMillis;
+        this.heartbeatTimeoutMillis = heartbeatTimeoutMillis;
         for (int index = 0; index < connectionLocks.length; index++) {
             connectionLocks[index] = new Object();
         }
@@ -145,7 +160,8 @@ public class PressRaceWebSocketHandler extends AbstractWebSocketHandler {
                 authentication.getToken().getExpiresAt());
         PressSnapshotSender sender = new PressSnapshotSender(session, snapshotExecutor,
                 snapshot -> sendSnapshot(session, connection, snapshot),
-                failure -> terminate(session, CloseStatus.POLICY_VIOLATION.withReason(failureCode(failure))));
+                failure -> terminate(session, CloseStatus.POLICY_VIOLATION.withReason(failureCode(failure))),
+                pingIntervalMillis, heartbeatTimeoutMillis);
         // 거절 연결도 결과/제어 송신과 같은 제한을 사용한다. 현재 기기 연결은 DB 승인 뒤에만 교체한다.
         synchronized (admissionMonitor) {
             try {

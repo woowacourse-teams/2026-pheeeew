@@ -4,6 +4,7 @@ import static com.pheeeew.pressrace.fixture.PressRankingFixture.OBSERVER_ID;
 import static com.pheeeew.pressrace.fixture.PressRankingFixture.순위;
 import static com.pheeeew.pressrace.fixture.PressRankingFixture.참가자;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -292,6 +293,18 @@ class PressRaceWebSocketHandlerTest {
     }
 
     @Test
+    void heartbeat_타임아웃이_Ping_뒤_응답_여유를_1초_미만으로_남기면_시작하지_않는다() {
+        PressRaceService service = mock(PressRaceService.class);
+        PressRankingPublisher publisher = mock(PressRankingPublisher.class);
+
+        assertThatThrownBy(() -> new PressRaceWebSocketHandler(service, publisher, 50, 75))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new PressRaceWebSocketHandler(service, publisher, 1_000, 1_999))
+                .isInstanceOf(IllegalArgumentException.class);
+        new PressRaceWebSocketHandler(service, publisher, 1_000, 2_000);
+    }
+
+    @Test
     void 같은_stripe의_느린_관찰자_송신이_다른_기기의_ACK를_막지_않는다() throws Exception {
         // given: 실제 인증/DB 저장은 통합 테스트로, 여기서는 블로킹 송신의 격리만 검증한다.
         UUID observerId = new UUID(0, 1);
@@ -303,7 +316,8 @@ class PressRaceWebSocketHandlerTest {
         when(service.initialize(any(), any())).thenReturn(PressSessionResult.of(Map.of(), List.of(), LocalDate.of(2026, 10, 26)));
         when(reader.read()).thenReturn(PressRanking.of(LocalDate.of(2026, 10, 26), Instant.now(), List.of()));
         PressRankingPublisher publisher = new PressRankingPublisher(reader);
-        PressRaceWebSocketHandler handler = new PressRaceWebSocketHandler(service, publisher);
+        PressRaceWebSocketHandler handler = new PressRaceWebSocketHandler(service, publisher,
+                PressSnapshotSender.DEFAULT_PING_INTERVAL_MILLIS, PressSnapshotSender.DEFAULT_HEARTBEAT_TIMEOUT_MILLIS);
         WebSocketSession observer = session("observer", observerId);
         WebSocketSession writer = session("writer", writerId);
         CountDownLatch blocked = new CountDownLatch(1);
@@ -367,7 +381,8 @@ class PressRaceWebSocketHandlerTest {
         private final PressRaceService service = mock(PressRaceService.class);
         private final PressRankingReader reader = mock(PressRankingReader.class);
         private final PressRankingPublisher publisher = new PressRankingPublisher(reader);
-        private final PressRaceWebSocketHandler handler = new PressRaceWebSocketHandler(service, publisher);
+        private final PressRaceWebSocketHandler handler = new PressRaceWebSocketHandler(service, publisher,
+                PressSnapshotSender.DEFAULT_PING_INTERVAL_MILLIS, PressSnapshotSender.DEFAULT_HEARTBEAT_TIMEOUT_MILLIS);
 
         private Protocol() {
             when(service.serverGeneration()).thenReturn(UUID.randomUUID());

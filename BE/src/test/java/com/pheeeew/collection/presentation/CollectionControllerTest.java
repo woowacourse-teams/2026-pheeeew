@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.util.ReflectionTestUtils.setField;
 
 import com.pheeeew.auth.fixture.AccessTokenFixture;
 import com.pheeeew.auth.infra.security.AuthenticationErrorHandler;
@@ -13,20 +14,34 @@ import com.pheeeew.auth.infra.security.SecurityConfig;
 import com.pheeeew.auth.presentation.config.AuthWebMvcConfig;
 import com.pheeeew.auth.presentation.resolver.CurrentDeviceArgumentResolver;
 import com.pheeeew.collection.application.CollectionClaimService;
+import com.pheeeew.collection.application.CollectionDailyQueryService;
 import com.pheeeew.collection.application.CollectionQueryService;
 import com.pheeeew.collection.application.dto.CollectionCardDetailResult;
 import com.pheeeew.collection.application.dto.CollectionCardResult;
+import com.pheeeew.collection.application.dto.CollectionDailyResult;
+import com.pheeeew.collection.application.dto.CollectionEmotionPageResult;
+import com.pheeeew.collection.application.dto.CollectionEmotionResult;
 import com.pheeeew.collection.application.dto.CollectionHistoryResult;
 import com.pheeeew.collection.application.dto.CollectionTodayResult;
 import com.pheeeew.collection.domain.CollectionCardCounts;
 import com.pheeeew.collection.exception.CollectionErrorCode;
 import com.pheeeew.collection.exception.CollectionException;
+import com.pheeeew.common.exception.CommonErrorCode;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
+import com.pheeeew.common.exception.PheeeewException;
 import com.pheeeew.common.logging.RequestLoggingConfiguration;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
+import com.pheeeew.emotion.application.AudioUrlIssuer.PlaybackUrl;
+import com.pheeeew.emotion.application.dto.EmotionEmojiResult;
+import com.pheeeew.emotion.domain.EmojiType;
 import com.pheeeew.emotion.domain.EmotionState;
+import com.pheeeew.emotion.exception.EmotionErrorCode;
+import com.pheeeew.emotion.exception.EmotionException;
+import com.pheeeew.emotion.fixture.EmotionFixture;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -72,11 +87,253 @@ class CollectionControllerTest {
     private CollectionClaimService claims;
 
     @MockitoBean
+    private CollectionDailyQueryService daily;
+
+    @MockitoBean
     private JwtDecoder jwtDecoder;
 
     @BeforeEach
     void setUp() {
         when(jwtDecoder.decode("access-token")).thenReturn(AccessTokenFixture.액세스_토큰_클레임(DEVICE_PUBLIC_ID));
+    }
+
+    @Test
+    void 제거한_카드_기반_감정_목록_경로는_기본_보안_정책으로_차단한다() {
+        // when / then
+        client.get().uri("/api/v1/collection-cards/20769cf2-1f8a-4b62-8dbe-5b594d5ffb5d/emotions")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
+                .expectStatus().isForbidden();
+        verifyNoInteractions(service, daily, claims);
+    }
+
+    @Test
+    void 날짜_상세는_기존_카드_형식과_공감이_포함된_다음_감정_페이지를_반환한다() {
+        // given
+        LocalDate date = LocalDate.of(2026, 11, 5);
+        UUID cardId = UUID.randomUUID();
+        var card = CollectionCardDetailResult.of(cardId, date, EmotionState.ANGRY, 5, 110, 기본_카드_이미지());
+        var emotion = EmotionFixture.저장된_기본_한숨(42L, Instant.parse("2026-11-05T01:00:00Z"));
+        var counts = Arrays.stream(EmojiType.values())
+                .map(type -> EmotionEmojiResult.of(type, type == EmojiType.HEART ? 2 : 0, type == EmojiType.HEART)).toList();
+        when(daily.findDaily(DEVICE_PUBLIC_ID, date, "previous"))
+                .thenReturn(CollectionDailyResult.of(date, card, 110, CollectionEmotionPageResult.of(
+                        List.of(CollectionEmotionResult.of(emotion, null, counts)), true, "next")));
+
+        // when / then
+        client.get().uri("/api/v1/collection-cards/daily?date=2026-11-05&cursor=previous")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
+                .expectStatus().isOk().expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
+                .expectBody().jsonPath("$.date").isEqualTo("2026-11-05")
+                .jsonPath("$.card.cardId").isEqualTo(cardId.toString())
+                .jsonPath("$.card.stampCount").isEqualTo(5)
+                .jsonPath("$.card.pressCount").isEqualTo(110)
+                .jsonPath("$.pressCount").isEqualTo(110)
+                .jsonPath("$.card.images.characterUrl").isEqualTo("https://assets.example/v1/characters/angry/01.png")
+                .jsonPath("$.emotions.items[0].id").isEqualTo(42)
+                .jsonPath("$.emotions.items[0].emojis[*].type")
+                .isEqualTo(List.of("HEART", "LAUGH", "CRY", "DIZZY", "RAGE", "SKULL"))
+                .jsonPath("$.emotions.items[0].emojis[0].count").isEqualTo(2)
+                .jsonPath("$.emotions.items[0].emojis[0].selected").isEqualTo(true)
+                .jsonPath("$.emotions.hasNext").isEqualTo(true)
+                .jsonPath("$.emotions.nextCursor").isEqualTo("next");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "date=", "date=0000-01-01", "date=10000-01-01", "date=2026-2-01",
+            "date=2026-02-30", "date=2025-02-29", "date=2026-13-01", "date=2026-11-31",
+            "date=2026-11-05T00:00:00Z"})
+    void 날짜_상세의_누락된_날짜와_잘못된_형식_범위_실제_날짜를_거절한다(String query) {
+        // when / then
+        client.get().uri("/api/v1/collection-cards/daily?" + query)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
+                .expectStatus().isBadRequest().expectBody().jsonPath("$.code").isEqualTo("COMMON-001");
+        verifyNoInteractions(daily);
+    }
+
+    @Test
+    void 날짜_상세_페이지의_긴_커서와_누락된_날짜도_거절한다() {
+        // when / then
+        for (String query : List.of("cursor=previous", "date=2026-11-05&cursor=" + "a".repeat(2049))) {
+            client.get().uri("/api/v1/collection-cards/daily?" + query)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
+                    .expectStatus().isBadRequest().expectBody().jsonPath("$.code").isEqualTo("COMMON-001");
+        }
+        verifyNoInteractions(daily);
+    }
+
+    @Test
+    void 날짜_상세의_미래_날짜_오류도_400으로_반환한다() {
+        // given
+        when(daily.findDaily(DEVICE_PUBLIC_ID, LocalDate.of(2026, 11, 7), null))
+                .thenThrow(new PheeeewException(CommonErrorCode.INVALID_REQUEST, null));
+
+        // when / then
+        client.get().uri("/api/v1/collection-cards/daily?date=2026-11-07")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
+                .expectStatus().isBadRequest().expectBody().jsonPath("$.code").isEqualTo("COMMON-001");
+    }
+
+    @Test
+    void 카드가_없는_날짜도_프레스와_빈_감정_목록을_한_상세_응답으로_반환한다() {
+        // given
+        LocalDate date = LocalDate.of(2026, 11, 5);
+        when(daily.findDaily(DEVICE_PUBLIC_ID, date, null))
+                .thenReturn(CollectionDailyResult.of(date, null, 110, CollectionEmotionPageResult.of(List.of(), false, null)));
+
+        // when / then
+        client.get().uri("/api/v1/collection-cards/daily?date=2026-11-05&devicePublicId=" + UUID.randomUUID())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
+                .expectStatus().isOk().expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
+                .expectBody().json("""
+                        {"date":"2026-11-05","card":null,"pressCount":110,
+                         "emotions":{"items":[],"hasNext":false,"nextCursor":null}}
+                        """, JsonCompareMode.STRICT);
+    }
+
+    @Test
+    void 날짜_상세_감정_목록의_각_항목에_공감_정보를_반환한다() {
+        // given
+        LocalDate date = LocalDate.of(2026, 11, 4);
+        var emotion = EmotionFixture.저장된_기본_한숨(42L, Instant.parse("2026-11-04T01:00:00Z"));
+        var counts = List.of(EmotionEmojiResult.of(EmojiType.HEART, 2, true),
+                EmotionEmojiResult.of(EmojiType.LAUGH, 1, false),
+                EmotionEmojiResult.of(EmojiType.CRY, 0, false),
+                EmotionEmojiResult.of(EmojiType.DIZZY, 0, false),
+                EmotionEmojiResult.of(EmojiType.RAGE, 0, false),
+                EmotionEmojiResult.of(EmojiType.SKULL, 0, false));
+        when(daily.findDaily(DEVICE_PUBLIC_ID, date, null))
+                .thenReturn(CollectionDailyResult.of(date, null, 0, CollectionEmotionPageResult.of(
+                        List.of(CollectionEmotionResult.of(emotion, null, counts)), false, null)));
+
+        // when / then
+        client.get().uri("/api/v1/collection-cards/daily?date=2026-11-04")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
+                .expectStatus().isOk().expectBody().jsonPath("$.emotions.items[0].emojis").isEqualTo(List.of(
+                        Map.of("type", "HEART", "count", 2, "selected", true),
+                        Map.of("type", "LAUGH", "count", 1, "selected", false),
+                        Map.of("type", "CRY", "count", 0, "selected", false),
+                        Map.of("type", "DIZZY", "count", 0, "selected", false),
+                        Map.of("type", "RAGE", "count", 0, "selected", false),
+                        Map.of("type", "SKULL", "count", 0, "selected", false)));
+    }
+
+    @Test
+    void 날짜_상세의_감정_목록은_지도정보_없이_내용유형과_페이지정보를_반환한다() {
+        // given
+        LocalDate date = LocalDate.of(2026, 11, 4);
+        var emotion = EmotionFixture.기본_한숨_빌더().state(EmotionState.IRRITATED).memo("짜증난 하루").build();
+        setField(emotion, "id", 42L);
+        setField(emotion, "createdAt", Instant.parse("2026-11-04T01:00:00Z"));
+        var none = EmotionFixture.저장된_기본_한숨(43L, Instant.parse("2026-11-04T00:00:00Z"));
+        var audio = EmotionFixture.저장된_기본_한숨(44L, Instant.parse("2026-11-03T23:00:00Z"));
+        setField(none, "state", EmotionState.EXHAUSTED);
+        setField(audio, "state", EmotionState.ANGRY);
+        var playback = PlaybackUrl.of("https://audio.example/recording", Instant.parse("2026-11-04T02:00:00Z"));
+        var emptyEmojis = Arrays.stream(EmojiType.values()).map(type -> EmotionEmojiResult.of(type, 0, false)).toList();
+        when(daily.findDaily(DEVICE_PUBLIC_ID, date, "previous"))
+                .thenReturn(CollectionDailyResult.of(date, null, 0, CollectionEmotionPageResult.of(
+                        List.of(CollectionEmotionResult.of(emotion, null, emptyEmojis),
+                                CollectionEmotionResult.of(none, null, emptyEmojis),
+                                CollectionEmotionResult.of(audio, playback, emptyEmojis)), true, "next")));
+        String expectedEmojis = """
+                [{"type":"HEART","count":0,"selected":false},{"type":"LAUGH","count":0,"selected":false},
+                 {"type":"CRY","count":0,"selected":false},{"type":"DIZZY","count":0,"selected":false},
+                 {"type":"RAGE","count":0,"selected":false},{"type":"SKULL","count":0,"selected":false}]
+                """;
+
+        // when / then
+        client.get().uri("/api/v1/collection-cards/daily?date=2026-11-04&cursor=previous&devicePublicId=" + UUID.randomUUID())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
+                .expectStatus().isOk().expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
+                .expectBody().json("""
+                        {"date":"2026-11-04","card":null,"pressCount":0,"emotions":{"items":[{"id":42,"createdAt":"2026-11-04T01:00:00Z","state":"IRRITATED",
+                         "contentType":"MEMO","memo":"짜증난 하루","audio":null,"emojis":%s},
+                         {"id":43,"createdAt":"2026-11-04T00:00:00Z","state":"EXHAUSTED","contentType":"NONE","memo":null,"audio":null,"emojis":%s},
+                         {"id":44,"createdAt":"2026-11-03T23:00:00Z","state":"ANGRY","contentType":"AUDIO","memo":null,
+                          "audio":{"playbackUrl":"https://audio.example/recording","expiresAt":"2026-11-04T02:00:00Z"},"emojis":%s}],
+                         "hasNext":true,"nextCursor":"next"}}
+                        """.formatted(expectedEmojis, expectedEmojis, expectedEmojis), JsonCompareMode.STRICT);
+    }
+
+    @Test
+    void 월별_카드를_상세_형식의_완결된_목록으로_반환한다() {
+        // given
+        var item = CollectionCardDetailResult.of(UUID.fromString("20769cf2-1f8a-4b62-8dbe-5b594d5ffb5d"),
+                LocalDate.of(2026, 11, 4), EmotionState.ANGRY, 3, 125, 기본_카드_이미지());
+        when(service.findCalendar(DEVICE_PUBLIC_ID, YearMonth.of(2026, 11))).thenReturn(List.of(item));
+
+        // when / then
+        client.get().uri("/api/v1/collection-cards/calendar?month=2026-11&devicePublicId=" + UUID.randomUUID())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
+                .expectStatus().isOk().expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
+                .expectBody().json("""
+                        {"items":[{"cardId":"20769cf2-1f8a-4b62-8dbe-5b594d5ffb5d","date":"2026-11-04","state":"ANGRY",
+                         "stampCount":3,"pressCount":125,
+                         "images":{"characterUrl":"https://assets.example/v1/characters/angry/01.png",
+                                   "roundStampUrl":"https://assets.example/v1/stamps-round/angry/01.png",
+                                   "straightStampUrl":"https://assets.example/v1/stamps-straight/angry/01.png"}}],
+                         "hasNext":false,"nextCursor":null}
+                        """, JsonCompareMode.STRICT);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "month=", "month=2026-00", "month=2026-13", "month=0000-01",
+            "month=10000-01", "month=2026-1", "month=2026-11-01", "month=abc"})
+    void 잘못된_월은_조회_전에_400으로_거절한다(String query) {
+        // when / then
+        client.get().uri("/api/v1/collection-cards/calendar?" + query)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
+                .expectStatus().isBadRequest().expectBody().jsonPath("$.code").isEqualTo("COMMON-001");
+        verifyNoInteractions(service, daily);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0001-01", "9999-12"})
+    void 지원_연도_경계의_빈_달은_빈_목록으로_조회한다(String month) {
+        // given
+        when(service.findCalendar(DEVICE_PUBLIC_ID, YearMonth.parse(month))).thenReturn(List.of());
+
+        // when / then
+        client.get().uri("/api/v1/collection-cards/calendar?month=" + month)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
+                .expectStatus().isOk().expectBody()
+                .json("{\"items\":[],\"hasNext\":false,\"nextCursor\":null}", JsonCompareMode.STRICT);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v1/collection-cards/calendar?month=2026-11",
+            "/api/v1/collection-cards/daily?date=2026-11-05"})
+    void 캘린더와_일별_감정도_기기_인증이_필요하다(String uri) {
+        // when / then
+        client.get().uri(uri).exchange().expectStatus().isUnauthorized()
+                .expectBody().jsonPath("$.code").isEqualTo("AUTH-001");
+        verifyNoInteractions(service, daily);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"COLLECTION_ASSETS_NOT_READY,503,COLLECTION-004", "COLLECTION_INVALID_CURSOR,400,COLLECTION-007"})
+    void 날짜_상세의_자산과_커서_오류를_공통_응답으로_반환한다(CollectionErrorCode error, int status, String code) {
+        // given
+        LocalDate date = LocalDate.of(2026, 11, 5);
+        when(daily.findDaily(DEVICE_PUBLIC_ID, date, null)).thenThrow(new CollectionException(error));
+
+        // when / then
+        client.get().uri("/api/v1/collection-cards/daily?date=2026-11-05")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
+                .expectStatus().isEqualTo(status).expectBody().jsonPath("$.code").isEqualTo(code);
+    }
+
+    @Test
+    void 날짜_상세의_녹음_발급_오류는_503으로_반환한다() {
+        // given
+        LocalDate date = LocalDate.of(2026, 11, 5);
+        when(daily.findDaily(DEVICE_PUBLIC_ID, date, null))
+                .thenThrow(new EmotionException(EmotionErrorCode.EMOTION_AUDIO_PLAYBACK_UNAVAILABLE));
+
+        // when / then
+        client.get().uri("/api/v1/collection-cards/daily?date=2026-11-05")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").exchange()
+                .expectStatus().isEqualTo(503).expectBody().jsonPath("$.code").isEqualTo("EMOTION-009");
     }
 
     @Test

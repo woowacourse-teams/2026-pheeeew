@@ -101,7 +101,7 @@ class RankChangeNotificationServiceIntegrationTest {
     }
 
     @Test
-    void 그날_첫_회차는_5위_이내_스냅샷만_저장하고_작업을_만들지_않는다() {
+    void 그날_첫_회차는_스냅샷만_저장하고_작업을_만들지_않는다() {
         // given
         List<Device> 기기들 = 순서대로_누른_기기들(300, 200, 100);
 
@@ -155,7 +155,7 @@ class RankChangeNotificationServiceIntegrationTest {
     }
 
     @Test
-    void 육위에서_칠위로_밀리는_것처럼_5위_밖에서만_내려가면_작업을_만들지_않는다() {
+    void 육위에서_칠위로_밀리는_것처럼_5위_밖에서_내려가도_작업을_만든다() {
         // given
         List<Device> 기기들 = 순서대로_누른_기기들(600, 500, 400, 300, 200, 100, 90);
         비교한다(오전_10시);
@@ -165,7 +165,8 @@ class RankChangeNotificationServiceIntegrationTest {
         비교한다(오전_10시_5분);
 
         // then
-        assertThat(순위_작업들(기기들)).isEmpty();
+        assertThat(순위_작업들(기기들)).extracting(작업::deviceId, 작업::previousRank, 작업::currentRank)
+                .containsExactly(tuple(기기들.get(5).getId(), 6, 7));
     }
 
     @Test
@@ -217,13 +218,13 @@ class RankChangeNotificationServiceIntegrationTest {
         // then
         assertThat(회차의_스냅샷(jdbc, 오전_10시_5분)).containsEntry(기기들.get(3).getId(), 4)
                 .containsEntry(기기들.get(5).getId(), 4)
-                .doesNotContainKey(기기들.get(4).getId());
+                .containsEntry(기기들.get(4).getId(), 6);
         assertThat(순위_작업들(기기들)).extracting(작업::deviceId, 작업::previousRank, 작업::currentRank)
                 .containsExactly(tuple(기기들.get(4).getId(), 5, 6));
     }
 
     @Test
-    void 공동_5위가_여러_명이면_스냅샷에_모두_저장하고_그_아래는_저장하지_않는다() {
+    void 공동_5위가_여러_명이어도_그_아래_순위까지_스냅샷에_모두_저장한다() {
         // given
         List<Device> 기기들 = 순서대로_누른_기기들(600, 500, 400, 300, 200, 200, 200, 100);
 
@@ -232,9 +233,9 @@ class RankChangeNotificationServiceIntegrationTest {
 
         // then
         Map<Long, Integer> snapshot = 회차의_스냅샷(jdbc, 오전_10시);
-        assertThat(snapshot).hasSize(7);
+        assertThat(snapshot).hasSize(8);
         assertThat(snapshot).containsEntry(기기들.get(4).getId(), 5).containsEntry(기기들.get(6).getId(), 5)
-                .doesNotContainKey(기기들.get(7).getId());
+                .containsEntry(기기들.get(7).getId(), 8);
     }
 
     @Test

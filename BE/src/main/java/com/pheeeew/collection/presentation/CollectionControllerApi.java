@@ -1,12 +1,16 @@
 package com.pheeeew.collection.presentation;
 
+import com.pheeeew.collection.presentation.dto.CollectionCalendarRequest;
 import com.pheeeew.collection.presentation.dto.CollectionCardDetailResponse;
 import com.pheeeew.collection.presentation.dto.CollectionCardResponse;
 import com.pheeeew.collection.presentation.dto.CollectionClaimRequest;
+import com.pheeeew.collection.presentation.dto.CollectionDailyRequest;
+import com.pheeeew.collection.presentation.dto.CollectionDailyResponse;
 import com.pheeeew.collection.presentation.dto.CollectionHistoryRequest;
 import com.pheeeew.collection.presentation.dto.CollectionHistoryResponse;
 import com.pheeeew.collection.presentation.dto.CollectionTodayResponse;
 import com.pheeeew.common.exception.ErrorResponse;
+import com.pheeeew.common.presentation.dto.CursorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -23,6 +27,63 @@ import org.springframework.util.MultiValueMap;
 
 @Tag(name = "컬렉션", description = "인증된 기기의 컬렉션 진행도 조회 및 카드 수령 API")
 public interface CollectionControllerApi {
+
+    @Operation(summary = "컬렉션 날짜 상세 조회", description = """
+            date는 매 페이지 필수인 0001~9999년의 yyyy-MM-dd KST 날짜입니다.
+            오늘·과거는 기간 제한 없이 조회하며, KST 오늘보다 미래인 날짜는 400 COMMON-001로 거부합니다.
+            인증된 기기 기준으로 조회하고 다른 기기의 식별자는 요청받지 않습니다.
+
+            date, card, pressCount, emotions를 한 응답으로 반환합니다.
+            card는 해당 날짜의 본인 카드 상세이며 미발급이면 null입니다. 카드가 없어도 정상 조회합니다.
+            pressCount는 모든 감정의 서버 저장 프레스 합계이며 카드 유무·감정 목록 개수와 무관합니다.
+            카드 내부의 pressCount도 최상위와 같은 합계입니다. 카드·프레스 요약은 매 요청의 현재 저장 상태입니다.
+            활동이 없는 날은 200, card=null, pressCount=0, emotions.items=[]입니다. 조회로 카드를 발급하지 않습니다.
+
+            emotions는 items, hasNext, nextCursor이며 작성 시각·ID 내림차순으로 최대 50개씩 반환합니다.
+            해당 KST 날짜 00:00 이상, 다음 날 00:00 미만에 본인이 등록한 다섯 감정의 NONE·MEMO·AUDIO를 모두 포함합니다.
+            삭제·차단은 매 페이지 반영하며, 공감은 각 항목에 HEART, LAUGH, CRY, DIZZY, RAGE, SKULL 순서로 반환합니다.
+            각 공감의 count는 전체 선택 수, selected는 인증 기기의 선택 여부이며 기록이 없으면 0과 false입니다.
+
+            다음 페이지에는 같은 date와 emotions.nextCursor를 cursor로 전달합니다.
+            변조되거나 다른 기기·날짜·용도의 커서는 400입니다.
+            최초 조회 이후 작성한 감정은 후속 페이지에 끼워 넣지 않으며 새로고침에서는 cursor를 생략합니다.
+            최초 조회 전 작성됐지만 저장이 늦어진 감정은 아직 읽지 않은 위치에 포함될 수 있습니다.
+            공감 수·카드·프레스는 커서로 고정하지 않습니다. 마지막·빈 페이지는 hasNext=false, nextCursor=null입니다.
+            서명 키가 교체되어 커서가 무효화되면 첫 페이지부터 재조회합니다.
+
+            녹음 재생 URL은 1시간 유효하며 만료 시 재조회합니다. 응답은 no-store입니다.
+            예: GET /api/v1/collection-cards/daily?date=2026-11-06
+            다음 페이지: GET /api/v1/collection-cards/daily?date=2026-11-06&cursor={emotions.nextCursor}
+            """, security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "날짜별 카드·프레스·감정. 미발급·빈 날짜도 정상 응답"),
+            @ApiResponse(responseCode = "400", description = "COMMON-001: 날짜 누락·형식·지원 범위 오류 또는 미래 날짜. COLLECTION-007: 커서 오류"),
+            @ApiResponse(responseCode = "401", description = "유효한 기기 인증 없음"),
+            @ApiResponse(responseCode = "503", description = "COLLECTION-004: 발급된 카드의 자산 준비 중 또는 EMOTION-009: 녹음 URL 발급 불가")
+    })
+    ResponseEntity<CollectionDailyResponse> findDaily(
+            @Parameter(hidden = true) UUID devicePublicId,
+            @ParameterObject CollectionDailyRequest request
+    );
+
+    @Operation(summary = "컬렉션 캘린더 월 조회", description = """
+            month는 0001~9999년의 yyyy-MM 형식으로 필수 전달합니다.
+            인증된 기기의 한국 시간 기준 카드 날짜가 해당 월인 카드를 날짜 오름차순으로 모두 반환합니다.
+            오늘 발급한 카드도 포함합니다. 미발급 날짜의 항목은 만들지 않으며 빈 달은 빈 items를 반환합니다.
+            각 항목은 카드 상세와 같은 이미지와 해당 날짜 모든 감정의 최신 스탬프·프레스 합계를 포함합니다.
+            한 달은 최대 31장이므로 페이지 이동 없이 hasNext=false, nextCursor=null을 반환합니다.
+            조회는 발급이나 재추첨을 수행하지 않으며 응답은 no-store입니다.
+            """, security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "월별 카드 목록. 빈 달도 200"),
+            @ApiResponse(responseCode = "400", description = "month 누락 또는 잘못된 형식·범위"),
+            @ApiResponse(responseCode = "401", description = "유효한 기기 인증 없음"),
+            @ApiResponse(responseCode = "503", description = "COLLECTION-004: 카드 자산 준비 중")
+    })
+    ResponseEntity<CursorResponse<CollectionCardDetailResponse>> findCalendar(
+            @Parameter(hidden = true) UUID devicePublicId,
+            @ParameterObject CollectionCalendarRequest request
+    );
 
     @Operation(summary = "수령한 컬렉션 카드 목록 조회", description = """
             인증된 기기가 수령한 오늘·과거 카드를 카드 날짜·내부 식별자 내림차순으로 조회합니다.

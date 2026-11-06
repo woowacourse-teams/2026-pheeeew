@@ -13,6 +13,7 @@ import jakarta.validation.ConstraintViolationException;
 import java.time.Duration;
 import org.apache.tomcat.util.http.InvalidParameterException;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -96,6 +97,7 @@ public class GlobalExceptionHandler {
             builder.header(HttpHeaders.RETRY_AFTER, Long.toString(retryAfter.toSeconds()));
         }
 
-        return builder.body(ErrorResponse.from(errorCode));
+        // Accept 가 JSON 이 아닌 요청(예: text/event-stream)에도 오류 본문을 JSON 으로 보낸다.
+        return builder.contentType(MediaType.APPLICATION_JSON).body(ErrorResponse.from(errorCode));
     }
 }

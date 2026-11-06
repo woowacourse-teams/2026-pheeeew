@@ -2,16 +2,22 @@ package com.pheeeew.collection.presentation;
 
 import com.pheeeew.auth.presentation.annotation.CurrentDevice;
 import com.pheeeew.collection.application.CollectionClaimService;
+import com.pheeeew.collection.application.CollectionDailyQueryService;
 import com.pheeeew.collection.application.CollectionQueryService;
+import com.pheeeew.collection.presentation.dto.CollectionCalendarRequest;
 import com.pheeeew.collection.presentation.dto.CollectionCardDetailResponse;
 import com.pheeeew.collection.presentation.dto.CollectionCardResponse;
 import com.pheeeew.collection.presentation.dto.CollectionClaimRequest;
+import com.pheeeew.collection.presentation.dto.CollectionDailyRequest;
+import com.pheeeew.collection.presentation.dto.CollectionDailyResponse;
 import com.pheeeew.collection.presentation.dto.CollectionHistoryRequest;
 import com.pheeeew.collection.presentation.dto.CollectionHistoryResponse;
 import com.pheeeew.collection.presentation.dto.CollectionTodayResponse;
 import com.pheeeew.common.exception.CommonErrorCode;
 import com.pheeeew.common.exception.PheeeewException;
+import com.pheeeew.common.presentation.dto.CursorResponse;
 import jakarta.validation.Valid;
+import java.time.YearMonth;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
@@ -33,6 +39,29 @@ public class CollectionController implements CollectionControllerApi {
 
     private final CollectionQueryService collectionQueryService;
     private final CollectionClaimService collectionClaimService;
+    private final CollectionDailyQueryService collectionDailyQueryService;
+
+    @Override
+    @GetMapping("/daily")
+    public ResponseEntity<CollectionDailyResponse> findDaily(
+            @CurrentDevice UUID devicePublicId,
+            @Valid @ModelAttribute CollectionDailyRequest request
+    ) {
+        var result = collectionDailyQueryService.findDaily(devicePublicId, request.parsedDate(), request.cursor());
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(CollectionDailyResponse.from(result));
+    }
+
+    @Override
+    @GetMapping("/calendar")
+    public ResponseEntity<CursorResponse<CollectionCardDetailResponse>> findCalendar(
+            @CurrentDevice UUID devicePublicId,
+            @Valid @ModelAttribute CollectionCalendarRequest request
+    ) {
+        var items = collectionQueryService.findCalendar(devicePublicId, YearMonth.parse(request.month()))
+                .stream().map(CollectionCardDetailResponse::from).toList();
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(CursorResponse.of(items, false, null));
+    }
 
     @Override
     @GetMapping

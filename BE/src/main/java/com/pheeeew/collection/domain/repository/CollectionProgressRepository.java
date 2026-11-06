@@ -75,6 +75,19 @@ public class CollectionProgressRepository {
                 .optional();
     }
 
+    public List<CollectionCardDetail> findCalendar(Long deviceId, LocalDate startDate, LocalDate endDate) {
+        return jdbc.sql(CARD_DETAILS_SQL + """
+                 WHERE card.device_id = :deviceId
+                   AND card.card_date >= :startDate AND card.card_date < :endDate
+                 ORDER BY card.card_date ASC
+                """)
+                .param("deviceId", deviceId)
+                .param("startDate", startDate)
+                .param("endDate", endDate)
+                .query((row, index) -> mapDetail(row))
+                .list();
+    }
+
     public CollectionHistoryPage findHistory(Long deviceId, LocalDate beforeDate,
             LocalDate lastDate, long lastId, EmotionState emotion, int fetchSize) {
         String filter = emotion == null ? "" : " AND card.state = :emotion";
