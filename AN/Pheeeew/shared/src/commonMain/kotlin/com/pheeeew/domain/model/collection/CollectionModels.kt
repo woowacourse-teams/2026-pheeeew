@@ -1,6 +1,7 @@
 package com.pheeeew.domain.model.collection
 
 import com.pheeeew.domain.model.emotion.EmotionState
+import com.pheeeew.domain.model.emotion.EmotionReaction
 
 data class CollectionImages(
     val characterUrl: String,
@@ -89,6 +90,7 @@ data class CollectionEmotion(
     val contentType: CollectionEmotionContentType,
     val memo: String?,
     val audio: CollectionEmotionAudio?,
+    val emojis: List<EmotionReaction> = emptyList(),
 )
 
 enum class CollectionEmotionContentType { NONE, MEMO, AUDIO }

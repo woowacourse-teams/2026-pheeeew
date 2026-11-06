@@ -48,6 +48,12 @@ internal class CollectionRepositoryImpl(
     ): CollectionResult<CollectionEmotionPage> =
         mapResult({ api.findEmotions(cardId, cursor) }, CollectionMapper::toDomain)
 
+    override suspend fun findDailyEmotions(
+        date: String,
+        cursor: String?,
+    ): CollectionResult<CollectionEmotionPage> =
+        mapResult({ api.findDaily(date, cursor) }) { CollectionMapper.toDailyEmotions(it, date) }
+
     private suspend fun <Dto : Any, Domain : Any> mapResult(
         response: suspend () -> ApiResult<Dto>,
         map: (Dto) -> Domain,

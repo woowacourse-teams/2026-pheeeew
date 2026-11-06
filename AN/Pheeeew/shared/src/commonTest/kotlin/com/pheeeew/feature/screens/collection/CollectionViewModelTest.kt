@@ -468,6 +468,11 @@ class CollectionViewModelTest {
         ): CollectionResult<CollectionEmotionPage> =
             CollectionResult.Success(CollectionEmotionPage(emptyList(), hasNext = false, nextCursor = null))
 
+        override suspend fun findDailyEmotions(
+            date: String,
+            cursor: String?,
+        ): CollectionResult<CollectionEmotionPage> = findEmotions(date, cursor)
+
         fun history(cardId: String) =
             CollectionHistory(
                 nickname = "오늘도히유",

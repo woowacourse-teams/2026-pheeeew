@@ -28,4 +28,9 @@ interface CollectionRepository {
         cardId: String,
         cursor: String? = null,
     ): CollectionResult<CollectionEmotionPage>
+
+    suspend fun findDailyEmotions(
+        date: String,
+        cursor: String? = null,
+    ): CollectionResult<CollectionEmotionPage>
 }

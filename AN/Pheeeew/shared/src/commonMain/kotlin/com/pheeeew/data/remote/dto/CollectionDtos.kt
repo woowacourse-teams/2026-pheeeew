@@ -1,6 +1,7 @@
 package com.pheeeew.data.remote.dto
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
 
 @Serializable
 data class CollectionImagesDto(
@@ -84,6 +85,14 @@ data class CollectionEmotionDto(
     val contentType: String,
     val memo: String? = null,
     val audio: CollectionEmotionAudioDto? = null,
+    val emojis: List<CollectionEmotionEmojiDto> = emptyList(),
+)
+
+@Serializable
+data class CollectionEmotionEmojiDto(
+    val type: String,
+    val count: Long,
+    val selected: Boolean,
 )
 
 @Serializable
@@ -91,6 +100,14 @@ data class CollectionEmotionPageDto(
     val items: List<CollectionEmotionDto>,
     val hasNext: Boolean,
     val nextCursor: String? = null,
+)
+
+@Serializable
+data class CollectionDailyDto(
+    val date: String,
+    val card: JsonObject? = null,
+    val pressCount: Long,
+    val emotions: CollectionEmotionPageDto,
 )
 
 @Serializable
