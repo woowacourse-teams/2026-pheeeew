@@ -134,7 +134,7 @@ class PressSnapshotTest {
     @Test
     void 닉네임이_없는_참가자는_익명으로_표시한다() {
         // given
-        PressSnapshot snapshot = 순위(List.of(PressParticipant.of(기기(1), new UUID(0, 1), null, 3, NOW)));
+        PressSnapshot snapshot = 순위(List.of(PressParticipant.of(기기(1), new UUID(0, 1), null, 3, NOW, null)));
 
         // when
         PressScreen screen = snapshot.findScreen(기기(1), PressView.PRESS);

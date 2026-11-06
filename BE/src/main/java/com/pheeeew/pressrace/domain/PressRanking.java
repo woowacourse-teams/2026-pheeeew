@@ -1,5 +1,6 @@
 package com.pheeeew.pressrace.domain;
 
+import com.pheeeew.emotion.domain.EmotionState;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -37,7 +38,8 @@ public final class PressRanking {
             }
             previousScore = participant.score();
             positions.put(participant.deviceId(), index);
-            ranked.add(Member.of(participant.publicId().toString(), participant.nickname(), participant.score(), rank, true));
+            ranked.add(Member.of(participant.publicId().toString(), participant.nickname(), participant.score(), rank, true,
+                    participant.representativeState()));
             if (participant.lastAppliedAt().plusSeconds(5).isAfter(generatedAt)) {
                 active++;
             }
@@ -54,7 +56,7 @@ public final class PressRanking {
 
     public Screen forDevice(UUID deviceId, PressView view) {
         Integer index = indices.get(deviceId);
-        Member me = index == null ? Member.of(null, null, 0, null, false) : members.get(index);
+        Member me = index == null ? Member.of(null, null, 0, null, false, null) : members.get(index);
         int start = index == null ? 0 : Math.max(0, Math.min(index - 1, Math.max(members.size() - 3, 0)));
         int length = index == null ? 2 : 3;
         List<Member> nearby = members.subList(start, Math.min(start + length, members.size()));
@@ -107,15 +109,19 @@ public final class PressRanking {
         }
     }
 
-    public record Participant(UUID deviceId, UUID publicId, String nickname, long score, Instant lastAppliedAt) {
-        public static Participant of(UUID deviceId, UUID publicId, String nickname, long score, Instant lastAppliedAt) {
-            return new Participant(deviceId, publicId, nickname, score, lastAppliedAt);
+    public record Participant(UUID deviceId, UUID publicId, String nickname, long score, Instant lastAppliedAt,
+                              EmotionState representativeState) {
+        public static Participant of(UUID deviceId, UUID publicId, String nickname, long score, Instant lastAppliedAt,
+                EmotionState representativeState) {
+            return new Participant(deviceId, publicId, nickname, score, lastAppliedAt, representativeState);
         }
     }
 
-    public record Member(String publicId, String nickname, long score, Long rank, boolean participating) {
-        public static Member of(String publicId, String nickname, long score, Long rank, boolean participating) {
-            return new Member(publicId, nickname, score, rank, participating);
+    public record Member(String publicId, String nickname, long score, Long rank, boolean participating,
+                         EmotionState representativeState) {
+        public static Member of(String publicId, String nickname, long score, Long rank, boolean participating,
+                EmotionState representativeState) {
+            return new Member(publicId, nickname, score, rank, participating, representativeState);
         }
     }
 

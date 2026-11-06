@@ -1,5 +1,6 @@
 package com.pheeeew.pressrace.application;
 
+import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.pressrace.domain.PressRanking;
 import com.pheeeew.pressrace.exception.PressRaceException;
 import com.pheeeew.pressrace.infra.PressRaceRepository;
@@ -46,17 +47,36 @@ public class PressRankingReader {
             }
             List<PressRanking.Participant> participants = jdbc.sql("""
                     SELECT d.public_id AS device_id, s.public_id, COALESCE(d.nickname, '익명') AS nickname,
-                           s.total, s.last_applied_at
+                           s.total, s.last_applied_at, representative.state AS representative_state
                     FROM press_daily_scores s JOIN devices d ON d.id = s.device_id
+                    LEFT JOIN LATERAL (
+                        SELECT p.state
+                        FROM device_daily_presses p
+                        WHERE p.press_date = s.press_date AND p.device_id = s.device_id
+                        ORDER BY p.press_count DESC,
+                                 CASE p.state
+                                     WHEN 'ANGRY' THEN 1
+                                     WHEN 'DISCOURAGED' THEN 2
+                                     WHEN 'EXHAUSTED' THEN 3
+                                     WHEN 'FRUSTRATED' THEN 4
+                                     WHEN 'IRRITATED' THEN 5
+                                 END
+                        LIMIT 1
+                    ) representative ON TRUE
                     WHERE s.press_date = :date
                     """).param("date", date).query((row, index) -> PressRanking.Participant.of(
                             row.getObject("device_id", UUID.class), row.getObject("public_id", UUID.class),
                             row.getString("nickname"), row.getLong("total"),
-                            row.getObject("last_applied_at", OffsetDateTime.class).toInstant())).list();
+                            row.getObject("last_applied_at", OffsetDateTime.class).toInstant(),
+                            toState(row.getString("representative_state")))).list();
             return Observation.of(date, now, participants);
         });
         // 정렬·개인화·송신 동안 DB 관찰 트랜잭션을 유지하지 않는다.
         return PressRanking.of(observation.date(), observation.now(), observation.participants());
+    }
+
+    private EmotionState toState(String state) {
+        return state == null ? null : EmotionState.valueOf(state);
     }
 
     private record Observation(LocalDate date, Instant now, List<PressRanking.Participant> participants) {
