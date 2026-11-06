@@ -177,6 +177,24 @@ private fun CollectionCenteredState(
     )
 }
 
+internal fun Modifier.coverFlowItem(pagerState: PagerState, page: Int): Modifier =
+    layout { measurable, constraints ->
+        val placeable = measurable.measure(constraints)
+        layout(placeable.width, placeable.height) {
+            val offset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
+            val distance = offset.absoluteValue.coerceIn(0f, 1f)
+            placeable.place(0, 0, zIndex = 1f - distance)
+        }
+    }.graphicsLayer {
+        val offset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
+        val distance = offset.absoluteValue.coerceIn(0f, 1f)
+        scaleX = 1f - distance * 0.12f
+        scaleY = 1f - distance * 0.1f
+        rotationY = offset.coerceIn(-1f, 1f) * -12f
+        alpha = 1f - distance * 0.35f
+        cameraDistance = 12f * density
+    }
+
 @Composable
 private fun CollectionCoverFlow(
     items: List<CollectionCarouselItem>,
@@ -234,25 +252,7 @@ private fun CollectionCoverFlow(
                     val item = items.getOrNull(page) ?: return@HorizontalPager
                     val issuedCard = item.card
                     val progress = item.progress
-                    val animatedModifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .layout { measurable, constraints ->
-                                val placeable = measurable.measure(constraints)
-                                layout(placeable.width, placeable.height) {
-                                    val offset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
-                                    val distance = offset.absoluteValue.coerceIn(0f, 1f)
-                                    placeable.place(0, 0, zIndex = 1f - distance)
-                                }
-                            }.graphicsLayer {
-                                val offset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
-                                val distance = offset.absoluteValue.coerceIn(0f, 1f)
-                                scaleX = 1f - distance * 0.12f
-                                scaleY = 1f - distance * 0.1f
-                                rotationY = offset.coerceIn(-1f, 1f) * -12f
-                                alpha = 1f - distance * 0.35f
-                                cameraDistance = 12f * density
-                            }
+                    val animatedModifier = Modifier.fillMaxWidth().coverFlowItem(pagerState, page)
                     val cardModifier =
                         if (issuedCard != null) {
                             animatedModifier.clickable(role = Role.Button) { onCardClick(issuedCard) }

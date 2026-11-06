@@ -113,7 +113,8 @@ fun CalendarSection(
                             card = card,
                             isToday = day.date == todayDate,
                             todayDate = todayDate,
-                            onClick = { card?.let { onDateClick(it.id) } },
+                            hasLoaded = hasLoaded,
+                            onClick = { day.date?.let(onDateClick) },
                             modifier = Modifier.weight(1f),
                         )
                     }
@@ -236,6 +237,7 @@ private fun CalendarDayCell(
     card: CollectionCardUiModel?,
     isToday: Boolean,
     todayDate: String,
+    hasLoaded: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -255,14 +257,14 @@ private fun CalendarDayCell(
     Box(
         modifier
             .aspectRatio(0.82f)
-            .clickable(enabled = card != null && !isFutureDay, role = Role.Button, onClick = onClick)
+            .clickable(enabled = day.isCurrentMonth && day.date != null && !isFutureDay && hasLoaded, role = Role.Button, onClick = onClick)
             .semantics(mergeDescendants = true) {
                 contentDescription =
                     buildString {
                         append(day.date ?: day.dayOfMonth)
                         if (card != null) append(" 발급 카드")
                     }
-                if (card != null) role = Role.Button
+                if (day.isCurrentMonth && day.date != null && !isFutureDay && hasLoaded) role = Role.Button
             },
     ) {
         if (card != null) {

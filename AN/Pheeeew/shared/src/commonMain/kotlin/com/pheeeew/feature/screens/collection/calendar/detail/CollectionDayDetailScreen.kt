@@ -30,26 +30,36 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.audio.AudioPlaybackState
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.domain.model.collection.CollectionEmotionContentType
+import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.feature.emotion.model.EmotionType
 import com.pheeeew.feature.screens.collection.CollectionDayEmotionUiModel
 import com.pheeeew.feature.screens.collection.CollectionPreviewTheme
+import com.pheeeew.feature.screens.collection.CollectionProgressUiModel
 import com.pheeeew.feature.screens.collection.calendar.collectionDayOfWeek
 import com.pheeeew.feature.screens.collection.card.CollectionCard
 import com.pheeeew.feature.screens.collection.card.CollectionCardUiModel
+import com.pheeeew.feature.screens.collection.card.CollectionProgressCard
+import com.pheeeew.feature.screens.collection.card.CollectionUnissuedCard
+import com.pheeeew.feature.screens.collection.coverflow.coverFlowItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.collection_card_action_hint
 import pheeeew.shared.generated.resources.ic_arrow_back
 
 @Composable
@@ -73,17 +83,27 @@ internal fun CollectionDayDetailScreen(
     modifier: Modifier = Modifier,
     emotionsLoaded: Boolean = true,
     onRetryNextEmotions: () -> Unit = onRetryEmotions,
+    dates: List<String> = cards.map { it.id },
+    todayDate: String? = null,
+    todayProgress: CollectionProgressUiModel? = null,
+    isLoadingToday: Boolean = false,
+    todayClaimError: String? = null,
+    onClaimToday: (EmotionType) -> Unit = {},
+    onRetryTodayClaim: () -> Unit = {},
+    onReactToEmotion: (Long, EmotionReactionType) -> Unit = { _, _ -> },
+    pendingReactionIds: Set<Long> = emptySet(),
+    reactionError: String? = null,
 ) {
-    val initialPage = cards.indexOfFirst { it.id == selectedCardId }.coerceAtLeast(0)
-    val pagerState = rememberPagerState(initialPage = initialPage, pageCount = { cards.size.coerceAtLeast(1) })
+    val initialPage = dates.indexOf(selectedCardId).coerceAtLeast(0)
+    val pagerState = rememberPagerState(initialPage = initialPage, pageCount = { dates.size.coerceAtLeast(1) })
     val latestCardSettled by rememberUpdatedState(onCardSettled)
     val listState = rememberLazyListState()
     LaunchedEffect(selectedCardId) { listState.scrollToItem(0) }
-    LaunchedEffect(pagerState, cards) {
+    LaunchedEffect(pagerState, dates) {
         snapshotFlow { pagerState.settledPage }
             .distinctUntilChanged()
             .drop(1)
-            .collect { page -> cards.getOrNull(page)?.let { latestCardSettled(it.id) } }
+            .collect { page -> dates.getOrNull(page)?.let { latestCardSettled(it) } }
     }
     LaunchedEffect(listState, emotions.size, isLoadingNextEmotions, hasNextEmotions, emotionsError) {
         snapshotFlow {
@@ -103,11 +123,10 @@ internal fun CollectionDayDetailScreen(
     Column(
         modifier.fillMaxSize().background(AppColors.GroupBackground).navigationBarsPadding(),
     ) {
-        val currentCard = cards.getOrNull(pagerState.currentPage) ?: cards.firstOrNull { it.id == selectedCardId }
+        val currentKey = dates.getOrNull(pagerState.currentPage) ?: selectedCardId
+        val currentCard = cards.firstOrNull { it.id == currentKey || it.period.take(10).replace('.', '-') == currentKey }
         val date =
-            currentCard
-                ?.period
-                .orEmpty()
+            (currentCard?.period ?: currentKey)
                 .take(10)
                 .replace('.', '-')
         val parts = date.split('-')
@@ -166,28 +185,50 @@ internal fun CollectionDayDetailScreen(
                     }
 
                     BoxWithConstraints(Modifier.fillMaxWidth()) {
-                        val cardWidth = minOf(maxWidth * 0.56f, 250.dp)
+                        val cardWidth = maxWidth * 0.65f
                         val cardHeight = cardWidth / 0.75f
                         HorizontalPager(
                             state = pagerState,
                             modifier = Modifier.fillMaxWidth().height(cardHeight),
                             pageSize = PageSize.Fixed(cardWidth),
                             contentPadding = PaddingValues(horizontal = (maxWidth - cardWidth) / 2),
-                            pageSpacing = 16.dp,
-                            key = { index -> cards.getOrNull(index)?.id ?: "empty-$index" },
+                            pageSpacing = maxWidth * 0.04f,
+                            key = { index -> dates.getOrNull(index) ?: "empty-$index" },
                         ) { page ->
-                            cards.getOrNull(page)?.let { card ->
+                            val date = dates.getOrNull(page) ?: return@HorizontalPager
+                            val card = cards.firstOrNull { it.id == date || it.period.take(10).replace('.', '-') == date }
+                            if (card != null) {
                                 CollectionCard(
                                     uiModel = card,
                                     modifier =
                                         Modifier
                                             .fillMaxWidth()
+                                            .coverFlowItem(pagerState, page)
                                             .clickable(role = Role.Button) { onOpenCard(card.id) },
+                                )
+                            } else if (date == todayDate && todayProgress != null) {
+                                CollectionProgressCard(
+                                    progress = todayProgress,
+                                    isLoading = isLoadingToday,
+                                    error = todayClaimError,
+                                    onClaim = { onClaimToday(todayProgress.emotion) },
+                                    onRetry = onRetryTodayClaim,
+                                    modifier = Modifier.fillMaxWidth().coverFlowItem(pagerState, page),
+                                )
+                            } else {
+                                CollectionUnissuedCard(
+                                    modifier = Modifier.fillMaxWidth().coverFlowItem(pagerState, page),
                                 )
                             }
                         }
                     }
-                    Text("카드를 눌러 저장하거나 공유해보세요!", color = AppColors.TextSecondary, fontSize = 10.sp)
+                    Text(
+                        text = stringResource(Res.string.collection_card_action_hint),
+                        modifier =
+                            if (currentCard != null) Modifier else Modifier.alpha(0f).clearAndSetSemantics {},
+                        color = AppColors.TextSecondary,
+                        fontSize = 10.sp,
+                    )
 
                     Spacer(modifier = Modifier.height(16.dp))
                     Row(
@@ -195,7 +236,7 @@ internal fun CollectionDayDetailScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text("내가 남긴 감정", color = AppColors.GroupInk, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                        emotionCount?.let {
+                        emotionCount?.takeIf { currentKey == selectedCardId }?.let {
                             Text(
                                 "  $it",
                                 color = AppColors.TextSecondary,
@@ -208,7 +249,9 @@ internal fun CollectionDayDetailScreen(
                     }
                 }
             }
-            if (emotionsLoaded || isLoadingEmotions || emotionsError != null) {
+            if (currentKey == selectedCardId &&
+                (emotionsLoaded || isLoadingEmotions || emotionsError != null || emotions.isNotEmpty())
+            ) {
                 collectionDayEmotionItems(
                     emotions = emotions,
                     nickname = nickname,
@@ -219,7 +262,17 @@ internal fun CollectionDayDetailScreen(
                     onRetryEmotions = onRetryEmotions,
                     onDeleteEmotion = onDeleteEmotion,
                     onRetryNextEmotions = onRetryNextEmotions,
+                    onReact = onReactToEmotion,
+                    pendingReactionIds = pendingReactionIds,
                 )
+                if (reactionError != null) item(key = "emotion-reaction-error") {
+                    Text(
+                        text = reactionError,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+                        color = AppColors.RecordSheetRecording,
+                        textAlign = TextAlign.Center,
+                    )
+                }
             }
         }
     }
@@ -241,6 +294,16 @@ private fun CollectionDayDetailScreenPreview() {
                         pressCount = 128,
                         stampLabel = "스탬프",
                         stampCount = 3,
+                    ),
+                    CollectionCardUiModel(
+                        id = "preview-card-next",
+                        period = "2026.10.14",
+                        title = "오늘도히유",
+                        emotion = EmotionType.EXHAUSTED,
+                        pressLabel = "프레스",
+                        pressCount = 96,
+                        stampLabel = "스탬프",
+                        stampCount = 2,
                     ),
                 ),
             selectedCardId = "preview-card",

@@ -13,11 +13,17 @@ import com.pheeeew.domain.model.collection.CollectionHistoryQuery
 import com.pheeeew.domain.model.collection.CollectionResult
 import com.pheeeew.domain.model.collection.CollectionToday
 import com.pheeeew.domain.model.emotion.EmotionState
+import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.domain.repository.CollectionRepository
+import com.pheeeew.domain.repository.EmotionFailure
 import com.pheeeew.domain.repository.EmotionModerationResult
+import com.pheeeew.domain.repository.EmotionRepository
+import com.pheeeew.domain.repository.EmotionResult
 import com.pheeeew.domain.usecase.DeleteEmotionUseCase
 import com.pheeeew.feature.emotion.model.EmotionType
+import com.pheeeew.feature.screens.collection.calendar.collectionMonthDays
 import com.pheeeew.feature.screens.collection.calendar.currentCollectionMonth
+import com.pheeeew.feature.screens.collection.calendar.currentCollectionTodayDate
 import com.pheeeew.feature.screens.collection.calendar.detail.CollectionAudioLoader
 import com.pheeeew.feature.screens.collection.card.CollectionCardUiModel
 import dev.zacsweers.metro.Inject
@@ -69,6 +75,7 @@ internal data class CollectionUiState(
 
 internal data class CollectionDayUiState(
     val selectedCalendarCardId: String? = null,
+    val selectedCalendarDate: String? = null,
     val calendarEmotions: List<CollectionEmotion> = emptyList(),
     val calendarEmotionsLoaded: Boolean = false,
     val isLoadingCalendarEmotions: Boolean = false,
@@ -78,20 +85,25 @@ internal data class CollectionDayUiState(
     val emotionDeleteTargetId: Long? = null,
     val isDeletingEmotion: Boolean = false,
     val emotionDeleteFailed: Boolean = false,
+    val pendingReactionIds: Set<Long> = emptySet(),
+    val calendarReactionError: String? = null,
 )
 
 /** Owns collection reads, the idempotent claim intent, and detail loading for this root tab. */
 internal class CollectionViewModel(
     private val repository: CollectionRepository,
     private val deleteEmotion: suspend (Long) -> EmotionModerationResult = { EmotionModerationResult.Unavailable },
+    private val reactEmotion: suspend (Long, EmotionReactionType, Boolean) -> EmotionResult<Unit> =
+        { _, _, _ -> EmotionResult.Failure(EmotionFailure.UNAVAILABLE) },
     internal val audioLoader: CollectionAudioLoader? = null,
 ) : ViewModel() {
     @Inject
     constructor(
         repository: CollectionRepository,
         deleteEmotion: DeleteEmotionUseCase,
+        emotionRepository: EmotionRepository,
         audioLoader: CollectionAudioLoader,
-    ) : this(repository, deleteEmotion::invoke, audioLoader)
+    ) : this(repository, deleteEmotion::invoke, emotionRepository::react, audioLoader)
 
     private val mutableUiState = MutableStateFlow(CollectionUiState())
     val uiState = mutableUiState.asStateFlow()
@@ -121,7 +133,8 @@ internal class CollectionViewModel(
     private var calendarEmotionsCursor: String? = null
     private var pendingCalendarCardId: String? = null
     private var refreshedCalendarEmotions = emptyList<CollectionEmotion>()
-    private val calendarEmotionsByCard = mutableMapOf<String, List<CollectionEmotion>>()
+    private val calendarEmotionsByDate = mutableMapOf<String, List<CollectionEmotion>>()
+    private val pendingReactionIds = mutableSetOf<Long>()
     private var historyCursor: String? = null
     private val historyByFilter = mutableMapOf<EmotionType?, HistorySnapshot>()
     private var pendingClaim: ClaimIntent? = null
@@ -160,7 +173,8 @@ internal class CollectionViewModel(
         calendarEmotionsCursor = null
         historyCursor = null
         historyByFilter.clear()
-        calendarEmotionsByCard.clear()
+        calendarEmotionsByDate.clear()
+        pendingReactionIds.clear()
         pendingCalendarCardId = null
         pendingClaim = null
         historyScrollResetPending = false
@@ -424,33 +438,50 @@ internal class CollectionViewModel(
         val state = mutableUiState.value
         if (!state.calendarLoaded) return
         pendingCalendarCardId = null
-        selectCalendarCard(cardId)
+        if (state.calendarCards.any { it.id == cardId }) {
+            selectCalendarCard(cardId)
+        } else {
+            selectCalendarDate(cardId)
+        }
     }
 
-    fun selectCalendarCard(cardId: String) {
+    fun selectCalendarDate(date: String) {
         val state = mutableUiState.value
-        if (state.calendarCards.none { it.id == cardId } || state.day.selectedCalendarCardId == cardId) return
-        val cachedEmotions = calendarEmotionsByCard[cardId]
+        if (!state.calendarLoaded || date.take(7) != state.calendarMonth ||
+            date > currentCollectionTodayDate() ||
+            collectionMonthDays(state.calendarMonth).none { it.isCurrentMonth && it.date == date }
+        ) return
+        val card = state.calendarCards.firstOrNull { it.period.take(10).replace('.', '-') == date }
+        if (state.day.selectedCalendarDate == date) {
+            if (state.day.selectedCalendarCardId != card?.id) {
+                mutableUiState.update { it.copy(day = it.day.copy(selectedCalendarCardId = card?.id)) }
+            }
+            return
+        }
+        val cachedEmotions = calendarEmotionsByDate[date]
         calendarEmotionsRequestId += 1
         calendarEmotionsJob?.cancel()
         calendarEmotionsCursor = null
         mutableUiState.update {
             it.copy(
                 day =
-                    it.day.copy(
-                        selectedCalendarCardId = cardId,
-                        emotionDeleteTargetId = null,
-                        emotionDeleteFailed = false,
+                    CollectionDayUiState(
+                        selectedCalendarCardId = card?.id,
+                        selectedCalendarDate = date,
                         calendarEmotions = cachedEmotions.orEmpty(),
                         calendarEmotionsLoaded = cachedEmotions != null,
-                        isLoadingCalendarEmotions = false,
-                        isLoadingNextCalendarEmotions = false,
-                        calendarEmotionsError = null,
-                        hasNextCalendarEmotions = false,
+                        isDeletingEmotion = it.day.isDeletingEmotion,
                     ),
             )
         }
-        loadCalendarEmotions(cardId, cursor = null, append = false)
+        loadCalendarEmotions(date, cursor = null, append = false)
+    }
+
+    fun selectCalendarCard(cardId: String) {
+        val state = mutableUiState.value
+        if (state.calendarCards.none { it.id == cardId } || state.day.selectedCalendarCardId == cardId) return
+        state.calendarCards.firstOrNull { it.id == cardId }
+            ?.period?.take(10)?.replace('.', '-')?.let(::selectCalendarDate)
     }
 
     fun closeCalendarDay() {
@@ -469,14 +500,87 @@ internal class CollectionViewModel(
 
     fun loadNextCalendarEmotions() {
         val state = mutableUiState.value
-        val cardId = state.day.selectedCalendarCardId ?: return
+        val date = state.day.selectedCalendarDate ?: return
         val cursor = calendarEmotionsCursor ?: return
         if (!state.day.hasNextCalendarEmotions || state.day.isLoadingCalendarEmotions ||
-            state.day.isLoadingNextCalendarEmotions
+            state.day.isLoadingNextCalendarEmotions || state.day.pendingReactionIds.isNotEmpty()
         ) {
             return
         }
-        loadCalendarEmotions(cardId, cursor, append = true)
+        loadCalendarEmotions(date, cursor, append = true)
+    }
+
+    fun reactToCalendarEmotion(
+        emotionId: Long,
+        type: EmotionReactionType,
+    ) {
+        val generation = sessionGeneration ?: return
+        val date = mutableUiState.value.day.selectedCalendarDate ?: return
+        val emotion = mutableUiState.value.day.calendarEmotions.firstOrNull { it.id == emotionId } ?: return
+        val reaction = emotion.emojis.firstOrNull { it.type == type } ?: return
+        if (!pendingReactionIds.add(emotionId)) return
+        val selected = !reaction.selected
+        val refreshDailyAfterReaction = calendarEmotionsJob?.isActive == true
+        calendarEmotionsRequestId += 1
+        calendarEmotionsJob?.cancel()
+        calendarEmotionsJob = null
+        mutableUiState.update { current ->
+            current.copy(day = current.day.copy(isLoadingCalendarEmotions = false, isLoadingNextCalendarEmotions = false))
+        }
+        mutableUiState.update {
+            it.copy(day = it.day.copy(pendingReactionIds = it.day.pendingReactionIds + emotionId, calendarReactionError = null))
+        }
+        viewModelScope.launch {
+            val result =
+                try {
+                    reactEmotion(emotionId, type, selected)
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    EmotionResult.Failure(EmotionFailure.UNAVAILABLE)
+                }
+            if (sessionGeneration != generation) return@launch
+            pendingReactionIds.remove(emotionId)
+            when (result) {
+                is EmotionResult.Success -> {
+                    val updated = emotion.copy(
+                        emojis = emotion.emojis.map { current ->
+                            if (current.type == type) {
+                                current.copy(selected = selected, count = (current.count + if (selected) 1 else -1).coerceAtLeast(0))
+                            } else current
+                        },
+                    )
+                    calendarEmotionsByDate[date] = calendarEmotionsByDate[date].orEmpty().map {
+                        if (it.id == emotionId) updated else it
+                    }
+                    mutableUiState.update { current ->
+                        if (current.day.selectedCalendarDate == date) {
+                            current.copy(day = current.day.copy(
+                                calendarEmotions = current.day.calendarEmotions.map { if (it.id == emotionId) updated else it },
+                                pendingReactionIds = current.day.pendingReactionIds - emotionId,
+                                calendarReactionError = null,
+                            ))
+                        } else current
+                    }
+                    if (refreshDailyAfterReaction && mutableUiState.value.day.selectedCalendarDate == date) {
+                        loadCalendarEmotions(date, cursor = null, append = false)
+                    }
+                }
+                is EmotionResult.Failure -> {
+                    mutableUiState.update { current ->
+                        if (current.day.selectedCalendarDate == date) {
+                            current.copy(day = current.day.copy(
+                                pendingReactionIds = current.day.pendingReactionIds - emotionId,
+                                calendarReactionError = "이모지 반응을 저장하지 못했어요. 다시 시도해 주세요.",
+                            ))
+                        } else current
+                    }
+                    if (refreshDailyAfterReaction && mutableUiState.value.day.selectedCalendarDate == date) {
+                        loadCalendarEmotions(date, cursor = null, append = false)
+                    }
+                }
+            }
+        }
     }
 
     fun requestEmotionDeletion(emotionId: Long) {
@@ -522,14 +626,14 @@ internal class CollectionViewModel(
                 )
             }
             if (deleted) {
-                state.day.selectedCalendarCardId?.let { cardId ->
-                    calendarEmotionsByCard[cardId]?.let { cached ->
-                        calendarEmotionsByCard[cardId] = cached.filterNot { it.id == emotionId }
+                state.day.selectedCalendarDate?.let { date ->
+                    calendarEmotionsByDate[date]?.let { cached ->
+                        calendarEmotionsByDate[date] = cached.filterNot { it.id == emotionId }
                     }
                 }
                 retryCalendar()
-                val cardId = mutableUiState.value.day.selectedCalendarCardId
-                if (cardId == state.day.selectedCalendarCardId && cardId != null) {
+                val date = mutableUiState.value.day.selectedCalendarDate
+                if (date == state.day.selectedCalendarDate && date != null) {
                     mutableUiState.update { current ->
                         current.copy(
                             day =
@@ -542,7 +646,7 @@ internal class CollectionViewModel(
                                 ),
                         )
                     }
-                    loadCalendarEmotions(cardId, cursor = null, append = false)
+                    loadCalendarEmotions(date, cursor = null, append = false)
                 }
             }
         }
@@ -550,9 +654,9 @@ internal class CollectionViewModel(
 
     fun retryCalendarEmotions() {
         val state = mutableUiState.value
-        val cardId = state.day.selectedCalendarCardId ?: return
+        val date = state.day.selectedCalendarDate ?: return
         if (calendarEmotionsJob?.isActive == true) return
-        loadCalendarEmotions(cardId, cursor = null, append = false)
+        loadCalendarEmotions(date, cursor = null, append = false)
     }
 
     fun retryNextCalendarEmotions() {
@@ -575,24 +679,15 @@ internal class CollectionViewModel(
                         ) {
                             val cards = result.value.cards.map { it.toUiModel(mutableUiState.value.nickname) }
                             mutableUiState.update { state ->
-                                val selectedCardStillExists =
-                                    state.day.selectedCalendarCardId == null ||
-                                        cards.any { it.id == state.day.selectedCalendarCardId }
                                 state.copy(
                                     calendarCards = cards,
                                     calendarLoaded = true,
                                     isLoadingCalendar = false,
                                     calendarError = null,
-                                    day =
-                                        state.day.copy(
-                                            selectedCalendarCardId =
-                                                state.day.selectedCalendarCardId.takeIf {
-                                                    selectedCardStillExists
-                                                },
-                                        ),
                                 )
                             }
-                            if (mutableUiState.value.day.selectedCalendarCardId == null &&
+                            mutableUiState.value.day.selectedCalendarDate?.let(::selectCalendarDate)
+                            if (mutableUiState.value.day.selectedCalendarDate == null &&
                                 pendingCalendarCardId == null
                             ) {
                                 closeCalendarDay()
@@ -620,14 +715,14 @@ internal class CollectionViewModel(
     }
 
     private fun loadCalendarEmotions(
-        cardId: String,
+        date: String,
         cursor: String?,
         append: Boolean,
     ) {
         val generation = sessionGeneration ?: return
         val requestId = ++calendarEmotionsRequestId
         calendarEmotionsJob?.cancel()
-        val isSilentRefresh = !append && calendarEmotionsByCard.containsKey(cardId)
+        val isSilentRefresh = !append && calendarEmotionsByDate.containsKey(date)
         if (!append) {
             calendarEmotionsCursor = null
             refreshedCalendarEmotions = emptyList()
@@ -646,7 +741,7 @@ internal class CollectionViewModel(
         val job =
             viewModelScope.launch(start = CoroutineStart.LAZY) {
                 val request: suspend () -> CollectionResult<CollectionEmotionPage> = {
-                    safeRepositoryCall { repository.findEmotions(cardId, cursor) }
+                    safeRepositoryCall { repository.findDailyEmotions(date, cursor) }
                 }
                 val result =
                     if (!append && !isSilentRefresh) {
@@ -654,7 +749,7 @@ internal class CollectionViewModel(
                             onVisibleChanged = { visible ->
                                 if (visible && sessionGeneration == generation &&
                                     calendarEmotionsRequestId == requestId &&
-                                    mutableUiState.value.day.selectedCalendarCardId == cardId
+                                    mutableUiState.value.day.selectedCalendarDate == date
                                 ) {
                                     mutableUiState.update {
                                         it.copy(
@@ -671,18 +766,18 @@ internal class CollectionViewModel(
                 when (result) {
                     is CollectionResult.Success -> {
                         if (sessionGeneration == generation && calendarEmotionsRequestId == requestId &&
-                            mutableUiState.value.day.selectedCalendarCardId == cardId
+                            mutableUiState.value.day.selectedCalendarDate == date
                         ) {
-                            applyCalendarEmotions(cardId, result.value)
+                            applyCalendarEmotions(date, result.value)
                         }
                     }
 
                     is CollectionResult.Failure -> {
                         if (sessionGeneration == generation && calendarEmotionsRequestId == requestId &&
-                            mutableUiState.value.day.selectedCalendarCardId == cardId
+                            mutableUiState.value.day.selectedCalendarDate == date
                         ) {
                             if (append && result.reason.code == "COLLECTION-007") {
-                                loadCalendarEmotions(cardId, cursor = null, append = false)
+                                loadCalendarEmotions(date, cursor = null, append = false)
                                 return@launch
                             }
                             mutableUiState.update {
@@ -704,7 +799,7 @@ internal class CollectionViewModel(
     }
 
     private fun applyCalendarEmotions(
-        cardId: String,
+        date: String,
         page: CollectionEmotionPage,
     ) {
         calendarEmotionsCursor = page.nextCursor
@@ -712,11 +807,11 @@ internal class CollectionViewModel(
         // Keep the cached tail visible until pagination reaches the end of the fresh list.
         val emotions =
             if (page.hasNext) {
-                (refreshedCalendarEmotions + calendarEmotionsByCard[cardId].orEmpty()).distinctBy { it.id }
+                (refreshedCalendarEmotions + calendarEmotionsByDate[date].orEmpty()).distinctBy { it.id }
             } else {
                 refreshedCalendarEmotions
             }
-        calendarEmotionsByCard[cardId] = emotions
+        calendarEmotionsByDate[date] = emotions
         mutableUiState.update { state ->
             state.copy(
                 day =
@@ -1072,6 +1167,37 @@ private fun EmotionType.toDomain(): EmotionState = EmotionState.valueOf(name)
 
 private fun EmotionState.toUi(): EmotionType = EmotionType.valueOf(name)
 
+internal val CollectionUiState.todayProgress: CollectionProgressUiModel?
+    get() =
+        today
+            ?.takeUnless { it.hasClaimedCard }
+            ?.let { progress ->
+                CollectionProgressUiModel(
+                    emotion = progress.claimEmotion?.toUi() ?: collectionCoverFlowEmotionOrder.first(),
+                    stampCount = progress.totalStampCount,
+                    stampTarget = COLLECTION_STAMP_CLAIM_TARGET,
+                    stampRemaining = (COLLECTION_STAMP_CLAIM_TARGET - progress.totalStampCount).coerceAtLeast(0),
+                    stampProgressByEmotion =
+                        collectionCoverFlowEmotionOrder.mapNotNull { emotion ->
+                            progress.items
+                                .firstOrNull { it.state.name == emotion.name }
+                                ?.let { item -> CollectionEmotionProgress(emotion, item.stamps.count) }
+                        },
+                    pressCount = progress.totalPressCount,
+                    pressTarget = COLLECTION_PRESS_CLAIM_TARGET,
+                    pressRemaining = (COLLECTION_PRESS_CLAIM_TARGET - progress.totalPressCount).coerceAtLeast(0),
+                    canClaim = progress.canClaim,
+                    pressProgressByEmotion =
+                        collectionCoverFlowEmotionOrder.mapNotNull { emotion ->
+                            progress.items
+                                .firstOrNull { it.state.name == emotion.name }
+                                ?.let { item -> CollectionEmotionProgress(emotion, item.presses.count) }
+                        },
+                    hasProgress = true,
+                    isClaiming = claimingState != null,
+                )
+            }
+
 private fun CollectionUiState.toScreenUiModel(
     notificationDate: String?,
     imageActionResult: CollectionImageActionResult?,
@@ -1092,35 +1218,7 @@ private fun CollectionUiState.toScreenUiModel(
                 ?.firstOrNull { it.card != null }
                 ?.card
                 ?.cardId,
-        pendingProgress =
-            today
-                ?.takeUnless { it.hasClaimedCard }
-                ?.let { progress ->
-                    CollectionProgressUiModel(
-                        emotion = progress.claimEmotion?.toUi() ?: collectionCoverFlowEmotionOrder.first(),
-                        stampCount = progress.totalStampCount,
-                        stampTarget = COLLECTION_STAMP_CLAIM_TARGET,
-                        stampRemaining = (COLLECTION_STAMP_CLAIM_TARGET - progress.totalStampCount).coerceAtLeast(0),
-                        stampProgressByEmotion =
-                            collectionCoverFlowEmotionOrder.mapNotNull { emotion ->
-                                progress.items
-                                    .firstOrNull { it.state.name == emotion.name }
-                                    ?.let { item -> CollectionEmotionProgress(emotion, item.stamps.count) }
-                            },
-                        pressCount = progress.totalPressCount,
-                        pressTarget = COLLECTION_PRESS_CLAIM_TARGET,
-                        pressRemaining = (COLLECTION_PRESS_CLAIM_TARGET - progress.totalPressCount).coerceAtLeast(0),
-                        canClaim = progress.canClaim,
-                        pressProgressByEmotion =
-                            collectionCoverFlowEmotionOrder.mapNotNull { emotion ->
-                                progress.items
-                                    .firstOrNull { it.state.name == emotion.name }
-                                    ?.let { item -> CollectionEmotionProgress(emotion, item.presses.count) }
-                            },
-                        hasProgress = true,
-                        isClaiming = claimingState != null,
-                    )
-                },
+        pendingProgress = todayProgress,
         commonError = commonError,
         appendError = appendError,
         historyLoaded = historyLoaded,

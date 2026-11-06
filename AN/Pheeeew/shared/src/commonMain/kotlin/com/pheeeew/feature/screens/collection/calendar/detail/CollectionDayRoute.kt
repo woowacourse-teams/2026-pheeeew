@@ -30,11 +30,15 @@ import com.pheeeew.feature.screens.collection.CollectionCardActionError
 import com.pheeeew.feature.screens.collection.CollectionCardDialog
 import com.pheeeew.feature.screens.collection.CollectionCardExportState
 import com.pheeeew.feature.screens.collection.CollectionDayEmotionUiModel
+import com.pheeeew.feature.screens.collection.CollectionDayEmojiUiModel
 import com.pheeeew.feature.screens.collection.CollectionImageAction
 import com.pheeeew.feature.screens.collection.CollectionImageActionOutcome
 import com.pheeeew.feature.screens.collection.CollectionViewModel
 import com.pheeeew.feature.screens.collection.calendar.CollectionRetryState
+import com.pheeeew.feature.screens.collection.calendar.collectionMonthDays
+import com.pheeeew.feature.screens.collection.calendar.currentCollectionTodayDate
 import com.pheeeew.feature.screens.collection.rememberCollectionCardImageActions
+import com.pheeeew.feature.screens.collection.todayProgress
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.app_cancel
@@ -57,6 +61,7 @@ internal fun CollectionDayRoute(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var expandedCardId by rememberSaveable { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val telemetry = remember(monitoring) { ProductMonitoring(monitoring, "collection") }
     val day = state.day
     if (day.emotionDeleteTargetId != null) {
         val notice = stringResource(Res.string.emotion_delete_notice)
@@ -93,9 +98,13 @@ internal fun CollectionDayRoute(
     }
 
     val cards = state.calendarCards.takeIf { state.calendarMonth == destination.month }.orEmpty()
-    val focusedCard = cards.firstOrNull { it.id == day.selectedCalendarCardId }
-    LaunchedEffect(focusedCard?.id) {
-        focusedCard?.let { onSelectedCardChanged(it.id) }
+    val selectedDate = day.selectedCalendarDate
+    val todayDate = currentCollectionTodayDate()
+    val todayProgress = state.todayProgress.takeIf { state.today?.date == todayDate }
+    val dates = collectionMonthDays(destination.month).filter { it.isCurrentMonth }.mapNotNull { it.date }
+        .filter { it <= todayDate }.asReversed()
+    LaunchedEffect(selectedDate) {
+        selectedDate?.let(onSelectedCardChanged)
     }
     LaunchedEffect(viewModel, expandedCardId, cards.any { it.id == expandedCardId }) {
         val cardId = expandedCardId ?: return@LaunchedEffect
@@ -103,7 +112,7 @@ internal fun CollectionDayRoute(
     }
 
     Box(Modifier.fillMaxSize().background(AppColors.GroupBackground).statusBarsPadding()) {
-        if (focusedCard == null) {
+        if (selectedDate == null) {
             if (state.isLoadingCalendar || state.calendarMonth != destination.month) {
                 CircularLoadingIndicator(Modifier.align(Alignment.Center), color = AppColors.Primary)
             } else {
@@ -120,13 +129,23 @@ internal fun CollectionDayRoute(
             val audio =
                 rememberCollectionDayAudio(
                     sessionGeneration,
-                    focusedCard.id,
+                    selectedDate,
                     emotions,
                     requireNotNull(viewModel.audioLoader),
                 )
             CollectionDayDetailScreen(
                 cards = cards,
-                selectedCardId = focusedCard.id,
+                selectedCardId = selectedDate,
+                dates = dates,
+                todayDate = todayDate,
+                todayProgress = todayProgress,
+                isLoadingToday = state.isLoadingToday,
+                todayClaimError = state.claimError,
+                onClaimToday = { emotion ->
+                    telemetry.emit(ProductEvents.COLLECTION_CLAIM_CLICKED)
+                    viewModel.claim(emotion)
+                },
+                onRetryTodayClaim = viewModel::retryClaim,
                 nickname = state.nickname ?: "나",
                 emotions = emotions,
                 emotionCount =
@@ -141,12 +160,15 @@ internal fun CollectionDayRoute(
                 hasNextEmotions = day.hasNextCalendarEmotions,
                 audio = audio,
                 onBack = onBack,
-                onCardSettled = viewModel::selectCalendarCard,
+                onCardSettled = viewModel::selectCalendarDate,
                 onOpenCard = { expandedCardId = it },
                 onLoadMoreEmotions = viewModel::loadNextCalendarEmotions,
                 onRetryEmotions = viewModel::retryCalendarEmotions,
                 onRetryNextEmotions = viewModel::retryNextCalendarEmotions,
                 onDeleteEmotion = viewModel::requestEmotionDeletion,
+                onReactToEmotion = viewModel::reactToCalendarEmotion,
+                pendingReactionIds = day.pendingReactionIds,
+                reactionError = day.calendarReactionError,
             )
         }
     }
@@ -154,7 +176,6 @@ internal fun CollectionDayRoute(
     val card = cards.firstOrNull { it.id == expandedCardId } ?: return
     val detailedCard = state.selectedCard?.takeIf { it.id == card.id }
     val fields = remember(card.id) { mapOf("view_id" to EventValue.Text(Uuid.random().toString())) }
-    val telemetry = remember(monitoring) { ProductMonitoring(monitoring, "collection") }
     LaunchedEffect(detailedCard?.id) {
         if (detailedCard != null) telemetry.emit(ProductEvents.COLLECTION_CARD_VIEWED, fields)
     }
@@ -217,4 +238,5 @@ private fun CollectionEmotion.toUiModel(): CollectionDayEmotionUiModel =
         memo = memo,
         playbackUrl = audio?.playbackUrl,
         playbackExpiresAt = audio?.expiresAt,
+        emojis = emojis.map { CollectionDayEmojiUiModel(it.type, it.count, it.selected) },
     )

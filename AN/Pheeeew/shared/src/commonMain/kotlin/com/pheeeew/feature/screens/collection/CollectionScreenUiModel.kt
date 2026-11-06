@@ -1,6 +1,7 @@
 package com.pheeeew.feature.screens.collection
 
 import com.pheeeew.domain.model.collection.CollectionEmotionContentType
+import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.feature.emotion.model.EmotionType
 import com.pheeeew.feature.screens.collection.calendar.currentCollectionMonth
 import com.pheeeew.feature.screens.collection.card.CollectionCardUiModel
@@ -131,6 +132,13 @@ data class CollectionDayEmotionUiModel(
     val memo: String?,
     val playbackUrl: String?,
     val playbackExpiresAt: String?,
+    val emojis: List<CollectionDayEmojiUiModel> = emptyList(),
+)
+
+data class CollectionDayEmojiUiModel(
+    val type: EmotionReactionType,
+    val count: Long,
+    val selected: Boolean,
 )
 
 data class CollectionProgressUiModel(
