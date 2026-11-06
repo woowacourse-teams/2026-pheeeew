@@ -94,16 +94,13 @@ internal fun CollectionRoute(
             telemetry.emit(ProductEvents.COLLECTION_CLAIM_CLICKED)
             viewModel.claim(emotion)
         },
-        onRetryClaim = viewModel::retryClaim,
         onLoadMore = viewModel::loadNextPage,
         onRefresh = viewModel::refresh,
-        onRetryCards = viewModel::retryCards,
         onRetryToday = viewModel::refreshToday,
         onDismissCard = viewModel::dismissCard,
         onCardClick = viewModel::selectCard,
         onRetryCard = viewModel::retrySelectedCard,
         onCalendarMonthChange = viewModel::setCalendarMonth,
-        onCalendarRetry = viewModel::retryCalendar,
         onCalendarDayClick = { onOpenCalendarDay(state.calendarMonth, it) },
     )
 }

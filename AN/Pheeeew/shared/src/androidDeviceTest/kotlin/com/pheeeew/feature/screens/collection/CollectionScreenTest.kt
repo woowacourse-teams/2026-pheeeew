@@ -67,13 +67,11 @@ class CollectionScreenTest {
                             month = month.value,
                             cards = emptyList(),
                             isLoading = false,
-                            error = null,
                             hasLoaded = true,
                             onMonthChange = {
                                 month.value = it
                                 changes.offer(it)
                             },
-                            onRetry = {},
                             onDateClick = {},
                         )
                     }
@@ -105,7 +103,7 @@ class CollectionScreenTest {
     fun dayDetailReportsSettledCardAndBack() {
         val first = sampleCollection().cards.first().copy(period = "2026.10.15")
         val second = first.copy(id = "next-date", period = "2026.10.16")
-        val selected = mutableStateOf(first.id)
+        val selected = mutableStateOf("2026-10-15")
         val settled = LinkedBlockingQueue<String>()
         val back = LinkedBlockingQueue<Unit>()
         val activity =
@@ -119,15 +117,15 @@ class CollectionScreenTest {
                 activity.setContent {
                     AppTheme {
                         CollectionDayDetailScreen(
-                            cards = listOf(first, second),
+                            pages =
+                                listOf(
+                                    CollectionDayPageUiModel("2026-10-15", "10월 15일", "2026년 · 목요일", first),
+                                    CollectionDayPageUiModel("2026-10-16", "10월 16일", "2026년 · 금요일", second),
+                                ),
                             selectedCardId = selected.value,
                             nickname = "나",
-                            emotions = emptyList(),
+                            emotionContent = CollectionDayEmotionContent.Empty,
                             emotionCount = null,
-                            isLoadingEmotions = false,
-                            isLoadingNextEmotions = false,
-                            emotionsError = null,
-                            hasNextEmotions = false,
                             audio = audio,
                             onBack = { back.offer(Unit) },
                             onCardSettled = {
@@ -144,7 +142,7 @@ class CollectionScreenTest {
             }
             val bounds = card("지침").visibleBounds
             device.swipe(bounds.right - 8, bounds.centerY(), bounds.left + 8, bounds.centerY(), 18)
-            assertEquals(second.id, settled.poll(5, TimeUnit.SECONDS))
+            assertEquals("2026-10-16", settled.poll(5, TimeUnit.SECONDS))
             node("10월 16일")
             val backButton = requireNotNull(device.wait(Until.findObject(By.desc("달력으로 돌아가기")), 5_000))
             backButton.click()
@@ -155,7 +153,7 @@ class CollectionScreenTest {
     }
 
     @Test
-    fun claimedTodayKeepsListRetryAndCompactCardClickable() {
+    fun collectionTabsShowSnackbarWithoutActionsAndCompactCardRemainsClickable() {
         val model =
             mutableStateOf(
                 sampleCollection().copy(
@@ -163,10 +161,10 @@ class CollectionScreenTest {
                     pendingProgress = null,
                     hasClaimedToday = true,
                     cardsError = "목록 조회 실패",
+                    calendarError = "달력 조회 실패",
                 ),
             )
         val height = mutableStateOf(600.dp)
-        val retries = LinkedBlockingQueue<Unit>()
         val clicks = LinkedBlockingQueue<String>()
         val activity =
             instrumentation.startActivitySync(
@@ -183,16 +181,22 @@ class CollectionScreenTest {
                                 uiModel = model.value,
                                 onSaveCard = { _, _ -> },
                                 onShareCard = { _, _ -> },
-                                onRetryCards = { retries.offer(Unit) },
                                 onCardClick = { clicks.offer(it) },
                             )
                         }
                     }
                 }
             }
-            node("다시 불러오기").click()
-            assertEquals(Unit, retries.poll(5, TimeUnit.SECONDS))
+            node("목록 조회 실패")
+            assertFalse(device.hasObject(By.text("다시 시도")))
+            assertFalse(device.hasObject(By.text("닫기")))
             assertFalse(device.hasObject(By.desc("내일 발급할 수 있는 컬렉션 카드 안내")))
+
+            node("캘린더").click()
+            node("달력 조회 실패")
+            assertFalse(device.hasObject(By.text("다시 시도")))
+            assertFalse(device.hasObject(By.text("닫기")))
+            node("커버플로").click()
 
             val issued = sampleCollection().cards.first()
             instrumentation.runOnMainSync {

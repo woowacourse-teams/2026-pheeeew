@@ -62,12 +62,11 @@ import coil3.annotation.ExperimentalCoilApi
 import coil3.compose.AsyncImagePreviewHandler
 import coil3.compose.LocalAsyncImagePreviewHandler
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
-import com.pheeeew.core.designsystem.component.RefreshErrorBanner
+import com.pheeeew.core.designsystem.component.Snackbar
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.feature.emotion.model.EmotionType
 import com.pheeeew.feature.screens.collection.calendar.CalendarSection
-import com.pheeeew.feature.screens.collection.calendar.CollectionRetryState
 import com.pheeeew.feature.screens.collection.card.CollectionCardUiModel
 import com.pheeeew.feature.screens.collection.coverflow.CoverflowSection
 import org.jetbrains.compose.resources.painterResource
@@ -91,20 +90,35 @@ fun CollectionScreen(
     bottomBar: @Composable () -> Unit = {},
     onCancelCardCapture: (String) -> Unit = {},
     onClaim: (EmotionType) -> Unit = {},
-    onRetryClaim: () -> Unit = {},
     onLoadMore: () -> Unit = {},
     onRefresh: () -> Unit = {},
-    onRetryCards: () -> Unit = {},
     onRetryToday: () -> Unit = {},
     onDismissCard: () -> Unit = {},
     onDismissSaveCompletion: () -> Unit = {},
     onRetryCard: () -> Unit = {},
     onCardClick: (String) -> Unit = {},
     onCalendarMonthChange: (String) -> Unit = {},
-    onCalendarRetry: () -> Unit = {},
     onCalendarDayClick: (String) -> Unit = {},
 ) {
     var viewMode by rememberSaveable { mutableStateOf(CollectionViewMode.COVER_FLOW) }
+    val sectionLoad =
+        if (viewMode == CollectionViewMode.COVER_FLOW) uiModel.coverflowLoad else uiModel.calendarLoad
+    val sectionFailure =
+        when (sectionLoad) {
+            is CollectionSectionLoad.InitialFailure -> sectionLoad.failure
+            is CollectionSectionLoad.Content -> sectionLoad.refreshFailure
+            CollectionSectionLoad.InitialLoading -> null
+        }
+    val claimError = uiModel.claimError
+    val errorMessage =
+        when {
+            uiModel.commonError != null -> "인터넷 연결을 확인하고 다시 시도해 주세요."
+            claimError != null -> claimError
+            sectionFailure != null -> sectionFailure.message
+            viewMode == CollectionViewMode.COVER_FLOW -> uiModel.appendError
+            else -> null
+        }
+    var errorDismissed by remember(errorMessage, sectionFailure, uiModel.commonError) { mutableStateOf(false) }
     val tabState = rememberSaveableStateHolder()
     var selectedCardId by rememberSaveable { mutableStateOf<String?>(null) }
     val hapticFeedback = LocalHapticFeedback.current
@@ -188,75 +202,33 @@ fun CollectionScreen(
                                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
                             )
                         }
-                        uiModel.claimError?.let { error ->
-                            RefreshErrorBanner(
-                                message = if (uiModel.claimOutcomeUnknown) "$error 같은 요청으로 다시 확인할 수 있어요." else error,
-                                onRetry = onRetryClaim,
-                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp),
-                            )
-                        }
-                        if (uiModel.commonError == CollectionCommonError.Initial &&
-                            viewMode == CollectionViewMode.COVER_FLOW
-                        ) {
-                            CollectionRetryState(
-                                message = "인터넷 연결을 확인하고 다시 시도해 주세요.",
-                                onRetry = onRefresh,
+                        if (viewMode == CollectionViewMode.COVER_FLOW) {
+                            CoverflowSection(
+                                uiModel = uiModel,
+                                onClaim = onClaim,
+                                onRetryToday = onRetryToday,
+                                onLoadMore = onLoadMore,
+                                onCardClick = { card ->
+                                    selectedCardId = card.id
+                                    onCardClick(card.id)
+                                },
                                 modifier = Modifier.weight(1f).fillMaxWidth(),
                             )
                         } else {
-                            if (uiModel.commonError == CollectionCommonError.Refresh) {
-                                RefreshErrorBanner(
-                                    message = "인터넷 연결을 확인하고 다시 시도해 주세요.",
-                                    onRetry = onRefresh,
-                                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp),
-                                )
-                            }
-                            if (viewMode == CollectionViewMode.COVER_FLOW) {
-                                CoverflowSection(
-                                    uiModel = uiModel,
-                                    onClaim = onClaim,
-                                    onRetryToday = onRetryToday,
-                                    onRetryCards = onRetryCards,
-                                    onLoadMore = onLoadMore,
-                                    onCardClick = { card ->
-                                        selectedCardId = card.id
-                                        onCardClick(card.id)
-                                    },
-                                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                                )
-                            } else {
-                                val commonInitialFailure = uiModel.commonError == CollectionCommonError.Initial
-                                CalendarSection(
-                                    month = uiModel.calendarMonth,
-                                    cards = uiModel.calendarCards,
-                                    isLoading =
-                                        uiModel.calendarLoad == CollectionSectionLoad.InitialLoading ||
-                                            uiModel.isLoadingCalendar,
-                                    error =
-                                        when {
-                                            commonInitialFailure -> {
-                                                "인터넷 연결을 확인하고 다시 시도해 주세요."
-                                            }
-
-                                            uiModel.calendarLoad is CollectionSectionLoad.InitialFailure -> {
-                                                "이번 달 카드를 불러오지 못했어요."
-                                            }
-
-                                            else -> {
-                                                (uiModel.calendarLoad as? CollectionSectionLoad.Content)
-                                                    ?.refreshFailure
-                                                    ?.message
-                                            }
-                                        },
-                                    hasLoaded =
-                                        !commonInitialFailure && uiModel.calendarLoad is CollectionSectionLoad.Content,
-                                    showRefreshIndicator = !uiModel.isRefreshRequestActive,
-                                    onMonthChange = onCalendarMonthChange,
-                                    onRetry = if (commonInitialFailure) onRefresh else onCalendarRetry,
-                                    onDateClick = onCalendarDayClick,
-                                    modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
-                                )
-                            }
+                            CalendarSection(
+                                month = uiModel.calendarMonth,
+                                cards = uiModel.calendarCards,
+                                isLoading =
+                                    uiModel.calendarLoad == CollectionSectionLoad.InitialLoading ||
+                                        uiModel.isLoadingCalendar,
+                                hasLoaded =
+                                    uiModel.commonError != CollectionCommonError.Initial &&
+                                        uiModel.calendarLoad is CollectionSectionLoad.Content,
+                                showRefreshIndicator = !uiModel.isRefreshRequestActive,
+                                onMonthChange = onCalendarMonthChange,
+                                onDateClick = onCalendarDayClick,
+                                modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
+                            )
                         }
                     }
                 }
@@ -266,6 +238,13 @@ fun CollectionScreen(
                         color = AppColors.Primary,
                     )
                 }
+                Snackbar(
+                    message = errorMessage.takeUnless { errorDismissed },
+                    onDismiss = { errorDismissed = true },
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(horizontal = 24.dp, vertical = 12.dp),
+                    isError = true,
+                    maxLines = 3,
+                )
             }
         }
         bottomBar()

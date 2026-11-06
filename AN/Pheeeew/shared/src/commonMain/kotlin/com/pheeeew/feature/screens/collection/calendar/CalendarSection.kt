@@ -58,9 +58,7 @@ fun CalendarSection(
     month: String,
     cards: List<CollectionCardUiModel>,
     isLoading: Boolean,
-    error: String?,
     onMonthChange: (String) -> Unit,
-    onRetry: () -> Unit,
     onDateClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     hasLoaded: Boolean = cards.isNotEmpty(),
@@ -144,20 +142,10 @@ fun CalendarSection(
                 }
             }
         }
-        if (error != null && !hasLoaded && !isLoading) {
-            CollectionRetryState(
-                message = error,
-                onRetry = onRetry,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
-            )
-        }
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.End,
         ) {
-            if (error != null && hasLoaded) {
-                TextButton(onClick = onRetry) { Text("달력 다시 불러오기", color = AppColors.RecordSheetRecording) }
-            }
             if (isLoading && showRefreshIndicator) {
                 CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = AppColors.Primary)
                 if (hasLoaded) Spacer(Modifier.width(8.dp))
@@ -348,7 +336,6 @@ internal fun CollectionRetryState(
 private fun CalendarSectionPreviewContent(
     hasLoaded: Boolean,
     isLoading: Boolean = false,
-    error: String? = null,
     showCard: Boolean = hasLoaded,
 ) {
     CollectionPreviewTheme {
@@ -376,9 +363,7 @@ private fun CalendarSectionPreviewContent(
             month = "2026-10",
             cards = cards,
             isLoading = isLoading,
-            error = error,
             onMonthChange = {},
-            onRetry = {},
             onDateClick = {},
             hasLoaded = hasLoaded,
         )
@@ -389,12 +374,6 @@ private fun CalendarSectionPreviewContent(
 @Composable
 private fun CalendarInitialLoadingPreview() {
     CalendarSectionPreviewContent(hasLoaded = false, isLoading = true)
-}
-
-@Preview(name = "달력 · 초기 조회 실패", widthDp = 402, showBackground = true)
-@Composable
-private fun CalendarInitialFailurePreview() {
-    CalendarSectionPreviewContent(hasLoaded = false, error = "이번 달 카드를 불러오지 못했어요.")
 }
 
 @Preview(name = "달력 · 조회 성공", widthDp = 402, showBackground = true)
@@ -413,10 +392,4 @@ private fun CalendarEmptyPreview() {
 @Composable
 private fun CalendarRefreshingPreview() {
     CalendarSectionPreviewContent(hasLoaded = true, isLoading = true)
-}
-
-@Preview(name = "달력 · 새로고침 실패", widthDp = 402, showBackground = true)
-@Composable
-private fun CalendarRefreshFailurePreview() {
-    CalendarSectionPreviewContent(hasLoaded = true, error = "달력을 새로고침하지 못했어요.")
 }

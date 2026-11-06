@@ -43,13 +43,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.pheeeew.core.designsystem.component.LoadErrorContent
-import com.pheeeew.core.designsystem.component.RefreshErrorBanner
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.emotion.model.EmotionType
 import com.pheeeew.feature.screens.collection.CollectionCarouselItem
+import com.pheeeew.feature.screens.collection.CollectionCommonError
 import com.pheeeew.feature.screens.collection.CollectionPreviewTheme
-import com.pheeeew.feature.screens.collection.CollectionRetryTarget
 import com.pheeeew.feature.screens.collection.CollectionScreenUiModel
 import com.pheeeew.feature.screens.collection.CollectionSectionLoad
 import com.pheeeew.feature.screens.collection.card.CollectionCard
@@ -72,7 +70,6 @@ internal fun CoverflowSection(
     uiModel: CollectionScreenUiModel,
     onClaim: (EmotionType) -> Unit,
     onRetryToday: () -> Unit,
-    onRetryCards: () -> Unit,
     onLoadMore: () -> Unit,
     onCardClick: (CollectionCardUiModel) -> Unit,
     modifier: Modifier = Modifier,
@@ -81,22 +78,10 @@ internal fun CoverflowSection(
     val todayCardIndex =
         uiModel.todayCardId?.let { todayCardId -> coverFlowItems.indexOfFirst { it.id == todayCardId } } ?: -1
     val pagerState = rememberPagerState { coverFlowItems.size.coerceAtLeast(1) }
-    val load = uiModel.coverflowLoad
     val unavailableState =
-        when (load) {
-            CollectionSectionLoad.InitialLoading -> {
-                CollectionUnavailableState.Waiting
-            }
-
-            is CollectionSectionLoad.InitialFailure -> {
-                CollectionUnavailableState.Error(
-                    if (load.failure.retryTarget == CollectionRetryTarget.Today) onRetryToday else onRetryCards,
-                )
-            }
-
-            is CollectionSectionLoad.Content -> {
-                null
-            }
+        CollectionUnavailableState.Waiting.takeIf {
+            uiModel.commonError == CollectionCommonError.Initial ||
+                uiModel.coverflowLoad !is CollectionSectionLoad.Content
         }
     var appliedScrollRequest by rememberSaveable { mutableStateOf<Long?>(null) }
     var appliedTodayCardId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -113,33 +98,20 @@ internal fun CoverflowSection(
         }
     }
 
-    Column(modifier) {
-        val refreshFailure = (load as? CollectionSectionLoad.Content)?.refreshFailure
-        if (refreshFailure != null) {
-            RefreshErrorBanner(
-                message = refreshFailure.message,
-                onRetry = if (refreshFailure.retryTarget == CollectionRetryTarget.Today) onRetryToday else onRetryCards,
-                modifier = Modifier.padding(horizontal = 24.dp),
-            )
-        }
-        CollectionCoverFlow(
-            items = coverFlowItems,
-            unavailableState = unavailableState,
-            pagerState = pagerState,
-            isLoadingToday = uiModel.todayLoading,
-            todayError = null,
-            onClaim = onClaim,
-            onRetryToday = onRetryToday,
-            hasNext = uiModel.hasNext && uiModel.appendError == null,
-            isLoadingNext = uiModel.isLoadingNext,
-            onLoadMore = onLoadMore,
-            onCardClick = onCardClick,
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-        )
-        uiModel.appendError?.let { message ->
-            RefreshErrorBanner(message = message, onRetry = onLoadMore, modifier = Modifier.padding(horizontal = 24.dp))
-        }
-    }
+    CollectionCoverFlow(
+        items = coverFlowItems,
+        unavailableState = unavailableState,
+        pagerState = pagerState,
+        isLoadingToday = uiModel.todayLoading,
+        todayError = null,
+        onClaim = onClaim,
+        onRetryToday = onRetryToday,
+        hasNext = uiModel.hasNext && uiModel.appendError == null,
+        isLoadingNext = uiModel.isLoadingNext,
+        onLoadMore = onLoadMore,
+        onCardClick = onCardClick,
+        modifier = modifier,
+    )
 }
 
 @Composable
@@ -150,12 +122,6 @@ private fun CollectionContentPlaceholder(
     when (state) {
         CollectionUnavailableState.Waiting -> {
             Box(modifier.fillMaxSize())
-        }
-
-        is CollectionUnavailableState.Error -> {
-            CollectionCenteredState(modifier) {
-                LoadErrorContent(onRetry = state.onRetry)
-            }
         }
 
         CollectionUnavailableState.Empty -> {
