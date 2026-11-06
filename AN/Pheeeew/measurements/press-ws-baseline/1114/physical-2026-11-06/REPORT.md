@@ -80,7 +80,7 @@
 | 100ms · 1회 재측정 | `/private/tmp/1114-physical-20261106/input-100ms-r1-attempt2/` |
 | 100ms · 2회 | `/private/tmp/1114-physical-20261106/input-100ms-r2-attempt1/` |
 | 100ms · 3회 | `/private/tmp/1114-physical-20261106/input-100ms-r3-attempt1/` |
-| 무입력 · 1~3회 | `/private/tmp/1114-physical-20261106/idle-300s-r1-attempt1/`, `idle-300s-r2-attempt1/`, `idle-300s-r3-attempt1/` |
+| 무입력 · 1–3회 | `/private/tmp/1114-physical-20261106/idle-300s-r1-attempt1/`, `idle-300s-r2-attempt1/`, `idle-300s-r3-attempt1/` |
 
 ## 6. 제외한 실행
 
