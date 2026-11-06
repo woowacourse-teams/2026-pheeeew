@@ -70,7 +70,12 @@ internal fun MyRaceRankCard(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
     compact: Boolean = false,
+    historical: Boolean = false,
 ) {
+    if (status == PressRankingStatus.Ready && me == null) {
+        MyRaceEmptyCard(historical, onPress, modifier)
+        return
+    }
     if (compact && status == PressRankingStatus.Ready && me != null) {
         Column(
             modifier
@@ -79,7 +84,12 @@ internal fun MyRaceRankCard(
                 .border(1.dp, cardInk, RoundedCornerShape(18.dp))
                 .padding(horizontal = 16.dp, vertical = 10.dp),
         ) {
-            Text(stringResource(Res.string.press_my_rank_title), fontSize = 11.sp, lineHeight = 16.sp, color = cardInk)
+            Text(
+                if (historical) "이날 나의 레이스" else stringResource(Res.string.press_my_rank_title),
+                fontSize = 11.sp,
+                lineHeight = 16.sp,
+                color = cardInk,
+            )
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     stringResource(Res.string.press_my_rank_position, me.rank.toString()),
@@ -105,9 +115,23 @@ internal fun MyRaceRankCard(
     if (status != PressRankingStatus.Ready || me == null) {
         val title =
             when (status) {
-                PressRankingStatus.Loading -> stringResource(Res.string.press_my_rank_loading)
-                PressRankingStatus.Failed -> stringResource(Res.string.press_my_rank_failed)
-                PressRankingStatus.Ready -> stringResource(Res.string.press_my_rank_empty)
+                PressRankingStatus.Loading -> {
+                    stringResource(Res.string.press_my_rank_loading)
+                }
+
+                PressRankingStatus.Failed -> {
+                    stringResource(Res.string.press_my_rank_failed)
+                }
+
+                PressRankingStatus.Ready -> {
+                    if (historical) {
+                        "이날 참여 기록이 없어요."
+                    } else {
+                        stringResource(
+                            Res.string.press_my_rank_empty,
+                        )
+                    }
+                }
             }
         Column(
             modifier
@@ -117,10 +141,10 @@ internal fun MyRaceRankCard(
                 .padding(16.dp),
         ) {
             Text(title, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = cardInk)
-            if (status == PressRankingStatus.Ready) {
+            if (status == PressRankingStatus.Ready && !historical) {
                 Text(stringResource(Res.string.press_my_rank_invite), fontSize = 12.sp, color = Color(0xFF767D78))
             }
-            if (status != PressRankingStatus.Loading) {
+            if (status == PressRankingStatus.Failed || (status == PressRankingStatus.Ready && !historical)) {
                 Button(
                     onClick = if (status == PressRankingStatus.Ready) onPress else onRetry,
                     shape = RoundedCornerShape(12.dp),
@@ -143,7 +167,16 @@ internal fun MyRaceRankCard(
         }
         return
     }
-    val description = stringResource(Res.string.press_my_rank_description, me.rank.toString(), me.count.toString())
+    val description =
+        if (historical) {
+            "이날 내 순위 ${me.rank}위, ${me.count}회 프레스"
+        } else {
+            stringResource(
+                Res.string.press_my_rank_description,
+                me.rank.toString(),
+                me.count.toString(),
+            )
+        }
     val rankLabel = stringResource(Res.string.press_my_rank_position, me.rank.toString())
     val countLabel = stringResource(Res.string.press_my_rank_count, raceCountText(me.count))
     val shape = RoundedCornerShape(22.dp)
@@ -186,7 +219,7 @@ internal fun MyRaceRankCard(
                     verticalArrangement = Arrangement.Center,
                 ) {
                     Text(
-                        stringResource(Res.string.press_my_rank_title),
+                        if (historical) "이날 나의 레이스" else stringResource(Res.string.press_my_rank_title),
                         fontSize = 11.sp,
                         color = cardInk,
                         fontWeight = FontWeight.Bold,
@@ -238,10 +271,14 @@ internal fun MyRaceRankCard(
                     }
                     Spacer(Modifier.height(10.dp))
                     Text(
-                        when (me.rank) {
-                            1L -> stringResource(Res.string.press_my_rank_first)
-                            2L, 3L -> stringResource(Res.string.press_my_rank_top_three)
-                            else -> stringResource(Res.string.press_my_rank_running)
+                        if (historical) {
+                            "내 페이스로 달렸어요!"
+                        } else {
+                            when (me.rank) {
+                                1L -> stringResource(Res.string.press_my_rank_first)
+                                2L, 3L -> stringResource(Res.string.press_my_rank_top_three)
+                                else -> stringResource(Res.string.press_my_rank_running)
+                            }
                         },
                         modifier =
                             Modifier

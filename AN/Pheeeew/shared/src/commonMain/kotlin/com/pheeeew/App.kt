@@ -636,10 +636,12 @@ private fun AppContent(
             selectedDestination == AppDestination.Map &&
                 (mapUiModel.isEmotionSelectorExpanded || recordUiModel.step != RecordFlowStepUiModel.Closed)
 
+        var rankingDate by rememberSaveable(sessionGeneration) { mutableStateOf<String?>(null) }
+        val isRankingVisible = currentBackStackEntry?.destination?.hasRoute<RankingRootDestination>() == true
         val pressRaceView =
             when {
                 currentBackStackEntry?.destination?.hasRoute<PressRootDestination>() == true -> PressRaceView.PRESS
-                currentBackStackEntry?.destination?.hasRoute<RankingRootDestination>() == true -> PressRaceView.ALL
+                isRankingVisible && rankingDate == null -> PressRaceView.ALL
                 else -> null
             }
         PressRaceLifecycleEffect(
@@ -916,6 +918,10 @@ private fun AppContent(
                         LocalProductMonitoringVisible provides (!isSettingsVisible && reportTarget == null),
                     ) {
                         PressRankingRoute(
+                            selectedDate = rankingDate,
+                            historyEnabled = appConfig.initialized && appConfig.config.dailyPressRankingEnabled,
+                            sessionGeneration = sessionGeneration,
+                            onDateSelected = { rankingDate = it },
                             modifier = Modifier.fillMaxSize(),
                             onBack = { navController.popBackStack() },
                         )

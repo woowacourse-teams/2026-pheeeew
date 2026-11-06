@@ -1,0 +1,50 @@
+Calculating task graph as no cached configuration is available for tasks: :shared:linkDebugFrameworkIosSimulatorArm64
+> Task :shared:copyNonXmlValueResourcesForAppleMain NO-SOURCE
+> Task :shared:convertXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :shared:generateExpectResourceCollectorsForCommonMain UP-TO-DATE
+> Task :shared:copyNonXmlValueResourcesForIosMain NO-SOURCE
+> Task :shared:kmpPartiallyResolvedDependenciesChecker
+> Task :shared:copyNonXmlValueResourcesForNativeMain NO-SOURCE
+> Task :shared:convertXmlValueResourcesForAppleMain NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :shared:generateComposeResClass UP-TO-DATE
+> Task :shared:convertXmlValueResourcesForIosArm64Main NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :shared:checkIosSimulatorArm64MainComposeLibrariesCompatibility
+> Task :shared:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :shared:convertXmlValueResourcesForIosMain NO-SOURCE
+> Task :shared:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :shared:convertXmlValueResourcesForNativeMain NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForIosArm64Main NO-SOURCE
+> Task :shared:convertXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :shared:prepareComposeResourcesTaskForIosSimulatorArm64Main NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForAppleMain NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForIosMain NO-SOURCE
+> Task :shared:generateResourceAccessorsForAppleMain NO-SOURCE
+> Task :shared:generateResourceAccessorsForIosMain NO-SOURCE
+> Task :shared:generateResourceAccessorsForAndroidMain NO-SOURCE
+> Task :shared:generateResourceAccessorsForIosSimulatorArm64Main NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForIosArm64Main NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForNativeMain NO-SOURCE
+> Task :shared:generateResourceAccessorsForNativeMain NO-SOURCE
+> Task :shared:generateResourceAccessorsForIosArm64Main NO-SOURCE
+> Task :shared:downloadKotlinNativeDistribution UP-TO-DATE
+> Task :shared:copyNonXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :shared:prepareComposeResourcesTaskForCommonMain UP-TO-DATE
+> Task :shared:generateResourceAccessorsForCommonMain UP-TO-DATE
+> Task :shared:generateActualResourceCollectorsForIosSimulatorArm64Main UP-TO-DATE
+> Task :shared:generateActualResourceCollectorsForIosArm64Main UP-TO-DATE
+> Task :shared:generateActualResourceCollectorsForAndroidMain UP-TO-DATE
+> Task :shared:compileKotlinIosSimulatorArm64 UP-TO-DATE
+
+> Task :shared:verifyDeveloperToolsIsolation
+iosArm64.main developerTools=false
+iosSimulatorArm64.main developerTools=false
+
+> Task :shared:linkDebugFrameworkIosSimulatorArm64
+w: Cannot infer a bundle ID from packages of source files and exported dependencies, use the bundle name instead: Shared. Please specify the bundle ID explicitly using the -Xbinary=bundleId=<id> compiler flag.
+
+BUILD SUCCESSFUL in 41s
+15 actionable tasks: 4 executed, 11 up-to-date
+Configuration cache entry stored.
