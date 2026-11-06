@@ -276,18 +276,6 @@ internal fun PressRankingScreen(
                 return@BoxWithConstraints
             }
             Column(Modifier.fillMaxSize().padding(horizontal = 26.dp)) {
-                PressRankingOverview(
-                    uiState,
-                    dailyDate ?: uiState.date.takeIf { dateSelector != null },
-                    encouragementMessage,
-                    rankWidth,
-                    countWidth,
-                    onBack,
-                    onRetry,
-                    onRefresh,
-                    compact,
-                    historical,
-                )
                 PullToRefreshBox(
                     isRefreshing = uiState.isRefreshing,
                     onRefresh = onRefresh,
@@ -296,8 +284,23 @@ internal fun PressRankingScreen(
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         state = listState,
-                        contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
+                        contentPadding = PaddingValues(bottom = 24.dp),
                     ) {
+                        item(key = "overview") {
+                            PressRankingOverview(
+                                uiState,
+                                dailyDate ?: uiState.date.takeIf { dateSelector != null },
+                                encouragementMessage,
+                                rankWidth,
+                                countWidth,
+                                onBack,
+                                onRetry,
+                                onRefresh,
+                                compact,
+                                historical,
+                            )
+                        }
+                        item(key = "overview-spacing") { Spacer(Modifier.size(8.dp)) }
                         when (uiState.status) {
                             PressRankingStatus.Loading -> {
                                 item {
