@@ -37,11 +37,15 @@ internal class EmotionRepositoryImpl(
         id: Long,
         type: EmotionReactionType,
         selected: Boolean,
-    ) = api.react(id, type, selected).mapped {
+        expectedSessionGeneration: Long?,
+    ) = api.react(id, type, selected, expectedSessionGeneration).mapped {
         it
     }
 
-    override suspend fun delete(emotionId: Long) = api.delete(emotionId).toModerationResult()
+    override suspend fun delete(
+        emotionId: Long,
+        expectedSessionGeneration: Long?,
+    ) = api.delete(emotionId, expectedSessionGeneration).toModerationResult()
 }
 
 private inline fun <T, R> ApiResult<T>.mapped(transform: (T) -> R): EmotionResult<R> =

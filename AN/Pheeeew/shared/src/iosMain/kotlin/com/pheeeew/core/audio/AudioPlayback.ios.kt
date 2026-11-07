@@ -20,11 +20,13 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import platform.AVFAudio.AVAudioPlayer
+import platform.AVFAudio.AVAudioPlayerDelegateProtocol
 import platform.AVFAudio.AVAudioSession
 import platform.AVFAudio.AVAudioSessionCategoryPlayback
 import platform.AVFAudio.AVAudioSessionInterruptionNotification
 import platform.AVFAudio.setActive
 import platform.Foundation.NSData
+import platform.Foundation.NSError
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSNotificationCenter
 import platform.Foundation.NSOperationQueue
@@ -32,6 +34,7 @@ import platform.Foundation.NSTemporaryDirectory
 import platform.Foundation.NSURL
 import platform.Foundation.NSUUID
 import platform.Foundation.create
+import platform.darwin.NSObject
 
 @Composable
 actual fun rememberAudioPlayback(): AudioPlayback {
@@ -52,6 +55,22 @@ internal class IosAudioPlayback : AudioPlayback {
     private var file: NSURL? = null
     private var released = false
     private val session = AVAudioSession.sharedInstance()
+    private val playbackDelegate =
+        object : NSObject(), AVAudioPlayerDelegateProtocol {
+            override fun audioPlayerDecodeErrorDidOccur(
+                player: AVAudioPlayer,
+                error: NSError?,
+            ) {
+                if (player == this@IosAudioPlayback.player) onPlaybackFailed()
+            }
+
+            override fun audioPlayerDidFinishPlaying(
+                player: AVAudioPlayer,
+                successfully: Boolean,
+            ) {
+                if (!successfully && player == this@IosAudioPlayback.player) onPlaybackFailed()
+            }
+        }
     private val interruptionObserver =
         NSNotificationCenter.defaultCenter.addObserverForName(
             AVAudioSessionInterruptionNotification,
@@ -80,6 +99,7 @@ internal class IosAudioPlayback : AudioPlayback {
             check(!released)
             val playback = AVAudioPlayer(contentsOfURL = target, error = null)
             check(playback.prepareToPlay())
+            playback.delegate = playbackDelegate
             player = playback
             file = target
             installed = true
@@ -112,9 +132,13 @@ internal class IosAudioPlayback : AudioPlayback {
                     session.setActive(false, error = null)
                 }
         } catch (_: Exception) {
-            stop()
-            mutable.value = state.value.copy(error = "녹음을 재생할 수 없어요. 다시 시도해주세요")
+            onPlaybackFailed()
         }
+    }
+
+    private fun onPlaybackFailed() {
+        stop()
+        mutable.value = state.value.copy(error = "녹음을 재생할 수 없어요. 다시 시도해주세요")
     }
 
     override fun stop() {
@@ -126,6 +150,7 @@ internal class IosAudioPlayback : AudioPlayback {
     }
 
     private fun clear() {
+        player?.delegate = null
         stop()
         player = null
         file?.path?.let { NSFileManager.defaultManager.removeItemAtPath(it, error = null) }

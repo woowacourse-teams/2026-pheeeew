@@ -23,6 +23,8 @@ object AppColors {
 
     val Gray50 = Color(0xFFF5F5F5)
     val Gray100 = Color(0xFFE5E5E5)
+    val Gray200 = Color(0xFFBFBFBF)
+
     val RecordSheetInputSurface = Color(0xFFECECEC)
     val RecordSheetAction = Color(0xFF202323)
     val RecordSheetRecording = Color(0xFFE26962)

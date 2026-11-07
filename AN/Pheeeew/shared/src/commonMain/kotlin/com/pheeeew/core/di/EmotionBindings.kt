@@ -70,15 +70,22 @@ internal interface EmotionBindings {
 
     @Provides fun provideReports(impl: ReportRepositoryImpl): ReportRepository = impl
 
-    @Provides fun provideModeration(
+    @Provides
+    fun provideDeleteEmotion(
         emotions: EmotionRepository,
+        monitoring: Monitoring,
+    ): DeleteEmotionUseCase = DeleteEmotionUseCase(MonitoredEmotionRepository(emotions, monitoring))
+
+    @Provides
+    fun provideModeration(
+        delete: DeleteEmotionUseCase,
         blocks: BlockRepository,
         reports: ReportRepository,
         monitoring: Monitoring,
     ): EmotionModerationDependencies =
         EmotionModerationDependencies(
             BlockUserUseCase(MonitoredBlockRepository(blocks, monitoring)),
-            DeleteEmotionUseCase(MonitoredEmotionRepository(emotions, monitoring)),
+            delete,
             ReportEmotionUseCase(reports),
         )
 

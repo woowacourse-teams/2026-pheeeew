@@ -17,9 +17,12 @@ class BlockUserUseCase(
 class DeleteEmotionUseCase(
     private val repository: EmotionRepository,
 ) {
-    suspend operator fun invoke(emotionId: Long): EmotionModerationResult {
+    suspend operator fun invoke(
+        emotionId: Long,
+        expectedSessionGeneration: Long? = null,
+    ): EmotionModerationResult {
         require(emotionId > 0)
-        return repository.delete(emotionId)
+        return repository.delete(emotionId, expectedSessionGeneration)
     }
 }
 

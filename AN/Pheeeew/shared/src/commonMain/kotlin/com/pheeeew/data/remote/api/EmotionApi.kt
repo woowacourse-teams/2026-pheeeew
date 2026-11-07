@@ -49,6 +49,7 @@ class EmotionApi(
         id: Long,
         type: EmotionReactionType,
         selected: Boolean,
+        expectedSessionGeneration: Long? = null,
     ): ApiResult<Unit> {
         require(id > 0)
         return requests.executeNoContent(
@@ -58,11 +59,15 @@ class EmotionApi(
                 RequestKind.WRITE,
                 monitoringEndpoint = "emotion_reaction",
                 replayAfterAuthentication = true,
+                expectedSessionGeneration = expectedSessionGeneration,
             ),
         )
     }
 
-    suspend fun delete(emotionId: Long): ApiResult<Unit> {
+    suspend fun delete(
+        emotionId: Long,
+        expectedSessionGeneration: Long? = null,
+    ): ApiResult<Unit> {
         require(emotionId > 0)
         return requests.executeNoContent(
             ApiRequest(
@@ -71,6 +76,7 @@ class EmotionApi(
                 kind = RequestKind.WRITE,
                 monitoringEndpoint = "emotion_delete",
                 replayAfterAuthentication = true,
+                expectedSessionGeneration = expectedSessionGeneration,
             ),
         )
     }
