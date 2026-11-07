@@ -10,6 +10,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pheeeew.core.audio.AudioPlaybackState
 import com.pheeeew.core.audio.rememberAudioPlayback
 import com.pheeeew.domain.model.collection.CollectionEmotionContentType
@@ -18,6 +19,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 
 internal data class CollectionDayAudioState(
     val activeId: Long?,
@@ -36,7 +39,10 @@ internal fun rememberCollectionDayAudio(
 ): CollectionDayAudioState =
     key(sessionGeneration, selectedCardId) {
         val playback = rememberAudioPlayback()
+        val playbackErrors = remember(playback) { playback.state.map { it.error }.distinctUntilChanged() }
+        val playbackError by playbackErrors.collectAsStateWithLifecycle(initialValue = null)
         var activeAudioId by remember { mutableStateOf<Long?>(null) }
+        var preparedAudioId by remember { mutableStateOf<Long?>(null) }
         var preparingAudio by remember { mutableStateOf(false) }
         var audioError by remember { mutableStateOf<String?>(null) }
         var audioRetry by remember { mutableIntStateOf(0) }
@@ -48,6 +54,7 @@ internal fun rememberCollectionDayAudio(
 
         LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
             activeAudioId = null
+            preparedAudioId = null
             playback.stop()
         }
         LaunchedEffect(activeAudio?.id, audioRetry) {
@@ -65,8 +72,8 @@ internal fun rememberCollectionDayAudio(
                 playback.prepare(bytes)
                 currentCoroutineContext().ensureActive()
                 if (activeAudioId != emotion.id) return@LaunchedEffect
-                audioError = playback.state.value.error
-                if (audioError == null) playback.togglePlayback()
+                preparedAudioId = emotion.id
+                if (playback.state.value.error == null) playback.togglePlayback()
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
@@ -76,14 +83,17 @@ internal fun rememberCollectionDayAudio(
             }
         }
 
-        CollectionDayAudioState(activeAudioId, playback.state, preparingAudio, audioError) { id ->
+        val error = audioError ?: playbackError.takeIf { activeAudio != null && activeAudio.id == preparedAudioId }
+        CollectionDayAudioState(activeAudioId, playback.state, preparingAudio, error) { id ->
             if (activeAudioId != id) {
                 playback.stop()
                 activeAudioId = id
+                preparedAudioId = null
                 audioRetry = 0
                 audioError = null
             } else if (!preparingAudio) {
-                if (audioError != null || playback.state.value.error != null) {
+                if (audioError != null || (preparedAudioId == id && playback.state.value.error != null)) {
+                    preparedAudioId = null
                     audioRetry++
                 } else {
                     playback.togglePlayback()

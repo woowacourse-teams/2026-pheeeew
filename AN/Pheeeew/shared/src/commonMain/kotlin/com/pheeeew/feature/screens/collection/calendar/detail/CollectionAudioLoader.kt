@@ -4,6 +4,9 @@ import com.pheeeew.domain.model.emotion.EmotionDetailResult
 import com.pheeeew.domain.repository.EmotionAudioRepository
 import com.pheeeew.domain.repository.EmotionDetailRepository
 import dev.zacsweers.metro.Inject
+import io.ktor.http.URLBuilder
+import io.ktor.http.URLProtocol
+import io.ktor.http.takeFrom
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlin.time.Clock
@@ -21,16 +24,26 @@ internal class CollectionAudioLoader(
         now: Instant = Clock.System.now(),
     ): ByteArray {
         val url =
-            if (playbackUrl != null && expiresAt != null && Instant.parse(expiresAt) > now) {
+            if (playbackUrl != null && expiresAt != null && isPlaybackUrl(playbackUrl) &&
+                Instant.parse(expiresAt) > now
+            ) {
                 playbackUrl
             } else {
                 val detail = (details.findById(emotionId) as? EmotionDetailResult.Success)?.detail
                 check(detail != null && detail.id == emotionId && detail.isMine)
                 val playback = checkNotNull(detail.audio)
-                check(Instant.parse(playback.expiresAt) > now)
+                check(isPlaybackUrl(playback.url) && Instant.parse(playback.expiresAt) > now)
                 playback.url
             }
         currentCoroutineContext().ensureActive()
         return audio.download(url)
+    }
+
+    private fun isPlaybackUrl(value: String): Boolean {
+        if (!value.startsWith("https://")) return false
+        return runCatching {
+            val url = URLBuilder().takeFrom(value)
+            url.protocol == URLProtocol.HTTPS && url.host.isNotBlank()
+        }.getOrDefault(false)
     }
 }
