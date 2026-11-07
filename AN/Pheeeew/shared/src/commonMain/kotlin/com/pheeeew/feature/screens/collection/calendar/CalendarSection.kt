@@ -63,10 +63,9 @@ fun CalendarSection(
     modifier: Modifier = Modifier,
     hasLoaded: Boolean = cards.isNotEmpty(),
     showRefreshIndicator: Boolean = true,
+    todayDate: String = currentCollectionTodayDate(),
 ) {
     val cardsByDate = remember(cards) { cards.associateBy { it.period.take(10).replace('.', '-') } }
-    val todayDate =
-        currentCollectionTodayDate()
     val todayMonth = todayDate.take(7)
     val previousMonth =
         remember(month) {
@@ -252,9 +251,14 @@ private fun CalendarDayCell(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val isFutureDay = day.date?.let { it > todayDate } ?: false
+    val date = day.date
+    if (date == null) {
+        Spacer(modifier.aspectRatio(CALENDAR_CELL_ASPECT_RATIO))
+        return
+    }
+    val isFutureDay = date > todayDate
     val baseDayColor =
-        when (day.date?.let(::collectionWeekday)) {
+        when (collectionWeekday(date)) {
             0 -> AppColors.RecordSheetRecording
             6 -> SaturdayColor
             else -> AppColors.TextPrimary
@@ -269,16 +273,16 @@ private fun CalendarDayCell(
         modifier
             .aspectRatio(CALENDAR_CELL_ASPECT_RATIO)
             .clickable(
-                enabled = day.isCurrentMonth && day.date != null && !isFutureDay && hasLoaded,
+                enabled = day.isCurrentMonth && !isFutureDay && hasLoaded,
                 role = Role.Button,
                 onClick = onClick,
             ).semantics(mergeDescendants = true) {
                 contentDescription =
                     buildString {
-                        append(day.date ?: day.dayOfMonth)
+                        append(date)
                         if (card != null) append(" 발급 카드")
                     }
-                if (day.isCurrentMonth && day.date != null && !isFutureDay && hasLoaded) role = Role.Button
+                if (day.isCurrentMonth && !isFutureDay && hasLoaded) role = Role.Button
             },
     ) {
         if (card != null) {

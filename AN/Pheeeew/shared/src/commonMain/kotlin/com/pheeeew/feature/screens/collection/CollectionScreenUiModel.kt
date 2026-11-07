@@ -3,7 +3,7 @@ package com.pheeeew.feature.screens.collection
 import com.pheeeew.domain.model.collection.CollectionEmotionContentType
 import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.feature.emotion.model.EmotionType
-import com.pheeeew.feature.screens.collection.calendar.currentCollectionMonth
+import com.pheeeew.feature.screens.collection.calendar.currentCollectionTodayDate
 import com.pheeeew.feature.screens.collection.card.CollectionCardUiModel
 
 enum class CollectionCardActionError { CAPTURE, SAVE, SHARE }
@@ -47,7 +47,8 @@ data class CollectionScreenUiModel(
     val imageActionErrorCardId: String? = null,
     val imageActionErrorId: Int = 0,
     val imageActionPhase: CollectionCardExportPhase = CollectionCardExportPhase.IDLE,
-    val calendarMonth: String = currentCollectionMonth(),
+    val todayDate: String = currentCollectionTodayDate(),
+    val calendarMonth: String = todayDate.take(7),
     val calendarCards: List<CollectionCardUiModel> = emptyList(),
     val isLoadingCalendar: Boolean = false,
     val calendarError: String? = null,

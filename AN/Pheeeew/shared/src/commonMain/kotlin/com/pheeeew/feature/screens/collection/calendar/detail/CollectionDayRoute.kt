@@ -17,6 +17,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.component.ConfirmDialog
@@ -38,6 +39,7 @@ import com.pheeeew.feature.screens.collection.CollectionImageActionOutcome
 import com.pheeeew.feature.screens.collection.CollectionViewModel
 import com.pheeeew.feature.screens.collection.calendar.CollectionRetryState
 import com.pheeeew.feature.screens.collection.rememberCollectionCardImageActions
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.app_cancel
@@ -102,6 +104,12 @@ internal fun CollectionDayRoute(
         viewModel.openCalendarDay(destination.month, restoredCardId ?: destination.cardId)
     }
 
+    LifecycleResumeEffect(viewModel) {
+        viewModel.onCalendarDetailResumed()
+        val dateObserver = scope.launch { viewModel.observeCalendarDate() }
+        onPauseOrDispose { dateObserver.cancel() }
+    }
+
     val cards = state.cards
     val selectedDate = state.selectedDate
     val cardError = state.cardLoadError
@@ -114,7 +122,7 @@ internal fun CollectionDayRoute(
     }
     LaunchedEffect(viewModel, expandedCardId, cards.any { it.id == expandedCardId }) {
         val cardId = expandedCardId ?: return@LaunchedEffect
-        if (cards.any { it.id == cardId }) viewModel.selectCard(cardId)
+        if (cards.any { it.id == cardId }) viewModel.selectCalendarCardDetail(cardId)
     }
 
     Box(Modifier.fillMaxSize().background(AppColors.GroupBackground).statusBarsPadding()) {
@@ -163,6 +171,7 @@ internal fun CollectionDayRoute(
                 todayDate = state.todayDate,
                 todayProgress = state.todayProgress,
                 isLoadingToday = state.isLoadingToday,
+                isLoadingCalendar = state.isLoadingCalendar,
                 todayClaimError = state.claimError,
                 cardLoadError = cardError?.message,
                 isCommonError = isCommonError,

@@ -8,14 +8,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pheeeew.core.monitoring.EventValue
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.feature.monitoring.product.ProductEvents
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import dev.zacsweers.metrox.viewmodel.metroViewModel
+import kotlinx.coroutines.launch
 import kotlin.uuid.Uuid
 
 @Composable
@@ -67,7 +67,11 @@ internal fun CollectionRoute(
         viewModel.onSessionChanged(sessionGeneration, currentNickname)
         if (refreshRevision > 0L) viewModel.refreshFromNotification()
     }
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onScreenResumed() }
+    LifecycleResumeEffect(viewModel) {
+        viewModel.onScreenResumed()
+        val dateObserver = scope.launch { viewModel.observeCalendarDate() }
+        onPauseOrDispose { dateObserver.cancel() }
+    }
 
     CollectionScreen(
         uiModel =

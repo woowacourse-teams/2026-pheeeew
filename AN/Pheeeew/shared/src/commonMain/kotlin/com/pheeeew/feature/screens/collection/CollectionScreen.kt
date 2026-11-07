@@ -217,6 +217,7 @@ fun CollectionScreen(
                         } else {
                             CalendarSection(
                                 month = uiModel.calendarMonth,
+                                todayDate = uiModel.todayDate,
                                 cards = uiModel.calendarCards,
                                 isLoading =
                                     uiModel.calendarLoad == CollectionSectionLoad.InitialLoading ||

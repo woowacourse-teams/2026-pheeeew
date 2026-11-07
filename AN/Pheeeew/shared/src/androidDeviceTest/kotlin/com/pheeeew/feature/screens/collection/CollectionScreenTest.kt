@@ -14,6 +14,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
@@ -25,10 +26,8 @@ import com.pheeeew.core.audio.AudioPlaybackState
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.feature.emotion.model.EmotionType
 import com.pheeeew.feature.screens.collection.calendar.CalendarSection
-import com.pheeeew.feature.screens.collection.calendar.currentCollectionMonth
 import com.pheeeew.feature.screens.collection.calendar.detail.CollectionDayAudioState
 import com.pheeeew.feature.screens.collection.calendar.detail.CollectionDayDetailScreen
-import com.pheeeew.feature.screens.collection.calendar.shiftCollectionMonth
 import com.pheeeew.feature.screens.collection.card.CollectionCardUiModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -50,9 +49,11 @@ class CollectionScreenTest {
 
     @Test
     fun calendarSwipesBetweenPastMonthsButNotIntoFuture() {
-        val todayMonth = currentCollectionMonth()
-        val previousMonth = requireNotNull(shiftCollectionMonth(todayMonth, -1))
+        val todayDate = "2026-08-31"
+        val todayMonth = "2026-08"
+        val previousMonth = "2026-07"
         val month = mutableStateOf(todayMonth)
+        val calendarHeight = AtomicInteger()
         val changes = LinkedBlockingQueue<String>()
         val activity =
             instrumentation.startActivitySync(
@@ -65,6 +66,8 @@ class CollectionScreenTest {
                     AppTheme {
                         CalendarSection(
                             month = month.value,
+                            todayDate = todayDate,
+                            modifier = Modifier.onSizeChanged { calendarHeight.set(it.height) },
                             cards = emptyList(),
                             isLoading = false,
                             hasLoaded = true,
@@ -78,22 +81,41 @@ class CollectionScreenTest {
                 }
             }
 
+            fun dayBounds(date: String) =
+                requireNotNull(device.wait(Until.findObject(By.desc(date)), 5_000)).visibleBounds
+
             fun swipeDay(
                 date: String,
                 right: Boolean,
             ) {
-                val bounds = requireNotNull(device.wait(Until.findObject(By.desc(date)), 5_000)).visibleBounds
-                val y = bounds.centerY()
-                val start = if (right) 30 else device.displayWidth - 30
-                val end = if (right) device.displayWidth - 30 else 30
+                val y = dayBounds(date).centerY()
+                val left = device.displayWidth / 8
+                val rightEdge = device.displayWidth - left
+                val start = if (right) left else rightEdge
+                val end = if (right) rightEdge else left
                 device.swipe(start, y, end, y, 18)
             }
+            val firstRow = dayBounds("$todayMonth-01").top
+            val lastSunday = dayBounds("$todayMonth-30")
+            val lastMonday = dayBounds("$todayMonth-31")
+            assertTrue(lastSunday.top > firstRow)
+            assertEquals(lastSunday.top, lastMonday.top)
+            assertTrue(lastSunday.left < lastMonday.left)
+            val height = calendarHeight.get()
+            assertTrue(height > 0)
+
             swipeDay("$todayMonth-01", right = false)
             assertEquals(null, changes.poll(500, TimeUnit.MILLISECONDS))
             swipeDay("$todayMonth-01", right = true)
             assertEquals(previousMonth, changes.poll(5, TimeUnit.SECONDS))
+            assertEquals(firstRow, dayBounds("$previousMonth-01").top)
+            assertEquals(height, calendarHeight.get())
             swipeDay("$previousMonth-01", right = false)
             assertEquals(todayMonth, changes.poll(5, TimeUnit.SECONDS))
+
+            instrumentation.runOnMainSync { month.value = "2026-02" }
+            assertEquals(firstRow, dayBounds("2026-02-01").top)
+            assertEquals(height, calendarHeight.get())
         } finally {
             instrumentation.runOnMainSync { activity.finish() }
         }
@@ -140,8 +162,9 @@ class CollectionScreenTest {
                     }
                 }
             }
-            val bounds = card("지침").visibleBounds
-            device.swipe(bounds.right - 8, bounds.centerY(), bounds.left + 8, bounds.centerY(), 18)
+            node("10월 15일")
+            val centerY = card("지침").visibleBounds.centerY()
+            device.swipe(device.displayWidth * 3 / 4, centerY, device.displayWidth / 4, centerY, 30)
             assertEquals("2026-10-16", settled.poll(5, TimeUnit.SECONDS))
             node("10월 16일")
             val backButton = requireNotNull(device.wait(Until.findObject(By.desc("달력으로 돌아가기")), 5_000))
@@ -317,10 +340,69 @@ class CollectionScreenTest {
         }
     }
 
-    private fun pullDown(onPulled: () -> Unit = {}) {
+    @Test
+    fun calendarPullRefreshRequiresScrollToReachTheTop() {
+        val refreshes = LinkedBlockingQueue<Unit>()
+        val activity =
+            instrumentation.startActivitySync(
+                Intent(instrumentation.targetContext, ComponentActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            ) as ComponentActivity
+        try {
+            instrumentation.runOnMainSync {
+                activity.actionBar?.hide()
+                activity.setContent {
+                    AppTheme {
+                        CollectionScreen(
+                            uiModel =
+                                sampleCollection().copy(
+                                    todayDate = "2026-08-31",
+                                    calendarMonth = "2026-08",
+                                    calendarLoaded = true,
+                                ),
+                            onSaveCard = { _, _ -> },
+                            onShareCard = { _, _ -> },
+                            onRefresh = { refreshes.offer(Unit) },
+                            modifier = Modifier.requiredHeight(460.dp),
+                        )
+                    }
+                }
+            }
+            node("캘린더").click()
+            node("오늘")
+            pullDown { node("당겨서 새로고침") }
+            assertEquals(Unit, refreshes.poll(5, TimeUnit.SECONDS))
+            assertTrue(device.wait(Until.gone(By.text("당겨서 새로고침")), 5_000))
+
+            val todayTop = node("오늘").visibleBounds.top
+            val day = By.desc("2026-08-01")
+
+            fun dayTop() = device.findObject(day)?.visibleBounds?.top
+            val dayBounds = requireNotNull(device.wait(Until.findObject(day), 5_000)).visibleBounds
+            val x = device.displayWidth / 2
+            val startY = dayBounds.centerY()
+            device.swipe(x, startY, x, todayTop - 40, 25)
+            val targetTop = dayBounds.top - 60
+            val scrollDeadline = SystemClock.uptimeMillis() + 2_000
+
+            fun hasScrolled() = (dayTop() ?: 0) <= targetTop
+            while (!hasScrolled() && SystemClock.uptimeMillis() < scrollDeadline) {
+                SystemClock.sleep(20)
+            }
+            assertTrue(hasScrolled(), "The calendar must scroll before the short pull")
+            pullDown(startY = startY.toFloat(), endY = startY + 40f)
+            assertEquals(null, refreshes.poll(500, TimeUnit.MILLISECONDS))
+        } finally {
+            instrumentation.runOnMainSync { activity.finish() }
+        }
+    }
+
+    private fun pullDown(
+        startY: Float = device.displayHeight / 3f,
+        endY: Float = device.displayHeight * 4 / 5f,
+        onPulled: () -> Unit = {},
+    ) {
         val downTime = SystemClock.uptimeMillis()
-        val startY = device.displayHeight / 3f
-        val endY = device.displayHeight * 4 / 5f
 
         fun send(
             action: Int,

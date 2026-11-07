@@ -41,6 +41,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.audio.AudioPlaybackState
+import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.domain.model.collection.CollectionEmotionContentType
 import com.pheeeew.domain.model.emotion.EmotionReactionType
@@ -87,6 +88,7 @@ internal fun CollectionDayDetailScreen(
     todayDate: String? = null,
     todayProgress: CollectionProgressUiModel? = null,
     isLoadingToday: Boolean = false,
+    isLoadingCalendar: Boolean = false,
     todayClaimError: String? = null,
     onClaimToday: (EmotionType) -> Unit = {},
     onRetryTodayClaim: () -> Unit = {},
@@ -196,6 +198,13 @@ internal fun CollectionDayDetailScreen(
                                         onRetry = onRetryTodayClaim,
                                         modifier = Modifier.fillMaxWidth().coverFlowItem(pagerState, page),
                                     )
+                                } else if (isLoadingCalendar || (pageModel.date == todayDate && isLoadingToday)) {
+                                    Box(
+                                        Modifier.fillMaxSize().coverFlowItem(pagerState, page),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        CircularLoadingIndicator(color = AppColors.Primary)
+                                    }
                                 } else {
                                     CollectionUnissuedCard(
                                         modifier = Modifier.fillMaxWidth().coverFlowItem(pagerState, page),

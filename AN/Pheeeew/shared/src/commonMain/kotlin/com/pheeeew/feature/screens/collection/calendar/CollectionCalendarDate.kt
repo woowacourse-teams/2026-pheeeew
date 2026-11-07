@@ -2,6 +2,7 @@ package com.pheeeew.feature.screens.collection.calendar
 
 import com.pheeeew.core.time.koreaCalendarDate
 import kotlin.time.Clock
+import kotlin.time.Instant
 
 internal data class CollectionCalendarDay(
     val date: String?,
@@ -9,9 +10,8 @@ internal data class CollectionCalendarDay(
     val isCurrentMonth: Boolean,
 )
 
-internal fun currentCollectionTodayDate(): String = koreaCalendarDate(Clock.System.now().toEpochMilliseconds())
-
-internal fun currentCollectionMonth(): String = currentCollectionTodayDate().take(7)
+internal fun currentCollectionTodayDate(now: Instant = Clock.System.now()): String =
+    koreaCalendarDate(now.toEpochMilliseconds())
 
 internal fun collectionMonthIndex(month: String): Int =
     (month.substring(0, 4).toInt() - 1) * 12 + month.substring(5, 7).toInt() - 1
