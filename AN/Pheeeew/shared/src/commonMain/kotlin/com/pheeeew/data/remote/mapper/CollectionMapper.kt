@@ -244,7 +244,10 @@ internal object CollectionMapper {
         value: String,
         field: String,
     ) {
-        if (!DATE_PATTERN.toRegex().matches(value)) throw CollectionContractException(field)
+        if (!DATE_PATTERN.toRegex().matches(value) || value.startsWith("0000-")) {
+            throw CollectionContractException(field)
+        }
+        requireInstant("${value}T00:00:00Z", field)
     }
 
     private fun requireInstant(
