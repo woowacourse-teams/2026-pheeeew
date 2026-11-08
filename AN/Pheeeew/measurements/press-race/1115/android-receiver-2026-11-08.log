@@ -1,0 +1,667 @@
+11-08 17:04:57.928 32518 32552 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=first_response view=PRESS firstResponse=true dataChanged=false clientElapsedMs=143 clientIntervalMs=null generatedAt=2026-11-08T08:04:55.381058Z
+11-08 17:04:59.012 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=1226 clientIntervalMs=1083 generatedAt=2026-11-08T08:04:56.493944Z
+11-08 17:05:00.103 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=2318 clientIntervalMs=1092 generatedAt=2026-11-08T08:04:57.586274Z
+11-08 17:05:01.209 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=3423 clientIntervalMs=1105 generatedAt=2026-11-08T08:04:58.683291Z
+11-08 17:05:02.288 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=4502 clientIntervalMs=1079 generatedAt=2026-11-08T08:04:59.771049Z
+11-08 17:05:03.390 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=5604 clientIntervalMs=1102 generatedAt=2026-11-08T08:05:00.867510Z
+11-08 17:05:04.481 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=6695 clientIntervalMs=1091 generatedAt=2026-11-08T08:05:01.960276Z
+11-08 17:05:05.595 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=7808 clientIntervalMs=1113 generatedAt=2026-11-08T08:05:03.058453Z
+11-08 17:05:06.692 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=8906 clientIntervalMs=1098 generatedAt=2026-11-08T08:05:04.170024Z
+11-08 17:05:07.799 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=10013 clientIntervalMs=1107 generatedAt=2026-11-08T08:05:05.273415Z
+11-08 17:05:08.902 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=11116 clientIntervalMs=1103 generatedAt=2026-11-08T08:05:06.379281Z
+11-08 17:05:10.011 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=12225 clientIntervalMs=1109 generatedAt=2026-11-08T08:05:07.486351Z
+11-08 17:05:11.111 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=13325 clientIntervalMs=1100 generatedAt=2026-11-08T08:05:08.589491Z
+11-08 17:05:12.213 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=14427 clientIntervalMs=1102 generatedAt=2026-11-08T08:05:09.687150Z
+11-08 17:05:13.319 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=15533 clientIntervalMs=1106 generatedAt=2026-11-08T08:05:10.793416Z
+11-08 17:05:14.424 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=16638 clientIntervalMs=1105 generatedAt=2026-11-08T08:05:11.904210Z
+11-08 17:05:15.521 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=17735 clientIntervalMs=1097 generatedAt=2026-11-08T08:05:12.999474Z
+11-08 17:05:16.619 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=18833 clientIntervalMs=1098 generatedAt=2026-11-08T08:05:14.098412Z
+11-08 17:05:17.718 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=19932 clientIntervalMs=1099 generatedAt=2026-11-08T08:05:15.195327Z
+11-08 17:05:18.819 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=21033 clientIntervalMs=1101 generatedAt=2026-11-08T08:05:16.294959Z
+11-08 17:05:19.920 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=22134 clientIntervalMs=1101 generatedAt=2026-11-08T08:05:17.395268Z
+11-08 17:05:21.016 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=23230 clientIntervalMs=1096 generatedAt=2026-11-08T08:05:18.494147Z
+11-08 17:05:22.119 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=24333 clientIntervalMs=1103 generatedAt=2026-11-08T08:05:19.595489Z
+11-08 17:05:23.209 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=25423 clientIntervalMs=1090 generatedAt=2026-11-08T08:05:20.689127Z
+11-08 17:05:24.302 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=26516 clientIntervalMs=1093 generatedAt=2026-11-08T08:05:21.785755Z
+11-08 17:05:25.374 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=27588 clientIntervalMs=1072 generatedAt=2026-11-08T08:05:22.863904Z
+11-08 17:05:26.469 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=28683 clientIntervalMs=1095 generatedAt=2026-11-08T08:05:23.948431Z
+11-08 17:05:27.576 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=29790 clientIntervalMs=1107 generatedAt=2026-11-08T08:05:25.055726Z
+11-08 17:05:28.677 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=30891 clientIntervalMs=1101 generatedAt=2026-11-08T08:05:26.154271Z
+11-08 17:05:29.780 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=31994 clientIntervalMs=1103 generatedAt=2026-11-08T08:05:27.255518Z
+11-08 17:05:30.895 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=33109 clientIntervalMs=1115 generatedAt=2026-11-08T08:05:28.364200Z
+11-08 17:05:31.989 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=34203 clientIntervalMs=1094 generatedAt=2026-11-08T08:05:29.471953Z
+11-08 17:05:33.093 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=35307 clientIntervalMs=1104 generatedAt=2026-11-08T08:05:30.567889Z
+11-08 17:05:34.206 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=36420 clientIntervalMs=1113 generatedAt=2026-11-08T08:05:31.673985Z
+11-08 17:05:35.301 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=37515 clientIntervalMs=1095 generatedAt=2026-11-08T08:05:32.780706Z
+11-08 17:05:36.393 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=38607 clientIntervalMs=1092 generatedAt=2026-11-08T08:05:33.871042Z
+11-08 17:05:37.500 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=39715 clientIntervalMs=1108 generatedAt=2026-11-08T08:05:34.982327Z
+11-08 17:05:38.595 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=40809 clientIntervalMs=1094 generatedAt=2026-11-08T08:05:36.073858Z
+11-08 17:05:39.708 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=41922 clientIntervalMs=1113 generatedAt=2026-11-08T08:05:37.179529Z
+11-08 17:05:40.793 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=43007 clientIntervalMs=1085 generatedAt=2026-11-08T08:05:38.268487Z
+11-08 17:05:41.895 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=44109 clientIntervalMs=1102 generatedAt=2026-11-08T08:05:39.365423Z
+11-08 17:05:42.998 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=45212 clientIntervalMs=1103 generatedAt=2026-11-08T08:05:40.475154Z
+11-08 17:05:44.102 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=46316 clientIntervalMs=1104 generatedAt=2026-11-08T08:05:41.566287Z
+11-08 17:05:45.200 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=47414 clientIntervalMs=1098 generatedAt=2026-11-08T08:05:42.678001Z
+11-08 17:05:46.299 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=48513 clientIntervalMs=1099 generatedAt=2026-11-08T08:05:43.774404Z
+11-08 17:05:47.405 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=49619 clientIntervalMs=1106 generatedAt=2026-11-08T08:05:44.881870Z
+11-08 17:05:48.504 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=50718 clientIntervalMs=1099 generatedAt=2026-11-08T08:05:45.985737Z
+11-08 17:05:49.615 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=51829 clientIntervalMs=1111 generatedAt=2026-11-08T08:05:47.082730Z
+11-08 17:05:50.716 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=52930 clientIntervalMs=1101 generatedAt=2026-11-08T08:05:48.189919Z
+11-08 17:05:51.814 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=54028 clientIntervalMs=1098 generatedAt=2026-11-08T08:05:49.292310Z
+11-08 17:05:52.911 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=55125 clientIntervalMs=1097 generatedAt=2026-11-08T08:05:50.389162Z
+11-08 17:05:54.001 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=56215 clientIntervalMs=1090 generatedAt=2026-11-08T08:05:51.482460Z
+11-08 17:05:55.090 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=57304 clientIntervalMs=1089 generatedAt=2026-11-08T08:05:52.573001Z
+11-08 17:05:56.188 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=58402 clientIntervalMs=1098 generatedAt=2026-11-08T08:05:53.665422Z
+11-08 17:05:57.291 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=59505 clientIntervalMs=1103 generatedAt=2026-11-08T08:05:54.764130Z
+11-08 17:05:58.386 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=60600 clientIntervalMs=1095 generatedAt=2026-11-08T08:05:55.865367Z
+11-08 17:05:59.485 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=61699 clientIntervalMs=1099 generatedAt=2026-11-08T08:05:56.960760Z
+11-08 17:06:00.581 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=62795 clientIntervalMs=1096 generatedAt=2026-11-08T08:05:58.058310Z
+11-08 17:06:01.675 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=63890 clientIntervalMs=1095 generatedAt=2026-11-08T08:05:59.154080Z
+11-08 17:06:02.775 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=64989 clientIntervalMs=1099 generatedAt=2026-11-08T08:06:00.251129Z
+11-08 17:06:03.872 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=66086 clientIntervalMs=1097 generatedAt=2026-11-08T08:06:01.350700Z
+11-08 17:06:04.990 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=67204 clientIntervalMs=1118 generatedAt=2026-11-08T08:06:02.453385Z
+11-08 17:06:06.088 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=68302 clientIntervalMs=1098 generatedAt=2026-11-08T08:06:03.567015Z
+11-08 17:06:07.183 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=69396 clientIntervalMs=1094 generatedAt=2026-11-08T08:06:04.663321Z
+11-08 17:06:08.273 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=70487 clientIntervalMs=1091 generatedAt=2026-11-08T08:06:05.755130Z
+11-08 17:06:09.374 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=71588 clientIntervalMs=1101 generatedAt=2026-11-08T08:06:06.852079Z
+11-08 17:06:10.471 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=72685 clientIntervalMs=1097 generatedAt=2026-11-08T08:06:07.944924Z
+11-08 17:06:11.563 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=73777 clientIntervalMs=1092 generatedAt=2026-11-08T08:06:09.044690Z
+11-08 17:06:12.651 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=74865 clientIntervalMs=1088 generatedAt=2026-11-08T08:06:10.130896Z
+11-08 17:06:13.744 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=75958 clientIntervalMs=1093 generatedAt=2026-11-08T08:06:11.223311Z
+11-08 17:06:14.835 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=77049 clientIntervalMs=1091 generatedAt=2026-11-08T08:06:12.314897Z
+11-08 17:06:15.955 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=78169 clientIntervalMs=1120 generatedAt=2026-11-08T08:06:13.434697Z
+11-08 17:06:17.064 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=79278 clientIntervalMs=1109 generatedAt=2026-11-08T08:06:14.535581Z
+11-08 17:06:18.157 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=80371 clientIntervalMs=1093 generatedAt=2026-11-08T08:06:15.637648Z
+11-08 17:06:19.251 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=81466 clientIntervalMs=1095 generatedAt=2026-11-08T08:06:16.730431Z
+11-08 17:06:20.383 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=82597 clientIntervalMs=1131 generatedAt=2026-11-08T08:06:17.862861Z
+11-08 17:06:21.481 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=83695 clientIntervalMs=1098 generatedAt=2026-11-08T08:06:18.956512Z
+11-08 17:06:22.578 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=84792 clientIntervalMs=1097 generatedAt=2026-11-08T08:06:20.052549Z
+11-08 17:06:23.673 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=85887 clientIntervalMs=1095 generatedAt=2026-11-08T08:06:21.151022Z
+11-08 17:06:24.756 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=86971 clientIntervalMs=1084 generatedAt=2026-11-08T08:06:22.240886Z
+11-08 17:06:25.851 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=88065 clientIntervalMs=1094 generatedAt=2026-11-08T08:06:23.331039Z
+11-08 17:06:26.944 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=89158 clientIntervalMs=1093 generatedAt=2026-11-08T08:06:24.421497Z
+11-08 17:06:28.047 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=90262 clientIntervalMs=1104 generatedAt=2026-11-08T08:06:25.517438Z
+11-08 17:06:29.158 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=91372 clientIntervalMs=1110 generatedAt=2026-11-08T08:06:26.619698Z
+11-08 17:06:30.249 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=92464 clientIntervalMs=1092 generatedAt=2026-11-08T08:06:27.732843Z
+11-08 17:06:31.343 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=93557 clientIntervalMs=1093 generatedAt=2026-11-08T08:06:28.821301Z
+11-08 17:06:32.432 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=94646 clientIntervalMs=1089 generatedAt=2026-11-08T08:06:29.915060Z
+11-08 17:06:33.573 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=95787 clientIntervalMs=1141 generatedAt=2026-11-08T08:06:31.055217Z
+11-08 17:06:34.670 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=96884 clientIntervalMs=1097 generatedAt=2026-11-08T08:06:32.152934Z
+11-08 17:06:35.768 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=97982 clientIntervalMs=1098 generatedAt=2026-11-08T08:06:33.247630Z
+11-08 17:06:36.860 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=99075 clientIntervalMs=1093 generatedAt=2026-11-08T08:06:34.341890Z
+11-08 17:06:37.964 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=100178 clientIntervalMs=1103 generatedAt=2026-11-08T08:06:35.451072Z
+11-08 17:06:39.055 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=101269 clientIntervalMs=1091 generatedAt=2026-11-08T08:06:36.536492Z
+11-08 17:06:40.146 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=102360 clientIntervalMs=1091 generatedAt=2026-11-08T08:06:37.625939Z
+11-08 17:06:41.236 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=103450 clientIntervalMs=1090 generatedAt=2026-11-08T08:06:38.716804Z
+11-08 17:06:42.382 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=104596 clientIntervalMs=1146 generatedAt=2026-11-08T08:06:39.861932Z
+11-08 17:06:43.475 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=105689 clientIntervalMs=1093 generatedAt=2026-11-08T08:06:40.954338Z
+11-08 17:06:44.566 32518 32552 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=106780 clientIntervalMs=1091 generatedAt=2026-11-08T08:06:42.048588Z
+11-08 17:06:45.652 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=107867 clientIntervalMs=1087 generatedAt=2026-11-08T08:06:43.144079Z
+11-08 17:06:46.779 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=108993 clientIntervalMs=1126 generatedAt=2026-11-08T08:06:44.263237Z
+11-08 17:06:47.868 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=110082 clientIntervalMs=1089 generatedAt=2026-11-08T08:06:45.351178Z
+11-08 17:06:48.964 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=111178 clientIntervalMs=1096 generatedAt=2026-11-08T08:06:46.438808Z
+11-08 17:06:50.042 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=112256 clientIntervalMs=1078 generatedAt=2026-11-08T08:06:47.527443Z
+11-08 17:06:51.190 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=113404 clientIntervalMs=1148 generatedAt=2026-11-08T08:06:48.619814Z
+11-08 17:06:52.276 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=114490 clientIntervalMs=1086 generatedAt=2026-11-08T08:06:49.753766Z
+11-08 17:06:53.365 32518 32552 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=115579 clientIntervalMs=1089 generatedAt=2026-11-08T08:06:50.846052Z
+11-08 17:06:54.447 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=116662 clientIntervalMs=1083 generatedAt=2026-11-08T08:06:51.931226Z
+11-08 17:06:55.569 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=117783 clientIntervalMs=1121 generatedAt=2026-11-08T08:06:53.044415Z
+11-08 17:06:56.647 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=data_changed view=PRESS firstResponse=false dataChanged=true clientElapsedMs=118861 clientIntervalMs=1078 generatedAt=2026-11-08T08:06:54.131222Z
+11-08 17:06:57.743 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=119958 clientIntervalMs=1097 generatedAt=2026-11-08T08:06:55.222649Z
+11-08 17:06:58.810 32518 32552 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=121024 clientIntervalMs=1066 generatedAt=2026-11-08T08:06:56.303230Z
+11-08 17:07:00.006 32518 32552 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=122220 clientIntervalMs=1196 generatedAt=2026-11-08T08:06:57.414870Z
+11-08 17:07:01.094 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=data_changed view=PRESS firstResponse=false dataChanged=true clientElapsedMs=123308 clientIntervalMs=1088 generatedAt=2026-11-08T08:06:58.572409Z
+11-08 17:07:02.185 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=124399 clientIntervalMs=1091 generatedAt=2026-11-08T08:06:59.665928Z
+11-08 17:07:03.274 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=125489 clientIntervalMs=1090 generatedAt=2026-11-08T08:07:00.756795Z
+11-08 17:07:04.404 32518 32552 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=126618 clientIntervalMs=1129 generatedAt=2026-11-08T08:07:01.883164Z
+11-08 17:07:05.500 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=127714 clientIntervalMs=1096 generatedAt=2026-11-08T08:07:02.975862Z
+11-08 17:07:06.600 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=128814 clientIntervalMs=1100 generatedAt=2026-11-08T08:07:04.071786Z
+11-08 17:07:07.692 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=129907 clientIntervalMs=1093 generatedAt=2026-11-08T08:07:05.173424Z
+11-08 17:07:08.808 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=131022 clientIntervalMs=1115 generatedAt=2026-11-08T08:07:06.288590Z
+11-08 17:07:09.900 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=132114 clientIntervalMs=1092 generatedAt=2026-11-08T08:07:07.381370Z
+11-08 17:07:10.989 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=133203 clientIntervalMs=1089 generatedAt=2026-11-08T08:07:08.469512Z
+11-08 17:07:12.085 32518 32552 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=134299 clientIntervalMs=1096 generatedAt=2026-11-08T08:07:09.565940Z
+11-08 17:07:13.213 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=135427 clientIntervalMs=1128 generatedAt=2026-11-08T08:07:10.694096Z
+11-08 17:07:14.301 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=136516 clientIntervalMs=1089 generatedAt=2026-11-08T08:07:11.784934Z
+11-08 17:07:15.387 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=137601 clientIntervalMs=1085 generatedAt=2026-11-08T08:07:12.869130Z
+11-08 17:07:16.473 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=138687 clientIntervalMs=1086 generatedAt=2026-11-08T08:07:13.953770Z
+11-08 17:07:17.606 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=139820 clientIntervalMs=1133 generatedAt=2026-11-08T08:07:15.054413Z
+11-08 17:07:18.675 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=140887 clientIntervalMs=1067 generatedAt=2026-11-08T08:07:16.160461Z
+11-08 17:07:19.736 32518 32552 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=141951 clientIntervalMs=1064 generatedAt=2026-11-08T08:07:17.233931Z
+11-08 17:07:20.806 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=143021 clientIntervalMs=1070 generatedAt=2026-11-08T08:07:18.291109Z
+11-08 17:07:22.014 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=144228 clientIntervalMs=1207 generatedAt=2026-11-08T08:07:19.501805Z
+11-08 17:07:23.073 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=145288 clientIntervalMs=1060 generatedAt=2026-11-08T08:07:20.568865Z
+11-08 17:07:24.163 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=146377 clientIntervalMs=1089 generatedAt=2026-11-08T08:07:21.649500Z
+11-08 17:07:25.244 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=147458 clientIntervalMs=1081 generatedAt=2026-11-08T08:07:22.730062Z
+11-08 17:07:26.415 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=148629 clientIntervalMs=1171 generatedAt=2026-11-08T08:07:23.906127Z
+11-08 17:07:27.509 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=149723 clientIntervalMs=1094 generatedAt=2026-11-08T08:07:24.986087Z
+11-08 17:07:28.580 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=150795 clientIntervalMs=1072 generatedAt=2026-11-08T08:07:26.072764Z
+11-08 17:07:29.662 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=151876 clientIntervalMs=1081 generatedAt=2026-11-08T08:07:27.143589Z
+11-08 17:07:30.845 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=153060 clientIntervalMs=1184 generatedAt=2026-11-08T08:07:28.325186Z
+11-08 17:07:31.938 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=154152 clientIntervalMs=1092 generatedAt=2026-11-08T08:07:29.420606Z
+11-08 17:07:33.036 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=155250 clientIntervalMs=1098 generatedAt=2026-11-08T08:07:30.517773Z
+11-08 17:07:34.123 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=156337 clientIntervalMs=1087 generatedAt=2026-11-08T08:07:31.605244Z
+11-08 17:07:35.231 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=157446 clientIntervalMs=1109 generatedAt=2026-11-08T08:07:32.714244Z
+11-08 17:07:36.321 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=158535 clientIntervalMs=1089 generatedAt=2026-11-08T08:07:33.801130Z
+11-08 17:07:37.407 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=159621 clientIntervalMs=1086 generatedAt=2026-11-08T08:07:34.890367Z
+11-08 17:07:38.504 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=160718 clientIntervalMs=1097 generatedAt=2026-11-08T08:07:35.985133Z
+11-08 17:07:39.663 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=161877 clientIntervalMs=1159 generatedAt=2026-11-08T08:07:37.143018Z
+11-08 17:07:40.751 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=162966 clientIntervalMs=1089 generatedAt=2026-11-08T08:07:38.235788Z
+11-08 17:07:41.848 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=164062 clientIntervalMs=1096 generatedAt=2026-11-08T08:07:39.322140Z
+11-08 17:07:42.942 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=165156 clientIntervalMs=1094 generatedAt=2026-11-08T08:07:40.422724Z
+11-08 17:07:44.059 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=166273 clientIntervalMs=1117 generatedAt=2026-11-08T08:07:41.540099Z
+11-08 17:07:45.146 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=167361 clientIntervalMs=1088 generatedAt=2026-11-08T08:07:42.627198Z
+11-08 17:07:46.237 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=168451 clientIntervalMs=1090 generatedAt=2026-11-08T08:07:43.718561Z
+11-08 17:07:47.334 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=169548 clientIntervalMs=1097 generatedAt=2026-11-08T08:07:44.813076Z
+11-08 17:07:48.448 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=170662 clientIntervalMs=1114 generatedAt=2026-11-08T08:07:45.931370Z
+11-08 17:07:49.551 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=171765 clientIntervalMs=1103 generatedAt=2026-11-08T08:07:47.022290Z
+11-08 17:07:50.627 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=172842 clientIntervalMs=1077 generatedAt=2026-11-08T08:07:48.114812Z
+11-08 17:07:51.713 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=173928 clientIntervalMs=1086 generatedAt=2026-11-08T08:07:49.192272Z
+11-08 17:07:52.862 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=175077 clientIntervalMs=1149 generatedAt=2026-11-08T08:07:50.343687Z
+11-08 17:07:53.954 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=176168 clientIntervalMs=1091 generatedAt=2026-11-08T08:07:51.430787Z
+11-08 17:07:55.034 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=177248 clientIntervalMs=1080 generatedAt=2026-11-08T08:07:52.519451Z
+11-08 17:07:56.119 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=178333 clientIntervalMs=1085 generatedAt=2026-11-08T08:07:53.601358Z
+11-08 17:07:57.251 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=179465 clientIntervalMs=1132 generatedAt=2026-11-08T08:07:54.736089Z
+11-08 17:07:58.357 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=180571 clientIntervalMs=1106 generatedAt=2026-11-08T08:07:55.835162Z
+11-08 17:07:59.443 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=181657 clientIntervalMs=1086 generatedAt=2026-11-08T08:07:56.925108Z
+11-08 17:08:00.527 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=182742 clientIntervalMs=1085 generatedAt=2026-11-08T08:07:58.013262Z
+11-08 17:08:01.661 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=183875 clientIntervalMs=1133 generatedAt=2026-11-08T08:07:59.144089Z
+11-08 17:08:02.771 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=184985 clientIntervalMs=1110 generatedAt=2026-11-08T08:08:00.235119Z
+11-08 17:08:03.889 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=186103 clientIntervalMs=1118 generatedAt=2026-11-08T08:08:01.362898Z
+11-08 17:08:04.976 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=187190 clientIntervalMs=1087 generatedAt=2026-11-08T08:08:02.458004Z
+11-08 17:08:06.067 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=188281 clientIntervalMs=1091 generatedAt=2026-11-08T08:08:03.546880Z
+11-08 17:08:07.171 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=189384 clientIntervalMs=1103 generatedAt=2026-11-08T08:08:04.640656Z
+11-08 17:08:08.256 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=190470 clientIntervalMs=1086 generatedAt=2026-11-08T08:08:05.740324Z
+11-08 17:08:09.343 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=191557 clientIntervalMs=1087 generatedAt=2026-11-08T08:08:06.825393Z
+11-08 17:08:10.482 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=192696 clientIntervalMs=1139 generatedAt=2026-11-08T08:08:07.917300Z
+11-08 17:08:11.568 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=193782 clientIntervalMs=1086 generatedAt=2026-11-08T08:08:09.049886Z
+11-08 17:08:12.662 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=194876 clientIntervalMs=1094 generatedAt=2026-11-08T08:08:10.142828Z
+11-08 17:08:13.751 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=195965 clientIntervalMs=1089 generatedAt=2026-11-08T08:08:11.229299Z
+11-08 17:08:14.875 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=197090 clientIntervalMs=1125 generatedAt=2026-11-08T08:08:12.355165Z
+11-08 17:08:15.960 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=198174 clientIntervalMs=1084 generatedAt=2026-11-08T08:08:13.441970Z
+11-08 17:08:17.045 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=199259 clientIntervalMs=1085 generatedAt=2026-11-08T08:08:14.529892Z
+11-08 17:08:18.133 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=200347 clientIntervalMs=1088 generatedAt=2026-11-08T08:08:15.614868Z
+11-08 17:08:19.290 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=201504 clientIntervalMs=1157 generatedAt=2026-11-08T08:08:16.754489Z
+11-08 17:08:20.377 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=202591 clientIntervalMs=1087 generatedAt=2026-11-08T08:08:17.858704Z
+11-08 17:08:21.468 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=203683 clientIntervalMs=1092 generatedAt=2026-11-08T08:08:18.948888Z
+11-08 17:08:22.555 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=204770 clientIntervalMs=1087 generatedAt=2026-11-08T08:08:20.036924Z
+11-08 17:08:23.675 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=205889 clientIntervalMs=1119 generatedAt=2026-11-08T08:08:21.127187Z
+11-08 17:08:24.761 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=206975 clientIntervalMs=1086 generatedAt=2026-11-08T08:08:22.239384Z
+11-08 17:08:25.842 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=208056 clientIntervalMs=1081 generatedAt=2026-11-08T08:08:23.326961Z
+11-08 17:08:26.926 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=209140 clientIntervalMs=1084 generatedAt=2026-11-08T08:08:24.408256Z
+11-08 17:08:28.079 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=210293 clientIntervalMs=1153 generatedAt=2026-11-08T08:08:25.560203Z
+11-08 17:08:29.172 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=211386 clientIntervalMs=1093 generatedAt=2026-11-08T08:08:26.652753Z
+11-08 17:08:30.262 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=212476 clientIntervalMs=1090 generatedAt=2026-11-08T08:08:27.742664Z
+11-08 17:08:31.349 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=213563 clientIntervalMs=1087 generatedAt=2026-11-08T08:08:28.831042Z
+11-08 17:08:32.499 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=214713 clientIntervalMs=1150 generatedAt=2026-11-08T08:08:29.982394Z
+11-08 17:08:33.588 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=215802 clientIntervalMs=1089 generatedAt=2026-11-08T08:08:31.068816Z
+11-08 17:08:34.672 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=216886 clientIntervalMs=1084 generatedAt=2026-11-08T08:08:32.153003Z
+11-08 17:08:35.761 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=217975 clientIntervalMs=1089 generatedAt=2026-11-08T08:08:33.242465Z
+11-08 17:08:36.885 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=219099 clientIntervalMs=1124 generatedAt=2026-11-08T08:08:34.357116Z
+11-08 17:08:37.954 32518 32556 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=220169 clientIntervalMs=1070 generatedAt=2026-11-08T08:08:35.442533Z
+11-08 17:08:39.042 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=221256 clientIntervalMs=1087 generatedAt=2026-11-08T08:08:36.527165Z
+11-08 17:08:40.127 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=222341 clientIntervalMs=1085 generatedAt=2026-11-08T08:08:37.608716Z
+11-08 17:08:41.285 32518 32652 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=223499 clientIntervalMs=1158 generatedAt=2026-11-08T08:08:38.695844Z
+11-08 17:08:42.374 32518 32552 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=224587 clientIntervalMs=1088 generatedAt=2026-11-08T08:08:39.852939Z
+11-08 17:08:43.456 32518 32551 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=225670 clientIntervalMs=1083 generatedAt=2026-11-08T08:08:40.938576Z
+11-08 17:08:44.534 32518 32552 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=226748 clientIntervalMs=1078 generatedAt=2026-11-08T08:08:42.017919Z
+11-08 17:08:45.697 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=227911 clientIntervalMs=1163 generatedAt=2026-11-08T08:08:43.184191Z
+11-08 17:08:46.779 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=228993 clientIntervalMs=1082 generatedAt=2026-11-08T08:08:44.264324Z
+11-08 17:08:47.862 32518 32552 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=230077 clientIntervalMs=1084 generatedAt=2026-11-08T08:08:45.346124Z
+11-08 17:08:48.953 32518 32551 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=231168 clientIntervalMs=1091 generatedAt=2026-11-08T08:08:46.435693Z
+11-08 17:08:50.127 32518 32552 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=232341 clientIntervalMs=1173 generatedAt=2026-11-08T08:08:47.524170Z
+11-08 17:08:51.222 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=233436 clientIntervalMs=1095 generatedAt=2026-11-08T08:08:48.694612Z
+11-08 17:08:52.314 32518 32552 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=234529 clientIntervalMs=1093 generatedAt=2026-11-08T08:08:49.790925Z
+11-08 17:08:53.389 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=235603 clientIntervalMs=1074 generatedAt=2026-11-08T08:08:50.880263Z
+11-08 17:08:54.523 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=236737 clientIntervalMs=1134 generatedAt=2026-11-08T08:08:52.009341Z
+11-08 17:08:55.602 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=237816 clientIntervalMs=1079 generatedAt=2026-11-08T08:08:53.085772Z
+11-08 17:08:56.679 32518 32551 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=238893 clientIntervalMs=1077 generatedAt=2026-11-08T08:08:54.165485Z
+11-08 17:08:57.754 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=239969 clientIntervalMs=1076 generatedAt=2026-11-08T08:08:55.241366Z
+11-08 17:08:58.919 32518 32552 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=241133 clientIntervalMs=1164 generatedAt=2026-11-08T08:08:56.402358Z
+11-08 17:08:59.999 32518 32551 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=242214 clientIntervalMs=1081 generatedAt=2026-11-08T08:08:57.486108Z
+11-08 17:09:01.083 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=243297 clientIntervalMs=1083 generatedAt=2026-11-08T08:08:58.566508Z
+11-08 17:09:02.169 32518 32551 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=244383 clientIntervalMs=1086 generatedAt=2026-11-08T08:08:59.651649Z
+11-08 17:09:03.320 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=245534 clientIntervalMs=1151 generatedAt=2026-11-08T08:09:00.795185Z
+11-08 17:09:04.403 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=246617 clientIntervalMs=1083 generatedAt=2026-11-08T08:09:01.886244Z
+11-08 17:09:05.488 32518 32551 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=247703 clientIntervalMs=1086 generatedAt=2026-11-08T08:09:02.971119Z
+11-08 17:09:06.579 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=248793 clientIntervalMs=1090 generatedAt=2026-11-08T08:09:04.056149Z
+11-08 17:09:07.735 32518 32552 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=249949 clientIntervalMs=1156 generatedAt=2026-11-08T08:09:05.219572Z
+11-08 17:09:08.815 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=251029 clientIntervalMs=1080 generatedAt=2026-11-08T08:09:06.305716Z
+11-08 17:09:09.900 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=252114 clientIntervalMs=1085 generatedAt=2026-11-08T08:09:07.382355Z
+11-08 17:09:10.980 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=253194 clientIntervalMs=1080 generatedAt=2026-11-08T08:09:08.466836Z
+11-08 17:09:12.136 32518 32552 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=254351 clientIntervalMs=1157 generatedAt=2026-11-08T08:09:09.620650Z
+11-08 17:09:13.221 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=255436 clientIntervalMs=1085 generatedAt=2026-11-08T08:09:10.707703Z
+11-08 17:09:14.316 32518 32551 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=256530 clientIntervalMs=1094 generatedAt=2026-11-08T08:09:11.790439Z
+11-08 17:09:15.384 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=257598 clientIntervalMs=1068 generatedAt=2026-11-08T08:09:12.872223Z
+11-08 17:09:16.534 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=258748 clientIntervalMs=1150 generatedAt=2026-11-08T08:09:13.993034Z
+11-08 17:09:17.619 32518 32551 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=259833 clientIntervalMs=1085 generatedAt=2026-11-08T08:09:15.100805Z
+11-08 17:09:18.693 32518 32552 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=260907 clientIntervalMs=1074 generatedAt=2026-11-08T08:09:16.181327Z
+11-08 17:09:19.779 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=261994 clientIntervalMs=1087 generatedAt=2026-11-08T08:09:17.261778Z
+11-08 17:09:20.935 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=263150 clientIntervalMs=1156 generatedAt=2026-11-08T08:09:18.390596Z
+11-08 17:09:22.021 32518 32551 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=264235 clientIntervalMs=1085 generatedAt=2026-11-08T08:09:19.500795Z
+11-08 17:09:23.108 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=265322 clientIntervalMs=1087 generatedAt=2026-11-08T08:09:20.588391Z
+11-08 17:09:24.191 32518 32551 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=266406 clientIntervalMs=1084 generatedAt=2026-11-08T08:09:21.675022Z
+11-08 17:09:25.361 32518 32552 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=267575 clientIntervalMs=1169 generatedAt=2026-11-08T08:09:22.842052Z
+11-08 17:09:26.438 32518 32551 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=268652 clientIntervalMs=1077 generatedAt=2026-11-08T08:09:23.925492Z
+11-08 17:09:27.523 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=269737 clientIntervalMs=1085 generatedAt=2026-11-08T08:09:25.006612Z
+11-08 17:09:28.607 32518 32552 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=270821 clientIntervalMs=1084 generatedAt=2026-11-08T08:09:26.092236Z
+11-08 17:09:29.789 32518 32551 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=272003 clientIntervalMs=1182 generatedAt=2026-11-08T08:09:27.269479Z
+11-08 17:09:30.859 32518 32552 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=273074 clientIntervalMs=1071 generatedAt=2026-11-08T08:09:28.350688Z
+11-08 17:09:31.944 32518 32551 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=274158 clientIntervalMs=1084 generatedAt=2026-11-08T08:09:29.429033Z
+11-08 17:09:33.023 32518 32551 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=275237 clientIntervalMs=1079 generatedAt=2026-11-08T08:09:30.508012Z
+11-08 17:09:34.164 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=276378 clientIntervalMs=1141 generatedAt=2026-11-08T08:09:31.649145Z
+11-08 17:09:35.244 32518 32551 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=277459 clientIntervalMs=1081 generatedAt=2026-11-08T08:09:32.730041Z
+11-08 17:09:36.332 32518 32558 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=278546 clientIntervalMs=1087 generatedAt=2026-11-08T08:09:33.811473Z
+11-08 17:09:37.412 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=279626 clientIntervalMs=1080 generatedAt=2026-11-08T08:09:34.896264Z
+11-08 17:09:38.568 32518 32551 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=280782 clientIntervalMs=1156 generatedAt=2026-11-08T08:09:36.049021Z
+11-08 17:09:39.656 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=281870 clientIntervalMs=1088 generatedAt=2026-11-08T08:09:37.138540Z
+11-08 17:09:40.754 32518 32551 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=282969 clientIntervalMs=1099 generatedAt=2026-11-08T08:09:38.239406Z
+11-08 17:09:41.836 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=284050 clientIntervalMs=1081 generatedAt=2026-11-08T08:09:39.320104Z
+11-08 17:09:42.974 32518 32551 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=285188 clientIntervalMs=1138 generatedAt=2026-11-08T08:09:40.443906Z
+11-08 17:09:44.090 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=286304 clientIntervalMs=1116 generatedAt=2026-11-08T08:09:41.569199Z
+11-08 17:09:45.171 32518 32551 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=287385 clientIntervalMs=1081 generatedAt=2026-11-08T08:09:42.656732Z
+11-08 17:09:46.263 32518 32553 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=288477 clientIntervalMs=1092 generatedAt=2026-11-08T08:09:43.743055Z
+11-08 17:09:47.366 32518 32551 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=289580 clientIntervalMs=1103 generatedAt=2026-11-08T08:09:44.843361Z
+11-08 17:09:48.451 32518 32552 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=290665 clientIntervalMs=1085 generatedAt=2026-11-08T08:09:45.934568Z
+11-08 17:09:49.541 32518 32551 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=291755 clientIntervalMs=1090 generatedAt=2026-11-08T08:09:47.020628Z
+11-08 17:09:50.589 32518 32552 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=292804 clientIntervalMs=1049 generatedAt=2026-11-08T08:09:48.085597Z
+11-08 17:09:51.761 32518 32552 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=293975 clientIntervalMs=1171 generatedAt=2026-11-08T08:09:49.148039Z
+11-08 17:09:52.817 32518 32551 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=295032 clientIntervalMs=1057 generatedAt=2026-11-08T08:09:50.316133Z
+11-08 17:12:08.105  3220  3324 I System.out: [PressRaceReceive] mode=SSE event=retry_scheduled kind=HttpStatus status=429 attempt=1 delayMs=625
+11-08 17:12:08.781  3220  3316 I System.out: [PressRaceReceive] mode=SSE event=retry_scheduled kind=HttpStatus status=429 attempt=2 delayMs=1429
+11-08 17:12:10.249  3220  3317 I System.out: [PressRaceReceive] mode=SSE event=retry_scheduled kind=HttpStatus status=429 attempt=3 delayMs=2432
+11-08 17:15:32.975  4320  4320 I System.out: [PressRaceReceive] mode=SSE event=view_selected view=PRESS
+11-08 17:15:32.977  4320  4351 I System.out: [PressRaceReceive] mode=SSE event=request_started view=PRESS
+11-08 17:17:50.029  4748  4748 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=view_selected view=PRESS
+11-08 17:17:50.030  4748  4774 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:17:50.093  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=first_response view=PRESS firstResponse=true dataChanged=false clientElapsedMs=63 clientIntervalMs=null generatedAt=2026-11-08T08:17:47.583073Z
+11-08 17:17:51.096  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:17:51.145  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=1114 clientIntervalMs=1051 generatedAt=2026-11-08T08:17:48.641684Z
+11-08 17:17:52.147  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:17:52.202  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=2171 clientIntervalMs=1057 generatedAt=2026-11-08T08:17:49.700523Z
+11-08 17:17:53.204  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:17:53.395  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=3364 clientIntervalMs=1193 generatedAt=2026-11-08T08:17:50.869221Z
+11-08 17:17:54.399  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:17:54.448  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=4418 clientIntervalMs=1054 generatedAt=2026-11-08T08:17:51.948377Z
+11-08 17:17:55.450  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:17:55.494  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=5463 clientIntervalMs=1045 generatedAt=2026-11-08T08:17:52.995093Z
+11-08 17:17:56.496  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:17:56.536  4748  4774 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=6506 clientIntervalMs=1043 generatedAt=2026-11-08T08:17:54.034064Z
+11-08 17:17:57.538  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:17:57.791  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=data_changed view=PRESS firstResponse=false dataChanged=true clientElapsedMs=7760 clientIntervalMs=1254 generatedAt=2026-11-08T08:17:55.093600Z
+11-08 17:17:58.793  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:17:58.856  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=8825 clientIntervalMs=1065 generatedAt=2026-11-08T08:17:56.349676Z
+11-08 17:17:59.857  4748  4774 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:17:59.924  4748  4774 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=9893 clientIntervalMs=1068 generatedAt=2026-11-08T08:17:57.414674Z
+11-08 17:18:00.925  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:00.997  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=10966 clientIntervalMs=1073 generatedAt=2026-11-08T08:17:58.484837Z
+11-08 17:18:01.998  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:02.170  4748  4774 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=data_changed view=PRESS firstResponse=false dataChanged=true clientElapsedMs=12140 clientIntervalMs=1174 generatedAt=2026-11-08T08:17:59.595378Z
+11-08 17:18:03.172  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:03.244  4748  4774 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=13213 clientIntervalMs=1073 generatedAt=2026-11-08T08:18:00.737116Z
+11-08 17:18:04.246  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:04.312  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=14281 clientIntervalMs=1068 generatedAt=2026-11-08T08:18:01.804928Z
+11-08 17:18:05.314  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:05.376  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=15344 clientIntervalMs=1063 generatedAt=2026-11-08T08:18:02.867267Z
+11-08 17:18:06.378  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:06.610  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=16579 clientIntervalMs=1235 generatedAt=2026-11-08T08:18:04.089208Z
+11-08 17:18:07.614  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:07.690  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=17659 clientIntervalMs=1080 generatedAt=2026-11-08T08:18:05.181633Z
+11-08 17:18:08.693  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:09.043  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=19013 clientIntervalMs=1354 generatedAt=2026-11-08T08:18:06.256799Z
+11-08 17:18:10.047  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:10.120  4748  4774 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=20089 clientIntervalMs=1076 generatedAt=2026-11-08T08:18:07.605719Z
+11-08 17:18:11.122  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:11.189  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=21158 clientIntervalMs=1069 generatedAt=2026-11-08T08:18:08.681158Z
+11-08 17:18:12.192  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:12.264  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=22233 clientIntervalMs=1075 generatedAt=2026-11-08T08:18:09.759327Z
+11-08 17:18:13.267  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:13.340  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=23309 clientIntervalMs=1076 generatedAt=2026-11-08T08:18:10.828425Z
+11-08 17:18:14.343  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:14.412  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=24381 clientIntervalMs=1072 generatedAt=2026-11-08T08:18:11.905728Z
+11-08 17:18:15.415  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:15.492  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=25461 clientIntervalMs=1080 generatedAt=2026-11-08T08:18:12.980684Z
+11-08 17:18:16.494  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:16.569  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=26538 clientIntervalMs=1077 generatedAt=2026-11-08T08:18:14.062726Z
+11-08 17:18:17.571  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:17.638  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=27607 clientIntervalMs=1069 generatedAt=2026-11-08T08:18:15.134068Z
+11-08 17:18:18.641  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:18.716  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=28686 clientIntervalMs=1079 generatedAt=2026-11-08T08:18:16.206986Z
+11-08 17:18:19.718  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:19.793  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=29763 clientIntervalMs=1077 generatedAt=2026-11-08T08:18:17.287874Z
+11-08 17:18:20.797  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:20.865  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=30834 clientIntervalMs=1071 generatedAt=2026-11-08T08:18:18.355079Z
+11-08 17:18:21.868  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:21.966  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=31935 clientIntervalMs=1101 generatedAt=2026-11-08T08:18:19.431382Z
+11-08 17:18:22.969  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:23.044  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=33013 clientIntervalMs=1078 generatedAt=2026-11-08T08:18:20.531700Z
+11-08 17:18:24.047  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:24.207  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=34175 clientIntervalMs=1162 generatedAt=2026-11-08T08:18:21.609675Z
+11-08 17:18:25.210  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:25.281  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=35250 clientIntervalMs=1075 generatedAt=2026-11-08T08:18:22.770509Z
+11-08 17:18:26.285  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:26.355  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=36324 clientIntervalMs=1074 generatedAt=2026-11-08T08:18:23.848516Z
+11-08 17:18:27.357  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:27.429  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=37398 clientIntervalMs=1074 generatedAt=2026-11-08T08:18:24.914887Z
+11-08 17:18:28.432  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:28.621  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=38590 clientIntervalMs=1192 generatedAt=2026-11-08T08:18:26.110285Z
+11-08 17:18:29.623  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:29.687  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=39656 clientIntervalMs=1066 generatedAt=2026-11-08T08:18:27.182979Z
+11-08 17:18:30.689  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:30.764  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=40733 clientIntervalMs=1077 generatedAt=2026-11-08T08:18:28.251150Z
+11-08 17:18:31.767  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:31.832  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=41802 clientIntervalMs=1069 generatedAt=2026-11-08T08:18:29.327195Z
+11-08 17:18:32.835  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:33.012  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=42981 clientIntervalMs=1179 generatedAt=2026-11-08T08:18:30.508268Z
+11-08 17:18:34.014  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:34.084  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=44052 clientIntervalMs=1071 generatedAt=2026-11-08T08:18:31.575097Z
+11-08 17:18:35.086  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:35.151  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=45120 clientIntervalMs=1068 generatedAt=2026-11-08T08:18:32.642860Z
+11-08 17:18:36.154  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:36.235  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=46204 clientIntervalMs=1084 generatedAt=2026-11-08T08:18:33.721410Z
+11-08 17:18:37.237  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:37.431  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=47400 clientIntervalMs=1196 generatedAt=2026-11-08T08:18:34.925718Z
+11-08 17:18:38.432  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:38.494  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=48463 clientIntervalMs=1063 generatedAt=2026-11-08T08:18:35.991168Z
+11-08 17:18:39.495  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:39.555  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=49525 clientIntervalMs=1062 generatedAt=2026-11-08T08:18:37.051139Z
+11-08 17:18:40.557  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:40.620  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=50590 clientIntervalMs=1065 generatedAt=2026-11-08T08:18:38.114049Z
+11-08 17:18:41.624  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:41.813  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=51782 clientIntervalMs=1192 generatedAt=2026-11-08T08:18:39.186685Z
+11-08 17:18:42.816  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:42.885  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=52854 clientIntervalMs=1072 generatedAt=2026-11-08T08:18:40.374939Z
+11-08 17:18:43.886  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:43.956  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=53924 clientIntervalMs=1070 generatedAt=2026-11-08T08:18:41.443381Z
+11-08 17:18:44.957  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:45.016  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=54985 clientIntervalMs=1061 generatedAt=2026-11-08T08:18:42.508565Z
+11-08 17:18:46.018  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:46.222  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=56191 clientIntervalMs=1206 generatedAt=2026-11-08T08:18:43.713793Z
+11-08 17:18:47.226  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:47.292  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=57262 clientIntervalMs=1071 generatedAt=2026-11-08T08:18:44.781359Z
+11-08 17:18:48.293  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:48.372  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=58342 clientIntervalMs=1080 generatedAt=2026-11-08T08:18:45.852757Z
+11-08 17:18:49.378  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:49.439  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=59408 clientIntervalMs=1066 generatedAt=2026-11-08T08:18:46.931631Z
+11-08 17:18:50.440  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:50.615  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=60585 clientIntervalMs=1177 generatedAt=2026-11-08T08:18:48.097698Z
+11-08 17:18:51.617  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:51.684  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=61653 clientIntervalMs=1068 generatedAt=2026-11-08T08:18:49.173513Z
+11-08 17:18:52.686  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:52.748  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=62717 clientIntervalMs=1064 generatedAt=2026-11-08T08:18:50.242580Z
+11-08 17:18:53.750  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:53.806  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=63775 clientIntervalMs=1058 generatedAt=2026-11-08T08:18:51.303352Z
+11-08 17:18:54.808  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:55.030  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=64999 clientIntervalMs=1224 generatedAt=2026-11-08T08:18:52.496511Z
+11-08 17:18:56.032  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:56.086  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=66055 clientIntervalMs=1056 generatedAt=2026-11-08T08:18:53.584522Z
+11-08 17:18:57.088  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:57.148  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=67117 clientIntervalMs=1062 generatedAt=2026-11-08T08:18:54.646172Z
+11-08 17:18:58.150  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:58.218  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=68187 clientIntervalMs=1070 generatedAt=2026-11-08T08:18:55.710768Z
+11-08 17:18:59.220  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:18:59.440  4748  4966 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=69409 clientIntervalMs=1222 generatedAt=2026-11-08T08:18:56.932853Z
+11-08 17:19:00.443  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:00.519  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=70488 clientIntervalMs=1079 generatedAt=2026-11-08T08:18:58.000076Z
+11-08 17:19:01.521  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:01.592  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=71560 clientIntervalMs=1072 generatedAt=2026-11-08T08:18:59.081364Z
+11-08 17:19:02.593  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:02.694  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=72663 clientIntervalMs=1103 generatedAt=2026-11-08T08:19:00.171048Z
+11-08 17:19:03.697  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:03.842  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=73811 clientIntervalMs=1148 generatedAt=2026-11-08T08:19:01.338639Z
+11-08 17:19:04.846  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:04.903  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=74872 clientIntervalMs=1061 generatedAt=2026-11-08T08:19:02.400167Z
+11-08 17:19:05.905  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:06.000  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=75969 clientIntervalMs=1097 generatedAt=2026-11-08T08:19:03.494602Z
+11-08 17:19:07.002  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:07.074  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=77043 clientIntervalMs=1074 generatedAt=2026-11-08T08:19:04.559721Z
+11-08 17:19:08.076  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:08.259  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=78228 clientIntervalMs=1185 generatedAt=2026-11-08T08:19:05.738940Z
+11-08 17:19:09.261  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:09.319  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=79288 clientIntervalMs=1060 generatedAt=2026-11-08T08:19:06.814960Z
+11-08 17:19:10.321  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:10.387  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=80356 clientIntervalMs=1068 generatedAt=2026-11-08T08:19:07.884372Z
+11-08 17:19:11.388  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:11.464  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=81433 clientIntervalMs=1077 generatedAt=2026-11-08T08:19:08.948715Z
+11-08 17:19:12.466  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:12.632  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=82601 clientIntervalMs=1168 generatedAt=2026-11-08T08:19:10.021769Z
+11-08 17:19:13.635  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:13.701  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=83670 clientIntervalMs=1069 generatedAt=2026-11-08T08:19:11.191411Z
+11-08 17:19:14.704  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:14.781  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=84750 clientIntervalMs=1080 generatedAt=2026-11-08T08:19:12.263738Z
+11-08 17:19:15.783  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:15.844  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=85813 clientIntervalMs=1063 generatedAt=2026-11-08T08:19:13.340609Z
+11-08 17:19:16.846  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:17.079  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=87048 clientIntervalMs=1235 generatedAt=2026-11-08T08:19:14.569800Z
+11-08 17:19:18.081  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:18.145  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=88114 clientIntervalMs=1066 generatedAt=2026-11-08T08:19:15.639595Z
+11-08 17:19:19.146  4748  4774 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:19.205  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=89174 clientIntervalMs=1060 generatedAt=2026-11-08T08:19:16.701072Z
+11-08 17:19:20.207  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:20.260  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=90229 clientIntervalMs=1055 generatedAt=2026-11-08T08:19:17.759243Z
+11-08 17:19:21.261  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:21.456  4748  4774 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=91425 clientIntervalMs=1196 generatedAt=2026-11-08T08:19:18.951258Z
+11-08 17:19:22.458  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:22.526  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=92495 clientIntervalMs=1070 generatedAt=2026-11-08T08:19:20.014400Z
+11-08 17:19:23.528  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:23.591  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=93560 clientIntervalMs=1065 generatedAt=2026-11-08T08:19:21.085063Z
+11-08 17:19:24.593  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:24.666  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=94635 clientIntervalMs=1075 generatedAt=2026-11-08T08:19:22.152153Z
+11-08 17:19:25.668  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:25.852  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=95821 clientIntervalMs=1186 generatedAt=2026-11-08T08:19:23.310407Z
+11-08 17:19:26.854  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:26.913  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=96883 clientIntervalMs=1062 generatedAt=2026-11-08T08:19:24.409403Z
+11-08 17:19:27.916  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:27.978  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=97947 clientIntervalMs=1064 generatedAt=2026-11-08T08:19:25.474479Z
+11-08 17:19:28.979  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:29.052  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=99021 clientIntervalMs=1074 generatedAt=2026-11-08T08:19:26.543878Z
+11-08 17:19:30.054  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:30.259  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=100227 clientIntervalMs=1206 generatedAt=2026-11-08T08:19:27.610068Z
+11-08 17:19:31.261  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:31.731  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=101700 clientIntervalMs=1473 generatedAt=2026-11-08T08:19:28.813296Z
+11-08 17:19:32.733  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:32.804  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=102774 clientIntervalMs=1074 generatedAt=2026-11-08T08:19:30.287276Z
+11-08 17:19:33.806  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:33.884  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=103853 clientIntervalMs=1079 generatedAt=2026-11-08T08:19:31.367277Z
+11-08 17:19:34.885  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:34.946  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=104915 clientIntervalMs=1062 generatedAt=2026-11-08T08:19:32.437121Z
+11-08 17:19:35.948  4748  4774 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:36.132  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=106101 clientIntervalMs=1186 generatedAt=2026-11-08T08:19:33.500807Z
+11-08 17:19:37.133  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:37.191  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=107160 clientIntervalMs=1059 generatedAt=2026-11-08T08:19:34.686890Z
+11-08 17:19:38.192  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:38.246  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=108215 clientIntervalMs=1055 generatedAt=2026-11-08T08:19:35.744Z
+11-08 17:19:39.247  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:39.306  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=109275 clientIntervalMs=1060 generatedAt=2026-11-08T08:19:36.799769Z
+11-08 17:19:40.309  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:40.361  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=110330 clientIntervalMs=1055 generatedAt=2026-11-08T08:19:37.859927Z
+11-08 17:19:41.363  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:41.416  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=111385 clientIntervalMs=1055 generatedAt=2026-11-08T08:19:38.911523Z
+11-08 17:19:42.417  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:42.481  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=112451 clientIntervalMs=1066 generatedAt=2026-11-08T08:19:39.973065Z
+11-08 17:19:43.483  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:43.539  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=113508 clientIntervalMs=1057 generatedAt=2026-11-08T08:19:41.034442Z
+11-08 17:19:44.540  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:44.594  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=114563 clientIntervalMs=1055 generatedAt=2026-11-08T08:19:42.091232Z
+11-08 17:19:45.595  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:45.653  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=115622 clientIntervalMs=1059 generatedAt=2026-11-08T08:19:43.148402Z
+11-08 17:19:46.654  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:46.709  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=116678 clientIntervalMs=1056 generatedAt=2026-11-08T08:19:44.204944Z
+11-08 17:19:47.710  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:47.889  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=117859 clientIntervalMs=1181 generatedAt=2026-11-08T08:19:45.316601Z
+11-08 17:19:48.890  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:48.942  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=118911 clientIntervalMs=1052 generatedAt=2026-11-08T08:19:46.440658Z
+11-08 17:19:49.943  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:49.991  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=119960 clientIntervalMs=1049 generatedAt=2026-11-08T08:19:47.491340Z
+11-08 17:19:50.992  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:51.052  4748  4778 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=121021 clientIntervalMs=1061 generatedAt=2026-11-08T08:19:48.544900Z
+11-08 17:19:52.054  4748  4774 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:52.295  4748  4774 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=122264 clientIntervalMs=1243 generatedAt=2026-11-08T08:19:49.613080Z
+11-08 17:19:53.297  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:53.364  4748  4774 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=123333 clientIntervalMs=1069 generatedAt=2026-11-08T08:19:50.857133Z
+11-08 17:19:54.366  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:54.433  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=124402 clientIntervalMs=1069 generatedAt=2026-11-08T08:19:51.922794Z
+11-08 17:19:55.436  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:55.514  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=125483 clientIntervalMs=1081 generatedAt=2026-11-08T08:19:53.000533Z
+11-08 17:19:56.517  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:56.719  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=126688 clientIntervalMs=1205 generatedAt=2026-11-08T08:19:54.130705Z
+11-08 17:19:57.722  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:57.799  4748  4774 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=127768 clientIntervalMs=1080 generatedAt=2026-11-08T08:19:55.286972Z
+11-08 17:19:58.802  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:58.880  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=128849 clientIntervalMs=1081 generatedAt=2026-11-08T08:19:56.366265Z
+11-08 17:19:59.884  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:19:59.962  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=129931 clientIntervalMs=1082 generatedAt=2026-11-08T08:19:57.445980Z
+11-08 17:20:00.965  4748  4963 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:20:01.096  4748  4774 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=131065 clientIntervalMs=1134 generatedAt=2026-11-08T08:19:58.552251Z
+11-08 17:20:02.100  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:20:02.178  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=132147 clientIntervalMs=1082 generatedAt=2026-11-08T08:19:59.664935Z
+11-08 17:20:03.180  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:20:03.255  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=133224 clientIntervalMs=1077 generatedAt=2026-11-08T08:20:00.740400Z
+11-08 17:20:04.257  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:20:04.341  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=134311 clientIntervalMs=1087 generatedAt=2026-11-08T08:20:01.833406Z
+11-08 17:20:05.343  4748  4774 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:20:05.493  4748  4804 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=135462 clientIntervalMs=1151 generatedAt=2026-11-08T08:20:02.924780Z
+11-08 17:20:06.495  4748  4774 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:20:06.541  4748  4965 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=136511 clientIntervalMs=1049 generatedAt=2026-11-08T08:20:04.043818Z
+11-08 17:20:13.367  5251  5251 I System.out: [PressRaceReceive] mode=SSE event=view_selected view=PRESS
+11-08 17:20:13.369  5251  5427 I System.out: [PressRaceReceive] mode=SSE event=request_started view=PRESS
+11-08 17:21:48.663  5251  5251 I System.out: [PressRaceReceive] mode=SSE event=view_selected view=NONE
+11-08 17:21:51.872  5251  5251 I System.out: [PressRaceReceive] mode=SSE event=view_selected view=PRESS
+11-08 17:21:51.873  5251  5430 I System.out: [PressRaceReceive] mode=SSE event=request_started view=PRESS
+11-08 17:24:45.038  5899  5899 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=view_selected view=PRESS
+11-08 17:24:45.040  5899  5927 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:24:45.125  5899  6069 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=first_response view=PRESS firstResponse=true dataChanged=false clientElapsedMs=84 clientIntervalMs=null generatedAt=2026-11-08T08:24:42.601966Z
+11-08 17:24:46.129  5899  5934 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:24:46.212  5899  5933 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=1169 clientIntervalMs=1085 generatedAt=2026-11-08T08:24:43.697196Z
+11-08 17:24:47.214  5899  5934 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:24:47.431  5899  5934 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=2390 clientIntervalMs=1221 generatedAt=2026-11-08T08:24:44.919583Z
+11-08 17:24:48.436  5899  5934 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:24:48.531  5899  5934 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=3490 clientIntervalMs=1100 generatedAt=2026-11-08T08:24:46.015592Z
+11-08 17:24:49.535  5899  5933 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:24:49.624  5899  5934 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=4583 clientIntervalMs=1093 generatedAt=2026-11-08T08:24:47.109892Z
+11-08 17:24:50.628  5899  5933 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:24:50.714  5899  5933 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=5673 clientIntervalMs=1090 generatedAt=2026-11-08T08:24:48.200250Z
+11-08 17:24:51.717  5899  5933 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:24:51.840  5899  6069 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=6798 clientIntervalMs=1125 generatedAt=2026-11-08T08:24:49.321958Z
+11-08 17:24:52.844  5899  5933 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:24:52.959  5899  5933 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=7917 clientIntervalMs=1119 generatedAt=2026-11-08T08:24:50.436164Z
+11-08 17:24:53.962  5899  5934 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:24:54.048  5899  5933 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=9007 clientIntervalMs=1090 generatedAt=2026-11-08T08:24:51.535414Z
+11-08 17:24:55.052  5899  5927 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:24:55.142  5899  5927 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=10101 clientIntervalMs=1094 generatedAt=2026-11-08T08:24:52.627685Z
+11-08 17:24:56.147  5899  5927 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:24:56.255  5899  6069 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=11214 clientIntervalMs=1113 generatedAt=2026-11-08T08:24:53.725689Z
+11-08 17:24:57.257  5899  6069 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:24:57.345  5899  5933 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=12304 clientIntervalMs=1090 generatedAt=2026-11-08T08:24:54.827312Z
+11-08 17:24:58.348  5899  5934 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:24:58.434  5899  6069 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=13392 clientIntervalMs=1088 generatedAt=2026-11-08T08:24:55.922053Z
+11-08 17:24:59.438  5899  6069 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:24:59.524  5899  5934 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=14482 clientIntervalMs=1090 generatedAt=2026-11-08T08:24:57.007230Z
+11-08 17:25:00.527  5899  6069 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:25:00.643  5899  5927 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=15602 clientIntervalMs=1120 generatedAt=2026-11-08T08:24:58.128275Z
+11-08 17:25:01.647  5899  5927 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:25:01.740  5899  5927 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=16699 clientIntervalMs=1097 generatedAt=2026-11-08T08:24:59.224990Z
+11-08 17:25:02.744  5899  6069 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:25:02.846  5899  5934 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=17805 clientIntervalMs=1106 generatedAt=2026-11-08T08:25:00.321849Z
+11-08 17:25:03.850  5899  5934 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:25:03.939  5899  5927 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=18898 clientIntervalMs=1093 generatedAt=2026-11-08T08:25:01.421658Z
+11-08 17:25:04.943  5899  6069 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:25:05.080  5899  5933 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=20038 clientIntervalMs=1140 generatedAt=2026-11-08T08:25:02.562842Z
+11-08 17:25:06.083  5899  5933 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:25:06.172  5899  5933 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=21131 clientIntervalMs=1093 generatedAt=2026-11-08T08:25:03.655921Z
+11-08 17:25:07.176  5899  6069 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:25:07.262  5899  6069 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=22221 clientIntervalMs=1090 generatedAt=2026-11-08T08:25:04.748626Z
+11-08 17:25:08.265  5899  6069 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:25:08.325  5899  5927 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=23283 clientIntervalMs=1062 generatedAt=2026-11-08T08:25:05.818024Z
+11-08 17:25:09.328  5899  5927 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:25:09.441  5899  5927 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=24399 clientIntervalMs=1116 generatedAt=2026-11-08T08:25:06.925292Z
+11-08 17:25:10.444  5899  5927 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:25:10.541  5899  5927 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=25499 clientIntervalMs=1100 generatedAt=2026-11-08T08:25:08.018737Z
+11-08 17:25:11.545  5899  5933 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:25:11.624  5899  5933 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=26583 clientIntervalMs=1084 generatedAt=2026-11-08T08:25:09.113489Z
+11-08 17:25:12.628  5899  5933 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:25:12.731  5899  5933 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=27690 clientIntervalMs=1107 generatedAt=2026-11-08T08:25:10.220354Z
+11-08 17:25:13.735  5899  6069 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:25:13.854  5899  5927 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=28813 clientIntervalMs=1123 generatedAt=2026-11-08T08:25:11.321153Z
+11-08 17:25:14.858  5899  5927 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:25:14.943  5899  5934 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=29902 clientIntervalMs=1089 generatedAt=2026-11-08T08:25:12.430615Z
+11-08 17:25:15.947  5899  5927 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:25:16.030  5899  6069 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=30988 clientIntervalMs=1086 generatedAt=2026-11-08T08:25:13.514856Z
+11-08 17:25:17.033  5899  6069 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:25:17.116  5899  6069 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=32074 clientIntervalMs=1086 generatedAt=2026-11-08T08:25:14.599084Z
+11-08 17:25:18.119  5899  5933 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:25:18.270  5899  5933 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=33229 clientIntervalMs=1155 generatedAt=2026-11-08T08:25:15.757750Z
+11-08 17:25:19.274  5899  5933 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:25:19.354  5899  5933 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=34312 clientIntervalMs=1083 generatedAt=2026-11-08T08:25:16.839561Z
+11-08 17:25:20.355  5899  5933 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:25:20.401  5899  5933 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=35360 clientIntervalMs=1048 generatedAt=2026-11-08T08:25:17.904064Z
+11-08 17:25:21.402  5899  6069 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+11-08 17:25:21.452  5899  5934 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=36410 clientIntervalMs=1050 generatedAt=2026-11-08T08:25:18.951557Z
+11-08 17:55:15.761 I/System.out( 8527): [PressRaceReceive] mode=SSE event=view_selected view=PRESS
+11-08 17:55:15.763 I/System.out( 8527): [PressRaceReceive] mode=SSE event=request_started view=PRESS
+11-08 17:55:15.768 I/System.out( 8527): [PressRaceReceive] mode=SSE event=token_lookup_started
+11-08 17:55:15.768 I/System.out( 8527): [PressRaceReceive] mode=SSE event=token_lookup_completed available=true
+11-08 17:55:15.768 I/System.out( 8527): [PressRaceReceive] mode=SSE event=transport_started
+11-08 17:56:48.744 I/System.out( 8527): [PressRaceReceive] mode=SSE event=view_selected view=ALL
+11-08 17:56:48.750 I/System.out( 8527): [PressRaceReceive] mode=SSE event=request_started view=ALL
+11-08 17:56:48.751 I/System.out( 8527): [PressRaceReceive] mode=SSE event=token_lookup_started
+11-08 17:56:48.751 I/System.out( 8527): [PressRaceReceive] mode=SSE event=token_lookup_completed available=true
+11-08 17:56:48.752 I/System.out( 8527): [PressRaceReceive] mode=SSE event=transport_started
+11-08 18:00:36.901 I/System.out( 8527): [PressRaceReceive] mode=SSE event=view_selected view=PRESS
+11-08 18:00:36.907 I/System.out( 8527): [PressRaceReceive] mode=SSE event=request_started view=PRESS
+11-08 18:00:36.908 I/System.out( 8527): [PressRaceReceive] mode=SSE event=token_lookup_started
+11-08 18:00:36.908 I/System.out( 8527): [PressRaceReceive] mode=SSE event=token_lookup_completed available=true
+11-08 18:00:36.908 I/System.out( 8527): [PressRaceReceive] mode=SSE event=transport_started
+11-08 18:00:39.034 I/System.out( 8527): [PressRaceReceive] mode=SSE event=view_selected view=NONE
+11-08 18:00:41.148 I/System.out( 8527): [PressRaceReceive] mode=SSE event=view_selected view=PRESS
+11-08 18:00:41.149 I/System.out( 8527): [PressRaceReceive] mode=SSE event=request_started view=PRESS
+11-08 18:00:41.150 I/System.out( 8527): [PressRaceReceive] mode=SSE event=token_lookup_started
+11-08 18:00:41.150 I/System.out( 8527): [PressRaceReceive] mode=SSE event=token_lookup_completed available=true
+11-08 18:00:41.150 I/System.out( 8527): [PressRaceReceive] mode=SSE event=transport_started
+11-08 18:00:41.236 I/System.out( 8527): [PressRaceReceive] mode=SSE event=http_response outcome=RESPONSE status=429 durationMs=85
+11-08 18:00:41.249 I/System.out( 8527): [PressRaceReceive] mode=SSE event=retry_scheduled kind=HttpStatus status=429 attempt=1 delayMs=775
+11-08 18:00:42.027 I/System.out( 8527): [PressRaceReceive] mode=SSE event=request_started view=PRESS
+11-08 18:00:42.028 I/System.out( 8527): [PressRaceReceive] mode=SSE event=token_lookup_started
+11-08 18:00:42.028 I/System.out( 8527): [PressRaceReceive] mode=SSE event=token_lookup_completed available=true
+11-08 18:00:42.029 I/System.out( 8527): [PressRaceReceive] mode=SSE event=transport_started
+11-08 18:00:42.081 I/System.out( 8527): [PressRaceReceive] mode=SSE event=http_response outcome=RESPONSE status=429 durationMs=51
+11-08 18:00:42.087 I/System.out( 8527): [PressRaceReceive] mode=SSE event=retry_scheduled kind=HttpStatus status=429 attempt=2 delayMs=1237
+11-08 18:00:43.327 I/System.out( 8527): [PressRaceReceive] mode=SSE event=request_started view=PRESS
+11-08 18:00:43.329 I/System.out( 8527): [PressRaceReceive] mode=SSE event=token_lookup_started
+11-08 18:00:43.331 I/System.out( 8527): [PressRaceReceive] mode=SSE event=token_lookup_completed available=true
+11-08 18:00:43.332 I/System.out( 8527): [PressRaceReceive] mode=SSE event=transport_started
+11-08 18:00:43.399 I/System.out( 8527): [PressRaceReceive] mode=SSE event=http_response outcome=RESPONSE status=429 durationMs=67
+11-08 18:00:43.405 I/System.out( 8527): [PressRaceReceive] mode=SSE event=retry_scheduled kind=HttpStatus status=429 attempt=3 delayMs=2227
+11-08 18:00:45.635 I/System.out( 8527): [PressRaceReceive] mode=SSE event=request_started view=PRESS
+11-08 18:00:45.637 I/System.out( 8527): [PressRaceReceive] mode=SSE event=token_lookup_started
+11-08 18:00:45.638 I/System.out( 8527): [PressRaceReceive] mode=SSE event=token_lookup_completed available=true
+11-08 18:00:45.638 I/System.out( 8527): [PressRaceReceive] mode=SSE event=transport_started
+11-08 18:00:45.857 I/System.out( 8527): [PressRaceReceive] mode=SSE event=http_response outcome=RESPONSE status=429 durationMs=218
+11-08 18:00:45.863 I/System.out( 8527): [PressRaceReceive] mode=SSE event=retry_scheduled kind=HttpStatus status=429 attempt=4 delayMs=4158
+11-08 18:00:50.025 I/System.out( 8527): [PressRaceReceive] mode=SSE event=request_started view=PRESS
+11-08 18:00:50.026 I/System.out( 8527): [PressRaceReceive] mode=SSE event=token_lookup_started
+11-08 18:00:50.027 I/System.out( 8527): [PressRaceReceive] mode=SSE event=token_lookup_completed available=true
+11-08 18:00:50.028 I/System.out( 8527): [PressRaceReceive] mode=SSE event=transport_started
+11-08 18:00:50.238 I/System.out( 8527): [PressRaceReceive] mode=SSE event=http_response outcome=RESPONSE status=429 durationMs=209
+11-08 18:00:50.244 I/System.out( 8527): [PressRaceReceive] mode=SSE event=retry_scheduled kind=HttpStatus status=429 attempt=5 delayMs=4981
+11-08 18:00:55.228 I/System.out( 8527): [PressRaceReceive] mode=SSE event=request_started view=PRESS
+11-08 18:00:55.229 I/System.out( 8527): [PressRaceReceive] mode=SSE event=token_lookup_started
+11-08 18:00:55.231 I/System.out( 8527): [PressRaceReceive] mode=SSE event=token_lookup_completed available=true
+11-08 18:00:55.231 I/System.out( 8527): [PressRaceReceive] mode=SSE event=transport_started
+11-08 18:00:55.303 I/System.out( 8527): [PressRaceReceive] mode=SSE event=http_response outcome=RESPONSE status=429 durationMs=72
+11-08 18:00:55.309 I/System.out( 8527): [PressRaceReceive] mode=SSE event=retry_scheduled kind=HttpStatus status=429 attempt=6 delayMs=4695
+11-08 18:01:00.006 I/System.out( 8527): [PressRaceReceive] mode=SSE event=request_started view=PRESS
+11-08 18:01:00.008 I/System.out( 8527): [PressRaceReceive] mode=SSE event=token_lookup_started
+11-08 18:01:00.008 I/System.out( 8527): [PressRaceReceive] mode=SSE event=token_lookup_completed available=true
+11-08 18:01:00.009 I/System.out( 8527): [PressRaceReceive] mode=SSE event=transport_started
+11-08 18:01:00.111 I/System.out( 8527): [PressRaceReceive] mode=SSE event=http_response outcome=RESPONSE status=429 durationMs=102
+11-08 18:01:00.116 I/System.out( 8527): [PressRaceReceive] mode=SSE event=retry_scheduled kind=HttpStatus status=429 attempt=7 delayMs=4632
+11-08 18:01:04.751 I/System.out( 8527): [PressRaceReceive] mode=SSE event=request_started view=PRESS
+11-08 18:01:04.753 I/System.out( 8527): [PressRaceReceive] mode=SSE event=token_lookup_started
+11-08 18:01:04.754 I/System.out( 8527): [PressRaceReceive] mode=SSE event=token_lookup_completed available=true
+11-08 18:01:04.755 I/System.out( 8527): [PressRaceReceive] mode=SSE event=transport_started
+11-08 18:02:35.166 I/System.out( 9047): [PressRaceReceive] mode=SSE event=view_selected view=PRESS
+11-08 18:02:35.169 I/System.out( 9047): [PressRaceReceive] mode=SSE event=request_started view=PRESS
+11-08 18:02:35.174 I/System.out( 9047): [PressRaceReceive] mode=SSE event=token_lookup_started
+11-08 18:02:35.175 I/System.out( 9047): [PressRaceReceive] mode=SSE event=token_lookup_completed available=true
+11-08 18:02:35.176 I/System.out( 9047): [PressRaceReceive] mode=SSE event=transport_started
