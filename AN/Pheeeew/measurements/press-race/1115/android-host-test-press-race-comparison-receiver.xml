@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.pheeeew.data.press.race.PressRaceComparisonReceiverTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-11-08T12:11:01.712Z" hostname="MacBook-Pro.local" time="0.059">
+  <properties/>
+  <testcase name="responseRejectsMismatchedViewAndImpossibleDate" classname="com.pheeeew.data.press.race.PressRaceComparisonReceiverTest" time="0.003"/>
+  <testcase name="sseDecoderIgnoresHeartbeatAndOnlyEmitsSnapshotEvents" classname="com.pheeeew.data.press.race.PressRaceComparisonReceiverTest" time="0.005"/>
+  <testcase name="diagnosticsSeparateFirstResponseFromBusinessStateChanges" classname="com.pheeeew.data.press.race.PressRaceComparisonReceiverTest" time="0.018"/>
+  <testcase name="normallyClosedSseStreamReconnectsAfterBackoff" classname="com.pheeeew.data.press.race.PressRaceComparisonReceiverTest" time="0.004"/>
+  <testcase name="sseDeliversSnapshotBeforeOpenResponseClosesAndAllowsTheNextRequest" classname="com.pheeeew.data.press.race.PressRaceComparisonReceiverTest" time="0.017"/>
+  <testcase name="snapshotMappingPreservesTieRanksEmptyListsNonparticipantAndOptionalState" classname="com.pheeeew.data.press.race.PressRaceComparisonReceiverTest" time="0.001"/>
+  <testcase name="latePreviousDateCannotOverwriteNewerEpochForTheSameView" classname="com.pheeeew.data.press.race.PressRaceComparisonReceiverTest" time="0.002"/>
+  <testcase name="pollingWaitsOneSecondAfterEachSettledRequestAndNeverOverlaps" classname="com.pheeeew.data.press.race.PressRaceComparisonReceiverTest" time="0.002"/>
+  <testcase name="sseRetries429WithBoundedDelayAndNeverFallsBackToPolling" classname="com.pheeeew.data.press.race.PressRaceComparisonReceiverTest" time="0.001"/>
+  <testcase name="replacementCancelsAndJoinsOldRequestAndDropsItsLateResponse" classname="com.pheeeew.data.press.race.PressRaceComparisonReceiverTest" time="0.002"/>
+  <testcase name="responseDecodingRequiresViewForPressAndAll" classname="com.pheeeew.data.press.race.PressRaceComparisonReceiverTest" time="0.0"/>
+  <testcase name="comparisonStateUsesNeutralRankingProjectionWithoutWsMetadataOrNotices" classname="com.pheeeew.data.press.race.PressRaceComparisonReceiverTest" time="0.002"/>
+  <system-out><![CDATA[[PressRaceReceive] mode=SSE event=token_lookup_started
+[PressRaceReceive] mode=SSE event=token_lookup_completed available=true
+[PressRaceReceive] mode=SSE event=transport_started
+[PressRaceReceive] mode=SSE event=http_response outcome=RESPONSE status=200 durationMs=2
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

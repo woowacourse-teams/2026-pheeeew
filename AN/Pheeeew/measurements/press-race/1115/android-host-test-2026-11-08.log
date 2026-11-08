@@ -1,0 +1,17 @@
+# Android host tests for #1115
+date=2026-11-08
+java=JDK 21.0.11
+working_directory=AN/Pheeeew
+command=./gradlew --no-daemon -g /Users/USER/.gradle --project-cache-dir=/private/tmp/1115-physical/gradle-project-cache -Pkotlin.compiler.execution.strategy=in-process :shared:testAndroidHostTest --tests 'com.pheeeew.core.network.ApiRequestExecutorTest' --tests 'com.pheeeew.data.press.race.PressRaceComparisonReceiverTest'
+result=BUILD SUCCESSFUL
+
+| Test class | Passed | Failed | Errors | Skipped |
+|---|---:|---:|---:|---:|
+| ApiRequestExecutorTest | 18 | 0 | 0 | 0 |
+| PressRaceComparisonReceiverTest | 12 | 0 | 0 | 0 |
+| Total | 30 | 0 | 0 | 0 |
+
+preserved_result_files=android-host-test-api-request-executor.xml, android-host-test-press-race-comparison-receiver.xml
+original_result_files=shared/build/test-results/testAndroidHostTest/TEST-com.pheeeew.core.network.ApiRequestExecutorTest.xml, shared/build/test-results/testAndroidHostTest/TEST-com.pheeeew.data.press.race.PressRaceComparisonReceiverTest.xml
+
+The first run stopped at compile time because Kotlin could not infer the pair element type in an expected list. The test now declares `listOf<Pair<HttpAttemptOutcome, Int?>>`; the rerun above passed. No production source was changed for this correction.

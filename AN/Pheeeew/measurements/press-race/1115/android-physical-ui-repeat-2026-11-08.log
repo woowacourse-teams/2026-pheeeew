@@ -1,0 +1,120 @@
+## cache_polling
+device=SM-G977N Android=12 build=Debug/dev app=2.5.0(103201) input=HTTP
+UI evidence is a redacted extraction of exact Accessibility node text; full XML was not retained because it contains other participants’ names.
+{"label": "before_press", "captured_at_utc": "2026-11-08T12:25:09.057+00:00", "elapsed_from_adb_tap_return_ms": null, "accessibility_nodes": {"own_ranking": "1위, 나, 87회", "active_count": "0명이 함께 누르는 중", "emotion_count": "답답 표현하기, 25번"}}
+{"label": "after_press_about_2s", "captured_at_utc": "2026-11-08T12:25:13.992+00:00", "elapsed_from_adb_tap_return_ms": 2004, "accessibility_nodes": {"own_ranking": "1위, 나, 88회", "active_count": "1명이 함께 누르는 중", "emotion_count": "답답 표현하기, 26번"}}
+{"label": "after_press_about_7s", "captured_at_utc": "2026-11-08T12:25:21.683+00:00", "elapsed_from_adb_tap_return_ms": 9760, "accessibility_nodes": {"own_ranking": "1위, 나, 88회", "active_count": "0명이 함께 누르는 중", "emotion_count": "답답 표현하기, 26번"}}
+## app_instrumentation
+         1794140594.811 20274 20309 I System.out: [PressRaceMeasure] source=NetworkPath kind=NetworkPathStatusObserved sample=1 ms=0 observedAt=16 path=Available pathAtSocketLoss=null presses=0 attempt=null attemptResult=null retryAfterMs=null recoveryResult=null failedAttempts=0 outcome=null
+         1794140705.754 20274 20274 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=view_selected view=PRESS
+         1794140705.756 20274 20345 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=request_started view=PRESS
+         1794140705.873 20274 20345 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=first_response view=PRESS firstResponse=true dataChanged=false clientElapsedMs=116 clientIntervalMs=null generatedAt=2026-11-08T12:25:03.378662Z
+         1794140706.876 20274 20344 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=request_started view=PRESS
+         1794140706.962 20274 20309 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=1205 clientIntervalMs=1089 generatedAt=2026-11-08T12:25:04.462282Z
+         1794140707.966 20274 20344 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=request_started view=PRESS
+         1794140708.061 20274 20345 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=2304 clientIntervalMs=1099 generatedAt=2026-11-08T12:25:05.557579Z
+         1794140709.062 20274 20345 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=request_started view=PRESS
+         1794140709.131 20274 20309 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=3375 clientIntervalMs=1071 generatedAt=2026-11-08T12:25:06.630668Z
+         1794140710.133 20274 20309 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=request_started view=PRESS
+         1794140710.215 20274 20309 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=4459 clientIntervalMs=1084 generatedAt=2026-11-08T12:25:07.722534Z
+         1794140711.218 20274 20344 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=request_started view=PRESS
+         1794140711.322 20274 20344 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=5565 clientIntervalMs=1106 generatedAt=2026-11-08T12:25:08.813889Z
+         1794140712.182 20274 20274 I System.out: [PressRaceMeasure] source=Http kind=FirstTapToSend sample=2 ms=508 observedAt=null path=null pathAtSocketLoss=null presses=1 attempt=null attemptResult=null retryAfterMs=null recoveryResult=null failedAttempts=0 outcome=null
+         1794140712.182 20274 20274 I System.out: [PressRaceMeasure] source=Http kind=LastTapToSend sample=2 ms=508 observedAt=null path=null pathAtSocketLoss=null presses=1 attempt=null attemptResult=null retryAfterMs=null recoveryResult=null failedAttempts=0 outcome=null
+         1794140712.260 20274 20274 I System.out: [PressRaceMeasure] source=Http kind=SendAttemptResult sample=2 ms=79 observedAt=null path=null pathAtSocketLoss=null presses=1 attempt=1 attemptResult=Applied retryAfterMs=null recoveryResult=null failedAttempts=0 outcome=null
+         1794140712.260 20274 20274 I System.out: [PressRaceMeasure] source=Http kind=FinalAck sample=2 ms=79 observedAt=null path=null pathAtSocketLoss=null presses=1 attempt=null attemptResult=null retryAfterMs=null recoveryResult=null failedAttempts=0 outcome=Applied
+         1794140712.324 20274 20309 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=request_started view=PRESS
+         1794140712.389 20274 20344 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=data_changed view=PRESS firstResponse=false dataChanged=true clientElapsedMs=6633 clientIntervalMs=1068 generatedAt=2026-11-08T12:25:09.893190Z
+         1794140713.391 20274 20309 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=request_started view=PRESS
+         1794140713.457 20274 20309 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=7700 clientIntervalMs=1067 generatedAt=2026-11-08T12:25:10.963259Z
+         1794140714.459 20274 20310 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=request_started view=PRESS
+         1794140714.544 20274 20344 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=8787 clientIntervalMs=1087 generatedAt=2026-11-08T12:25:12.046438Z
+         1794140715.545 20274 20345 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=request_started view=PRESS
+         1794140715.618 20274 20309 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=9861 clientIntervalMs=1074 generatedAt=2026-11-08T12:25:13.123853Z
+         1794140716.619 20274 20310 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=request_started view=PRESS
+         1794140716.717 20274 20310 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=10960 clientIntervalMs=1099 generatedAt=2026-11-08T12:25:14.202151Z
+         1794140717.719 20274 20309 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=request_started view=PRESS
+         1794140717.804 20274 20310 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=data_changed view=PRESS firstResponse=false dataChanged=true clientElapsedMs=12047 clientIntervalMs=1087 generatedAt=2026-11-08T12:25:15.304288Z
+         1794140718.808 20274 20309 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=request_started view=PRESS
+         1794140718.904 20274 20310 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=13147 clientIntervalMs=1100 generatedAt=2026-11-08T12:25:16.397911Z
+         1794140719.907 20274 20310 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=request_started view=PRESS
+         1794140720.043 20274 20345 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=14286 clientIntervalMs=1139 generatedAt=2026-11-08T12:25:17.534317Z
+         1794140721.047 20274 20345 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=request_started view=PRESS
+         1794140721.241 20274 20345 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=15484 clientIntervalMs=1198 generatedAt=2026-11-08T12:25:18.736590Z
+         1794140722.245 20274 20310 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=request_started view=PRESS
+         1794140722.336 20274 20309 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=16579 clientIntervalMs=1095 generatedAt=2026-11-08T12:25:19.830857Z
+         1794140723.339 20274 20309 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=request_started view=PRESS
+         1794140723.429 20274 20310 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=17672 clientIntervalMs=1093 generatedAt=2026-11-08T12:25:20.926123Z
+         1794140724.431 20274 20310 I System.out: [PressRaceReceive] mode=CACHE_POLLING event=request_started view=PRESS
+
+## sse
+device=SM-G977N Android=12 build=Debug/dev app=2.5.0(103201) input=HTTP
+UI evidence is a redacted extraction of exact Accessibility node text; full XML was not retained because it contains other participants’ names.
+{"label": "before_press", "captured_at_utc": "2026-11-08T12:29:13.038+00:00", "elapsed_from_adb_tap_return_ms": null, "accessibility_nodes": {"own_ranking": "1위, 나, 88회", "active_count": "0명이 함께 누르는 중", "emotion_count": "답답 표현하기, 26번"}}
+{"label": "after_press_about_2s", "captured_at_utc": "2026-11-08T12:29:17.890+00:00", "elapsed_from_adb_tap_return_ms": 2005, "accessibility_nodes": {"own_ranking": "1위, 나, 89회", "active_count": "1명이 함께 누르는 중", "emotion_count": "답답 표현하기, 27번"}}
+{"label": "after_press_about_7s", "captured_at_utc": "2026-11-08T12:29:25.576+00:00", "elapsed_from_adb_tap_return_ms": 9685, "accessibility_nodes": {"own_ranking": "1위, 나, 89회", "active_count": "0명이 함께 누르는 중", "emotion_count": "답답 표현하기, 27번"}}
+## app_instrumentation
+         1794140783.877 20801 20844 I System.out: [PressRaceMeasure] source=NetworkPath kind=NetworkPathStatusObserved sample=1 ms=0 observedAt=15 path=Available pathAtSocketLoss=null presses=0 attempt=null attemptResult=null retryAfterMs=null recoveryResult=null failedAttempts=0 outcome=null
+         1794140860.816 20801 20801 I System.out: [PressRaceReceive] mode=SSE event=view_selected view=PRESS
+         1794140860.818 20801 20846 I System.out: [PressRaceReceive] mode=SSE event=request_started view=PRESS
+         1794140860.822 20801 20846 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_started
+         1794140860.823 20801 20846 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_completed available=true
+         1794140860.824 20801 20846 I System.out: [PressRaceReceive] mode=SSE event=transport_started
+         1794140860.970 20801 20852 I System.out: [PressRaceReceive] mode=SSE event=http_response outcome=RESPONSE status=200 durationMs=146
+         1794140860.993 20801 20852 I System.out: [PressRaceReceive] mode=SSE event=first_response view=PRESS firstResponse=true dataChanged=false clientElapsedMs=174 clientIntervalMs=null generatedAt=2026-11-08T12:27:38.438436Z
+         1794140956.154 20801 20801 I System.out: [PressRaceMeasure] source=Http kind=FirstTapToSend sample=2 ms=508 observedAt=null path=null pathAtSocketLoss=null presses=1 attempt=null attemptResult=null retryAfterMs=null recoveryResult=null failedAttempts=0 outcome=null
+         1794140956.154 20801 20801 I System.out: [PressRaceMeasure] source=Http kind=LastTapToSend sample=2 ms=508 observedAt=null path=null pathAtSocketLoss=null presses=1 attempt=null attemptResult=null retryAfterMs=null recoveryResult=null failedAttempts=0 outcome=null
+         1794140956.430 20801 20801 I System.out: [PressRaceMeasure] source=Http kind=SendAttemptResult sample=2 ms=276 observedAt=null path=null pathAtSocketLoss=null presses=1 attempt=1 attemptResult=Applied retryAfterMs=null recoveryResult=null failedAttempts=0 outcome=null
+         1794140956.431 20801 20801 I System.out: [PressRaceMeasure] source=Http kind=FinalAck sample=2 ms=277 observedAt=null path=null pathAtSocketLoss=null presses=1 attempt=null attemptResult=null retryAfterMs=null recoveryResult=null failedAttempts=0 outcome=Applied
+         1794140956.937 20801 20879 I System.out: [PressRaceReceive] mode=SSE event=data_changed view=PRESS firstResponse=false dataChanged=true clientElapsedMs=96118 clientIntervalMs=95944 generatedAt=2026-11-08T12:29:14.365573Z
+         1794140961.983 20801 20852 I System.out: [PressRaceReceive] mode=SSE event=data_changed view=PRESS firstResponse=false dataChanged=true clientElapsedMs=101164 clientIntervalMs=5046 generatedAt=2026-11-08T12:29:19.393099Z
+
+## basic_polling
+device=SM-G977N Android=12 build=Debug/dev app=2.5.0(103201) input=HTTP
+UI evidence is a redacted extraction of exact Accessibility node text; full XML was not retained because it contains other participants’ names.
+{"label": "before_press", "captured_at_utc": "2026-11-08T12:30:17.755+00:00", "elapsed_from_adb_tap_return_ms": null, "accessibility_nodes": {"own_ranking": "1위, 나, 89회", "active_count": "0명이 함께 누르는 중", "emotion_count": "답답 표현하기, 27번"}}
+{"label": "after_press_about_2s", "captured_at_utc": "2026-11-08T12:30:22.663+00:00", "elapsed_from_adb_tap_return_ms": 2005, "accessibility_nodes": {"own_ranking": "1위, 나, 90회", "active_count": "1명이 함께 누르는 중", "emotion_count": "답답 표현하기, 28번"}}
+{"label": "after_press_about_7s", "captured_at_utc": "2026-11-08T12:30:30.368+00:00", "elapsed_from_adb_tap_return_ms": 9744, "accessibility_nodes": {"own_ranking": "1위, 나, 90회", "active_count": "0명이 함께 누르는 중", "emotion_count": "답답 표현하기, 28번"}}
+## app_instrumentation
+         1794141007.899 21443 21494 I System.out: [PressRaceMeasure] source=NetworkPath kind=NetworkPathStatusObserved sample=1 ms=0 observedAt=16 path=Available pathAtSocketLoss=null presses=0 attempt=null attemptResult=null retryAfterMs=null recoveryResult=null failedAttempts=0 outcome=null
+         1794141013.800 21443 21443 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=view_selected view=PRESS
+         1794141013.803 21443 21500 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+         1794141013.882 21443 21683 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=first_response view=PRESS firstResponse=true dataChanged=false clientElapsedMs=79 clientIntervalMs=null generatedAt=2026-11-08T12:30:11.384580Z
+         1794141014.884 21443 21494 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+         1794141014.936 21443 21683 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=1133 clientIntervalMs=1054 generatedAt=2026-11-08T12:30:12.455317Z
+         1794141015.939 21443 21704 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+         1794141016.021 21443 21704 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=2217 clientIntervalMs=1084 generatedAt=2026-11-08T12:30:13.519299Z
+         1794141017.023 21443 21683 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+         1794141017.109 21443 21494 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=3306 clientIntervalMs=1089 generatedAt=2026-11-08T12:30:14.609851Z
+         1794141018.113 21443 21494 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+         1794141018.200 21443 21495 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=4396 clientIntervalMs=1090 generatedAt=2026-11-08T12:30:15.699031Z
+         1794141019.202 21443 21683 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+         1794141019.281 21443 21683 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=5478 clientIntervalMs=1082 generatedAt=2026-11-08T12:30:16.788680Z
+         1794141020.283 21443 21704 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+         1794141020.367 21443 21683 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=6564 clientIntervalMs=1086 generatedAt=2026-11-08T12:30:17.864061Z
+         1794141020.881 21443 21443 I System.out: [PressRaceMeasure] source=Http kind=FirstTapToSend sample=2 ms=522 observedAt=null path=null pathAtSocketLoss=null presses=1 attempt=null attemptResult=null retryAfterMs=null recoveryResult=null failedAttempts=0 outcome=null
+         1794141020.881 21443 21443 I System.out: [PressRaceMeasure] source=Http kind=LastTapToSend sample=2 ms=522 observedAt=null path=null pathAtSocketLoss=null presses=1 attempt=null attemptResult=null retryAfterMs=null recoveryResult=null failedAttempts=0 outcome=null
+         1794141021.015 21443 21443 I System.out: [PressRaceMeasure] source=Http kind=SendAttemptResult sample=2 ms=135 observedAt=null path=null pathAtSocketLoss=null presses=1 attempt=1 attemptResult=Applied retryAfterMs=null recoveryResult=null failedAttempts=0 outcome=null
+         1794141021.016 21443 21443 I System.out: [PressRaceMeasure] source=Http kind=FinalAck sample=2 ms=135 observedAt=null path=null pathAtSocketLoss=null presses=1 attempt=null attemptResult=null retryAfterMs=null recoveryResult=null failedAttempts=0 outcome=Applied
+         1794141021.370 21443 21495 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+         1794141021.444 21443 21683 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=data_changed view=PRESS firstResponse=false dataChanged=true clientElapsedMs=7640 clientIntervalMs=1076 generatedAt=2026-11-08T12:30:18.949103Z
+         1794141022.445 21443 21494 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+         1794141022.545 21443 21683 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=8742 clientIntervalMs=1102 generatedAt=2026-11-08T12:30:20.031544Z
+         1794141023.546 21443 21704 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+         1794141023.636 21443 21494 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=9832 clientIntervalMs=1090 generatedAt=2026-11-08T12:30:21.139499Z
+         1794141024.638 21443 21495 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+         1794141024.713 21443 21495 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=10910 clientIntervalMs=1078 generatedAt=2026-11-08T12:30:22.220935Z
+         1794141025.715 21443 21495 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+         1794141025.793 21443 21495 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=11990 clientIntervalMs=1080 generatedAt=2026-11-08T12:30:23.299662Z
+         1794141026.795 21443 21494 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+         1794141026.910 21443 21704 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=data_changed view=PRESS firstResponse=false dataChanged=true clientElapsedMs=13106 clientIntervalMs=1116 generatedAt=2026-11-08T12:30:24.384154Z
+         1794141027.914 21443 21683 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+         1794141028.007 21443 21704 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=14203 clientIntervalMs=1097 generatedAt=2026-11-08T12:30:25.506261Z
+         1794141029.010 21443 21683 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+         1794141029.104 21443 21495 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=15301 clientIntervalMs=1098 generatedAt=2026-11-08T12:30:26.599777Z
+         1794141030.108 21443 21683 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+         1794141030.205 21443 21683 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=16402 clientIntervalMs=1101 generatedAt=2026-11-08T12:30:27.694090Z
+         1794141031.208 21443 21495 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+         1794141031.340 21443 21683 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=17536 clientIntervalMs=1134 generatedAt=2026-11-08T12:30:28.838747Z
+         1794141032.343 21443 21704 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=request_started view=PRESS
+         1794141032.436 21443 21494 I System.out: [PressRaceReceive] mode=BASIC_POLLING event=snapshot_unchanged view=PRESS firstResponse=false dataChanged=false clientElapsedMs=18632 clientIntervalMs=1096 generatedAt=2026-11-08T12:30:29.932907Z

@@ -1,0 +1,133 @@
+11-08 20:08:41.007 13283 13324 I System.out: [PressRaceMeasure] source=NetworkPath kind=NetworkPathStatusObserved sample=1 ms=0 observedAt=16 path=Available pathAtSocketLoss=null presses=0 attempt=null attemptResult=null retryAfterMs=null recoveryResult=null failedAttempts=0 outcome=null
+11-08 20:09:19.116 13283 13283 I System.out: [PressRaceReceive] mode=SSE event=view_selected view=PRESS
+11-08 20:09:19.117 13283 13322 I System.out: [PressRaceReceive] mode=SSE event=request_started view=PRESS
+11-08 20:09:19.122 13283 13322 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_started
+11-08 20:09:19.122 13283 13322 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_completed available=true
+11-08 20:09:19.123 13283 13322 I System.out: [PressRaceReceive] mode=SSE event=transport_started
+11-08 20:09:19.391 13283 13329 I System.out: [PressRaceReceive] mode=SSE event=http_response outcome=RESPONSE status=200 durationMs=267
+11-08 20:09:19.414 13283 13329 I System.out: [PressRaceReceive] mode=SSE event=first_response view=PRESS firstResponse=true dataChanged=false clientElapsedMs=296 clientIntervalMs=null generatedAt=2026-11-08T11:09:16.729122Z
+11-08 20:09:59.534 13283 13283 I System.out: [PressRaceReceive] mode=SSE event=view_selected view=NONE
+11-08 20:10:17.938 13283 13283 I System.out: [PressRaceReceive] mode=SSE event=view_selected view=PRESS
+11-08 20:10:17.939 13283 13329 I System.out: [PressRaceReceive] mode=SSE event=request_started view=PRESS
+11-08 20:10:17.940 13283 13329 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_started
+11-08 20:10:17.941 13283 13329 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_completed available=true
+11-08 20:10:17.942 13283 13329 I System.out: [PressRaceReceive] mode=SSE event=transport_started
+11-08 20:10:18.116 13283 13581 I System.out: [PressRaceReceive] mode=SSE event=http_response outcome=RESPONSE status=200 durationMs=174
+11-08 20:10:18.124 13283 13581 I System.out: [PressRaceReceive] mode=SSE event=first_response view=PRESS firstResponse=true dataChanged=false clientElapsedMs=184 clientIntervalMs=null generatedAt=2026-11-08T11:10:15.385312Z
+11-08 20:11:14.266 13283 13283 I System.out: [PressRaceReceive] mode=SSE event=view_selected view=NONE
+11-08 20:11:14.615 13283 13283 I System.out: [PressRaceReceive] mode=SSE event=view_selected view=PRESS
+11-08 20:11:14.616 13283 13323 I System.out: [PressRaceReceive] mode=SSE event=request_started view=PRESS
+11-08 20:11:14.616 13283 13323 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_started
+11-08 20:11:14.617 13283 13323 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_completed available=true
+11-08 20:11:14.617 13283 13323 I System.out: [PressRaceReceive] mode=SSE event=transport_started
+11-08 20:11:14.669 13283 13329 I System.out: [PressRaceReceive] mode=SSE event=http_response outcome=RESPONSE status=200 durationMs=51
+11-08 20:11:14.675 13283 13329 I System.out: [PressRaceReceive] mode=SSE event=first_response view=PRESS firstResponse=true dataChanged=false clientElapsedMs=58 clientIntervalMs=null generatedAt=2026-11-08T11:11:11.707074Z
+11-08 20:11:14.794 13283 13283 I System.out: [PressRaceReceive] mode=SSE event=view_selected view=NONE
+11-08 20:11:15.392 13283 13283 I System.out: [PressRaceReceive] mode=SSE event=view_selected view=PRESS
+11-08 20:11:15.394 13283 13323 I System.out: [PressRaceReceive] mode=SSE event=request_started view=PRESS
+11-08 20:11:15.395 13283 13323 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_started
+11-08 20:11:15.395 13283 13323 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_completed available=true
+11-08 20:11:15.396 13283 13323 I System.out: [PressRaceReceive] mode=SSE event=transport_started
+11-08 20:11:15.449 13283 13329 I System.out: [PressRaceReceive] mode=SSE event=http_response outcome=RESPONSE status=429 durationMs=53
+11-08 20:11:15.455 13283 13329 I System.out: [PressRaceReceive] mode=SSE event=retry_scheduled kind=HttpStatus status=429 attempt=1 delayMs=717
+11-08 20:11:16.174 13283 13337 I System.out: [PressRaceReceive] mode=SSE event=request_started view=PRESS
+11-08 20:11:16.176 13283 13337 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_started
+11-08 20:11:16.177 13283 13337 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_completed available=true
+11-08 20:11:16.177 13283 13337 I System.out: [PressRaceReceive] mode=SSE event=transport_started
+11-08 20:11:16.229 13283 13323 I System.out: [PressRaceReceive] mode=SSE event=http_response outcome=RESPONSE status=429 durationMs=52
+11-08 20:11:16.233 13283 13323 I System.out: [PressRaceReceive] mode=SSE event=retry_scheduled kind=HttpStatus status=429 attempt=2 delayMs=1318
+11-08 20:11:17.555 13283 13323 I System.out: [PressRaceReceive] mode=SSE event=request_started view=PRESS
+11-08 20:11:17.556 13283 13323 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_started
+11-08 20:11:17.557 13283 13323 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_completed available=true
+11-08 20:11:17.558 13283 13323 I System.out: [PressRaceReceive] mode=SSE event=transport_started
+11-08 20:11:17.659 13283 13583 I System.out: [PressRaceReceive] mode=SSE event=http_response outcome=RESPONSE status=429 durationMs=101
+11-08 20:11:17.666 13283 13583 I System.out: [PressRaceReceive] mode=SSE event=retry_scheduled kind=HttpStatus status=429 attempt=3 delayMs=2389
+11-08 20:11:20.058 13283 13323 I System.out: [PressRaceReceive] mode=SSE event=request_started view=PRESS
+11-08 20:11:20.060 13283 13323 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_started
+11-08 20:11:20.061 13283 13323 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_completed available=true
+11-08 20:11:20.061 13283 13323 I System.out: [PressRaceReceive] mode=SSE event=transport_started
+11-08 20:11:20.170 13283 13337 I System.out: [PressRaceReceive] mode=SSE event=http_response outcome=RESPONSE status=429 durationMs=108
+11-08 20:11:20.179 13283 13337 I System.out: [PressRaceReceive] mode=SSE event=retry_scheduled kind=HttpStatus status=429 attempt=4 delayMs=4376
+11-08 20:11:24.559 13283 13583 I System.out: [PressRaceReceive] mode=SSE event=request_started view=PRESS
+11-08 20:11:24.561 13283 13583 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_started
+11-08 20:11:24.562 13283 13583 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_completed available=true
+11-08 20:11:24.563 13283 13583 I System.out: [PressRaceReceive] mode=SSE event=transport_started
+11-08 20:11:24.682 13283 13323 I System.out: [PressRaceReceive] mode=SSE event=http_response outcome=RESPONSE status=429 durationMs=118
+11-08 20:11:24.689 13283 13323 I System.out: [PressRaceReceive] mode=SSE event=retry_scheduled kind=HttpStatus status=429 attempt=5 delayMs=4727
+11-08 20:11:29.420 13283 13583 I System.out: [PressRaceReceive] mode=SSE event=request_started view=PRESS
+11-08 20:11:29.422 13283 13583 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_started
+11-08 20:11:29.423 13283 13583 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_completed available=true
+11-08 20:11:29.424 13283 13583 I System.out: [PressRaceReceive] mode=SSE event=transport_started
+11-08 20:11:29.533 13283 13323 I System.out: [PressRaceReceive] mode=SSE event=http_response outcome=RESPONSE status=429 durationMs=108
+11-08 20:11:29.541 13283 13323 I System.out: [PressRaceReceive] mode=SSE event=retry_scheduled kind=HttpStatus status=429 attempt=6 delayMs=4891
+11-08 20:11:34.435 13283 13583 I System.out: [PressRaceReceive] mode=SSE event=request_started view=PRESS
+11-08 20:11:34.437 13283 13583 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_started
+11-08 20:11:34.438 13283 13583 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_completed available=true
+11-08 20:11:34.439 13283 13583 I System.out: [PressRaceReceive] mode=SSE event=transport_started
+11-08 20:11:34.527 13283 13583 I System.out: [PressRaceReceive] mode=SSE event=http_response outcome=RESPONSE status=429 durationMs=88
+11-08 20:11:34.532 13283 13583 I System.out: [PressRaceReceive] mode=SSE event=retry_scheduled kind=HttpStatus status=429 attempt=7 delayMs=4529
+11-08 20:11:39.064 13283 13583 I System.out: [PressRaceReceive] mode=SSE event=request_started view=PRESS
+11-08 20:11:39.065 13283 13583 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_started
+11-08 20:11:39.066 13283 13583 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_completed available=true
+11-08 20:11:39.067 13283 13583 I System.out: [PressRaceReceive] mode=SSE event=transport_started
+11-08 20:11:39.170 13283 13337 I System.out: [PressRaceReceive] mode=SSE event=http_response outcome=RESPONSE status=200 durationMs=103
+11-08 20:11:39.180 13283 13337 I System.out: [PressRaceReceive] mode=SSE event=first_response view=PRESS firstResponse=true dataChanged=false clientElapsedMs=23785 clientIntervalMs=null generatedAt=2026-11-08T11:11:36.681962Z
+11-08 20:12:21.568 13752 13785 I System.out: [PressRaceMeasure] source=NetworkPath kind=NetworkPathStatusObserved sample=1 ms=0 observedAt=16 path=Available pathAtSocketLoss=null presses=0 attempt=null attemptResult=null retryAfterMs=null recoveryResult=null failedAttempts=0 outcome=null
+11-08 20:12:30.517 13752 13752 I System.out: [PressRaceReceive] mode=SSE event=view_selected view=PRESS
+11-08 20:12:30.520 13752 13784 I System.out: [PressRaceReceive] mode=SSE event=request_started view=PRESS
+11-08 20:12:30.524 13752 13784 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_started
+11-08 20:12:30.525 13752 13784 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_completed available=true
+11-08 20:12:30.525 13752 13784 I System.out: [PressRaceReceive] mode=SSE event=transport_started
+11-08 20:12:30.580 13752 13961 I System.out: [PressRaceReceive] mode=SSE event=http_response outcome=RESPONSE status=200 durationMs=54
+11-08 20:12:30.598 13752 13961 I System.out: [PressRaceReceive] mode=SSE event=first_response view=PRESS firstResponse=true dataChanged=false clientElapsedMs=77 clientIntervalMs=null generatedAt=2026-11-08T11:12:27.142045Z
+11-08 20:13:03.610 13752 13752 I System.out: [PressRaceReceive] mode=SSE event=view_selected view=NONE
+11-08 20:13:08.707 13752 13752 I System.out: [PressRaceReceive] mode=SSE event=view_selected view=PRESS
+11-08 20:13:08.708 13752 13961 I System.out: [PressRaceReceive] mode=SSE event=request_started view=PRESS
+11-08 20:13:08.709 13752 13961 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_started
+11-08 20:13:08.712 13752 13961 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_completed available=true
+11-08 20:13:08.713 13752 13961 I System.out: [PressRaceReceive] mode=SSE event=transport_started
+11-08 20:13:08.763 13752 13790 I System.out: [PressRaceReceive] mode=SSE event=http_response outcome=RESPONSE status=200 durationMs=49
+11-08 20:13:08.772 13752 13790 I System.out: [PressRaceReceive] mode=SSE event=first_response view=PRESS firstResponse=true dataChanged=false clientElapsedMs=62 clientIntervalMs=null generatedAt=2026-11-08T11:13:05.376127Z
+11-08 20:14:10.242 13752 13752 I System.out: [EmotionTapDrawProbe] sample=1 outcome=drawn accepted=true callbackStartUs=61352206 callbackUs=38860 tapToDrawUs=108893 drawAfterCallbackUs=70033
+11-08 20:14:10.643 13752 13752 I System.out: [PressRaceMeasure] source=Http kind=FirstTapToSend sample=2 ms=507 observedAt=null path=null pathAtSocketLoss=null presses=1 attempt=null attemptResult=null retryAfterMs=null recoveryResult=null failedAttempts=0 outcome=null
+11-08 20:14:10.643 13752 13752 I System.out: [PressRaceMeasure] source=Http kind=LastTapToSend sample=2 ms=507 observedAt=null path=null pathAtSocketLoss=null presses=1 attempt=null attemptResult=null retryAfterMs=null recoveryResult=null failedAttempts=0 outcome=null
+11-08 20:14:10.712 13752 13752 I System.out: [PressRaceMeasure] source=Http kind=SendAttemptResult sample=2 ms=69 observedAt=null path=null pathAtSocketLoss=null presses=1 attempt=1 attemptResult=Applied retryAfterMs=null recoveryResult=null failedAttempts=0 outcome=null
+11-08 20:14:10.712 13752 13752 I System.out: [PressRaceMeasure] source=Http kind=FinalAck sample=2 ms=70 observedAt=null path=null pathAtSocketLoss=null presses=1 attempt=null attemptResult=null retryAfterMs=null recoveryResult=null failedAttempts=0 outcome=Applied
+11-08 20:14:11.322 13752 13800 I System.out: [PressRaceReceive] mode=SSE event=data_changed view=PRESS firstResponse=false dataChanged=true clientElapsedMs=62611 clientIntervalMs=62549 generatedAt=2026-11-08T11:14:08.734081Z
+11-08 20:14:16.369 13752 13784 I System.out: [PressRaceReceive] mode=SSE event=data_changed view=PRESS firstResponse=false dataChanged=true clientElapsedMs=67659 clientIntervalMs=5048 generatedAt=2026-11-08T11:14:13.762622Z
+11-08 20:16:21.203 13752 13752 I System.out: [PressRaceReceive] mode=SSE event=view_selected view=NONE
+11-08 20:16:26.400 13752 13752 I System.out: [PressRaceReceive] mode=SSE event=view_selected view=PRESS
+11-08 20:16:26.401 13752 13790 I System.out: [PressRaceReceive] mode=SSE event=request_started view=PRESS
+11-08 20:16:26.402 13752 13790 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_started
+11-08 20:16:26.402 13752 13790 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_completed available=true
+11-08 20:16:26.403 13752 13790 I System.out: [PressRaceReceive] mode=SSE event=transport_started
+11-08 20:16:26.488 13752 13784 I System.out: [PressRaceReceive] mode=SSE event=http_response outcome=RESPONSE status=200 durationMs=85
+11-08 20:16:26.494 13752 13784 I System.out: [PressRaceReceive] mode=SSE event=first_response view=PRESS firstResponse=true dataChanged=false clientElapsedMs=91 clientIntervalMs=null generatedAt=2026-11-08T11:16:23.820451Z
+11-08 20:16:29.518 13752 13752 I System.out: [PressRaceReceive] mode=SSE event=view_selected view=NONE
+11-08 20:16:34.618 13752 13752 I System.out: [PressRaceReceive] mode=SSE event=view_selected view=PRESS
+11-08 20:16:34.620 13752 13790 I System.out: [PressRaceReceive] mode=SSE event=request_started view=PRESS
+11-08 20:16:34.621 13752 13790 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_started
+11-08 20:16:34.621 13752 13790 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_completed available=true
+11-08 20:16:34.621 13752 13790 I System.out: [PressRaceReceive] mode=SSE event=transport_started
+11-08 20:16:34.682 13752 13961 I System.out: [PressRaceReceive] mode=SSE event=http_response outcome=RESPONSE status=429 durationMs=60
+11-08 20:16:34.690 13752 13961 I System.out: [PressRaceReceive] mode=SSE event=retry_scheduled kind=HttpStatus status=429 attempt=1 delayMs=927
+11-08 20:16:35.619 13752 13799 I System.out: [PressRaceReceive] mode=SSE event=request_started view=PRESS
+11-08 20:16:35.621 13752 13799 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_started
+11-08 20:16:35.622 13752 13799 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_completed available=true
+11-08 20:16:35.623 13752 13799 I System.out: [PressRaceReceive] mode=SSE event=transport_started
+11-08 20:16:35.680 13752 13784 I System.out: [PressRaceReceive] mode=SSE event=http_response outcome=RESPONSE status=429 durationMs=57
+11-08 20:16:35.687 13752 13784 I System.out: [PressRaceReceive] mode=SSE event=retry_scheduled kind=HttpStatus status=429 attempt=2 delayMs=1101
+11-08 20:16:36.791 13752 13961 I System.out: [PressRaceReceive] mode=SSE event=request_started view=PRESS
+11-08 20:16:36.793 13752 13961 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_started
+11-08 20:16:36.794 13752 13961 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_completed available=true
+11-08 20:16:36.795 13752 13961 I System.out: [PressRaceReceive] mode=SSE event=transport_started
+11-08 20:16:36.957 13752 13799 I System.out: [PressRaceReceive] mode=SSE event=http_response outcome=RESPONSE status=429 durationMs=162
+11-08 20:16:36.964 13752 13799 I System.out: [PressRaceReceive] mode=SSE event=retry_scheduled kind=HttpStatus status=429 attempt=3 delayMs=2382
+11-08 20:16:37.740 13752 13752 I System.out: [PressRaceReceive] mode=SSE event=view_selected view=NONE
+11-08 20:16:42.880 13752 13752 I System.out: [PressRaceReceive] mode=SSE event=view_selected view=PRESS
+11-08 20:16:42.881 13752 13784 I System.out: [PressRaceReceive] mode=SSE event=request_started view=PRESS
+11-08 20:16:42.881 13752 13784 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_started
+11-08 20:16:42.882 13752 13784 I System.out: [PressRaceReceive] mode=SSE event=token_lookup_completed available=true
+11-08 20:16:42.882 13752 13784 I System.out: [PressRaceReceive] mode=SSE event=transport_started
+11-08 20:16:42.935 13752 13961 I System.out: [PressRaceReceive] mode=SSE event=http_response outcome=RESPONSE status=200 durationMs=52
+11-08 20:16:42.939 13752 13784 I System.out: [PressRaceReceive] mode=SSE event=first_response view=PRESS firstResponse=true dataChanged=false clientElapsedMs=58 clientIntervalMs=null generatedAt=2026-11-08T11:16:39.908946Z

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.pheeeew.core.network.ApiRequestExecutorTest" tests="18" skipped="0" failures="0" errors="0" timestamp="2026-11-08T12:11:01.347Z" hostname="MacBook-Pro.local" time="0.363">
+  <properties/>
+  <testcase name="204 응답은 body decode 없이 성공한다" classname="com.pheeeew.core.network.ApiRequestExecutorTest" time="0.118"/>
+  <testcase name="streaming HTTP 오류에 JSON error와 Retry-After를 보존한다" classname="com.pheeeew.core.network.ApiRequestExecutorTest" time="0.016"/>
+  <testcase name="인증 token이 없으면 통신 전에 명시적으로 실패한다" classname="com.pheeeew.core.network.ApiRequestExecutorTest" time="0.002"/>
+  <testcase name="401과 403을 HTTP status로 구분한다" classname="com.pheeeew.core.network.ApiRequestExecutorTest" time="0.003"/>
+  <testcase name="인증 없는 요청은 token provider 없이 실행한다" classname="com.pheeeew.core.network.ApiRequestExecutorTest" time="0.008"/>
+  <testcase name="streaming cancellation after headers propagates and the next request succeeds" classname="com.pheeeew.core.network.ApiRequestExecutorTest" time="0.009"/>
+  <testcase name="성공 응답 body 계약 오류를 구분한다" classname="com.pheeeew.core.network.ApiRequestExecutorTest" time="0.003"/>
+  <testcase name="streaming AUTH-001은 한 번 복구 재시도하고 두 응답을 observer에 기록한다" classname="com.pheeeew.core.network.ApiRequestExecutorTest" time="0.004"/>
+  <testcase name="streaming 헤더 대기는 request timeout으로 끝나고 observer에 null을 한 번 알린다" classname="com.pheeeew.core.network.ApiRequestExecutorTest" time="0.016"/>
+  <testcase name="취소는 API failure로 바꾸지 않고 전파한다" classname="com.pheeeew.core.network.ApiRequestExecutorTest" time="0.004"/>
+  <testcase name="streaming expected session generation과 DEVICE-004 무재시도를 유지한다" classname="com.pheeeew.core.network.ApiRequestExecutorTest" time="0.003"/>
+  <testcase name="stream endpoint는 Accept와 개별 timeout 설정을 보낼 수 있다" classname="com.pheeeew.core.network.ApiRequestExecutorTest" time="0.056"/>
+  <testcase name="JSON error와 Retry-After를 HTTP failure로 보존한다" classname="com.pheeeew.core.network.ApiRequestExecutorTest" time="0.002"/>
+  <testcase name="연결 실패는 쓰기 반영 여부를 불확실하게 보고한다" classname="com.pheeeew.core.network.ApiRequestExecutorTest" time="0.003"/>
+  <testcase name="JSON이 아닌 서버 오류도 HTTP status로 보존한다" classname="com.pheeeew.core.network.ApiRequestExecutorTest" time="0.002"/>
+  <testcase name="streaming body는 request timeout을 넘겨도 열린 채 유지된다" classname="com.pheeeew.core.network.ApiRequestExecutorTest" time="0.105"/>
+  <testcase name="request timeout은 transport failure로 구분한다" classname="com.pheeeew.core.network.ApiRequestExecutorTest" time="0.004"/>
+  <testcase name="인증 요청에 공급된 bearer token을 붙인다" classname="com.pheeeew.core.network.ApiRequestExecutorTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[SLF4J(W): No SLF4J providers were found.
+SLF4J(W): Defaulting to no-operation (NOP) logger implementation
+SLF4J(W): See https://www.slf4j.org/codes.html#noProviders for further details.
+]]></system-err>
+</testsuite>
