@@ -471,7 +471,7 @@ class ApiRequestExecutorTest {
                 assertEquals(listOf<String?>("Bearer old-token", "Bearer new-token"), authorizationHeaders)
                 assertEquals(listOf<Int?>(401, 200), observedStatuses)
                 assertEquals(
-                    listOf(
+                    listOf<Pair<HttpAttemptOutcome, Int?>>(
                         HttpAttemptOutcome.RESPONSE to 401,
                         HttpAttemptOutcome.RESPONSE to 200,
                     ),
