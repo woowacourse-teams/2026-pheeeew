@@ -5,7 +5,7 @@ import com.pheeeew.data.press.race.PressRaceRankingState
 import com.pheeeew.data.press.race.PressRaceView
 
 internal fun PressRaceRankingState.toNearbyRanking(): PressNearbyRankingUiState {
-    val snapshot = cached(PressRaceView.PRESS)
+    val snapshot = ranking(PressRaceView.PRESS)
     val fresh = isFresh(PressRaceView.PRESS)
     val recovering = session.isRecovering || session.phase == PressRacePhase.Failed
     val status =
@@ -38,7 +38,7 @@ internal fun PressRaceRankingState.toNearbyRanking(): PressNearbyRankingUiState 
 }
 
 internal fun PressRaceRankingState.toActivity(): PressActivityUiState {
-    val snapshot = cached(PressRaceView.PRESS)
+    val snapshot = ranking(PressRaceView.PRESS)
     return when {
         session.isRecovering -> {
             PressActivityUiState(status = PressActivityStatus.Unknown)

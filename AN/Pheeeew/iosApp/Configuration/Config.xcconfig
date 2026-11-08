@@ -4,5 +4,7 @@ PRODUCT_BUNDLE_IDENTIFIER=com.itda.pheeeew
 CURRENT_PROJECT_VERSION=14
 MARKETING_VERSION=2.6.0
 
-// Development WS verification is opt-in via an explicit build setting.
+// Debug may override the ranking receiver setting; Release is pinned to the WS baseline.
 PRESS_INPUT_MODE = http
+PRESS_RACE_RECEIVE_MODE = ws
+PRESS_RACE_RECEIVE_MODE[config=Release] = ws

@@ -1,5 +1,6 @@
 package com.pheeeew.data.press.race
 
+import com.pheeeew.core.di.device.PressRaceReceiveMode
 import com.pheeeew.core.network.AccessToken
 import com.pheeeew.core.network.RecoverableAccessTokenProvider
 import com.pheeeew.core.network.SessionAccessException
@@ -41,6 +42,7 @@ internal class PressRaceSession(
     private val noticeClock: () -> Long = newPressRaceClock(),
     private val measurements: PressRaceMeasurements = PressRaceMeasurements(),
     private val connectivity: Flow<Boolean>? = null,
+    private val comparisonReceiver: PressRaceComparisonReceiver? = null,
 ) : PressRaceInputPort {
     private val scope = CoroutineScope(parentScope.coroutineContext + SupervisorJob(parentScope.coroutineContext[Job]))
     private val events = Channel<Event>(Channel.UNLIMITED)
@@ -285,11 +287,21 @@ internal class PressRaceSession(
         view: PressRaceView?,
         activation: PressRaceViewActivation? = null,
     ) {
+        val activeComparison = comparisonReceiver?.takeIf { it.selectedMode != PressRaceReceiveMode.WEBSOCKET }
+        if (activeComparison != null) {
+            if (!closed.value) activeComparison.setView(view)
+            return
+        }
         if (!closed.value) events.trySend(Event.Target(view, activation))
     }
 
     /** Explicit user refresh; ignored outside the active view and while initialization is in flight. */
     fun refresh(view: PressRaceView) {
+        val activeComparison = comparisonReceiver?.takeIf { it.selectedMode != PressRaceReceiveMode.WEBSOCKET }
+        if (activeComparison != null) {
+            if (!closed.value) activeComparison.refresh(view)
+            return
+        }
         if (!closed.value) events.trySend(Event.Refresh(view))
     }
 
@@ -774,6 +786,7 @@ internal class PressRaceSession(
         }
         outgoing.value?.cancel()
         outgoing.value = null
+        comparisonReceiver?.close()
         currentEpoch.value++
         measurements.cancelSocketRecovery()
         events.close()

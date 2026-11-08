@@ -12,15 +12,19 @@ data class DeviceSessionBuildConfig(
     val attestationMode: String,
     val version: String,
     val pressInputMode: PressInputMode = PressInputMode.HTTP,
+    val pressRaceReceiveMode: PressRaceReceiveMode = PressRaceReceiveMode.WEBSOCKET,
 ) {
     init {
-        require(
-            isDebug || pressInputMode == PressInputMode.HTTP,
-        ) { "WS input is development-only until recovery is verified" }
+        require(pressInputMode == PressInputMode.HTTP) {
+            "Press receiver comparisons require the existing HTTP press input path"
+        }
         require(environment == if (isDebug) "dev" else "prod") { "Device environment does not match build type" }
         require(baseUrl == if (isDebug) DEV_URL else PROD_URL) { "Device API URL does not match build type" }
         require(attestationMode in setOf("platform_only", "required")) { "Unknown device attestation mode" }
         require(isDebug || attestationMode == "required") { "Release requires device attestation" }
+        require(isDebug || pressRaceReceiveMode == PressRaceReceiveMode.WEBSOCKET) {
+            "Release press ranking reception is fixed to WebSocket"
+        }
         require(version.matches(Regex("[A-Za-z0-9._+-]{1,64}"))) { "Invalid app version" }
     }
 
@@ -58,6 +62,26 @@ enum class PressInputMode {
                 "http" -> HTTP
                 "ws" -> WEBSOCKET_DEVELOPMENT
                 else -> error("Unknown press input build mode")
+            }
+    }
+}
+
+/** Debug-only ranking receiver experiment; Release remains on the existing WS ranking stream. */
+enum class PressRaceReceiveMode {
+    WEBSOCKET,
+    CACHE_POLLING,
+    SSE,
+    BASIC_POLLING,
+    ;
+
+    companion object {
+        fun fromBuildValue(value: String): PressRaceReceiveMode =
+            when (value) {
+                "ws" -> WEBSOCKET
+                "cache_polling" -> CACHE_POLLING
+                "sse" -> SSE
+                "basic_polling" -> BASIC_POLLING
+                else -> error("Unknown press ranking receive build mode")
             }
     }
 }

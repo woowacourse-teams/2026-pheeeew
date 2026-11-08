@@ -3,6 +3,7 @@ package com.pheeeew.core.network
 import io.ktor.client.call.body
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
@@ -249,6 +250,45 @@ class ApiRequestExecutorTest {
                     ),
                     result,
                 )
+            } finally {
+                client.close()
+            }
+        }
+
+    @Test
+    fun `stream endpoint는 Accept와 개별 timeout 설정을 보낼 수 있다`() =
+        runTest {
+            var observedAccept: String? = null
+            val client =
+                createApiClient(
+                    engine =
+                        MockEngine { request ->
+                            observedAccept = request.headers[HttpHeaders.Accept]
+                            delay(50)
+                            respond("stream-ready", headers = jsonHeaders())
+                        },
+                    config =
+                        ApiConfig(
+                            baseUrl = "https://api.example.test",
+                            timeouts = NetworkTimeouts(requestMillis = 1, connectMillis = 1_000, socketMillis = 1_000),
+                        ),
+                    accessTokenProvider = AccessTokenProvider { AccessToken("test-token") },
+                )
+
+            try {
+                val result =
+                    client.requests.execute(
+                        ApiRequest(
+                            method = HttpMethod.Get,
+                            path = "/stream",
+                            kind = RequestKind.READ,
+                            accept = "text/event-stream",
+                            timeoutOverride = ApiRequestTimeoutOverride(requestMillis = 1_000, socketMillis = 2_000),
+                        ),
+                    ) { it.bodyAsText() }
+
+                assertEquals("text/event-stream", observedAccept)
+                assertEquals(ApiResult.Success("stream-ready"), result)
             } finally {
                 client.close()
             }

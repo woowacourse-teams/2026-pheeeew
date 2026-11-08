@@ -2,6 +2,7 @@ package com.pheeeew.feature.screens.ranking
 
 import androidx.lifecycle.ViewModelStore
 import com.pheeeew.data.press.race.FakePressRaceRankings
+import com.pheeeew.data.press.race.PressRaceComparisonState
 import com.pheeeew.data.press.race.PressRaceOvertakes
 import com.pheeeew.data.press.race.PressRaceParticipant
 import com.pheeeew.data.press.race.PressRacePhase
@@ -10,6 +11,7 @@ import com.pheeeew.data.press.race.PressRaceReady
 import com.pheeeew.data.press.race.PressRaceSessionState
 import com.pheeeew.data.press.race.PressRaceSnapshot
 import com.pheeeew.data.press.race.PressRaceView
+import com.pheeeew.data.press.race.toRankingSnapshot
 import com.pheeeew.feature.emotion.model.EmotionKind
 import com.pheeeew.feature.screens.ranking.press.PressRankingStatus
 import com.pheeeew.feature.screens.ranking.press.PressRankingViewModel
@@ -165,6 +167,51 @@ class PressRankingViewModelTest {
                 runCurrent()
                 vm.onRefresh()
                 assertEquals(1, source.refreshed.size)
+            } finally {
+                store.clear()
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun cachedComparisonAllShowsRefreshIndicatorUntilNewReadySnapshotArrives() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            val store = ViewModelStore()
+            try {
+                val source = FakePressRaceRankings()
+                val loaded = rankingState()
+                val cached = requireNotNull(loaded.all).toRankingSnapshot()
+                val ready =
+                    PressRaceComparisonState(
+                        epoch = 1L,
+                        view = PressRaceView.ALL,
+                        phase = PressRacePhase.Ready,
+                        snapshot = cached,
+                    )
+                val comparisonState = loaded.updateComparison(ready)
+                assertNull(comparisonState.all)
+                assertEquals(cached, comparisonState.ranking(PressRaceView.ALL))
+                source.state.value = comparisonState
+
+                val vm = PressRankingViewModel(source)
+                store.put("comparison-refresh", vm)
+                runCurrent()
+                assertFalse(vm.uiState.value.isRefreshing)
+
+                vm.onRefresh()
+                assertTrue(vm.uiState.value.isRefreshing)
+                assertEquals(listOf(PressRaceView.ALL), source.refreshed)
+
+                val waiting = ready.copy(phase = PressRacePhase.Initializing, snapshot = null)
+                source.state.value = comparisonState.updateComparison(waiting)
+                runCurrent()
+                assertTrue(vm.uiState.value.isRefreshing)
+
+                val next = cached.copy(generatedAt = "2026-10-27T00:00:01Z")
+                source.state.value = source.state.value.updateComparison(ready.copy(snapshot = next))
+                runCurrent()
+                assertFalse(vm.uiState.value.isRefreshing)
             } finally {
                 store.clear()
                 Dispatchers.resetMain()

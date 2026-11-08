@@ -6,6 +6,7 @@ import com.pheeeew.core.audio.IosAudioPlayer
 import com.pheeeew.core.audio.IosVoiceRecorder
 import com.pheeeew.core.di.device.DeviceSessionBuildConfig
 import com.pheeeew.core.di.device.PressInputMode
+import com.pheeeew.core.di.device.PressRaceReceiveMode
 import com.pheeeew.core.haptics.IosEmotionHapticController
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.network.ApiConfig
@@ -74,6 +75,7 @@ internal interface IosAppGraph :
             setting("DEVICE_ATTESTATION_MODE"),
             "${setting("CFBundleShortVersionString")}+${setting("CFBundleVersion")}",
             PressInputMode.fromBuildValue(setting("PRESS_INPUT_MODE")),
+            PressRaceReceiveMode.fromBuildValue(setting("PRESS_RACE_RECEIVE_MODE")),
         )
     }
 

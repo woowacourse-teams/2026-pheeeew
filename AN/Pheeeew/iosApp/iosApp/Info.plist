@@ -15,6 +15,8 @@
 
 	<key>PRESS_INPUT_MODE</key>
 	<string>$(PRESS_INPUT_MODE)</string>
+	<key>PRESS_RACE_RECEIVE_MODE</key>
+	<string>$(PRESS_RACE_RECEIVE_MODE)</string>
 	<key>DEVICE_BUILD_CONFIGURATION</key>
 	<string>$(DEVICE_BUILD_CONFIGURATION)</string>
 	<key>DEVICE_ENVIRONMENT</key>

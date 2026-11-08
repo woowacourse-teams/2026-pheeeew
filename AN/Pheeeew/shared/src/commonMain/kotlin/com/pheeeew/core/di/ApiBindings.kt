@@ -14,6 +14,8 @@ import com.pheeeew.core.session.DeviceSessionManager
 import com.pheeeew.data.local.config.AppConfigStore
 import com.pheeeew.data.local.device.DeviceCredentialStorage
 import com.pheeeew.data.local.mapfilter.InMemoryMapFilterSettingsRepository
+import com.pheeeew.data.press.race.ApiPressRaceComparisonSource
+import com.pheeeew.data.press.race.PressRaceComparisonReceiver
 import com.pheeeew.data.press.race.PressRaceDiagnostics
 import com.pheeeew.data.press.race.PressRaceInputCoordinator
 import com.pheeeew.data.press.race.PressRaceMeasurements
@@ -264,6 +266,20 @@ internal interface ApiBindings {
 
     @Provides
     @SingleIn(AppScope::class)
+    fun providePressRaceComparisonReceiver(
+        requests: ApiRequestExecutor,
+        build: DeviceSessionBuildConfig,
+        @SessionWork scope: CoroutineScope,
+    ): PressRaceComparisonReceiver =
+        PressRaceComparisonReceiver(
+            source = ApiPressRaceComparisonSource(requests),
+            mode = build.pressRaceReceiveMode,
+            parentScope = scope,
+            debugDiagnostics = build.isDebug,
+        )
+
+    @Provides
+    @SingleIn(AppScope::class)
     fun providePressRaceSession(
         transport: PressRaceTransport,
         session: DeviceSessionManager,
@@ -271,6 +287,7 @@ internal interface ApiBindings {
         build: DeviceSessionBuildConfig,
         measurements: PressRaceMeasurements,
         connectivity: ConnectivityObserver,
+        comparisonReceiver: PressRaceComparisonReceiver,
     ): PressRaceSession =
         PressRaceSession(
             transport,
@@ -284,6 +301,7 @@ internal interface ApiBindings {
                         println("[PressRaceDebug] event=${event.name} localConnection=$connection")
                     }
                 },
+            comparisonReceiver = comparisonReceiver,
         )
 
     @Provides
@@ -291,7 +309,8 @@ internal interface ApiBindings {
     fun providePressRaceRankings(
         race: PressRaceSession,
         @SessionWork scope: CoroutineScope,
-    ): PressRaceRankings = PressRaceRankingStore(race.state, race::refresh, scope)
+        comparisonReceiver: PressRaceComparisonReceiver,
+    ): PressRaceRankings = PressRaceRankingStore(race.state, race::refresh, scope, comparisonReceiver)
 
     @Provides
     @SingleIn(AppScope::class)

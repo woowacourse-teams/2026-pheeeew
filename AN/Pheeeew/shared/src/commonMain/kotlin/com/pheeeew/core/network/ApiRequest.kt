@@ -2,6 +2,11 @@ package com.pheeeew.core.network
 
 import io.ktor.http.HttpMethod
 
+data class ApiRequestTimeoutOverride(
+    val requestMillis: Long,
+    val socketMillis: Long,
+)
+
 enum class RequestKind {
     READ,
     WRITE,
@@ -25,6 +30,10 @@ data class ApiRequest(
     val monitoringEndpoint: String? = null,
     /** Bind a multi-request operation to one device identity, including authentication recovery. */
     val expectedSessionGeneration: Long? = null,
+    /** Optional response media type requested by this endpoint. */
+    val accept: String? = null,
+    /** Per-request timeout needed by long-lived streaming endpoints. */
+    val timeoutOverride: ApiRequestTimeoutOverride? = null,
 ) {
     init {
         require(path.isNotBlank()) { "API path는 비어 있을 수 없습니다." }

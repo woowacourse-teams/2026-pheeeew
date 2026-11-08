@@ -18,13 +18,12 @@ class DeviceSessionBuildConfigTest {
     }
 
     @Test
-    fun inputDefaultsToHttpAndReleaseCannotEnableExperimentalWebSocket() {
+    fun inputDefaultsToHttpAndAllReceiverModesRequireTheHttpPressPath() {
         val debug = DeviceSessionBuildConfig(true, "dev", DeviceSessionBuildConfig.DEV_URL, "platform_only", "1")
         assertEquals(PressInputMode.HTTP, debug.pressInputMode)
-        assertEquals(
-            PressInputMode.WEBSOCKET_DEVELOPMENT,
-            debug.copy(pressInputMode = PressInputMode.WEBSOCKET_DEVELOPMENT).pressInputMode,
-        )
+        assertFailsWith<IllegalArgumentException> {
+            debug.copy(pressInputMode = PressInputMode.WEBSOCKET_DEVELOPMENT)
+        }
         assertFailsWith<IllegalArgumentException> {
             DeviceSessionBuildConfig(
                 false,
@@ -34,6 +33,68 @@ class DeviceSessionBuildConfigTest {
                 "1",
                 PressInputMode.WEBSOCKET_DEVELOPMENT,
             )
+        }
+    }
+
+    @Test
+    fun receiveModeSelectsOnlyKnownVariantsAndComparisonsRequireHttpInput() {
+        assertEquals(PressRaceReceiveMode.WEBSOCKET, PressRaceReceiveMode.fromBuildValue("ws"))
+        assertEquals(PressRaceReceiveMode.CACHE_POLLING, PressRaceReceiveMode.fromBuildValue("cache_polling"))
+        assertEquals(PressRaceReceiveMode.SSE, PressRaceReceiveMode.fromBuildValue("sse"))
+        assertEquals(PressRaceReceiveMode.BASIC_POLLING, PressRaceReceiveMode.fromBuildValue("basic_polling"))
+        assertFailsWith<IllegalStateException> { PressRaceReceiveMode.fromBuildValue("polling") }
+        assertEquals(
+            PressRaceReceiveMode.WEBSOCKET,
+            DeviceSessionBuildConfig(
+                false,
+                "prod",
+                DeviceSessionBuildConfig.PROD_URL,
+                "required",
+                "1",
+            ).pressRaceReceiveMode,
+        )
+
+        for (
+            mode in
+            listOf(
+                PressRaceReceiveMode.WEBSOCKET,
+                PressRaceReceiveMode.CACHE_POLLING,
+                PressRaceReceiveMode.SSE,
+                PressRaceReceiveMode.BASIC_POLLING,
+            )
+        ) {
+            assertEquals(
+                mode,
+                DeviceSessionBuildConfig(
+                    true,
+                    "dev",
+                    DeviceSessionBuildConfig.DEV_URL,
+                    "platform_only",
+                    "1",
+                    pressRaceReceiveMode = mode,
+                ).pressRaceReceiveMode,
+            )
+            assertFailsWith<IllegalArgumentException> {
+                DeviceSessionBuildConfig(
+                    true,
+                    "dev",
+                    DeviceSessionBuildConfig.DEV_URL,
+                    "platform_only",
+                    "1",
+                    PressInputMode.WEBSOCKET_DEVELOPMENT,
+                    mode,
+                )
+            }
+            if (mode != PressRaceReceiveMode.WEBSOCKET) assertFailsWith<IllegalArgumentException> {
+                DeviceSessionBuildConfig(
+                    false,
+                    "prod",
+                    DeviceSessionBuildConfig.PROD_URL,
+                    "required",
+                    "1",
+                    pressRaceReceiveMode = mode,
+                )
+            }
         }
     }
 

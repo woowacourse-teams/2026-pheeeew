@@ -128,6 +128,7 @@ fun quotedConfig(value: String): String =
 
 // Only Debug may opt into proof testing. Release always generates required/prod settings.
 val debugPressInputMode = providers.gradleProperty("pressDebugInputMode").orElse("http")
+val debugPressRaceReceiveMode = providers.gradleProperty("pressDebugRaceReceiveMode").orElse("ws")
 val debugDeviceAttestationMode = providers.gradleProperty("deviceDebugAttestationMode").orElse("platform_only")
 val deviceCloudProjectNumber = providers.gradleProperty("deviceCloudProjectNumber").orElse("87715710427")
 val cloudProjectNumberLiteral = "${deviceCloudProjectNumber.get().toLongOrNull() ?: 0L}L"
@@ -192,6 +193,13 @@ android {
             }
             require(debugPressInputMode.get() in setOf("http", "ws")) { "Unknown Debug press input mode" }
             buildConfigField("String", "PRESS_INPUT_MODE", quotedConfig(debugPressInputMode.get()))
+            require(debugPressRaceReceiveMode.get() in setOf("ws", "cache_polling", "sse", "basic_polling")) {
+                "Unknown Debug press ranking receive mode"
+            }
+            require(debugPressInputMode.get() == "http") {
+                "Press receiver comparisons require the existing HTTP press input path"
+            }
+            buildConfigField("String", "PRESS_RACE_RECEIVE_MODE", quotedConfig(debugPressRaceReceiveMode.get()))
             buildConfigField("String", "DEVICE_ENVIRONMENT", "\"dev\"")
             buildConfigField("String", "DEVICE_ATTESTATION_MODE", quotedConfig(debugDeviceAttestationMode.get()))
             buildConfigField("String", "MONITORING_ENVIRONMENT", "\"dev\"")
@@ -205,6 +213,7 @@ android {
         release {
             signingConfig = signingConfigs.getByName("release")
             buildConfigField("String", "PRESS_INPUT_MODE", "\"http\"")
+            buildConfigField("String", "PRESS_RACE_RECEIVE_MODE", "\"ws\"")
             buildConfigField("String", "DEVICE_ENVIRONMENT", "\"prod\"")
             buildConfigField("String", "DEVICE_ATTESTATION_MODE", "\"required\"")
             buildConfigField("String", "MONITORING_ENVIRONMENT", "\"prod\"")

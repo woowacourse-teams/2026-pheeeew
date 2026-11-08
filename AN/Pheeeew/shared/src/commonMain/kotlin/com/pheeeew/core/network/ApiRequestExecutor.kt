@@ -4,6 +4,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.network.sockets.ConnectTimeoutException
 import io.ktor.client.network.sockets.SocketTimeoutException
 import io.ktor.client.plugins.HttpRequestTimeoutException
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 import io.ktor.client.request.request
@@ -182,14 +183,20 @@ class ApiRequestExecutor internal constructor(
     }
 
     private suspend fun executeRequest(request: ApiRequest): RequestExecutionResult {
+        val isPressRaceSse = request.monitoringEndpoint == "press_race_sse_stream"
         val token =
             if (request.authentication == AuthenticationRequirement.NONE) {
                 null
             } else {
                 val provider = accessTokenProvider ?: return request.sessionUnavailableFailure()
+                if (isPressRaceSse) println("[PressRaceReceive] mode=SSE event=token_lookup_started")
                 val accessToken =
                     try {
-                        provider.accessToken()
+                        provider.accessToken().also { accessToken ->
+                            if (isPressRaceSse) {
+                                println("[PressRaceReceive] mode=SSE event=token_lookup_completed available=${accessToken != null}")
+                            }
+                        }
                     } catch (cancelled: CancellationException) {
                         throw cancelled
                     } catch (failure: SessionAccessException) {
@@ -268,6 +275,9 @@ class ApiRequestExecutor internal constructor(
         }
         val result =
             try {
+                if (request.monitoringEndpoint == "press_race_sse_stream") {
+                    println("[PressRaceReceive] mode=SSE event=transport_started")
+                }
                 RequestExecutionResult.Response(
                     client.request(
                         "${config.baseUrl.trimEnd('/')}/${request.path.trimStart('/')}",
@@ -275,6 +285,13 @@ class ApiRequestExecutor internal constructor(
                         method = request.method
                         request.queryParameters.forEach { (name, value) -> parameter(name, value) }
                         token?.let { header(HttpHeaders.Authorization, "Bearer ${it.value}") }
+                        request.accept?.let { header(HttpHeaders.Accept, it) }
+                        request.timeoutOverride?.let { override ->
+                            timeout {
+                                requestTimeoutMillis = override.requestMillis
+                                socketTimeoutMillis = override.socketMillis
+                            }
+                        }
                         request.body?.let {
                             contentType(ContentType.Application.Json)
                             setBody(it)
@@ -369,6 +386,13 @@ class ApiRequestExecutor internal constructor(
                 }
             }
         finish(outcome, (result as? RequestExecutionResult.Response)?.value?.status?.value)
+        if (request.monitoringEndpoint == "press_race_sse_stream") {
+            val responseStatus = (result as? RequestExecutionResult.Response)?.value?.status?.value
+            println(
+                "[PressRaceReceive] mode=SSE event=http_response outcome=${outcome.name} " +
+                    "status=${responseStatus ?: "NONE"} durationMs=${started.elapsedNow().inWholeMilliseconds}",
+            )
+        }
         try {
             observer?.completed((result as? RequestExecutionResult.Response)?.value?.status?.value)
         } catch (_: Exception) {
