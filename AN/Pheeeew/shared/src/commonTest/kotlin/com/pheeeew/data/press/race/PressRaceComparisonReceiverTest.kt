@@ -1,15 +1,36 @@
 package com.pheeeew.data.press.race
 
 import com.pheeeew.core.di.device.PressRaceReceiveMode
+import com.pheeeew.core.network.AccessToken
+import com.pheeeew.core.network.AccessTokenProvider
+import com.pheeeew.core.network.ApiConfig
+import com.pheeeew.core.network.ApiRequest
 import com.pheeeew.core.network.ApiResult
 import com.pheeeew.core.network.MutationCertainty
 import com.pheeeew.core.network.NetworkFailure
+import com.pheeeew.core.network.RequestKind
+import com.pheeeew.core.network.createApiClient
+import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respond
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
+import io.ktor.http.headersOf
+import io.ktor.utils.io.ByteChannel
+import io.ktor.utils.io.writeStringUtf8
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
@@ -103,6 +124,60 @@ class PressRaceComparisonReceiverTest {
         assertNull(decoder.acceptLine("data: ${snapshotJson(PressRaceView.PRESS)}"))
         assertEquals(PressRaceView.PRESS, decoder.dispatch()?.toRankingSnapshot(PressRaceView.PRESS)?.view)
         assertNull(decoder.dispatch())
+    }
+
+    @Test
+    fun sseDeliversSnapshotBeforeOpenResponseClosesAndAllowsTheNextRequest() = runTest {
+        val body = ByteChannel(autoFlush = true)
+        body.writeStringUtf8("event: snapshot\ndata: ${snapshotJson(PressRaceView.PRESS)}\n\n")
+        var requestCount = 0
+        val client =
+            createApiClient(
+                engine = MockEngine {
+                    requestCount++
+                    if (requestCount == 1) {
+                        respond(
+                            body,
+                            headers =
+                                headersOf(
+                                    HttpHeaders.ContentType,
+                                    ContentType.parse("text/event-stream").toString(),
+                                ),
+                        )
+                    } else {
+                        respond("next", headers = headersOf(HttpHeaders.ContentType, ContentType.Text.Plain.toString()))
+                    }
+                },
+                config = ApiConfig("https://api.example.test"),
+                accessTokenProvider = AccessTokenProvider { AccessToken("test-token") },
+            )
+
+        try {
+            withContext(Dispatchers.Default) {
+                coroutineScope {
+                    val delivered = CompletableDeferred<PressRaceSnapshotResponse>()
+                    val stream = launch {
+                        PressRaceComparisonClient.stream(client.requests, PressRaceView.PRESS) {
+                            delivered.complete(it)
+                        }
+                    }
+
+                    assertEquals(response(PressRaceView.PRESS), delivered.await())
+                    assertTrue(stream.isActive, "The event must arrive while the response is still open")
+                    stream.cancelAndJoin()
+
+                    val next =
+                        client.requests.executeStreaming(
+                            ApiRequest(HttpMethod.Get, "/next", RequestKind.READ),
+                        ) { it.bodyAsText() }
+                    assertEquals(ApiResult.Success("next"), next)
+                    assertEquals(2, requestCount)
+                }
+            }
+        } finally {
+            body.cancel(null)
+            client.close()
+        }
     }
 
     @Test

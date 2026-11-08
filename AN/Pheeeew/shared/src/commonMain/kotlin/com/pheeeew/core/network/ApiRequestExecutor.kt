@@ -4,9 +4,11 @@ import io.ktor.client.HttpClient
 import io.ktor.client.network.sockets.ConnectTimeoutException
 import io.ktor.client.network.sockets.SocketTimeoutException
 import io.ktor.client.plugins.HttpRequestTimeoutException
+import io.ktor.client.plugins.HttpTimeoutConfig
 import io.ktor.client.plugins.timeout
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
+import io.ktor.client.request.prepareRequest
 import io.ktor.client.request.request
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
@@ -19,6 +21,14 @@ import io.ktor.http.content.OutgoingContent
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.selects.onTimeout
+import kotlinx.coroutines.selects.select
+import kotlinx.coroutines.supervisorScope
 import kotlinx.io.IOException
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -84,6 +94,82 @@ class ApiRequestExecutor internal constructor(
                 mutationCertainty = request.kind.toMutationCertainty(unknownForWrite = true),
             ),
         )
+    }
+
+    /** Executes a long-lived response incrementally, applying the request timeout only until headers arrive. */
+    suspend fun <T> executeStreaming(
+        request: ApiRequest,
+        decodeSuccessBody: suspend (HttpResponse) -> T,
+    ): ApiResult<T> {
+        val isPressRaceSse = request.monitoringEndpoint == "press_race_sse_stream"
+        val token =
+            if (request.authentication == AuthenticationRequirement.NONE) {
+                null
+            } else {
+                val provider = accessTokenProvider ?: return request.sessionUnavailableFailure().value
+                if (isPressRaceSse) println("[PressRaceReceive] mode=SSE event=token_lookup_started")
+                val accessToken =
+                    try {
+                        provider.accessToken().also { token ->
+                            if (isPressRaceSse) {
+                                println(
+                                    "[PressRaceReceive] mode=SSE event=token_lookup_completed " +
+                                        "available=${token != null}",
+                                )
+                            }
+                        }
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (failure: SessionAccessException) {
+                        return request.sessionProviderFailure(failure.details).value
+                    } catch (_: Exception) {
+                        return request.sessionProviderFailure().value
+                    }
+                accessToken ?: return request.sessionUnavailableFailure().value
+            }
+
+        val first = transmitStreaming(request, token, decodeSuccessBody)
+        val failure = (first as? ApiResult.Failure)?.reason as? NetworkFailure.HttpStatus ?: return first
+        val recovery = accessTokenProvider as? RecoverableAccessTokenProvider
+        if (token == null || recovery == null || failure.statusCode != 401) return first
+        val code = failure.error?.code
+        if (code == "DEVICE-004") {
+            return try {
+                recovery.deviceUnavailable(token)
+                first
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (sessionFailure: SessionAccessException) {
+                request.sessionProviderFailure(sessionFailure.details).value
+            } catch (_: Exception) {
+                request.sessionProviderFailure().value
+            }
+        }
+        if (!request.replayAfterAuthentication || code != "AUTH-001") return first
+        val renewed =
+            try {
+                recovery.recover(token)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (sessionFailure: SessionAccessException) {
+                return request.sessionProviderFailure(sessionFailure.details).value
+            } catch (_: Exception) {
+                return request.sessionProviderFailure().value
+            }
+        val replayed = transmitStreaming(request, renewed, decodeSuccessBody)
+        val replayFailure = (replayed as? ApiResult.Failure)?.reason as? NetworkFailure.HttpStatus
+        if (replayFailure?.statusCode == 401 && replayFailure.error?.code == "DEVICE-004") {
+            try {
+                recovery.deviceUnavailable(renewed)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (sessionFailure: SessionAccessException) {
+                return request.sessionProviderFailure(sessionFailure.details).value
+            } catch (_: Exception) {
+                return request.sessionProviderFailure().value
+            }
+        }
+        return replayed
     }
 
     /** Sends bytes to an HTTPS signed URL without API authentication or URL rewriting. */
@@ -400,6 +486,238 @@ class ApiRequestExecutor internal constructor(
         }
         return result
     }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private suspend fun <T> transmitStreaming(
+        request: ApiRequest,
+        token: AccessToken?,
+        decodeSuccessBody: suspend (HttpResponse) -> T,
+    ): ApiResult<T> {
+        if (request.expectedSessionGeneration != null && token?.generation != request.expectedSessionGeneration) {
+            return request.sessionUnavailableFailure().value
+        }
+        val attempt =
+            request.monitoringEndpoint?.let { endpoint ->
+                runCatching { attemptObserver?.started(endpoint, request.method.value) }.getOrNull()
+            }
+        val started = TimeSource.Monotonic.markNow()
+        val isPressRaceSse = request.monitoringEndpoint == "press_race_sse_stream"
+        var responseStatus: Int? = null
+        var responseObserved = false
+        var responseLogged = false
+
+        fun observeResponse(status: Int?) {
+            if (responseObserved) return
+            responseObserved = true
+            try {
+                observer?.completed(status)
+            } catch (_: Exception) {
+                // Observability must not change the request result.
+            }
+        }
+
+        fun finish(outcome: HttpAttemptOutcome) {
+            runCatching { attempt?.completed(outcome, responseStatus, started.elapsedNow().inWholeMilliseconds) }
+            if (isPressRaceSse && !responseLogged) {
+                responseLogged = true
+                println(
+                    "[PressRaceReceive] mode=SSE event=http_response outcome=${outcome.name} " +
+                        "status=${responseStatus ?: "NONE"} durationMs=${started.elapsedNow().inWholeMilliseconds}",
+                )
+            }
+        }
+
+        val result =
+            try {
+                if (isPressRaceSse) println("[PressRaceReceive] mode=SSE event=transport_started")
+                val streamed =
+                    supervisorScope {
+                        val headersReceived = CompletableDeferred<Unit>()
+                        val execution =
+                            async(start = CoroutineStart.UNDISPATCHED) {
+                                client.prepareRequest(
+                                    "${config.baseUrl.trimEnd('/')}/${request.path.trimStart('/')}",
+                                ) {
+                                    method = request.method
+                                    request.queryParameters.forEach { (name, value) -> parameter(name, value) }
+                                    token?.let { header(HttpHeaders.Authorization, "Bearer ${it.value}") }
+                                    request.accept?.let { header(HttpHeaders.Accept, it) }
+                                    timeout {
+                                        // Ktor's request timeout is tied to executionContext and would include
+                                        // the complete streaming response. The separate watchdog below ends at headers.
+                                        requestTimeoutMillis = HttpTimeoutConfig.INFINITE_TIMEOUT_MS
+                                        socketTimeoutMillis =
+                                            request.timeoutOverride?.socketMillis ?: config.timeouts.socketMillis
+                                    }
+                                    request.body?.let {
+                                        contentType(ContentType.Application.Json)
+                                        setBody(it)
+                                    }
+                                }.execute { response ->
+                                    responseStatus = response.status.value
+                                    headersReceived.complete(Unit)
+                                    observeResponse(response.status.value)
+                                    if (isPressRaceSse && !responseLogged) {
+                                        responseLogged = true
+                                        println(
+                                            "[PressRaceReceive] mode=SSE event=http_response outcome=RESPONSE " +
+                                                "status=${responseStatus} " +
+                                                "durationMs=${started.elapsedNow().inWholeMilliseconds}",
+                                        )
+                                    }
+                                    when {
+                                        !response.status.isSuccess() -> response.toHttpFailure(request.kind)
+                                        response.status.value == NO_CONTENT -> {
+                                            ApiResult.Failure(
+                                                NetworkFailure.Contract(
+                                                    reason = ContractFailureReason.EMPTY_SUCCESS_BODY,
+                                                        mutationCertainty =
+                                                            request.kind.toMutationCertainty(unknownForWrite = true),
+                                                ),
+                                            )
+                                        }
+                                        else -> {
+                                            try {
+                                                ApiResult.Success(decodeSuccessBody(response))
+                                            } catch (cancelled: CancellationException) {
+                                                throw cancelled
+                                            } catch (timeout: HttpRequestTimeoutException) {
+                                                streamingTransportFailure(request, TransportFailureReason.TIMEOUT)
+                                            } catch (timeout: ConnectTimeoutException) {
+                                                streamingTransportFailure(request, TransportFailureReason.TIMEOUT)
+                                            } catch (timeout: SocketTimeoutException) {
+                                                streamingTransportFailure(request, TransportFailureReason.TIMEOUT)
+                                            } catch (_: IOException) {
+                                                streamingTransportFailure(request, TransportFailureReason.CONNECTION)
+                                            } catch (_: SerializationException) {
+                                                streamingContractFailure(request)
+                                            } catch (_: Exception) {
+                                                streamingContractFailure(request)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        try {
+                            val waitResult =
+                                select<StreamingWaitResult<ApiResult<T>>> {
+                                    headersReceived.onAwait { StreamingWaitResult.Headers }
+                                    execution.onAwait { value -> StreamingWaitResult.Completed(value) }
+                                    onTimeout(config.timeouts.requestMillis) {
+                                        when {
+                                            headersReceived.isCompleted -> StreamingWaitResult.Headers
+                                            execution.isCompleted -> StreamingWaitResult.Completed(execution.await())
+                                            else -> StreamingWaitResult.TimedOut
+                                        }
+                                    }
+                                }
+                            when (waitResult) {
+                                StreamingWaitResult.Headers -> execution.await()
+                                is StreamingWaitResult.Completed -> waitResult.value
+                                StreamingWaitResult.TimedOut -> {
+                                    // Recheck at the timer boundary so a completion already observable there wins.
+                                    when {
+                                        headersReceived.isCompleted -> execution.await()
+                                        execution.isCompleted -> execution.await()
+                                        else -> {
+                                            execution.cancelAndJoin()
+                                            throw HeaderArrivalTimeoutException()
+                                        }
+                                    }
+                                }
+                            }
+                        } finally {
+                            // Parent cancellation after headers must also leave the execute block before returning.
+                            if (!execution.isCompleted) execution.cancelAndJoin()
+                        }
+                    }
+                streamed
+            } catch (cancelled: CancellationException) {
+                finish(HttpAttemptOutcome.CANCELLED)
+                throw cancelled
+            } catch (_: HeaderArrivalTimeoutException) {
+                observeResponse(null)
+                finish(HttpAttemptOutcome.TIMEOUT)
+                return streamingTransportFailure(request, TransportFailureReason.TIMEOUT)
+            } catch (timeout: HttpRequestTimeoutException) {
+                observeResponse(null)
+                finish(HttpAttemptOutcome.TIMEOUT)
+                return streamingTransportFailure(request, TransportFailureReason.TIMEOUT)
+            } catch (timeout: ConnectTimeoutException) {
+                observeResponse(null)
+                finish(HttpAttemptOutcome.TIMEOUT)
+                return streamingTransportFailure(request, TransportFailureReason.TIMEOUT)
+            } catch (timeout: SocketTimeoutException) {
+                finish(HttpAttemptOutcome.TIMEOUT)
+                if (!responseObserved) observeResponse(null)
+                return streamingTransportFailure(request, TransportFailureReason.TIMEOUT)
+            } catch (_: SerializationException) {
+                if (!responseObserved) observeResponse(null)
+                finish(HttpAttemptOutcome.CONTRACT)
+                return streamingContractFailure(request)
+            } catch (_: IOException) {
+                if (!responseObserved) observeResponse(null)
+                finish(HttpAttemptOutcome.CONNECTION)
+                return streamingTransportFailure(request, TransportFailureReason.CONNECTION)
+            } catch (exception: Exception) {
+                if (!responseObserved) observeResponse(null)
+                finish(HttpAttemptOutcome.UNEXPECTED)
+                return ApiResult.Failure(
+                    NetworkFailure.Unexpected(
+                        exceptionType = exception::class.simpleName ?: "Exception",
+                        mutationCertainty = request.kind.toMutationCertainty(unknownForWrite = true),
+                    ),
+                )
+            }
+
+        val outcome =
+            when (result) {
+                is ApiResult.Success<*> -> HttpAttemptOutcome.RESPONSE
+                is ApiResult.Failure ->
+                    when (val reason = result.reason) {
+                        is NetworkFailure.Transport -> if (reason.reason == TransportFailureReason.TIMEOUT) {
+                            HttpAttemptOutcome.TIMEOUT
+                        } else {
+                            HttpAttemptOutcome.CONNECTION
+                        }
+                        is NetworkFailure.Contract -> HttpAttemptOutcome.CONTRACT
+                        is NetworkFailure.HttpStatus -> HttpAttemptOutcome.RESPONSE
+                        else -> HttpAttemptOutcome.UNEXPECTED
+                    }
+            }
+        finish(outcome)
+        if (!responseObserved) observeResponse(responseStatus)
+        return result
+    }
+
+    private fun <T> streamingTransportFailure(
+        request: ApiRequest,
+        reason: TransportFailureReason,
+    ): ApiResult<T> =
+        ApiResult.Failure(
+            NetworkFailure.Transport(
+                reason = reason,
+                mutationCertainty = request.kind.toMutationCertainty(unknownForWrite = true),
+            ),
+        )
+
+    private fun <T> streamingContractFailure(request: ApiRequest): ApiResult<T> =
+        ApiResult.Failure(
+            NetworkFailure.Contract(
+                reason = ContractFailureReason.MALFORMED_SUCCESS_BODY,
+                mutationCertainty = request.kind.toMutationCertainty(unknownForWrite = true),
+            ),
+        )
+
+    private sealed interface StreamingWaitResult<out T> {
+        data object Headers : StreamingWaitResult<Nothing>
+
+        data class Completed<T>(val value: T) : StreamingWaitResult<T>
+
+        data object TimedOut : StreamingWaitResult<Nothing>
+    }
+
+    private class HeaderArrivalTimeoutException : Exception()
 
     private sealed interface RequestExecutionResult {
         data class Response(

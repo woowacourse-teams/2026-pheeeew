@@ -505,7 +505,7 @@ internal object PressRaceComparisonClient {
         requests: ApiRequestExecutor,
         view: PressRaceView,
         onSnapshot: (PressRaceSnapshotResponse) -> Unit,
-    ): ApiResult<Unit> = requests.execute(
+    ): ApiResult<Unit> = requests.executeStreaming(
         ApiRequest(
             method = HttpMethod.Get,
             path = "/api/v1/press-race/stream",
