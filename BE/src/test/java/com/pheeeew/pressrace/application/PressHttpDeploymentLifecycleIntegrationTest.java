@@ -216,13 +216,24 @@ class PressHttpDeploymentLifecycleIntegrationTest {
         environment.put("DB_USERNAME", postgis.getUsername());
         environment.put("DB_PASSWORD", postgis.getPassword());
         environment.put("JWT_PRIVATE_KEY_BASE64", Base64.getEncoder().encodeToString(signingKeys.getPrivate().getEncoded()));
+        Path stderr = Files.createTempFile(tools, "probe", ".err");
+        builder.redirectError(stderr.toFile());
         Process process = builder.start();
         try {
             assertThat(process.waitFor(20, TimeUnit.SECONDS)).as("세대 확인 도구 종료 상한").isTrue();
-            assertThat(process.exitValue()).as("실제 WS 오류 봉투로 런타임 세대 확인").isZero();
+            // 실패 원인(예: DB 연결 초과)을 CI 로그만으로 알 수 있게 도구의 오류 출력을 붙인다.
+            assertThat(process.exitValue()).as(() -> "실제 WS 오류 봉투로 런타임 세대 확인: " + readQuietly(stderr)).isZero();
             return new String(process.getInputStream().readAllBytes()).strip();
         } finally {
             process.destroyForcibly();
+        }
+    }
+
+    private static String readQuietly(Path path) {
+        try {
+            return Files.readString(path);
+        } catch (Exception e) {
+            return e.toString();
         }
     }
 
