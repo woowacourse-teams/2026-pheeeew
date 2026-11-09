@@ -82,12 +82,14 @@ class EmotionMapFilterCacheIntegrationTest {
     private MapCacheTestTime.ManualScheduledExecutor tasks;
 
     private Device requester;
+    private Device other;
     private LocalDate start;
     private LocalDate end;
     private Long memoSeoul;
     private Long audioSeoul;
     private Long memoBusan;
     private Long oldAudioBusan;
+    private Long otherMemoSeoul;
 
     @BeforeEach
     void setUp() {
@@ -100,7 +102,7 @@ class EmotionMapFilterCacheIntegrationTest {
         jdbc.sql("UPDATE region_datasets SET boundaries_verified_at = CURRENT_TIMESTAMP, backfill_verified_at = CURRENT_TIMESTAMP")
                 .update();
         requester = devices.save(기본_기기_빌더().build());
-        Device other = devices.save(기본_기기_빌더().build());
+        other = devices.save(기본_기기_빌더().build());
         end = LocalDate.ofInstant(clock.instant(), KOREA);
         start = end.minusMonths(1);
         Instant now = clock.instant();
@@ -110,7 +112,7 @@ class EmotionMapFilterCacheIntegrationTest {
         memoBusan = save(requester, memo(EmotionState.EXHAUSTED, "26010510"), now.minusSeconds(3 * 3600));
         oldAudioBusan = save(requester, audio(EmotionState.ANGRY, "26010510"),
                 start.atStartOfDay(KOREA).toInstant().minusSeconds(1));
-        save(other, memo(EmotionState.ANGRY, "11010530"), now.minusSeconds(3600));
+        otherMemoSeoul = save(other, memo(EmotionState.ANGRY, "11010530"), now.minusSeconds(3600));
         Long blocked = save(other, audio(EmotionState.DISCOURAGED, "26010510"), now.minusSeconds(1800));
         jdbc.sql("""
                 INSERT INTO emotion_blocks(blocker_device_id, emotion_id, created_at, updated_at)
@@ -165,8 +167,24 @@ class EmotionMapFilterCacheIntegrationTest {
     }
 
     @Test
-    void 필터_결과는_기간_밖_감정과_차단을_계약대로_처리한다() {
+    void 필터_결과는_기간_밖_감정과_차단과_기록_없는_사용자를_계약대로_처리한다() {
+        // given
+        Device stranger = devices.save(기본_기기_빌더().build());
+        var memoPinsBeforeAuthorBlock = queries.findContentMapWithinBoundsV4(BOUNDS, requester.getPublicId(), start, end,
+                EmotionContentFilter.MEMO, null, null, 10);
+        jdbc.sql("""
+                INSERT INTO device_blocks(blocker_device_id, blocked_device_id, origin_emotion_id, created_at, updated_at)
+                VALUES (:requester, :author, :origin, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                """).param("requester", requester.getId()).param("author", other.getId())
+                .param("origin", otherMemoSeoul).update();
+
         // when
+        var memoPins = queries.findContentMapWithinBoundsV4(BOUNDS, requester.getPublicId(), start, end,
+                EmotionContentFilter.MEMO, null, null, 10);
+        var strangerRegions = queries.findRegionMap(BOUNDS, RegionLevel.SIDO, stranger.getPublicId(),
+                EmotionSearchFilter.of(null, null, null, EmotionSearchScope.MY, null));
+        var strangerPins = queries.findContentMapWithinBoundsV4(BOUNDS, stranger.getPublicId(), null, null,
+                null, EmotionSearchScope.MY, null, 10);
         var myPeriodRegions = queries.findRegionMap(BOUNDS, RegionLevel.SIGUNGU, requester.getPublicId(),
                 EmotionSearchFilter.of(start, end, null, EmotionSearchScope.MY, null));
         var myAudioPins = queries.findContentMapWithinBoundsV4(BOUNDS, requester.getPublicId(), null, null,
@@ -185,10 +203,15 @@ class EmotionMapFilterCacheIntegrationTest {
                 .containsExactly(memoBusan, audioSeoul, memoSeoul);
         assertThat(totals(audioRegions)).containsExactlyInAnyOrderEntriesOf(Map.of("11", 1L, "26", 1L));
         assertThat(audioPins.items()).extracting(item -> item.id()).containsExactly(audioSeoul);
+        assertThat(memoPinsBeforeAuthorBlock.items()).extracting(item -> item.id())
+                .containsExactly(otherMemoSeoul, memoBusan, memoSeoul);
+        assertThat(memoPins.items()).extracting(item -> item.id()).containsExactly(memoBusan, memoSeoul);
+        assertThat(strangerRegions).isEmpty();
+        assertThat(strangerPins.items()).isEmpty();
     }
 
     @Test
-    void 삭제는_내_감정_필터에_즉시_반영하고_등록은_배치_게시_후_반영한다() {
+    void 수정과_삭제는_내_감정_필터에_즉시_반영하고_등록은_배치_게시_후_반영한다() {
         // given
         var mine = EmotionSearchFilter.of(null, null, null, EmotionSearchScope.MY, null);
         queries.findRegionMap(BOUNDS, RegionLevel.SIDO, requester.getPublicId(), mine);
@@ -196,6 +219,9 @@ class EmotionMapFilterCacheIntegrationTest {
                 EmotionContentFilter.AUDIO, EmotionSearchScope.MY, null, 10);
 
         // when
+        commands.update(memoBusan, requester.getPublicId(), EmotionState.EXHAUSTED, null, null, false, null);
+        var updatedPins = queries.findContentMapWithinBoundsV4(BOUNDS, requester.getPublicId(), null, null,
+                EmotionContentFilter.MEMO, EmotionSearchScope.MY, null, 10);
         commands.delete(audioSeoul, requester.getPublicId());
         var deletedRegions = queries.findRegionMap(BOUNDS, RegionLevel.SIDO, requester.getPublicId(), mine);
         var deletedPins = queries.findContentMapWithinBoundsV4(BOUNDS, requester.getPublicId(), null, null,
@@ -208,10 +234,11 @@ class EmotionMapFilterCacheIntegrationTest {
                 EmotionContentFilter.MEMO, EmotionSearchScope.MY, null, 10);
 
         // then
-        assertThat(totals(deletedRegions)).containsExactlyInAnyOrderEntriesOf(Map.of("11", 1L, "26", 2L));
+        assertThat(updatedPins.items()).extracting(item -> item.id()).containsExactly(memoSeoul);
+        assertThat(totals(deletedRegions)).containsExactlyInAnyOrderEntriesOf(Map.of("11", 1L, "26", 1L));
         assertThat(deletedPins.items()).extracting(item -> item.id()).containsExactly(oldAudioBusan);
-        assertThat(totals(registeredRegions).values().stream().mapToLong(Long::longValue).sum()).isEqualTo(4);
-        assertThat(registeredPins.items()).hasSize(3);
+        assertThat(totals(registeredRegions).values().stream().mapToLong(Long::longValue).sum()).isEqualTo(3);
+        assertThat(registeredPins.items()).hasSize(2);
     }
 
     private List<List<Long>> cachedPages(LocalDate from, LocalDate to, EmotionContentFilter content,

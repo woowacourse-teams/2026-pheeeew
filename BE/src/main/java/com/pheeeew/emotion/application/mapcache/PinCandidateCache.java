@@ -79,22 +79,7 @@ public class PinCandidateCache implements EmotionMapCacheListener {
             return null;
         }
 
-        return new DeviceRegions(lookup.snapshot().ordered().regionSummaries(deviceId, filter), lookup.loaded());
-    }
-
-    private Lookup lookup() {
-        BatchedSnapshot.Read<Snapshot> read = publication.read();
-        if (!read.loadAllowed()) {
-            return null;
-        }
-
-        Snapshot observed = read.snapshot();
-        Snapshot snapshot = observed == null ? snapshot() : observed;
-        if (snapshot == null || snapshot.completeThrough().isAfter(Instant.now(clock))) {
-            return null;
-        }
-
-        return new Lookup(snapshot, observed == null);
+        return DeviceRegions.of(lookup.snapshot().ordered().regionSummaries(deviceId, filter), lookup.loaded());
     }
 
     @Override
@@ -166,6 +151,21 @@ public class PinCandidateCache implements EmotionMapCacheListener {
         });
 
         return Boolean.TRUE.equals(rebuilt);
+    }
+
+    private Lookup lookup() {
+        BatchedSnapshot.Read<Snapshot> read = publication.read();
+        if (!read.loadAllowed()) {
+            return null;
+        }
+
+        Snapshot observed = read.snapshot();
+        Snapshot snapshot = observed == null ? snapshot() : observed;
+        if (snapshot == null || snapshot.completeThrough().isAfter(Instant.now(clock))) {
+            return null;
+        }
+
+        return Lookup.of(snapshot, observed == null);
     }
 
     private Snapshot snapshot() {
@@ -246,10 +246,19 @@ public class PinCandidateCache implements EmotionMapCacheListener {
         return Snapshot.of(epoch, at, PinCandidates.of(rows, nextActivation));
     }
 
+    /** loaded는 이번 요청이 스냅샷을 새로 적재했는지(miss) 여부다. */
     public record DeviceRegions(Map<RegionLevel, Map<String, RegionEmotionSummary>> summaries, boolean loaded) {
+
+        private static DeviceRegions of(Map<RegionLevel, Map<String, RegionEmotionSummary>> summaries, boolean loaded) {
+            return new DeviceRegions(summaries, loaded);
+        }
     }
 
     private record Lookup(Snapshot snapshot, boolean loaded) {
+
+        private static Lookup of(Snapshot snapshot, boolean loaded) {
+            return new Lookup(snapshot, loaded);
+        }
     }
 
     public record Page(EmotionCursor cursor, List<EmotionMapPin> pins) {

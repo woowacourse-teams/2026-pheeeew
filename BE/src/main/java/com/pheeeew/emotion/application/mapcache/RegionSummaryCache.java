@@ -46,11 +46,11 @@ public class RegionSummaryCache implements EmotionMapCacheListener {
             MeterRegistry meters, PlatformTransactionManager transactions, MapCacheUpdateScheduler updates,
             PinCandidateCache pins) {
         this.coordinator = coordinator;
-        this.pins = pins;
         this.repository = repository;
         this.clock = clock;
         this.metrics = new MapCacheMetrics(meters, "regions");
         this.updates = updates;
+        this.pins = pins;
 
         this.reads = new TransactionTemplate(transactions);
         reads.setReadOnly(true);
