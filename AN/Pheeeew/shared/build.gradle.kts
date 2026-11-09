@@ -193,3 +193,10 @@ val generateEmotionHapticConfig by tasks.registering {
 kotlin.sourceSets.named("commonMain") {
     kotlin.srcDir(generateEmotionHapticConfig)
 }
+
+// Compile the comparison screen with shared internals only for the isolated experiment.
+if (providers.gradleProperty("hapticComparisonBuild").orNull == "true") {
+    kotlin.sourceSets.named("androidMain") {
+        kotlin.srcDir(rootProject.file("hapticComparison/sharedMain"))
+    }
+}

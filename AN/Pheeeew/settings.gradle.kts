@@ -30,3 +30,8 @@ dependencyResolutionManagement {
 include(":androidApp")
 include(":shared")
 include(":developerTools")
+
+// The isolated haptic comparison app is excluded from ordinary product builds.
+if (providers.gradleProperty("hapticComparisonBuild").orNull == "true") {
+    include(":hapticComparison")
+}
