@@ -1,0 +1,12 @@
+{
+  "instrumentationRunsPassed": true,
+  "inputsExactly384": true,
+  "serviceRecordsExactly304": true,
+  "unmatchedServiceRecordsZero": true,
+  "allFourBlockingConditionsWithoutServiceRequests": true,
+  "all40IdleSnapshotsEmpty": true,
+  "originalPackageIdentityUnchanged": true,
+  "hapticSettingRestored": true,
+  "sourceHashesMatchBuiltApks": true,
+  "reportLinksExist": true
+}

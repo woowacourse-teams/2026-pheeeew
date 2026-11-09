@@ -1,0 +1,23 @@
+{
+  "runId": "jindong-cold-04",
+  "phase": "cold",
+  "package": "com.pheeeew.hapticcomparison.jindong",
+  "model": "SM-G977N",
+  "androidRelease": "12",
+  "sdk": 31,
+  "rows": [
+    {
+      "startElapsedNanos": 2247116351598418,
+      "wallTimeMillis": 1794203005510,
+      "callbackNanos": 7842962,
+      "hapticCallbackInvoked": true,
+      "visualFeedbackInvoked": true,
+      "accepted": true,
+      "visualOnly": false,
+      "viewEnabled": true,
+      "systemHapticsEnabled": 1,
+      "scenario": "cold-first",
+      "backend": "jindong"
+    }
+  ]
+}

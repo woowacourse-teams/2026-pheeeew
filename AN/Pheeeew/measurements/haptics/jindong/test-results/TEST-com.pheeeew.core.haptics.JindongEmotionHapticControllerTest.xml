@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.pheeeew.core.haptics.JindongEmotionHapticControllerTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-11-09T02:30:00.790Z" hostname="MacBook-Pro.local" time="0.011">
+  <properties/>
+  <testcase name="rapidTapsReplacePlaybackWithoutKeepingAQueue" classname="com.pheeeew.core.haptics.JindongEmotionHapticControllerTest" time="0.006"/>
+  <testcase name="resumeCreatesFreshExecutorAndNeverReplaysOldInput" classname="com.pheeeew.core.haptics.JindongEmotionHapticControllerTest" time="0.0"/>
+  <testcase name="cancellationFailureStillReleasesResourcesAndAllowsResume" classname="com.pheeeew.core.haptics.JindongEmotionHapticControllerTest" time="0.005"/>
+  <testcase name="unsupportedDeviceDoesNotAttemptPlayback" classname="com.pheeeew.core.haptics.JindongEmotionHapticControllerTest" time="0.0"/>
+  <testcase name="overlappingOwnersShareExecutorUntilLastOwnerLeaves" classname="com.pheeeew.core.haptics.JindongEmotionHapticControllerTest" time="0.0"/>
+  <system-out><![CDATA[[EmotionHaptic] backend=jindong operation=cancel failed=true
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

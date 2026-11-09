@@ -1,0 +1,24 @@
+{
+  "baseCommit": "f7d1569022b4068531cf07d116e205b078e19453",
+  "branch": "feat/an-jindong-haptics",
+  "buildType": "debug",
+  "installedForThisComparison": false,
+  "artifacts": {
+    "native": {
+      "apk": "androidApp/build/outputs/haptic-comparison/native-debug.apk",
+      "sha256": "a3652921098ee86ec8830fae22b5b306c2f9adb87fa3f1fbe1c334552cb2a14d",
+      "sizeBytes": 94341836
+    },
+    "jindong": {
+      "apk": "androidApp/build/outputs/haptic-comparison/jindong-debug.apk",
+      "sha256": "00def6ef5efe49e0167acc7afb7ea71204b74d1074eeba733d3d0e78b0db49a5",
+      "sizeBytes": 94341836
+    }
+  },
+  "defaultBuild": {
+    "backend": "jindong",
+    "log": "logs/05-default-jindong-build.log",
+    "apk": "androidApp/build/outputs/apk/debug/androidApp-debug.apk",
+    "sha256": "9a9fa70a8f6f7b5e0c4c8922a5af3cb5e9c7dd3ad101702658dd6b7b0a98d409"
+  }
+}

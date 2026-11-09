@@ -1,0 +1,197 @@
+Calculating task graph as no cached configuration is available for tasks: :shared:testAndroidHostTest --tests *Haptic* :shared:compileKotlinIosSimulatorArm64 :shared:ktlintCheck
+> Task :shared:generateAndroidHostTestAssets UP-TO-DATE
+> Task :shared:androidPreBuild UP-TO-DATE
+> Task :shared:generateAndroidMainAssets UP-TO-DATE
+> Task :shared:preAndroidMainBuild UP-TO-DATE
+> Task :shared:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :shared:preAndroidHostTestBuild UP-TO-DATE
+> Task :shared:convertXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :shared:kmpPartiallyResolvedDependenciesChecker
+> Task :shared:convertXmlValueResourcesForCommonTest NO-SOURCE
+> Task :shared:generateEmotionHapticConfig UP-TO-DATE
+> Task :shared:generateExpectResourceCollectorsForCommonMain UP-TO-DATE
+> Task :shared:androidJar UP-TO-DATE
+> Task :shared:generateComposeResClass UP-TO-DATE
+> Task :shared:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :shared:generateAndroidMainEmptyResourceFiles UP-TO-DATE
+> Task :shared:writeAndroidMainAarMetadata UP-TO-DATE
+> Task :shared:copyNonXmlValueResourcesForCommonTest NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :shared:processAndroidHostTestJavaRes NO-SOURCE
+> Task :shared:processAndroidMainManifest UP-TO-DATE
+> Task :shared:convertXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :shared:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :shared:generateAndroidHostTestResources UP-TO-DATE
+> Task :shared:prepareComposeResourcesTaskForCommonTest NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :shared:checkIosSimulatorArm64MainComposeLibrariesCompatibility
+> Task :shared:prepareComposeResourcesTaskForAndroidHostTest NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForAppleMain NO-SOURCE
+> Task :shared:convertXmlValueResourcesForIosMain NO-SOURCE
+> Task :shared:generateResourceAccessorsForAndroidMain NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :shared:generateResourceAccessorsForAndroidHostTest NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForIosMain NO-SOURCE
+> Task :shared:convertXmlValueResourcesForAppleMain NO-SOURCE
+> Task :shared:convertXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :shared:generateResourceAccessorsForCommonTest NO-SOURCE
+> Task :shared:convertXmlValueResourcesForNativeMain NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForIosSimulatorArm64Main NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForNativeMain NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForAndroidDeviceTest NO-SOURCE
+> Task :shared:generateResourceAccessorsForIosSimulatorArm64Main NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForIosMain NO-SOURCE
+> Task :shared:convertXmlValueResourcesForAppleTest NO-SOURCE
+> Task :shared:convertXmlValueResourcesForAndroidDeviceTest NO-SOURCE
+> Task :shared:downloadKotlinNativeDistribution UP-TO-DATE
+> Task :shared:copyNonXmlValueResourcesForAppleTest NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForNativeMain NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForAppleMain NO-SOURCE
+> Task :shared:convertXmlValueResourcesForIosArm64Main NO-SOURCE
+> Task :shared:generateResourceAccessorsForAppleMain NO-SOURCE
+> Task :shared:generateResourceAccessorsForIosMain NO-SOURCE
+> Task :shared:convertXmlValueResourcesForIosArm64Test NO-SOURCE
+> Task :shared:loadKtlintReporters UP-TO-DATE
+> Task :shared:prepareComposeResourcesTaskForAppleTest NO-SOURCE
+> Task :shared:generateResourceAccessorsForNativeMain NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForIosArm64Test NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForIosArm64Main NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForAndroidDeviceTest NO-SOURCE
+> Task :shared:convertXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :shared:generateResourceAccessorsForAppleTest NO-SOURCE
+> Task :shared:runKtlintCheckOverAppleMainSourceSet NO-SOURCE
+> Task :shared:ktlintAppleMainSourceSetCheck SKIPPED
+> Task :shared:generateResourceAccessorsForAndroidDeviceTest NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForIosArm64Main NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForIosArm64Test NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :shared:runKtlintCheckOverAppleTestSourceSet NO-SOURCE
+> Task :shared:generateResourceAccessorsForIosArm64Main NO-SOURCE
+> Task :shared:ktlintAppleTestSourceSetCheck SKIPPED
+> Task :shared:convertXmlValueResourcesForIosTest NO-SOURCE
+> Task :shared:generateResourceAccessorsForIosArm64Test NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForIosTest NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForIosSimulatorArm64Test NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :shared:prepareComposeResourcesTaskForIosTest NO-SOURCE
+> Task :shared:runKtlintCheckOverNativeMainSourceSet NO-SOURCE
+> Task :shared:generateResourceAccessorsForIosSimulatorArm64Test NO-SOURCE
+> Task :shared:runKtlintCheckOverIosArm64TestSourceSet NO-SOURCE
+> Task :shared:generateResourceAccessorsForIosTest NO-SOURCE
+> Task :shared:ktlintNativeMainSourceSetCheck SKIPPED
+> Task :shared:ktlintIosArm64TestSourceSetCheck SKIPPED
+> Task :shared:runKtlintCheckOverIosSimulatorArm64TestSourceSet NO-SOURCE
+> Task :shared:ktlintIosSimulatorArm64TestSourceSetCheck SKIPPED
+> Task :shared:convertXmlValueResourcesForNativeTest NO-SOURCE
+> Task :shared:runKtlintCheckOverKotlinScripts UP-TO-DATE
+> Task :shared:runKtlintCheckOverAndroidDeviceTestSourceSet UP-TO-DATE
+> Task :shared:copyNonXmlValueResourcesForNativeTest NO-SOURCE
+> Task :shared:runKtlintCheckOverAndroidHostTestSourceSet UP-TO-DATE
+> Task :shared:prepareComposeResourcesTaskForNativeTest NO-SOURCE
+> Task :shared:generateResourceAccessorsForNativeTest NO-SOURCE
+> Task :shared:runKtlintCheckOverNativeTestSourceSet NO-SOURCE
+> Task :shared:ktlintNativeTestSourceSetCheck SKIPPED
+> Task :shared:checkAndroidHostTestAarMetadata UP-TO-DATE
+> Task :shared:ktlintAndroidDeviceTestSourceSetCheck UP-TO-DATE
+> Task :shared:ktlintAndroidHostTestSourceSetCheck UP-TO-DATE
+> Task :shared:ktlintKotlinScriptCheck UP-TO-DATE
+> Task :shared:prepareComposeResourcesTaskForCommonMain UP-TO-DATE
+> Task :shared:runKtlintCheckOverIosTestSourceSet UP-TO-DATE
+> Task :shared:generateResourceAccessorsForCommonMain UP-TO-DATE
+> Task :shared:ktlintIosTestSourceSetCheck UP-TO-DATE
+> Task :shared:generateActualResourceCollectorsForIosSimulatorArm64Main UP-TO-DATE
+> Task :shared:copyAndroidMainComposeResourcesToAndroidAssets UP-TO-DATE
+> Task :shared:generateActualResourceCollectorsForIosArm64Main UP-TO-DATE
+> Task :shared:runKtlintCheckOverIosArm64MainSourceSet NO-SOURCE
+> Task :shared:ktlintIosArm64MainSourceSetCheck SKIPPED
+> Task :shared:packageAndroidMainResources UP-TO-DATE
+> Task :shared:mergeAndroidMainAssets UP-TO-DATE
+> Task :shared:compileAndroidMainLibraryResources UP-TO-DATE
+> Task :shared:processAndroidHostTestManifest UP-TO-DATE
+> Task :shared:parseAndroidMainLocalResources UP-TO-DATE
+> Task :shared:generateAndroidMainRFile UP-TO-DATE
+> Task :shared:generateActualResourceCollectorsForAndroidMain UP-TO-DATE
+> Task :shared:mergeAndroidHostTestAssets UP-TO-DATE
+> Task :shared:runKtlintCheckOverIosSimulatorArm64MainSourceSet NO-SOURCE
+> Task :shared:ktlintIosSimulatorArm64MainSourceSetCheck SKIPPED
+> Task :shared:mapAndroidHostTestSourceSetPaths UP-TO-DATE
+> Task :shared:mergeAndroidHostTestResources UP-TO-DATE
+> Task :shared:processAndroidHostTestResources UP-TO-DATE
+> Task :shared:packageAndroidHostTestForUnitTest UP-TO-DATE
+> Task :shared:generateAndroidHostTestConfig UP-TO-DATE
+> Task :shared:runKtlintCheckOverIosMainSourceSet
+> Task :shared:ktlintIosMainSourceSetCheck
+> Task :shared:runKtlintCheckOverAndroidMainSourceSet
+> Task :shared:ktlintAndroidMainSourceSetCheck
+> Task :shared:runKtlintCheckOverCommonTestSourceSet
+> Task :shared:ktlintCommonTestSourceSetCheck
+> Task :shared:runKtlintCheckOverCommonMainSourceSet
+
+> Task :shared:ktlintCommonMainSourceSetCheck FAILED
+/Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/emotion/component/EmotionHapticFeedback.kt:24:24 A multiline expression should start on a new line
+/Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/emotion/component/EmotionHapticFeedback.kt:27:108 Expected newline before '.'
+/Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/emotion/component/EmotionHapticFeedback.kt:27:120 Argument should be on a separate line (unless all arguments can fit a single line)
+/Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/emotion/component/EmotionHapticFeedback.kt:27:121 Exceeded max line length (120) (cannot be auto-corrected)
+/Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/emotion/component/EmotionHapticFeedback.kt:27:125 Missing newline before ")"
+/Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/core/haptics/JindongEmotionHapticController.kt:16:18 Newline expected after opening parenthesis
+/Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/core/haptics/JindongEmotionHapticController.kt:16:30 Parameter should start on a newline
+/Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/core/haptics/JindongEmotionHapticController.kt:16:66 Newline expected before closing parenthesis
+/Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/core/haptics/JindongEmotionHapticController.kt:19:24 A multiline expression should start on a new line
+/Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/core/haptics/JindongEmotionHapticController.kt:58:27 A multiline expression should start on a new line
+
+> Task :shared:compileKotlinIosSimulatorArm64
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/App.kt:1038:37 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/data/press/race/PressRaceRankings.kt:33:57 Unnecessary safe call on a non-null receiver of type 'PressRaceReady'.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/data/press/race/PressRaceSession.kt:164:37 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/data/press/race/PressRaceSession.kt:318:65 Unnecessary non-null assertion (!!) on a non-null receiver of type 'PressRaceConnection'.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/data/press/race/PressRaceSessionState.kt:36:53 Unnecessary safe call on a non-null receiver of type 'PressRaceReady'.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/data/repository/EmotionRegistrationRepositoryImpl.kt:106:37 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/collection/calendar/detail/CollectionDayEmotionList.kt:95:13 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/map/MapScreen.kt:224:21 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/map/detail/EmotionDetailCard.kt:236:13 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/map/detail/EmotionDetailOverlay.kt:54:13 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/map/detail/EmotionDetailOverlay.kt:76:13 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/ranking/press/RankingDate.kt:16:77 Redundant call of conversion method.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/settings/AppEntryGate.kt:111:13 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/settings/AppEntryViewModel.kt:69:29 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/iosMain/kotlin/com/pheeeew/feature/emotion/component/EmotionHapticFeedback.ios.kt:34:25 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/iosMain/kotlin/com/pheeeew/feature/screens/map/renderer/FoundationIosMapRenderUiModel.kt:57:37 This declaration needs opt-in. Its usage should be marked with '@kotlinx.cinterop.BetaInteropApi' or '@OptIn(kotlinx.cinterop.BetaInteropApi::class)'
+
+> Task :shared:compileAndroidMain
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/androidMain/kotlin/com/pheeeew/feature/emotion/component/EmotionHapticFeedback.android.kt:36:86 'static field HAPTIC_FEEDBACK_ENABLED: String' is deprecated. Deprecated in Java.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/androidMain/kotlin/com/pheeeew/feature/screens/map/renderer/NativeMap.android.kt:169:30 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/androidMain/kotlin/com/pheeeew/feature/screens/map/renderer/NativeMap.android.kt:174:75 'static field TRIM_MEMORY_RUNNING_LOW: Int' is deprecated. Deprecated in Java.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/App.kt:1038:37 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/data/press/race/PressRaceRankings.kt:33:57 Unnecessary safe call on a non-null receiver of type 'PressRaceReady'.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/data/press/race/PressRaceSession.kt:164:37 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/data/press/race/PressRaceSession.kt:318:65 Unnecessary non-null assertion (!!) on a non-null receiver of type 'PressRaceConnection'.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/data/press/race/PressRaceSessionState.kt:36:53 Unnecessary safe call on a non-null receiver of type 'PressRaceReady'.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/data/repository/EmotionRegistrationRepositoryImpl.kt:106:37 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/collection/calendar/detail/CollectionDayEmotionList.kt:95:13 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/map/MapScreen.kt:224:21 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/map/detail/EmotionDetailCard.kt:236:13 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/map/detail/EmotionDetailOverlay.kt:54:13 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/map/detail/EmotionDetailOverlay.kt:76:13 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/ranking/press/RankingDate.kt:16:77 Redundant call of conversion method.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/settings/AppEntryGate.kt:111:13 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/settings/AppEntryViewModel.kt:69:29 Expression is unused.
+
+[Incubating] Problems report is available at: file:///Users/USER/2026-pheeeew/AN/Pheeeew/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':shared:ktlintCommonMainSourceSetCheck'.
+> A failure occurred while executing org.jlleitschuh.gradle.ktlint.worker.ConsoleReportWorkAction
+   > KtLint found code style violations. Please see the following reports:
+     - /Users/USER/2026-pheeeew/AN/Pheeeew/shared/build/reports/ktlint/ktlintCommonMainSourceSetCheck/ktlintCommonMainSourceSetCheck.txt
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to generate a Build Scan (Powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 35s
+51 actionable tasks: 12 executed, 39 up-to-date
+Configuration cache entry stored.

@@ -1,0 +1,145 @@
+Calculating task graph as no cached configuration is available for tasks: :androidApp:assembleDebug :shared:compileKotlinIosSimulatorArm64
+> Task :shared:convertXmlValueResourcesForNativeMain NO-SOURCE
+> Task :androidApp:preBuild UP-TO-DATE
+> Task :androidApp:validateDebugDeviceSession
+> Task :shared:generateComposeResClass UP-TO-DATE
+> Task :shared:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForIosMain NO-SOURCE
+> Task :shared:generateExpectResourceCollectorsForCommonMain UP-TO-DATE
+> Task :shared:copyNonXmlValueResourcesForIosArm64Main NO-SOURCE
+> Task :shared:convertXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForNativeMain NO-SOURCE
+> Task :androidApp:processDebugGoogleServices UP-TO-DATE
+> Task :shared:convertXmlValueResourcesForAppleMain NO-SOURCE
+> Task :shared:convertXmlValueResourcesForIosMain NO-SOURCE
+> Task :developerTools:androidPreBuild UP-TO-DATE
+> Task :shared:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForAppleMain NO-SOURCE
+> Task :shared:androidPreBuild UP-TO-DATE
+> Task :developerTools:preAndroidMainBuild UP-TO-DATE
+> Task :shared:copyNonXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :developerTools:kmpPartiallyResolvedDependenciesChecker
+> Task :shared:convertXmlValueResourcesForIosArm64Main NO-SOURCE
+> Task :shared:generateEmotionHapticConfig
+> Task :shared:convertXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :developerTools:generateAndroidMainEmptyResourceFiles UP-TO-DATE
+> Task :developerTools:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForIosMain NO-SOURCE
+> Task :developerTools:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :shared:generateResourceAccessorsForIosMain NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForNativeMain NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForAppleMain NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :developerTools:generateComposeResClass SKIPPED
+> Task :shared:preAndroidMainBuild UP-TO-DATE
+> Task :shared:generateResourceAccessorsForNativeMain NO-SOURCE
+> Task :developerTools:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :shared:generateResourceAccessorsForAppleMain NO-SOURCE
+> Task :developerTools:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :shared:kmpPartiallyResolvedDependenciesChecker
+> Task :developerTools:generateExpectResourceCollectorsForCommonMain SKIPPED
+> Task :developerTools:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :shared:generateAndroidMainAssets UP-TO-DATE
+> Task :shared:prepareComposeResourcesTaskForIosArm64Main NO-SOURCE
+> Task :shared:generateResourceAccessorsForAndroidMain NO-SOURCE
+> Task :shared:generateAndroidMainEmptyResourceFiles UP-TO-DATE
+> Task :androidApp:collectExternalDebugDependenciesForSentry UP-TO-DATE
+> Task :androidApp:generateDebugAssets UP-TO-DATE
+> Task :shared:prepareComposeResourcesTaskForIosSimulatorArm64Main NO-SOURCE
+> Task :shared:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :developerTools:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+> Task :shared:generateResourceAccessorsForIosArm64Main NO-SOURCE
+> Task :developerTools:writeAndroidMainAarMetadata UP-TO-DATE
+> Task :developerTools:generateResourceAccessorsForCommonMain SKIPPED
+> Task :developerTools:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :developerTools:generateResourceAccessorsForAndroidMain SKIPPED
+> Task :shared:writeAndroidMainAarMetadata UP-TO-DATE
+> Task :shared:generateResourceAccessorsForIosSimulatorArm64Main NO-SOURCE
+> Task :developerTools:generateActualResourceCollectorsForAndroidMain SKIPPED
+> Task :shared:mergeAndroidMainJniLibFolders UP-TO-DATE
+> Task :developerTools:mergeAndroidMainJniLibFolders UP-TO-DATE
+> Task :shared:processAndroidMainManifest UP-TO-DATE
+> Task :developerTools:processAndroidMainManifest UP-TO-DATE
+> Task :shared:mergeAndroidMainNativeLibs NO-SOURCE
+> Task :developerTools:mergeAndroidMainNativeLibs NO-SOURCE
+> Task :shared:checkIosSimulatorArm64MainComposeLibrariesCompatibility
+> Task :shared:copyAndroidMainJniLibsProjectOnly UP-TO-DATE
+> Task :developerTools:copyAndroidMainJniLibsProjectOnly UP-TO-DATE
+> Task :shared:copyNonXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :shared:prepareComposeResourcesTaskForCommonMain UP-TO-DATE
+> Task :shared:generateResourceAccessorsForCommonMain UP-TO-DATE
+> Task :shared:copyAndroidMainComposeResourcesToAndroidAssets UP-TO-DATE
+> Task :shared:generateActualResourceCollectorsForAndroidMain UP-TO-DATE
+> Task :shared:generateActualResourceCollectorsForIosSimulatorArm64Main UP-TO-DATE
+> Task :shared:generateActualResourceCollectorsForIosArm64Main UP-TO-DATE
+> Task :shared:mergeAndroidMainAssets UP-TO-DATE
+> Task :shared:packageAndroidMainResources UP-TO-DATE
+> Task :shared:downloadKotlinNativeDistribution UP-TO-DATE
+> Task :shared:compileAndroidMainLibraryResources UP-TO-DATE
+> Task :shared:parseAndroidMainLocalResources UP-TO-DATE
+> Task :shared:generateAndroidMainRFile UP-TO-DATE
+
+> Task :shared:verifyDeveloperToolsIsolation
+iosArm64.main developerTools=false
+iosSimulatorArm64.main developerTools=false
+
+> Task :androidApp:verifyDeveloperToolsIsolation
+debug developerTools=true
+debug.compile developerTools=true
+release developerTools=false
+release.compile developerTools=false
+
+> Task :androidApp:preDebugBuild
+> Task :androidApp:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :androidApp:generateDebugBuildConfig UP-TO-DATE
+> Task :androidApp:generateDebugResources UP-TO-DATE
+> Task :androidApp:packageDebugResources UP-TO-DATE
+> Task :androidApp:javaPreCompileDebug UP-TO-DATE
+> Task :androidApp:processDebugNavigationResources UP-TO-DATE
+> Task :androidApp:desugarDebugFileDependencies UP-TO-DATE
+> Task :androidApp:parseDebugLocalResources UP-TO-DATE
+> Task :androidApp:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :androidApp:checkDebugDuplicateClasses UP-TO-DATE
+> Task :androidApp:compileDebugNavigationResources UP-TO-DATE
+> Task :androidApp:mergeDebugAssets UP-TO-DATE
+> Task :androidApp:checkDebugAarMetadata UP-TO-DATE
+> Task :androidApp:extractDeepLinksDebug UP-TO-DATE
+> Task :androidApp:validateSigningDebug UP-TO-DATE
+> Task :androidApp:mergeDebugJniLibFolders UP-TO-DATE
+> Task :androidApp:injectSentryDebugMetaPropertiesIntoAssetsDebug UP-TO-DATE
+> Task :androidApp:writeDebugSigningConfigVersions UP-TO-DATE
+> Task :androidApp:writeDebugAppMetadata UP-TO-DATE
+> Task :androidApp:compressDebugAssets UP-TO-DATE
+> Task :androidApp:generateDebugRFile UP-TO-DATE
+> Task :androidApp:mergeDebugResources UP-TO-DATE
+> Task :androidApp:mapDebugSourceSetPaths UP-TO-DATE
+> Task :androidApp:mergeDebugNativeLibs UP-TO-DATE
+> Task :androidApp:processDebugMainManifest UP-TO-DATE
+> Task :androidApp:mergeExtDexDebug UP-TO-DATE
+> Task :androidApp:stripDebugDebugSymbols UP-TO-DATE
+> Task :androidApp:processDebugManifest UP-TO-DATE
+> Task :androidApp:processDebugManifestForPackage UP-TO-DATE
+> Task :androidApp:processDebugResources UP-TO-DATE
+> Task :shared:compileKotlinIosSimulatorArm64 FROM-CACHE
+> Task :shared:compileAndroidMain FROM-CACHE
+> Task :shared:processAndroidMainJavaRes UP-TO-DATE
+> Task :shared:bundleLibRuntimeToDirAndroidMain
+> Task :shared:bundleAndroidMainClassesToCompileJar
+> Task :developerTools:compileAndroidMain
+> Task :developerTools:processAndroidMainJavaRes UP-TO-DATE
+> Task :developerTools:bundleLibRuntimeToDirAndroidMain UP-TO-DATE
+> Task :developerTools:bundleAndroidMainClassesToCompileJar UP-TO-DATE
+> Task :androidApp:compileDebugKotlin
+> Task :androidApp:processDebugJavaRes UP-TO-DATE
+> Task :androidApp:mergeDebugJavaResource UP-TO-DATE
+> Task :androidApp:compileDebugJavaWithJavac UP-TO-DATE
+> Task :androidApp:dexBuilderDebug UP-TO-DATE
+> Task :androidApp:mergeProjectDexDebug UP-TO-DATE
+> Task :androidApp:mergeLibDexDebug
+> Task :androidApp:packageDebug
+> Task :androidApp:assembleDebug
+> Task :androidApp:createDebugApkListingFileRedirect UP-TO-DATE
+
+BUILD SUCCESSFUL in 4s
+82 actionable tasks: 13 executed, 2 from cache, 67 up-to-date
+Configuration cache entry stored.

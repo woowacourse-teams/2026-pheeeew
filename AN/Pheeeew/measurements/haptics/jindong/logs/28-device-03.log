@@ -1,0 +1,53 @@
+START native-cold-01
+END native-cold-01: success=True, rows=1
+START jindong-cold-01
+END jindong-cold-01: success=True, rows=1
+START jindong-cold-02
+END jindong-cold-02: success=True, rows=1
+START native-cold-02
+END native-cold-02: success=True, rows=1
+START native-cold-03
+END native-cold-03: success=True, rows=1
+START jindong-cold-03
+END jindong-cold-03: success=True, rows=1
+START jindong-cold-04
+END jindong-cold-04: success=True, rows=1
+START native-cold-04
+END native-cold-04: success=True, rows=1
+START native-cold-05
+END native-cold-05: success=True, rows=1
+START jindong-cold-05
+END jindong-cold-05: success=True, rows=1
+START jindong-cold-06
+END jindong-cold-06: success=True, rows=1
+START native-cold-06
+END native-cold-06: success=True, rows=1
+START native-cold-07
+END native-cold-07: success=True, rows=1
+START jindong-cold-07
+END jindong-cold-07: success=True, rows=1
+START jindong-cold-08
+END jindong-cold-08: success=True, rows=1
+START native-cold-08
+END native-cold-08: success=True, rows=1
+START native-cold-09
+END native-cold-09: success=True, rows=1
+START jindong-cold-09
+END jindong-cold-09: success=True, rows=1
+START jindong-cold-10
+END jindong-cold-10: success=True, rows=1
+START native-cold-10
+END native-cold-10: success=True, rows=1
+START native-core-01
+END native-core-01: success=True, rows=142
+START jindong-core-01
+END jindong-core-01: success=True, rows=142
+START native-project-pad-01
+END native-project-pad-01: success=True, rows=30
+START jindong-project-pad-01
+END jindong-project-pad-01: success=True, rows=30
+START native-settings-off-01
+END native-settings-off-01: success=True, rows=10
+START jindong-settings-off-01
+END jindong-settings-off-01: success=True, rows=10
+Original package identities unchanged; haptic setting restored

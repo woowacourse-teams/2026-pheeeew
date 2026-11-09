@@ -1,0 +1,1077 @@
+{
+  "device": {
+    "model": "SM-G977N",
+    "android": "12",
+    "sdk": "31",
+    "deviceTime": "2026-11-09T14:42:11+0900"
+  },
+  "successfulInstrumentationRuns": 26,
+  "runs": [
+    {
+      "id": "native-cold-01",
+      "rows": 1,
+      "serviceRecords": 1
+    },
+    {
+      "id": "jindong-cold-01",
+      "rows": 1,
+      "serviceRecords": 1
+    },
+    {
+      "id": "jindong-cold-02",
+      "rows": 1,
+      "serviceRecords": 1
+    },
+    {
+      "id": "native-cold-02",
+      "rows": 1,
+      "serviceRecords": 1
+    },
+    {
+      "id": "native-cold-03",
+      "rows": 1,
+      "serviceRecords": 1
+    },
+    {
+      "id": "jindong-cold-03",
+      "rows": 1,
+      "serviceRecords": 1
+    },
+    {
+      "id": "jindong-cold-04",
+      "rows": 1,
+      "serviceRecords": 1
+    },
+    {
+      "id": "native-cold-04",
+      "rows": 1,
+      "serviceRecords": 1
+    },
+    {
+      "id": "native-cold-05",
+      "rows": 1,
+      "serviceRecords": 1
+    },
+    {
+      "id": "jindong-cold-05",
+      "rows": 1,
+      "serviceRecords": 1
+    },
+    {
+      "id": "jindong-cold-06",
+      "rows": 1,
+      "serviceRecords": 1
+    },
+    {
+      "id": "native-cold-06",
+      "rows": 1,
+      "serviceRecords": 1
+    },
+    {
+      "id": "native-cold-07",
+      "rows": 1,
+      "serviceRecords": 1
+    },
+    {
+      "id": "jindong-cold-07",
+      "rows": 1,
+      "serviceRecords": 1
+    },
+    {
+      "id": "jindong-cold-08",
+      "rows": 1,
+      "serviceRecords": 1
+    },
+    {
+      "id": "native-cold-08",
+      "rows": 1,
+      "serviceRecords": 1
+    },
+    {
+      "id": "native-cold-09",
+      "rows": 1,
+      "serviceRecords": 1
+    },
+    {
+      "id": "jindong-cold-09",
+      "rows": 1,
+      "serviceRecords": 1
+    },
+    {
+      "id": "jindong-cold-10",
+      "rows": 1,
+      "serviceRecords": 1
+    },
+    {
+      "id": "native-cold-10",
+      "rows": 1,
+      "serviceRecords": 1
+    },
+    {
+      "id": "native-core-01",
+      "rows": 142,
+      "serviceRecords": 112
+    },
+    {
+      "id": "jindong-core-01",
+      "rows": 142,
+      "serviceRecords": 112
+    },
+    {
+      "id": "native-project-pad-01",
+      "rows": 30,
+      "serviceRecords": 30
+    },
+    {
+      "id": "jindong-project-pad-01",
+      "rows": 30,
+      "serviceRecords": 30
+    },
+    {
+      "id": "native-settings-off-01",
+      "rows": 10,
+      "serviceRecords": 0
+    },
+    {
+      "id": "jindong-settings-off-01",
+      "rows": 10,
+      "serviceRecords": 0
+    }
+  ],
+  "originalPackageIdentityUnchanged": true,
+  "hapticSettingRestored": true,
+  "metrics": {
+    "jindong": {
+      "burst": {
+        "inputs": 60,
+        "hapticCallbacks": 60,
+        "visualCallbacks": 60,
+        "serviceRecords": 60,
+        "serviceStatuses": {
+          "finished": 60
+        },
+        "callbackTime": {
+          "n": 60,
+          "medianMs": 2.8318075,
+          "p95NearestRankMs": 5.050692,
+          "minMs": 2.027115,
+          "maxMs": 7.219385
+        },
+        "serviceLifetime": {
+          "n": 60,
+          "medianMs": 34.0,
+          "p95NearestRankMs": 41.0,
+          "minMs": 28.0,
+          "maxMs": 43.0
+        },
+        "observedInputIntervals": {
+          "n": 57,
+          "medianMs": 69.92977,
+          "p95NearestRankMs": 86.138808,
+          "minMs": 63.924846,
+          "maxMs": 99.829616
+        }
+      },
+      "cold-first": {
+        "inputs": 10,
+        "hapticCallbacks": 10,
+        "visualCallbacks": 10,
+        "serviceRecords": 10,
+        "serviceStatuses": {
+          "finished": 10
+        },
+        "callbackTime": {
+          "n": 10,
+          "medianMs": 4.738789000000001,
+          "p95NearestRankMs": 12.324615,
+          "minMs": 3.865231,
+          "maxMs": 12.324615
+        },
+        "serviceLifetime": {
+          "n": 10,
+          "medianMs": 36.5,
+          "p95NearestRankMs": 44.0,
+          "minMs": 31.0,
+          "maxMs": 44.0
+        },
+        "observedInputIntervals": {
+          "n": 0
+        }
+      },
+      "first": {
+        "inputs": 1,
+        "hapticCallbacks": 1,
+        "visualCallbacks": 1,
+        "serviceRecords": 1,
+        "serviceStatuses": {
+          "finished": 1
+        },
+        "callbackTime": {
+          "n": 1,
+          "medianMs": 5.245308,
+          "p95NearestRankMs": 5.245308,
+          "minMs": 5.245308,
+          "maxMs": 5.245308
+        },
+        "serviceLifetime": {
+          "n": 1,
+          "medianMs": 35.0,
+          "p95NearestRankMs": 35.0,
+          "minMs": 35.0,
+          "maxMs": 35.0
+        },
+        "observedInputIntervals": {
+          "n": 0
+        }
+      },
+      "foreground-return": {
+        "inputs": 10,
+        "hapticCallbacks": 10,
+        "visualCallbacks": 10,
+        "serviceRecords": 10,
+        "serviceStatuses": {
+          "finished": 10
+        },
+        "callbackTime": {
+          "n": 10,
+          "medianMs": 5.317673,
+          "p95NearestRankMs": 6.445115,
+          "minMs": 3.284423,
+          "maxMs": 6.445115
+        },
+        "serviceLifetime": {
+          "n": 10,
+          "medianMs": 37.5,
+          "p95NearestRankMs": 43.0,
+          "minMs": 33.0,
+          "maxMs": 43.0
+        },
+        "observedInputIntervals": {
+          "n": 9,
+          "medianMs": 2514.162691,
+          "p95NearestRankMs": 2552.89996,
+          "minMs": 2488.549844,
+          "maxMs": 2552.89996
+        }
+      },
+      "ordinary": {
+        "inputs": 30,
+        "hapticCallbacks": 30,
+        "visualCallbacks": 30,
+        "serviceRecords": 30,
+        "serviceStatuses": {
+          "finished": 30
+        },
+        "callbackTime": {
+          "n": 30,
+          "medianMs": 4.990019500000001,
+          "p95NearestRankMs": 7.883654,
+          "minMs": 3.640423,
+          "maxMs": 9.717461
+        },
+        "serviceLifetime": {
+          "n": 30,
+          "medianMs": 36.0,
+          "p95NearestRankMs": 39.0,
+          "minMs": 31.0,
+          "maxMs": 42.0
+        },
+        "observedInputIntervals": {
+          "n": 29,
+          "medianMs": 267.925999,
+          "p95NearestRankMs": 455.000884,
+          "minMs": 262.577154,
+          "maxMs": 464.429615
+        }
+      },
+      "project-pad-burst": {
+        "inputs": 20,
+        "hapticCallbacks": 0,
+        "visualCallbacks": 0,
+        "serviceRecords": 20,
+        "serviceStatuses": {
+          "finished": 20
+        },
+        "callbackTime": {
+          "n": 0
+        },
+        "serviceLifetime": {
+          "n": 20,
+          "medianMs": 32.0,
+          "p95NearestRankMs": 35.0,
+          "minMs": 31.0,
+          "maxMs": 36.0
+        },
+        "observedInputIntervals": {
+          "n": 19,
+          "medianMs": 81.716461,
+          "p95NearestRankMs": 91.463962,
+          "minMs": 65.195923,
+          "maxMs": 91.463962
+        }
+      },
+      "project-pad-ordinary": {
+        "inputs": 10,
+        "hapticCallbacks": 0,
+        "visualCallbacks": 0,
+        "serviceRecords": 10,
+        "serviceStatuses": {
+          "finished": 10
+        },
+        "callbackTime": {
+          "n": 0
+        },
+        "serviceLifetime": {
+          "n": 10,
+          "medianMs": 33.5,
+          "p95NearestRankMs": 36.0,
+          "minMs": 31.0,
+          "maxMs": 36.0
+        },
+        "observedInputIntervals": {
+          "n": 9,
+          "medianMs": 271.298885,
+          "p95NearestRankMs": 340.422577,
+          "minMs": 261.4455,
+          "maxMs": 340.422577
+        }
+      },
+      "rejected": {
+        "inputs": 10,
+        "hapticCallbacks": 0,
+        "visualCallbacks": 0,
+        "serviceRecords": 0,
+        "serviceStatuses": {},
+        "callbackTime": {
+          "n": 0
+        },
+        "serviceLifetime": {
+          "n": 0
+        },
+        "observedInputIntervals": {
+          "n": 9,
+          "medianMs": 234.092846,
+          "p95NearestRankMs": 235.541192,
+          "minMs": 231.531115,
+          "maxMs": 235.541192
+        }
+      },
+      "screen-return": {
+        "inputs": 10,
+        "hapticCallbacks": 10,
+        "visualCallbacks": 10,
+        "serviceRecords": 10,
+        "serviceStatuses": {
+          "finished": 10
+        },
+        "callbackTime": {
+          "n": 10,
+          "medianMs": 5.0105575,
+          "p95NearestRankMs": 7.453923,
+          "minMs": 4.201693,
+          "maxMs": 7.453923
+        },
+        "serviceLifetime": {
+          "n": 10,
+          "medianMs": 35.0,
+          "p95NearestRankMs": 40.0,
+          "minMs": 33.0,
+          "maxMs": 40.0
+        },
+        "observedInputIntervals": {
+          "n": 9,
+          "medianMs": 2293.168114,
+          "p95NearestRankMs": 2341.848767,
+          "minMs": 2247.386575,
+          "maxMs": 2341.848767
+        }
+      },
+      "settings-off": {
+        "inputs": 10,
+        "hapticCallbacks": 10,
+        "visualCallbacks": 10,
+        "serviceRecords": 0,
+        "serviceStatuses": {},
+        "callbackTime": {
+          "n": 10,
+          "medianMs": 1.7816155,
+          "p95NearestRankMs": 3.470038,
+          "minMs": 1.144846,
+          "maxMs": 3.470038
+        },
+        "serviceLifetime": {
+          "n": 0
+        },
+        "observedInputIntervals": {
+          "n": 9,
+          "medianMs": 251.551923,
+          "p95NearestRankMs": 262.970615,
+          "minMs": 242.098384,
+          "maxMs": 262.970615
+        }
+      },
+      "view-disabled": {
+        "inputs": 10,
+        "hapticCallbacks": 10,
+        "visualCallbacks": 10,
+        "serviceRecords": 0,
+        "serviceStatuses": {},
+        "callbackTime": {
+          "n": 10,
+          "medianMs": 0.046711,
+          "p95NearestRankMs": 0.057423,
+          "minMs": 0.038039,
+          "maxMs": 0.057423
+        },
+        "serviceLifetime": {
+          "n": 0
+        },
+        "observedInputIntervals": {
+          "n": 9,
+          "medianMs": 234.212192,
+          "p95NearestRankMs": 237.58423,
+          "minMs": 231.992038,
+          "maxMs": 237.58423
+        }
+      },
+      "view-restored": {
+        "inputs": 1,
+        "hapticCallbacks": 1,
+        "visualCallbacks": 1,
+        "serviceRecords": 1,
+        "serviceStatuses": {
+          "finished": 1
+        },
+        "callbackTime": {
+          "n": 1,
+          "medianMs": 7.174846,
+          "p95NearestRankMs": 7.174846,
+          "minMs": 7.174846,
+          "maxMs": 7.174846
+        },
+        "serviceLifetime": {
+          "n": 1,
+          "medianMs": 38.0,
+          "p95NearestRankMs": 38.0,
+          "minMs": 38.0,
+          "maxMs": 38.0
+        },
+        "observedInputIntervals": {
+          "n": 0
+        }
+      },
+      "visual-only": {
+        "inputs": 10,
+        "hapticCallbacks": 0,
+        "visualCallbacks": 10,
+        "serviceRecords": 0,
+        "serviceStatuses": {},
+        "callbackTime": {
+          "n": 0
+        },
+        "serviceLifetime": {
+          "n": 0
+        },
+        "observedInputIntervals": {
+          "n": 9,
+          "medianMs": 234.763,
+          "p95NearestRankMs": 236.396846,
+          "minMs": 232.275269,
+          "maxMs": 236.396846
+        }
+      }
+    },
+    "native": {
+      "burst": {
+        "inputs": 60,
+        "hapticCallbacks": 60,
+        "visualCallbacks": 60,
+        "serviceRecords": 60,
+        "serviceStatuses": {
+          "finished": 3,
+          "cancelled": 57
+        },
+        "callbackTime": {
+          "n": 60,
+          "medianMs": 1.2239235000000002,
+          "p95NearestRankMs": 2.759269,
+          "minMs": 1.067385,
+          "maxMs": 3.538154
+        },
+        "serviceLifetime": {
+          "n": 60,
+          "medianMs": 69.0,
+          "p95NearestRankMs": 85.0,
+          "minMs": 65.0,
+          "maxMs": 117.0
+        },
+        "observedInputIntervals": {
+          "n": 57,
+          "medianMs": 68.280077,
+          "p95NearestRankMs": 82.892077,
+          "minMs": 63.999962,
+          "maxMs": 83.587923
+        }
+      },
+      "cold-first": {
+        "inputs": 10,
+        "hapticCallbacks": 10,
+        "visualCallbacks": 10,
+        "serviceRecords": 10,
+        "serviceStatuses": {
+          "finished": 10
+        },
+        "callbackTime": {
+          "n": 10,
+          "medianMs": 1.6721925,
+          "p95NearestRankMs": 4.325077,
+          "minMs": 1.1605,
+          "maxMs": 4.325077
+        },
+        "serviceLifetime": {
+          "n": 10,
+          "medianMs": 110.0,
+          "p95NearestRankMs": 113.0,
+          "minMs": 109.0,
+          "maxMs": 113.0
+        },
+        "observedInputIntervals": {
+          "n": 0
+        }
+      },
+      "first": {
+        "inputs": 1,
+        "hapticCallbacks": 1,
+        "visualCallbacks": 1,
+        "serviceRecords": 1,
+        "serviceStatuses": {
+          "finished": 1
+        },
+        "callbackTime": {
+          "n": 1,
+          "medianMs": 4.4435,
+          "p95NearestRankMs": 4.4435,
+          "minMs": 4.4435,
+          "maxMs": 4.4435
+        },
+        "serviceLifetime": {
+          "n": 1,
+          "medianMs": 110.0,
+          "p95NearestRankMs": 110.0,
+          "minMs": 110.0,
+          "maxMs": 110.0
+        },
+        "observedInputIntervals": {
+          "n": 0
+        }
+      },
+      "foreground-return": {
+        "inputs": 10,
+        "hapticCallbacks": 10,
+        "visualCallbacks": 10,
+        "serviceRecords": 10,
+        "serviceStatuses": {
+          "finished": 10
+        },
+        "callbackTime": {
+          "n": 10,
+          "medianMs": 4.336404,
+          "p95NearestRankMs": 5.662539,
+          "minMs": 2.546808,
+          "maxMs": 5.662539
+        },
+        "serviceLifetime": {
+          "n": 10,
+          "medianMs": 111.5,
+          "p95NearestRankMs": 113.0,
+          "minMs": 110.0,
+          "maxMs": 113.0
+        },
+        "observedInputIntervals": {
+          "n": 9,
+          "medianMs": 2536.920536,
+          "p95NearestRankMs": 3099.324652,
+          "minMs": 2486.801229,
+          "maxMs": 3099.324652
+        }
+      },
+      "ordinary": {
+        "inputs": 30,
+        "hapticCallbacks": 30,
+        "visualCallbacks": 30,
+        "serviceRecords": 30,
+        "serviceStatuses": {
+          "finished": 30
+        },
+        "callbackTime": {
+          "n": 30,
+          "medianMs": 4.201596,
+          "p95NearestRankMs": 5.815616,
+          "minMs": 1.68827,
+          "maxMs": 6.505
+        },
+        "serviceLifetime": {
+          "n": 30,
+          "medianMs": 112.0,
+          "p95NearestRankMs": 119.0,
+          "minMs": 110.0,
+          "maxMs": 120.0
+        },
+        "observedInputIntervals": {
+          "n": 29,
+          "medianMs": 268.022961,
+          "p95NearestRankMs": 433.988577,
+          "minMs": 263.6105,
+          "maxMs": 470.152961
+        }
+      },
+      "project-pad-burst": {
+        "inputs": 20,
+        "hapticCallbacks": 0,
+        "visualCallbacks": 0,
+        "serviceRecords": 20,
+        "serviceStatuses": {
+          "cancelled": 19,
+          "finished": 1
+        },
+        "callbackTime": {
+          "n": 0
+        },
+        "serviceLifetime": {
+          "n": 20,
+          "medianMs": 77.5,
+          "p95NearestRankMs": 98.0,
+          "minMs": 62.0,
+          "maxMs": 111.0
+        },
+        "observedInputIntervals": {
+          "n": 19,
+          "medianMs": 75.718807,
+          "p95NearestRankMs": 97.236039,
+          "minMs": 62.121384,
+          "maxMs": 97.236039
+        }
+      },
+      "project-pad-ordinary": {
+        "inputs": 10,
+        "hapticCallbacks": 0,
+        "visualCallbacks": 0,
+        "serviceRecords": 10,
+        "serviceStatuses": {
+          "finished": 10
+        },
+        "callbackTime": {
+          "n": 0
+        },
+        "serviceLifetime": {
+          "n": 10,
+          "medianMs": 110.0,
+          "p95NearestRankMs": 111.0,
+          "minMs": 109.0,
+          "maxMs": 111.0
+        },
+        "observedInputIntervals": {
+          "n": 9,
+          "medianMs": 285.037884,
+          "p95NearestRankMs": 325.827423,
+          "minMs": 269.434384,
+          "maxMs": 325.827423
+        }
+      },
+      "rejected": {
+        "inputs": 10,
+        "hapticCallbacks": 0,
+        "visualCallbacks": 0,
+        "serviceRecords": 0,
+        "serviceStatuses": {},
+        "callbackTime": {
+          "n": 0
+        },
+        "serviceLifetime": {
+          "n": 0
+        },
+        "observedInputIntervals": {
+          "n": 9,
+          "medianMs": 219.964038,
+          "p95NearestRankMs": 235.355654,
+          "minMs": 217.440346,
+          "maxMs": 235.355654
+        }
+      },
+      "screen-return": {
+        "inputs": 10,
+        "hapticCallbacks": 10,
+        "visualCallbacks": 10,
+        "serviceRecords": 10,
+        "serviceStatuses": {
+          "finished": 10
+        },
+        "callbackTime": {
+          "n": 10,
+          "medianMs": 3.7622115,
+          "p95NearestRankMs": 6.262,
+          "minMs": 2.334885,
+          "maxMs": 6.262
+        },
+        "serviceLifetime": {
+          "n": 10,
+          "medianMs": 111.0,
+          "p95NearestRankMs": 116.0,
+          "minMs": 109.0,
+          "maxMs": 116.0
+        },
+        "observedInputIntervals": {
+          "n": 9,
+          "medianMs": 2309.928691,
+          "p95NearestRankMs": 3372.123652,
+          "minMs": 2211.921575,
+          "maxMs": 3372.123652
+        }
+      },
+      "settings-off": {
+        "inputs": 10,
+        "hapticCallbacks": 10,
+        "visualCallbacks": 10,
+        "serviceRecords": 0,
+        "serviceStatuses": {},
+        "callbackTime": {
+          "n": 10,
+          "medianMs": 1.4820765,
+          "p95NearestRankMs": 2.725615,
+          "minMs": 1.037577,
+          "maxMs": 2.725615
+        },
+        "serviceLifetime": {
+          "n": 0
+        },
+        "observedInputIntervals": {
+          "n": 9,
+          "medianMs": 250.722653,
+          "p95NearestRankMs": 253.927384,
+          "minMs": 242.887462,
+          "maxMs": 253.927384
+        }
+      },
+      "view-disabled": {
+        "inputs": 10,
+        "hapticCallbacks": 10,
+        "visualCallbacks": 10,
+        "serviceRecords": 0,
+        "serviceStatuses": {},
+        "callbackTime": {
+          "n": 10,
+          "medianMs": 0.036635,
+          "p95NearestRankMs": 0.049692,
+          "minMs": 0.012461,
+          "maxMs": 0.049692
+        },
+        "serviceLifetime": {
+          "n": 0
+        },
+        "observedInputIntervals": {
+          "n": 9,
+          "medianMs": 233.402615,
+          "p95NearestRankMs": 238.891384,
+          "minMs": 218.870577,
+          "maxMs": 238.891384
+        }
+      },
+      "view-restored": {
+        "inputs": 1,
+        "hapticCallbacks": 1,
+        "visualCallbacks": 1,
+        "serviceRecords": 1,
+        "serviceStatuses": {
+          "finished": 1
+        },
+        "callbackTime": {
+          "n": 1,
+          "medianMs": 5.003846,
+          "p95NearestRankMs": 5.003846,
+          "minMs": 5.003846,
+          "maxMs": 5.003846
+        },
+        "serviceLifetime": {
+          "n": 1,
+          "medianMs": 112.0,
+          "p95NearestRankMs": 112.0,
+          "minMs": 112.0,
+          "maxMs": 112.0
+        },
+        "observedInputIntervals": {
+          "n": 0
+        }
+      },
+      "visual-only": {
+        "inputs": 10,
+        "hapticCallbacks": 0,
+        "visualCallbacks": 10,
+        "serviceRecords": 0,
+        "serviceStatuses": {},
+        "callbackTime": {
+          "n": 0
+        },
+        "serviceLifetime": {
+          "n": 0
+        },
+        "observedInputIntervals": {
+          "n": 9,
+          "medianMs": 231.388461,
+          "p95NearestRankMs": 235.312116,
+          "minMs": 214.446039,
+          "maxMs": 235.312116
+        }
+      }
+    }
+  },
+  "unmatchedServiceRecords": [],
+  "idleSnapshots": [
+    {
+      "run": "native-core-01",
+      "file": "background-0-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "native-core-01",
+      "file": "background-1-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "native-core-01",
+      "file": "background-2-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "native-core-01",
+      "file": "background-3-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "native-core-01",
+      "file": "background-4-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "native-core-01",
+      "file": "background-5-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "native-core-01",
+      "file": "background-6-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "native-core-01",
+      "file": "background-7-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "native-core-01",
+      "file": "background-8-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "native-core-01",
+      "file": "background-9-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "native-core-01",
+      "file": "screen-exit-0-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "native-core-01",
+      "file": "screen-exit-1-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "native-core-01",
+      "file": "screen-exit-2-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "native-core-01",
+      "file": "screen-exit-3-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "native-core-01",
+      "file": "screen-exit-4-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "native-core-01",
+      "file": "screen-exit-5-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "native-core-01",
+      "file": "screen-exit-6-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "native-core-01",
+      "file": "screen-exit-7-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "native-core-01",
+      "file": "screen-exit-8-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "native-core-01",
+      "file": "screen-exit-9-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "jindong-core-01",
+      "file": "background-0-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "jindong-core-01",
+      "file": "background-1-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "jindong-core-01",
+      "file": "background-2-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "jindong-core-01",
+      "file": "background-3-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "jindong-core-01",
+      "file": "background-4-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "jindong-core-01",
+      "file": "background-5-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "jindong-core-01",
+      "file": "background-6-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "jindong-core-01",
+      "file": "background-7-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "jindong-core-01",
+      "file": "background-8-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "jindong-core-01",
+      "file": "background-9-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "jindong-core-01",
+      "file": "screen-exit-0-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "jindong-core-01",
+      "file": "screen-exit-1-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "jindong-core-01",
+      "file": "screen-exit-2-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "jindong-core-01",
+      "file": "screen-exit-3-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "jindong-core-01",
+      "file": "screen-exit-4-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "jindong-core-01",
+      "file": "screen-exit-5-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "jindong-core-01",
+      "file": "screen-exit-6-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "jindong-core-01",
+      "file": "screen-exit-7-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "jindong-core-01",
+      "file": "screen-exit-8-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    },
+    {
+      "run": "jindong-core-01",
+      "file": "screen-exit-9-vibrator.txt",
+      "currentEmpty": true,
+      "nextEmpty": true
+    }
+  ],
+  "limitations": [
+    "callbackTime is synchronous callback execution measured with elapsedRealtimeNanos, not physical onset latency",
+    "serviceLifetime is OS bookkeeping end minus start, not measured motor motion duration",
+    "service events are deduplicated by start/uid/package; callback rows allow 5ms tolerance and actual EmotionPad admission rows allow 25ms after admission",
+    "only successful instrumentation runs in this session are included",
+    "observedInputIntervals are application callback/admission intervals, not physical touch or injector DOWN intervals"
+  ]
+}

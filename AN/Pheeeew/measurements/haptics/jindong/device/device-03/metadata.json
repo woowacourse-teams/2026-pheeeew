@@ -1,0 +1,270 @@
+{
+  "sourceSha256": {
+    "hapticComparison/sharedMain/com/pheeeew/hapticcomparison/HapticComparisonContent.kt": "71ad187d135d05d06e51cdcabd01828e7bb43f8cd6c27f4cf813b7c2c330b4a1",
+    "hapticComparison/src/main/kotlin/com/pheeeew/hapticcomparison/ComparisonActivity.kt": "32921d659b4ad1c8342ea4df196344b4b4eb69b301ae9d8aaa9fe1b5500021c1",
+    "hapticComparison/src/androidTest/kotlin/com/pheeeew/hapticcomparison/HapticComparisonDeviceTest.kt": "c96628f4fe6fc347bf61d72981a568bb74cedb26c66dde9313ea9a99e95bd3dd",
+    "shared/src/commonMain/kotlin/com/pheeeew/feature/emotion/component/EmotionHapticFeedback.kt": "6d083bc82bdddd4a56988592a99e14315c0212a81bd012e8461cc85eddfed2cd",
+    "shared/src/androidMain/kotlin/com/pheeeew/feature/emotion/component/EmotionHapticFeedback.android.kt": "004e2df6e5c2a5d53c4e49f590c25b02e6d0c922ab3f92ade98ec36551523828",
+    "shared/src/commonMain/kotlin/com/pheeeew/core/haptics/JindongEmotionHapticController.kt": "2acb995dda1ff532b64dd8d23d40fc71782da6d8085e5c57d63487c50badc3ff"
+  },
+  "model": "SM-G977N",
+  "android": "12",
+  "sdk": "31",
+  "deviceTime": "2026-11-09T14:42:11+0900",
+  "hapticSettingBefore": "1",
+  "lowPower": "0",
+  "displaySize": "Physical size: 1440x3040\nOverride size: 1080x2280",
+  "displayDensity": "Physical density: 420",
+  "animationScales": {
+    "window_animation_scale": "1.0",
+    "transition_animation_scale": "1.0",
+    "animator_duration_scale": "1.0"
+  },
+  "originalPackagesBefore": {
+    "com.pheeeew.updatetest": {
+      "userId": "10330",
+      "codePath": "/data/app/~~Y2AFRqASbhhOafkWuilrsA==/com.pheeeew.updatetest-_rUqdIrAX5vnxHvQjsjCqg==",
+      "versionCode": "103201 minSdk=26 targetSdk=36",
+      "firstInstallTime": "2026-10-29 11:54:46",
+      "lastUpdateTime": "2026-11-09 13:54:46"
+    },
+    "com.pheeeew.baseline1114.updatetest": {
+      "userId": "10336",
+      "codePath": "/data/app/~~6Dftk9aNBJPyPkK9cb3Irw==/com.pheeeew.baseline1114.updatetest-0DcvdNm6uVHFJCNB0oT9XA==",
+      "versionCode": "14 minSdk=26 targetSdk=36",
+      "firstInstallTime": "2026-11-06 12:06:52",
+      "lastUpdateTime": "2026-11-06 12:06:52"
+    },
+    "com.pheeeew": {
+      "userId": "10334",
+      "codePath": "/data/app/~~B8dmB_nuRCMUhE-XzVKa_g==/com.pheeeew-uUiS4VEUlEW6l73pYim57A==",
+      "versionCode": "13 minSdk=26 targetSdk=36",
+      "firstInstallTime": "2026-11-03 13:20:17",
+      "lastUpdateTime": "2026-11-03 13:20:17"
+    },
+    "com.pheeeew.updatetest.test": {
+      "userId": "10331",
+      "codePath": "/data/app/~~1yT_EYl72yv8ym_2Kl-_rw==/com.pheeeew.updatetest.test-2poFvYuI655vGBkOlt5Tsw==",
+      "versionCode": "0 minSdk=26 targetSdk=36",
+      "firstInstallTime": "2026-10-29 12:06:35",
+      "lastUpdateTime": "2026-10-29 12:19:11"
+    }
+  },
+  "runs": [
+    {
+      "id": "native-cold-01",
+      "phase": "cold",
+      "backend": "native",
+      "success": true,
+      "rows": 1
+    },
+    {
+      "id": "jindong-cold-01",
+      "phase": "cold",
+      "backend": "jindong",
+      "success": true,
+      "rows": 1
+    },
+    {
+      "id": "jindong-cold-02",
+      "phase": "cold",
+      "backend": "jindong",
+      "success": true,
+      "rows": 1
+    },
+    {
+      "id": "native-cold-02",
+      "phase": "cold",
+      "backend": "native",
+      "success": true,
+      "rows": 1
+    },
+    {
+      "id": "native-cold-03",
+      "phase": "cold",
+      "backend": "native",
+      "success": true,
+      "rows": 1
+    },
+    {
+      "id": "jindong-cold-03",
+      "phase": "cold",
+      "backend": "jindong",
+      "success": true,
+      "rows": 1
+    },
+    {
+      "id": "jindong-cold-04",
+      "phase": "cold",
+      "backend": "jindong",
+      "success": true,
+      "rows": 1
+    },
+    {
+      "id": "native-cold-04",
+      "phase": "cold",
+      "backend": "native",
+      "success": true,
+      "rows": 1
+    },
+    {
+      "id": "native-cold-05",
+      "phase": "cold",
+      "backend": "native",
+      "success": true,
+      "rows": 1
+    },
+    {
+      "id": "jindong-cold-05",
+      "phase": "cold",
+      "backend": "jindong",
+      "success": true,
+      "rows": 1
+    },
+    {
+      "id": "jindong-cold-06",
+      "phase": "cold",
+      "backend": "jindong",
+      "success": true,
+      "rows": 1
+    },
+    {
+      "id": "native-cold-06",
+      "phase": "cold",
+      "backend": "native",
+      "success": true,
+      "rows": 1
+    },
+    {
+      "id": "native-cold-07",
+      "phase": "cold",
+      "backend": "native",
+      "success": true,
+      "rows": 1
+    },
+    {
+      "id": "jindong-cold-07",
+      "phase": "cold",
+      "backend": "jindong",
+      "success": true,
+      "rows": 1
+    },
+    {
+      "id": "jindong-cold-08",
+      "phase": "cold",
+      "backend": "jindong",
+      "success": true,
+      "rows": 1
+    },
+    {
+      "id": "native-cold-08",
+      "phase": "cold",
+      "backend": "native",
+      "success": true,
+      "rows": 1
+    },
+    {
+      "id": "native-cold-09",
+      "phase": "cold",
+      "backend": "native",
+      "success": true,
+      "rows": 1
+    },
+    {
+      "id": "jindong-cold-09",
+      "phase": "cold",
+      "backend": "jindong",
+      "success": true,
+      "rows": 1
+    },
+    {
+      "id": "jindong-cold-10",
+      "phase": "cold",
+      "backend": "jindong",
+      "success": true,
+      "rows": 1
+    },
+    {
+      "id": "native-cold-10",
+      "phase": "cold",
+      "backend": "native",
+      "success": true,
+      "rows": 1
+    },
+    {
+      "id": "native-core-01",
+      "phase": "core",
+      "backend": "native",
+      "success": true,
+      "rows": 142
+    },
+    {
+      "id": "jindong-core-01",
+      "phase": "core",
+      "backend": "jindong",
+      "success": true,
+      "rows": 142
+    },
+    {
+      "id": "native-project-pad-01",
+      "phase": "project-pad",
+      "backend": "native",
+      "success": true,
+      "rows": 30
+    },
+    {
+      "id": "jindong-project-pad-01",
+      "phase": "project-pad",
+      "backend": "jindong",
+      "success": true,
+      "rows": 30
+    },
+    {
+      "id": "native-settings-off-01",
+      "phase": "settings-off",
+      "backend": "native",
+      "success": true,
+      "rows": 10
+    },
+    {
+      "id": "jindong-settings-off-01",
+      "phase": "settings-off",
+      "backend": "jindong",
+      "success": true,
+      "rows": 10
+    }
+  ],
+  "originalPackagesAfter": {
+    "com.pheeeew.updatetest": {
+      "userId": "10330",
+      "codePath": "/data/app/~~Y2AFRqASbhhOafkWuilrsA==/com.pheeeew.updatetest-_rUqdIrAX5vnxHvQjsjCqg==",
+      "versionCode": "103201 minSdk=26 targetSdk=36",
+      "firstInstallTime": "2026-10-29 11:54:46",
+      "lastUpdateTime": "2026-11-09 13:54:46"
+    },
+    "com.pheeeew.baseline1114.updatetest": {
+      "userId": "10336",
+      "codePath": "/data/app/~~6Dftk9aNBJPyPkK9cb3Irw==/com.pheeeew.baseline1114.updatetest-0DcvdNm6uVHFJCNB0oT9XA==",
+      "versionCode": "14 minSdk=26 targetSdk=36",
+      "firstInstallTime": "2026-11-06 12:06:52",
+      "lastUpdateTime": "2026-11-06 12:06:52"
+    },
+    "com.pheeeew": {
+      "userId": "10334",
+      "codePath": "/data/app/~~B8dmB_nuRCMUhE-XzVKa_g==/com.pheeeew-uUiS4VEUlEW6l73pYim57A==",
+      "versionCode": "13 minSdk=26 targetSdk=36",
+      "firstInstallTime": "2026-11-03 13:20:17",
+      "lastUpdateTime": "2026-11-03 13:20:17"
+    },
+    "com.pheeeew.updatetest.test": {
+      "userId": "10331",
+      "codePath": "/data/app/~~1yT_EYl72yv8ym_2Kl-_rw==/com.pheeeew.updatetest.test-2poFvYuI655vGBkOlt5Tsw==",
+      "versionCode": "0 minSdk=26 targetSdk=36",
+      "firstInstallTime": "2026-10-29 12:06:35",
+      "lastUpdateTime": "2026-10-29 12:19:11"
+    }
+  },
+  "originalPackageIdentityUnchanged": true,
+  "hapticSettingAfter": "1",
+  "hapticSettingRestored": true
+}

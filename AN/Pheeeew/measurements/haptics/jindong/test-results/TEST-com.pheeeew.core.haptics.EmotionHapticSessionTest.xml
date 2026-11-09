@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.pheeeew.core.haptics.EmotionHapticSessionTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-11-09T02:30:00.775Z" hostname="MacBook-Pro.local" time="0.014">
+  <properties/>
+  <testcase name="serverResetRecreatesPlayerWithoutCreatingAnotherEngine" classname="com.pheeeew.core.haptics.EmotionHapticSessionTest" time="0.009"/>
+  <testcase name="unsupportedHardwareNeverCreatesNativeResources" classname="com.pheeeew.core.haptics.EmotionHapticSessionTest" time="0.001"/>
+  <testcase name="repeatedInputsReuseOneBackendAndOnePlayer" classname="com.pheeeew.core.haptics.EmotionHapticSessionTest" time="0.0"/>
+  <testcase name="playbackFailureHasBoundedRecoveryAndNoDelayedReplay" classname="com.pheeeew.core.haptics.EmotionHapticSessionTest" time="0.001"/>
+  <testcase name="exitClosesResourcesAndOldCallbacksCannotResetTheNextSession" classname="com.pheeeew.core.haptics.EmotionHapticSessionTest" time="0.0"/>
+  <testcase name="latestRequestIsBoundedAndPausedOwnersCannotProduceFeedback" classname="com.pheeeew.core.haptics.EmotionHapticSessionTest" time="0.002"/>
+  <testcase name="failedStartClosesPartialResourcesAndDoesNotRetryEveryInput" classname="com.pheeeew.core.haptics.EmotionHapticSessionTest" time="0.0"/>
+  <testcase name="backgroundResetAndExpiryDiscardPendingFeedback" classname="com.pheeeew.core.haptics.EmotionHapticSessionTest" time="0.0"/>
+  <testcase name="stoppedEngineRestartsButDoesNotReplayTheRecoveryTap" classname="com.pheeeew.core.haptics.EmotionHapticSessionTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

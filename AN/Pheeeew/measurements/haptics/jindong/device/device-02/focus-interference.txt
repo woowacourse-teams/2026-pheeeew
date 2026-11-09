@@ -1,0 +1,8 @@
+11-09 11:51:48.827   950  1790 I ActivityManager: Force stopping com.pheeeew.updatetest appid=10330 user=0: from pid 27019
+11-09 11:51:48.836   950  1790 I ActivityManager: Killing 21633:com.pheeeew.updatetest/u0a330 (adj 900): stop com.pheeeew.updatetest due to from pid 27019
+11-09 11:51:48.842   950  1790 W ActivityTaskManager: Force removing ActivityRecord{b45da8a u0 com.pheeeew.updatetest/com.pheeeew.MainActivity t508 f}}: app died, no saved state
+11-09 11:51:48.842   950  1790 I ActivityTaskManager: Removing activity ActivityRecord{b45da8a u0 com.pheeeew.updatetest/com.pheeeew.MainActivity t508 f}}(appDied)  from stack callers=com.android.server.wm.ActivityRecord.handleAppDied:4286 com.android.server.wm.WindowProcessController.handleAppDied:1287 com.android.server.wm.ActivityTaskManagerService$LocalService.handleAppDied:7108 com.android.server.am.ActivityManagerService.handleAppDiedLocked:3649 com.android.server.am.ProcessList.removeProcessLocked:3771 
+11-09 11:51:48.940   950  1790 I ActivityTaskManager: START u0 {flg=0x10000000 cmp=com.pheeeew.updatetest/com.pheeeew.MainActivity} from uid 2000
+11-09 11:51:48.957   950  1020 W ActivityManager: ProcessRecord{9f18b7f 0:com.pheeeew.updatetest/u0a330} is attached to a previous process 21633
+11-09 11:51:48.959   950  1020 W ActivityManager: ProcessRecord{9f18b7f 0:com.pheeeew.updatetest/u0a330} is attached to a previous process 21633
+11-09 11:51:48.959   950  1020 W ActivityManager: ProcessRecord{9f18b7f 0:com.pheeeew.updatetest/u0a330} is attached to a previous process 21633

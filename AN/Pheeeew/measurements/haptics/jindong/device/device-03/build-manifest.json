@@ -1,0 +1,16 @@
+{
+  "sourceSha256": {
+    "hapticComparison/sharedMain/com/pheeeew/hapticcomparison/HapticComparisonContent.kt": "71ad187d135d05d06e51cdcabd01828e7bb43f8cd6c27f4cf813b7c2c330b4a1",
+    "hapticComparison/src/androidTest/kotlin/com/pheeeew/hapticcomparison/HapticComparisonDeviceTest.kt": "c96628f4fe6fc347bf61d72981a568bb74cedb26c66dde9313ea9a99e95bd3dd",
+    "hapticComparison/src/main/kotlin/com/pheeeew/hapticcomparison/ComparisonActivity.kt": "32921d659b4ad1c8342ea4df196344b4b4eb69b301ae9d8aaa9fe1b5500021c1",
+    "shared/src/commonMain/kotlin/com/pheeeew/feature/emotion/component/EmotionHapticFeedback.kt": "6d083bc82bdddd4a56988592a99e14315c0212a81bd012e8461cc85eddfed2cd",
+    "shared/src/androidMain/kotlin/com/pheeeew/feature/emotion/component/EmotionHapticFeedback.android.kt": "004e2df6e5c2a5d53c4e49f590c25b02e6d0c922ab3f92ade98ec36551523828",
+    "shared/src/commonMain/kotlin/com/pheeeew/core/haptics/JindongEmotionHapticController.kt": "2acb995dda1ff532b64dd8d23d40fc71782da6d8085e5c57d63487c50badc3ff"
+  },
+  "apkSha256": {
+    "jindong/app.apk": "f03b9b5a10ce986581a3055a9acbc3df6fd9987d255fc7c385d3a1e5ed6a10e5",
+    "jindong/test.apk": "37dbf8a314ef8b82416ed5aa25bc027227b4e77c6373f4fe01b17df7c2f688f6",
+    "native/app.apk": "1981533c305994915c2b6eef848c7a98a2023eb53ee67ba9973ce8a5f25fe3f8",
+    "native/test.apk": "38add138a30d4efb500dc1249261805c49744308d8dfde7619dc0db39c083bbb"
+  }
+}

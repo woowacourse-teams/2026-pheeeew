@@ -1,0 +1,185 @@
+Calculating task graph as no cached configuration is available for tasks: :shared:compileKotlinIosSimulatorArm64 :androidApp:assembleDebug
+> Task :androidApp:preBuild UP-TO-DATE
+> Task :shared:convertXmlValueResourcesForNativeMain NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForAppleMain NO-SOURCE
+> Task :shared:kmpPartiallyResolvedDependenciesChecker
+> Task :shared:convertXmlValueResourcesForIosMain NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForNativeMain NO-SOURCE
+> Task :shared:generateComposeResClass UP-TO-DATE
+> Task :shared:convertXmlValueResourcesForAppleMain NO-SOURCE
+> Task :shared:convertXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForIosMain NO-SOURCE
+> Task :shared:generateExpectResourceCollectorsForCommonMain UP-TO-DATE
+> Task :androidApp:validateDebugDeviceSession
+> Task :shared:checkIosSimulatorArm64MainComposeLibrariesCompatibility
+> Task :shared:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :shared:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForNativeMain NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :shared:convertXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :shared:prepareComposeResourcesTaskForIosMain NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForIosSimulatorArm64Main NO-SOURCE
+> Task :shared:generateEmotionHapticConfig
+> Task :shared:prepareComposeResourcesTaskForAppleMain NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForIosArm64Main NO-SOURCE
+> Task :shared:generateResourceAccessorsForIosMain NO-SOURCE
+> Task :shared:generateResourceAccessorsForNativeMain NO-SOURCE
+> Task :shared:androidPreBuild UP-TO-DATE
+> Task :developerTools:androidPreBuild UP-TO-DATE
+> Task :androidApp:processDebugGoogleServices UP-TO-DATE
+> Task :shared:convertXmlValueResourcesForIosArm64Main NO-SOURCE
+> Task :developerTools:preAndroidMainBuild UP-TO-DATE
+> Task :shared:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :developerTools:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :developerTools:kmpPartiallyResolvedDependenciesChecker
+> Task :shared:preAndroidMainBuild UP-TO-DATE
+> Task :shared:generateResourceAccessorsForAppleMain NO-SOURCE
+> Task :shared:generateResourceAccessorsForIosSimulatorArm64Main NO-SOURCE
+> Task :developerTools:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :developerTools:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :developerTools:generateAndroidMainEmptyResourceFiles UP-TO-DATE
+> Task :developerTools:generateComposeResClass SKIPPED
+> Task :shared:generateResourceAccessorsForAndroidMain NO-SOURCE
+> Task :developerTools:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :developerTools:generateExpectResourceCollectorsForCommonMain SKIPPED
+> Task :androidApp:generateDebugAssets UP-TO-DATE
+> Task :shared:generateAndroidMainAssets UP-TO-DATE
+> Task :shared:generateAndroidMainEmptyResourceFiles UP-TO-DATE
+> Task :shared:prepareComposeResourcesTaskForIosArm64Main NO-SOURCE
+> Task :androidApp:collectExternalDebugDependenciesForSentry UP-TO-DATE
+> Task :developerTools:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :developerTools:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :developerTools:writeAndroidMainAarMetadata UP-TO-DATE
+> Task :developerTools:generateResourceAccessorsForAndroidMain SKIPPED
+> Task :shared:generateResourceAccessorsForIosArm64Main NO-SOURCE
+> Task :developerTools:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+> Task :developerTools:mergeAndroidMainJniLibFolders UP-TO-DATE
+> Task :shared:writeAndroidMainAarMetadata UP-TO-DATE
+> Task :shared:processAndroidMainManifest UP-TO-DATE
+> Task :developerTools:generateResourceAccessorsForCommonMain SKIPPED
+> Task :developerTools:processAndroidMainManifest UP-TO-DATE
+> Task :shared:mergeAndroidMainJniLibFolders UP-TO-DATE
+> Task :developerTools:mergeAndroidMainNativeLibs NO-SOURCE
+> Task :developerTools:generateActualResourceCollectorsForAndroidMain SKIPPED
+> Task :shared:downloadKotlinNativeDistribution UP-TO-DATE
+> Task :developerTools:copyAndroidMainJniLibsProjectOnly UP-TO-DATE
+> Task :shared:mergeAndroidMainNativeLibs NO-SOURCE
+> Task :shared:copyAndroidMainJniLibsProjectOnly UP-TO-DATE
+> Task :shared:copyNonXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :shared:prepareComposeResourcesTaskForCommonMain UP-TO-DATE
+> Task :shared:generateResourceAccessorsForCommonMain UP-TO-DATE
+> Task :shared:copyAndroidMainComposeResourcesToAndroidAssets UP-TO-DATE
+> Task :shared:generateActualResourceCollectorsForIosSimulatorArm64Main UP-TO-DATE
+> Task :shared:generateActualResourceCollectorsForIosArm64Main UP-TO-DATE
+> Task :shared:generateActualResourceCollectorsForAndroidMain UP-TO-DATE
+> Task :shared:mergeAndroidMainAssets UP-TO-DATE
+> Task :shared:packageAndroidMainResources UP-TO-DATE
+> Task :shared:compileAndroidMainLibraryResources UP-TO-DATE
+> Task :shared:parseAndroidMainLocalResources UP-TO-DATE
+> Task :shared:generateAndroidMainRFile UP-TO-DATE
+
+> Task :shared:verifyDeveloperToolsIsolation
+iosArm64.main developerTools=false
+iosSimulatorArm64.main developerTools=false
+
+> Task :androidApp:verifyDeveloperToolsIsolation
+debug developerTools=true
+debug.compile developerTools=true
+release developerTools=false
+release.compile developerTools=false
+
+> Task :androidApp:preDebugBuild
+> Task :androidApp:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :androidApp:desugarDebugFileDependencies UP-TO-DATE
+> Task :androidApp:javaPreCompileDebug UP-TO-DATE
+> Task :androidApp:generateDebugResources UP-TO-DATE
+> Task :androidApp:generateDebugBuildConfig UP-TO-DATE
+> Task :androidApp:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :androidApp:mergeDebugJniLibFolders UP-TO-DATE
+> Task :androidApp:validateSigningDebug UP-TO-DATE
+> Task :androidApp:packageDebugResources UP-TO-DATE
+> Task :androidApp:extractDeepLinksDebug UP-TO-DATE
+> Task :androidApp:mergeDebugAssets UP-TO-DATE
+> Task :androidApp:writeDebugAppMetadata UP-TO-DATE
+> Task :androidApp:writeDebugSigningConfigVersions UP-TO-DATE
+> Task :androidApp:injectSentryDebugMetaPropertiesIntoAssetsDebug UP-TO-DATE
+> Task :androidApp:compressDebugAssets UP-TO-DATE
+> Task :androidApp:mapDebugSourceSetPaths UP-TO-DATE
+> Task :androidApp:mergeDebugResources UP-TO-DATE
+> Task :androidApp:processDebugNavigationResources UP-TO-DATE
+> Task :androidApp:checkDebugAarMetadata UP-TO-DATE
+> Task :androidApp:mergeDebugNativeLibs UP-TO-DATE
+> Task :androidApp:compileDebugNavigationResources UP-TO-DATE
+> Task :androidApp:parseDebugLocalResources UP-TO-DATE
+> Task :androidApp:stripDebugDebugSymbols UP-TO-DATE
+> Task :androidApp:checkDebugDuplicateClasses UP-TO-DATE
+> Task :androidApp:generateDebugRFile UP-TO-DATE
+> Task :androidApp:processDebugMainManifest UP-TO-DATE
+> Task :androidApp:processDebugManifest UP-TO-DATE
+> Task :androidApp:processDebugManifestForPackage UP-TO-DATE
+> Task :androidApp:mergeExtDexDebug UP-TO-DATE
+> Task :androidApp:processDebugResources UP-TO-DATE
+
+> Task :shared:compileAndroidMain
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/androidMain/kotlin/com/pheeeew/feature/emotion/component/EmotionHapticFeedback.android.kt:36:86 'static field HAPTIC_FEEDBACK_ENABLED: String' is deprecated. Deprecated in Java.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/androidMain/kotlin/com/pheeeew/feature/screens/map/renderer/NativeMap.android.kt:169:30 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/androidMain/kotlin/com/pheeeew/feature/screens/map/renderer/NativeMap.android.kt:174:75 'static field TRIM_MEMORY_RUNNING_LOW: Int' is deprecated. Deprecated in Java.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/App.kt:1038:37 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/data/press/race/PressRaceRankings.kt:33:57 Unnecessary safe call on a non-null receiver of type 'PressRaceReady'.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/data/press/race/PressRaceSession.kt:164:37 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/data/press/race/PressRaceSession.kt:318:65 Unnecessary non-null assertion (!!) on a non-null receiver of type 'PressRaceConnection'.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/data/press/race/PressRaceSessionState.kt:36:53 Unnecessary safe call on a non-null receiver of type 'PressRaceReady'.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/data/repository/EmotionRegistrationRepositoryImpl.kt:106:37 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/emotion/component/EmotionHapticFeedback.kt:36:25 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/collection/calendar/detail/CollectionDayEmotionList.kt:95:13 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/map/MapScreen.kt:224:21 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/map/detail/EmotionDetailCard.kt:236:13 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/map/detail/EmotionDetailOverlay.kt:54:13 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/map/detail/EmotionDetailOverlay.kt:76:13 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/ranking/press/RankingDate.kt:16:77 Redundant call of conversion method.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/settings/AppEntryGate.kt:111:13 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/settings/AppEntryViewModel.kt:69:29 Expression is unused.
+
+> Task :shared:processAndroidMainJavaRes UP-TO-DATE
+> Task :shared:bundleLibRuntimeToDirAndroidMain
+> Task :shared:bundleAndroidMainClassesToCompileJar
+> Task :developerTools:compileAndroidMain
+> Task :developerTools:bundleAndroidMainClassesToCompileJar UP-TO-DATE
+> Task :developerTools:processAndroidMainJavaRes UP-TO-DATE
+> Task :developerTools:bundleLibRuntimeToDirAndroidMain UP-TO-DATE
+> Task :androidApp:compileDebugKotlin
+> Task :androidApp:processDebugJavaRes UP-TO-DATE
+> Task :androidApp:mergeDebugJavaResource UP-TO-DATE
+> Task :androidApp:compileDebugJavaWithJavac UP-TO-DATE
+> Task :androidApp:dexBuilderDebug UP-TO-DATE
+> Task :androidApp:mergeProjectDexDebug UP-TO-DATE
+> Task :androidApp:mergeLibDexDebug
+> Task :androidApp:packageDebug
+> Task :androidApp:assembleDebug
+> Task :androidApp:createDebugApkListingFileRedirect UP-TO-DATE
+
+> Task :shared:compileKotlinIosSimulatorArm64
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/App.kt:1038:37 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/data/press/race/PressRaceRankings.kt:33:57 Unnecessary safe call on a non-null receiver of type 'PressRaceReady'.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/data/press/race/PressRaceSession.kt:164:37 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/data/press/race/PressRaceSession.kt:318:65 Unnecessary non-null assertion (!!) on a non-null receiver of type 'PressRaceConnection'.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/data/press/race/PressRaceSessionState.kt:36:53 Unnecessary safe call on a non-null receiver of type 'PressRaceReady'.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/data/repository/EmotionRegistrationRepositoryImpl.kt:106:37 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/emotion/component/EmotionHapticFeedback.kt:36:25 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/collection/calendar/detail/CollectionDayEmotionList.kt:95:13 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/map/MapScreen.kt:224:21 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/map/detail/EmotionDetailCard.kt:236:13 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/map/detail/EmotionDetailOverlay.kt:54:13 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/map/detail/EmotionDetailOverlay.kt:76:13 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/ranking/press/RankingDate.kt:16:77 Redundant call of conversion method.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/settings/AppEntryGate.kt:111:13 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/settings/AppEntryViewModel.kt:69:29 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/iosMain/kotlin/com/pheeeew/feature/emotion/component/EmotionHapticFeedback.ios.kt:34:25 Expression is unused.
+w: file:///Users/USER/2026-pheeeew/AN/Pheeeew/shared/src/iosMain/kotlin/com/pheeeew/feature/screens/map/renderer/FoundationIosMapRenderUiModel.kt:57:37 This declaration needs opt-in. Its usage should be marked with '@kotlinx.cinterop.BetaInteropApi' or '@OptIn(kotlinx.cinterop.BetaInteropApi::class)'
+
+[Incubating] Problems report is available at: file:///Users/USER/2026-pheeeew/AN/Pheeeew/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 25s
+82 actionable tasks: 15 executed, 67 up-to-date
+Configuration cache entry stored.

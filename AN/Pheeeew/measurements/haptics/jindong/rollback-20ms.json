@@ -1,0 +1,11 @@
+{
+  "durationMs": 20,
+  "intensity": 0.6,
+  "iosSharpness": 0.5,
+  "buildLog": "logs/33-rollback-20ms-build.log",
+  "newDeviceComparisonPerformed": false,
+  "historical20msResults": "device/device-03/summary.json",
+  "sourceSha256": "2acb995dda1ff532b64dd8d23d40fc71782da6d8085e5c57d63487c50badc3ff",
+  "controllerMatchesHistorical20msSource": true,
+  "comparisonAppUpdated": false
+}

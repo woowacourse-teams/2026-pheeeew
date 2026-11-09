@@ -1,0 +1,23 @@
+{
+  "runId": "native-cold-01",
+  "phase": "cold",
+  "package": "com.pheeeew.hapticcomparison.native",
+  "model": "SM-G977N",
+  "androidRelease": "12",
+  "sdk": 31,
+  "rows": [
+    {
+      "startElapsedNanos": 2247075462459909,
+      "wallTimeMillis": 1794202964616,
+      "callbackNanos": 3917423,
+      "hapticCallbackInvoked": true,
+      "visualFeedbackInvoked": true,
+      "accepted": true,
+      "visualOnly": false,
+      "viewEnabled": true,
+      "systemHapticsEnabled": 1,
+      "scenario": "cold-first",
+      "backend": "native"
+    }
+  ]
+}
