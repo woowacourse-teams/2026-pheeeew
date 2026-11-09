@@ -23,9 +23,10 @@ def map_request_fixture(environment, scenario):
     rows = []
 
     def add(query, decision, step, outcome="success", instance="a", source="one",
-            env=environment, version="v4", job="pheeeew-api"):
+            env=environment, version="v4", job="pheeeew-api", scope="all", content_type="all"):
         tags = dict(job=job, environment=env, api_version=version, instance=instance,
-                    source=source, route="pins", query=query, page="first", decision=decision, outcome=outcome)
+                    source=source, route="pins", query=query, page="first", scope=scope,
+                    content_type=content_type, decision=decision, outcome=outcome)
         rows.append((tags, 0 if scenario == "idle" else step))
 
     if scenario != "absent":
@@ -34,6 +35,7 @@ def map_request_fixture(environment, scenario):
         # 검증된 query가 분모다. 이후 처리의 실패도 HTTP 성공만으로 제한하지 않는다.
         add("month_current_default", "cache_fallback", 2, "server_error")
         add("other", "bypass_filter", 2, "client_error")
+        add("other", "cache_hit", 4, scope="my", content_type="audio")
         add("unclassified", "unclassified", 10, "client_error")
         if scenario == "weighted":
             add("month_current_default", "bypass_period", 6, source="cloud-extra")
@@ -60,7 +62,8 @@ def map_request_tests(panels, environment):
                     and tags["api_version"] == "v4"]
         expected_counts = {}
         for tags, step in selected:
-            dimensions = {key: tags[key] for key in ("instance", "route", "query", "page", "decision", "outcome")}
+            dimensions = {key: tags[key] for key in
+                          ("instance", "route", "query", "page", "scope", "content_type", "decision", "outcome")}
             key = labels(dimensions)
             expected_counts[key] = expected_counts.get(key, 0) + step * 5
         expressions = [{"expr": count_target["expr"].replace("$__range", "5m"), "eval_time": "10m",
@@ -81,6 +84,44 @@ def map_request_tests(panels, environment):
                                 "exp_samples": expected})
         tests.append({"name": f"{environment}/v4-map-requests/{scenario}", "interval": "1m",
                       "input_series": series, "promql_expr_test": expressions})
+    return tests
+
+
+def map_filter_rate_tests(panel, environment):
+    """필터별 캐시 응답률: 검증된 조회 중 cache_hit·cache_load 비율. 분모가 없으면 빈 값, 분자만 없으면 0%."""
+    assert panel["type"] == "stat" and panel["fieldConfig"]["defaults"]["unit"] == "percent"
+    target, = panel["targets"]
+    assert target["instant"] and not target["range"]
+    tests = []
+    for scenario in ("absent", "idle", "observed"):
+        rows = []
+
+        def add(route, scope, content_type, decision, step, query="other", env=environment, instance="a"):
+            tags = dict(job="pheeeew-api", environment=env, api_version="v4", instance=instance, route=route,
+                        query=query, page="first", scope=scope, content_type=content_type, decision=decision,
+                        outcome="success")
+            rows.append((tags, 0 if scenario == "idle" else step))
+
+        if scenario != "absent":
+            add("pins", "all", "all", "cache_hit", 4, query="month_current_default")
+            add("pins", "all", "all", "cache_load", 2, query="month_current_default", instance="b")
+            add("pins", "all", "all", "cache_fallback", 2, query="month_current_default")
+            add("pins", "my", "audio", "cache_hit", 3)
+            add("pins", "my", "audio", "cache_fallback", 1)
+            add("regions", "all", "memo", "bypass_level", 4)
+            add("regions", "all", "memo", "cache_hit", 100, query="unclassified")
+            add("pins", "my", "audio", "cache_hit", 100, env="prod" if environment == "dev" else "dev")
+        expected = []
+        if scenario == "observed":
+            expected = [{"labels": labels(dict(route="pins", scope="all", content_type="all")), "value": 75},
+                        {"labels": labels(dict(route="pins", scope="my", content_type="audio")), "value": 75},
+                        {"labels": labels(dict(route="regions", scope="all", content_type="memo")), "value": 0}]
+        series = [{"series": "pheeeew_map_read_requests_total" + labels(tags), "values": f"0+{step}x10"}
+                  for tags, step in rows]
+        tests.append({"name": f"{environment}/v4-map-filter-cache-rate/{scenario}", "interval": "1m",
+                      "input_series": series,
+                      "promql_expr_test": [{"expr": target["expr"].replace("$__range", "5m"), "eval_time": "10m",
+                                            "exp_samples": expected}]})
     return tests
 
 
@@ -334,6 +375,7 @@ def verify():
         else:
             assert 167 not in panels
         tests.extend(map_request_tests(panels, environment))
+        tests.extend(map_filter_rate_tests(panels[169], environment))
         tests.extend(map_latency_tests(panels, environment))
         tests.extend(map_diagnostic_tests(panels[166], environment))
         tests.extend(connection_time_tests(panels[141], environment))

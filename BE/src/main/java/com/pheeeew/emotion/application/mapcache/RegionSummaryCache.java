@@ -128,9 +128,6 @@ public class RegionSummaryCache implements EmotionMapCacheListener {
             try {
                 Snapshot loaded = loadSnapshot(epoch);
                 boolean published = loaded != null && install(loaded);
-                if (published) {
-                    metrics.rebuilt();
-                }
 
                 return published;
             } catch (RuntimeException failure) {
@@ -206,8 +203,6 @@ public class RegionSummaryCache implements EmotionMapCacheListener {
         if (loaded == null || !install(loaded)) {
             return null;
         }
-
-        metrics.rebuilt();
         metrics.request("miss");
 
         return loaded;

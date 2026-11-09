@@ -135,9 +135,6 @@ public class PinCandidateCache implements EmotionMapCacheListener {
                         install(loaded);
                     }
                 });
-                if (published) {
-                    metrics.rebuilt();
-                }
 
                 return published;
             } catch (RuntimeException failure) {
@@ -205,8 +202,6 @@ public class PinCandidateCache implements EmotionMapCacheListener {
                 if (!install(loaded)) {
                     return null;
                 }
-
-                metrics.rebuilt();
 
                 return loaded;
             });

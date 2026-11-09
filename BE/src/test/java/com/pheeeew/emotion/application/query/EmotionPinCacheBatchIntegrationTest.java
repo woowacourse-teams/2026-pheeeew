@@ -103,15 +103,14 @@ class EmotionPinCacheBatchIntegrationTest {
         clock.advance(java.time.Duration.ofSeconds(3));
 
         // when
-        EmotionMapPageView fallback = page(null);
-        double misses = meters.find("pheeeew.map.cache.requests").tag("cache", "pins").tag("result", "miss").counter().count();
-        EmotionMapPageView recovered = page(null);
+        var fallback = MapReadDecisions.pins(meters, () -> page(null));
+        var recovered = MapReadDecisions.pins(meters, () -> page(null));
 
         // then
-        assertThat(fallback.items()).hasSize(2);
-        assertThat(recovered.items()).hasSize(2);
-        assertThat(meters.find("pheeeew.map.cache.requests").tag("cache", "pins").tag("result", "miss").counter().count() - misses)
-                .isEqualTo(1);
+        assertThat(fallback.value().items()).hasSize(2);
+        assertThat(fallback.decision()).isEqualTo("cache_fallback");
+        assertThat(recovered.value().items()).hasSize(2);
+        assertThat(recovered.decision()).isEqualTo("cache_load");
     }
 
     @Test

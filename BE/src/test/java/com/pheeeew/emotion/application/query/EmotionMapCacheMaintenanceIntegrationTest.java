@@ -85,12 +85,12 @@ class EmotionMapCacheMaintenanceIntegrationTest {
         context.publishEvent(new org.springframework.boot.context.event.ApplicationReadyEvent(
                 new org.springframework.boot.SpringApplication(), new String[0], context, Duration.ZERO));
         tasks.runDueTasks();
-        double hits = hits();
-        double pinHits = pinHits();
-        assertThat(pins().items()).singleElement().satisfies(pin -> assertThat(pin.id()).isEqualTo(emotionId));
-        assertThat(pinHits() - pinHits).isEqualTo(1);
-        assertThat(regions().getFirst().summary().totalCount()).isEqualTo(1);
-        assertThat(hits() - hits).isEqualTo(1);
+        var prebuiltPins = MapReadDecisions.pins(meters, this::pins);
+        var prebuiltRegions = MapReadDecisions.regions(meters, this::regions);
+        assertThat(prebuiltPins.value().items()).singleElement().satisfies(pin -> assertThat(pin.id()).isEqualTo(emotionId));
+        assertThat(prebuiltPins.decision()).isEqualTo("cache_hit");
+        assertThat(prebuiltRegions.value().getFirst().summary().totalCount()).isEqualTo(1);
+        assertThat(prebuiltRegions.decision()).isEqualTo("cache_hit");
         jdbc.sql("UPDATE emotions SET memo = NULL WHERE id = :id").param("id", emotionId).update();
         assertThat(regions().getFirst().summary().totalCount()).isEqualTo(1);
         assertThat(pins().items()).hasSize(1);
@@ -98,14 +98,14 @@ class EmotionMapCacheMaintenanceIntegrationTest {
         // when
         clock.advance(Duration.ofMinutes(10));
         tasks.runDueTasks();
-        hits = hits();
-        pinHits = pinHits();
+        var correctedRegions = MapReadDecisions.regions(meters, this::regions);
+        var correctedPins = MapReadDecisions.pins(meters, this::pins);
 
         // then
-        assertThat(regions()).isEmpty();
-        assertThat(hits() - hits).isEqualTo(1);
-        assertThat(pins().items()).isEmpty();
-        assertThat(pinHits() - pinHits).isEqualTo(1);
+        assertThat(correctedRegions.value()).isEmpty();
+        assertThat(correctedRegions.decision()).isEqualTo("cache_hit");
+        assertThat(correctedPins.value().items()).isEmpty();
+        assertThat(correctedPins.decision()).isEqualTo("cache_hit");
     }
 
     @Test
@@ -121,19 +121,14 @@ class EmotionMapCacheMaintenanceIntegrationTest {
         // when
         assertThat(reports.deleteReportedOverThreshold()).isEqualTo(1);
         tasks.runDueTasks();
-        double hits = hits();
-        double pinHits = pinHits();
+        var rebuiltRegions = MapReadDecisions.regions(meters, this::regions);
+        var rebuiltPins = MapReadDecisions.pins(meters, this::pins);
 
         // then
-        assertThat(regions()).isEmpty();
-        assertThat(hits() - hits).isEqualTo(1);
-        assertThat(pins().items()).isEmpty();
-        assertThat(pinHits() - pinHits).isEqualTo(1);
-    }
-
-    private double pinHits() {
-        var counter = meters.find("pheeeew.map.cache.requests").tags("cache", "pins", "result", "hit").counter();
-        return counter == null ? 0 : counter.count();
+        assertThat(rebuiltRegions.value()).isEmpty();
+        assertThat(rebuiltRegions.decision()).isEqualTo("cache_hit");
+        assertThat(rebuiltPins.value().items()).isEmpty();
+        assertThat(rebuiltPins.decision()).isEqualTo("cache_hit");
     }
 
     private EmotionMapPageView pins() {
@@ -141,10 +136,6 @@ class EmotionMapCacheMaintenanceIntegrationTest {
                 null, null, null, null, null, null);
     }
 
-    private double hits() {
-        var counter = meters.find("pheeeew.map.cache.requests").tags("cache", "regions", "result", "hit").counter();
-        return counter == null ? 0 : counter.count();
-    }
 
     private List<EmotionRegionMapItemView> regions() {
         return queries.findRegionMap(EmotionSearchBounds.of(126, 37, 128, 39), RegionLevel.SIDO,

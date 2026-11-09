@@ -24,7 +24,6 @@ import com.pheeeew.emotion.domain.repository.query.EmotionSearchFilter;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchScope;
 import com.pheeeew.region.domain.RegionLevel;
 import com.pheeeew.support.PostgisDataJpaTest;
-import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.sql.Timestamp;
 import java.time.Duration;
@@ -145,22 +144,23 @@ class EmotionMapFilterCacheIntegrationTest {
                     LocalDate from = period ? start : null;
                     LocalDate to = period ? end : null;
                     var filter = EmotionSearchFilter.of(from, to, content, scope, null);
-                    double served = cacheServed("regions") + cacheServed("pins");
+                    String label = scope + "/" + content + "/" + (period ? "기간" : "전체");
 
                     // when
-                    var sido = queries.findRegionMap(BOUNDS, RegionLevel.SIDO, requester.getPublicId(), filter);
-                    var sigungu = queries.findRegionMap(BOUNDS, RegionLevel.SIGUNGU, requester.getPublicId(), filter);
-                    List<List<Long>> pages = cachedPages(from, to, content, scope);
-                    double cacheCalls = cacheServed("regions") + cacheServed("pins") - served;
+                    var sido = MapReadDecisions.regions(meters, () ->
+                            queries.findRegionMap(BOUNDS, RegionLevel.SIDO, requester.getPublicId(), filter));
+                    var sigungu = MapReadDecisions.regions(meters, () ->
+                            queries.findRegionMap(BOUNDS, RegionLevel.SIGUNGU, requester.getPublicId(), filter));
+                    List<List<Long>> pages = cachedPages(from, to, content, scope, label);
 
                     // then
-                    String label = scope + "/" + content + "/" + (period ? "기간" : "전체");
-                    assertThat(summaries(sido)).as(label).isEqualTo(summaries(inTransaction(() ->
+                    assertThat(sido.cached()).as(label).isTrue();
+                    assertThat(sigungu.cached()).as(label).isTrue();
+                    assertThat(summaries(sido.value())).as(label).isEqualTo(summaries(inTransaction(() ->
                             queries.findRegionMap(BOUNDS, RegionLevel.SIDO, requester.getPublicId(), filter))));
-                    assertThat(summaries(sigungu)).as(label).isEqualTo(summaries(inTransaction(() ->
+                    assertThat(summaries(sigungu.value())).as(label).isEqualTo(summaries(inTransaction(() ->
                             queries.findRegionMap(BOUNDS, RegionLevel.SIGUNGU, requester.getPublicId(), filter))));
                     assertThat(pages).as(label).isEqualTo(sqlPages(from, to, content, scope));
-                    assertThat(cacheCalls).as(label).isEqualTo(2 + pages.size());
                 }
             }
         }
@@ -241,28 +241,34 @@ class EmotionMapFilterCacheIntegrationTest {
         assertThat(registeredPins.items()).hasSize(2);
     }
 
+    /** 모든 페이지가 캐시에서 응답했는지도 함께 확인한다. */
     private List<List<Long>> cachedPages(LocalDate from, LocalDate to, EmotionContentFilter content,
-            EmotionSearchScope scope) {
-        return pages(from, to, content, scope, false);
+            EmotionSearchScope scope, String label) {
+        List<List<Long>> pages = new ArrayList<>();
+        String cursor = null;
+        do {
+            String current = cursor;
+            var page = MapReadDecisions.pins(meters, () -> queries.findContentMapWithinBoundsV4(
+                    current == null ? BOUNDS : null, requester.getPublicId(), from, to, content, scope, current, 1));
+            assertThat(page.cached()).as(label + " 핀 " + (pages.size() + 1) + "쪽").isTrue();
+            pages.add(page.value().items().stream().map(item -> item.id()).toList());
+            cursor = page.value().nextCursor();
+        } while (cursor != null);
+
+        return pages;
     }
 
     /** 캐시가 발급한 커서를 그대로 써서 SQL 페이지를 비교한다. 첫 페이지 커서의 기준 시각은 경로마다 다르다. */
     private List<List<Long>> sqlPages(LocalDate from, LocalDate to, EmotionContentFilter content,
             EmotionSearchScope scope) {
-        return pages(from, to, content, scope, true);
-    }
-
-    private List<List<Long>> pages(LocalDate from, LocalDate to, EmotionContentFilter content, EmotionSearchScope scope,
-            boolean sql) {
         List<List<Long>> pages = new ArrayList<>();
         String cursor = null;
         do {
             String current = cursor;
             EmotionMapPageView cached = queries.findContentMapWithinBoundsV4(current == null ? BOUNDS : null,
                     requester.getPublicId(), from, to, content, scope, current, 1);
-            EmotionMapPageView page = sql ? inTransaction(() -> queries.findContentMapWithinBoundsV4(
-                    current == null ? BOUNDS : null, requester.getPublicId(), from, to, content, scope, current, 1))
-                    : cached;
+            EmotionMapPageView page = inTransaction(() -> queries.findContentMapWithinBoundsV4(
+                    current == null ? BOUNDS : null, requester.getPublicId(), from, to, content, scope, current, 1));
             pages.add(page.items().stream().map(item -> item.id()).toList());
             assertThat(page.hasNext()).isEqualTo(cached.hasNext());
             cursor = cached.nextCursor();
@@ -273,12 +279,6 @@ class EmotionMapFilterCacheIntegrationTest {
 
     private <T> T inTransaction(Supplier<T> query) {
         return new TransactionTemplate(transactions).execute(status -> query.get());
-    }
-
-    private double cacheServed(String cache) {
-        return meters.find("pheeeew.map.cache.requests").tag("cache", cache).counters().stream()
-                .filter(counter -> !"fallback".equals(counter.getId().getTag("result")))
-                .mapToDouble(Counter::count).sum();
     }
 
     private Map<String, Long> totals(List<EmotionRegionMapItemView> items) {

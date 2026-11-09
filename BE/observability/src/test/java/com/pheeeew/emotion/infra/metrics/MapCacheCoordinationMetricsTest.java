@@ -27,27 +27,23 @@ class MapCacheCoordinationMetricsTest {
     }
 
     @Test
-    void 보정_타이머는_미리_등록하고_busy와_실패는_발생할_때만_별도로_누적한다() {
+    void 보정_실행은_결과별_한_타이머로_기록하고_예약_거절은_실패로_센다() {
         // given
         var meters = new SimpleMeterRegistry();
         var metrics = new MapCacheMaintenanceMetrics(meters);
-        var timer = meters.get("pheeeew.map.cache.maintenance").timer();
-        assertThat(timer.count()).isZero();
-        assertThat(meters.find("pheeeew.map.cache.maintenance.busy").counter()).isNull();
-        assertThat(meters.find("pheeeew.map.cache.maintenance.failures").counter()).isNull();
 
         // when
-        long started = metrics.startRun();
-        metrics.busy();
-        metrics.failed();
-        metrics.failed();
-        metrics.recordRun(started);
+        metrics.recordRun(metrics.startRun(), Boolean.TRUE);
+        metrics.recordRun(metrics.startRun(), null);
+        metrics.recordRun(metrics.startRun(), Boolean.FALSE);
+        metrics.rejected();
 
         // then
-        assertThat(timer.count()).isEqualTo(1);
-        assertThat(timer.getId().getTags()).isEmpty();
-        assertThat(meters.get("pheeeew.map.cache.maintenance.busy").counter().count()).isEqualTo(1);
-        assertThat(meters.get("pheeeew.map.cache.maintenance.failures").counter().count()).isEqualTo(2);
+        assertThat(meters.get("pheeeew.map.cache.maintenance").tag("result", "success").timer().count()).isEqualTo(1);
+        assertThat(meters.get("pheeeew.map.cache.maintenance").tag("result", "busy").timer().count()).isEqualTo(1);
+        assertThat(meters.get("pheeeew.map.cache.maintenance").tag("result", "failed").timer().count()).isEqualTo(2);
+        assertThat(meters.find("pheeeew.map.cache.maintenance.busy").meters()).isEmpty();
+        assertThat(meters.find("pheeeew.map.cache.maintenance.failures").meters()).isEmpty();
         assertThat(meters.find("pheeeew.map.cache.lock.wait").timer()).isNull();
     }
 }

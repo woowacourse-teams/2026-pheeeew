@@ -7,12 +7,15 @@ v2·v4의 동기 지도 GET 요청을 구분한다. 이 문서는 저장소의 �
 ## 요청 조건과 캐시 경로
 
 `pheeeew_map_read_requests_total`은 대상 요청 종료 시 한 번 기록한다.
-태그는 `api_version=v2|v4`, `route=pins|regions`, `query`, `page`, `decision`, `outcome`이다.
+태그는 `api_version=v2|v4`, `route=pins|regions`, `query`, `page`, `scope`, `content_type`, `decision`, `outcome`이다.
+지도 캐시의 적중·적재·SQL 대체도 이 지표의 `decision`으로 본다. 캐시별 요청 카운터는 따로 두지 않는다.
 
 | 태그 | 고정 값과 의미 |
 | --- | --- |
 | `query` | `all_default`, `month_current_default`, `month_other_default`, `other`, `unclassified` |
 | `page` | `first`, `next`, `unknown` |
+| `scope` | 요청한 범위 필터. `all`, `my`, `group`, 분류 전이면 `unknown` |
+| `content_type` | 요청한 내용 필터. `all`, `memo`, `audio`, 분류 전이면 `unknown` |
 | `decision` | `unclassified`, `eligible`, `cache_attempt`, `cache_hit`, `cache_load`, `cache_fallback`, `bypass_period`, `bypass_filter`, `bypass_transaction`, `bypass_level`, `empty` |
 | `outcome` | `success`, `client_error`, `server_error` |
 
@@ -35,8 +38,8 @@ v2·v4의 동기 지도 GET 요청을 구분한다. 이 문서는 저장소의 �
 대시보드는 기본 한 달 비중(현재 한 달/검증된 조회), 전체 우회율(정책 우회/검증된 조회),
 한 달 우회율(현재 한 달 정책 우회/현재 한 달)을 별도로 표시한다. 분모가 0·없음·표본 부족이면 빈 값이다.
 관측된 분모가 양수인데 해당 분자 시계열이 없으면 0%로 표시한다. 일부 기간의 수집만으로도 값이
-나올 수 있으므로 수집 연결을 함께 확인한다. 기존 `pheeeew_map_cache_requests_total`은 캐시 접근만
-세므로 전체 지도 요청의 hit 비율로 해석하지 않는다.
+나올 수 있으므로 수집 연결을 함께 확인한다.
+필터별 캐시 응답률 패널은 경로·`scope`·`content_type`별로 검증된 조회 중 `cache_hit`·`cache_load` 비율을 보여준다.
 
 ## 단계 시간
 

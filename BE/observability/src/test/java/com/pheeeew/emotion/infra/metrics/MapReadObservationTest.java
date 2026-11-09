@@ -41,6 +41,7 @@ class MapReadObservationTest {
             clock.set(25_000_000);
             MapReadObservation.mvcEnded();
             clock.set(27_000_000);
+            MapReadObservation.filters("MY", "AUDIO");
             observation.finish(200, false);
             observation.finish(200, false);
 
@@ -51,7 +52,8 @@ class MapReadObservationTest {
             assertTime(registry, "map_response_processing", 5);
             assertTime(registry, "map_filter_return", 2);
             assertThat(registry.find("pheeeew.map.read.stage").tag("stage", "map_json_write").timer()).isNull();
-            assertThat(registry.get("pheeeew.map.read.requests").counter().count()).isEqualTo(1);
+            assertThat(registry.get("pheeeew.map.read.requests").tags("scope", "my", "content_type", "audio")
+                    .counter().count()).isEqualTo(1);
             assertThat(observation.details().get("timings")).asString().contains("map_pre_mvc");
         } finally {
             RequestTiming.restore(request, previous);

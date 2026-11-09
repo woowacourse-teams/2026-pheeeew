@@ -24,7 +24,6 @@ import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.emotion.domain.repository.EmotionRepository;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.support.PostgisDataJpaTest;
-import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -93,16 +92,13 @@ class EmotionPinCacheIntegrationTest {
     void 기본_핀_조회는_공유_후보_캐시를_재사용한다() {
         // given
         EmotionMapPageView first = page(null);
-        double hits = cacheHits();
 
         // when
-        EmotionMapPageView second = page(null);
+        EmotionMapPageView second = cachedPage(null);
 
         // then
         assertThat(second).isEqualTo(first);
         assertThat(second.items()).singleElement().satisfies(item -> assertThat(item.id()).isEqualTo(emotion.getId()));
-        assertThat(cacheHits() - hits).isEqualTo(1);
-        assertThat(meters.find("pheeeew.map.cache.pin.search").timer().count()).isGreaterThanOrEqualTo(2);
         assertThat(meters.find("pheeeew.map.cache.pin.scanned").summary().totalAmount()).isGreaterThanOrEqualTo(2);
         assertThat(meters.find("pheeeew.map.cache.rebuild").tag("cache", "pins").timer().count()).isPositive();
     }
@@ -113,7 +109,6 @@ class EmotionPinCacheIntegrationTest {
         Device author = devices.save(기본_기기_빌더().build());
         insertPins(220, author.getId());
         page(null);
-        double hits = cacheHits();
         jdbc.sql("""
                 INSERT INTO device_blocks(blocker_device_id, blocked_device_id, origin_emotion_id, created_at, updated_at)
                 VALUES (:requester, :author, :emotion, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
@@ -121,39 +116,36 @@ class EmotionPinCacheIntegrationTest {
                 .param("emotion", emotion.getId()).update();
 
         // when
-        EmotionMapPageView result = page(null);
+        EmotionMapPageView result = cachedPage(null);
         jdbc.sql("""
                 INSERT INTO emotion_blocks(blocker_device_id, emotion_id, created_at, updated_at)
                 VALUES (:requester, :emotion, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """).param("requester", requester.getId()).param("emotion", emotion.getId()).update();
-        EmotionMapPageView allBlocked = page(null);
+        EmotionMapPageView allBlocked = cachedPage(null);
 
         // then
         assertThat(result.items()).singleElement().satisfies(item -> assertThat(item.id()).isEqualTo(emotion.getId()));
         assertThat(result.hasNext()).isFalse();
         assertThat(allBlocked.items()).isEmpty();
-        assertThat(cacheHits() - hits).isEqualTo(2);
     }
 
     @Test
     void 수정과_삭제_성공_후_조회는_기존_핀_스냅샷에_즉시_반영된다() {
         // given
         page(null);
-        double hits = cacheHits();
 
         // when
         commands.update(emotion.getId(), requester.getPublicId(), EmotionState.ANGRY, null, null, false, null);
-        EmotionMapPageView updated = page(null);
+        EmotionMapPageView updated = cachedPage(null);
         commands.update(emotion.getId(), requester.getPublicId(), EmotionState.ANGRY, "복원한 내용", null, false, null);
-        EmotionMapPageView restored = page(null);
+        EmotionMapPageView restored = cachedPage(null);
         commands.delete(emotion.getId(), requester.getPublicId());
-        EmotionMapPageView deleted = page(null);
+        EmotionMapPageView deleted = cachedPage(null);
 
         // then
         assertThat(updated.items()).isEmpty();
         assertThat(restored.items()).singleElement().satisfies(item -> assertThat(item.state()).isEqualTo(EmotionState.ANGRY));
         assertThat(deleted.items()).isEmpty();
-        assertThat(cacheHits() - hits).isEqualTo(3);
     }
 
     @Test
@@ -161,21 +153,16 @@ class EmotionPinCacheIntegrationTest {
         // given
         insertPins(99_999, requester.getId());
         page(null);
-        double hits = cacheHits();
-        page(null);
-        assertThat(cacheHits() - hits).isEqualTo(1);
+        cachedPage(null);
 
         // when
         commands.save(UUID.randomUUID(), EmotionState.ANGRY, 127, 38, 0, "상한 초과", null, null, requester.getPublicId());
-        double fallbacks = cacheFallbacks();
-        EmotionMapPageView result = page(null);
-        page(null);
+        EmotionMapPageView result = fallbackPage(null);
+        fallbackPage(null);
 
         // then
         assertThat(result.items()).hasSize(200);
         assertThat(result.hasNext()).isTrue();
-        assertThat(cacheHits() - hits).isEqualTo(1);
-        assertThat(cacheFallbacks() - fallbacks).isEqualTo(2);
     }
 
     @Test
@@ -226,18 +213,16 @@ class EmotionPinCacheIntegrationTest {
         jdbc.sql("UPDATE emotions SET group_stamp_id = :stamp WHERE id = :id")
                 .param("stamp", stamp.getId()).param("id", emotion.getId()).update();
         assertThat(page(null).items().getFirst().groupStamp().text()).isEqualTo("기본");
-        double hits = cacheHits();
 
         // when
         jdbc.sql("UPDATE group_stamps SET text = '변경' WHERE id = :id").param("id", stamp.getId()).update();
-        EmotionMapPageView result = page(null);
+        EmotionMapPageView result = cachedPage(null);
 
         // then
         assertThat(result.items()).singleElement().satisfies(item -> {
             assertThat(item.groupStamp().text()).isEqualTo("변경");
             assertThat(item.groupId()).isEqualTo(group.getPublicId());
         });
-        assertThat(cacheHits() - hits).isEqualTo(1);
     }
 
     @Test
@@ -246,21 +231,26 @@ class EmotionPinCacheIntegrationTest {
         insertPins(220, requester.getId());
         page(null);
         EmotionMapPageView sqlFirst = new TransactionTemplate(transactions).execute(status -> page(null));
-        double fallbacks = cacheFallbacks();
-        double hits = cacheHits();
 
         // when
-        EmotionMapPageView result = page(sqlFirst.nextCursor());
+        EmotionMapPageView result = fallbackPage(sqlFirst.nextCursor());
 
         // then
         assertThat(result.items()).hasSize(21);
-        assertThat(cacheFallbacks() - fallbacks).isEqualTo(1);
-        assertThat(cacheHits() - hits).isZero();
     }
 
-    private double cacheFallbacks() {
-        Counter counter = meters.find("pheeeew.map.cache.requests").tag("cache", "pins").tag("result", "fallback").counter();
-        return counter == null ? 0 : counter.count();
+    /** 캐시가 적중해서 응답한 페이지다. */
+    private EmotionMapPageView cachedPage(String cursor) {
+        var read = MapReadDecisions.pins(meters, () -> page(cursor));
+        assertThat(read.decision()).isEqualTo("cache_hit");
+        return read.value();
+    }
+
+    /** 캐시를 시도했지만 SQL로 대체한 페이지다. */
+    private EmotionMapPageView fallbackPage(String cursor) {
+        var read = MapReadDecisions.pins(meters, () -> page(cursor));
+        assertThat(read.decision()).isEqualTo("cache_fallback");
+        return read.value();
     }
 
     private void insertPins(int count, Long authorId) {
@@ -276,10 +266,5 @@ class EmotionPinCacheIntegrationTest {
     private EmotionMapPageView page(String cursor) {
         return queries.findContentMapWithinBounds(cursor == null ? BOUNDS : null, requester.getPublicId(),
                 null, null, null, null, null, cursor);
-    }
-
-    private double cacheHits() {
-        Counter counter = meters.find("pheeeew.map.cache.requests").tag("cache", "pins").tag("result", "hit").counter();
-        return counter == null ? 0 : counter.count();
     }
 }

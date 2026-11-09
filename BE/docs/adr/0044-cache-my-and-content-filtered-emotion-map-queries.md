@@ -52,7 +52,8 @@ ADR-0040의 쓰기·재집계 직렬화, 등록 3초 지연, 수정·삭제 즉�
 - (-) 지역 집계 재생성 SQL의 결과 행이 내용 종류만큼 늘고, 쓰기마다 해당 종류의 집계만 복사해요.
 - (-) `MY` 지역 요약은 핀 캐시의 완전 시점을 따라요. 같은 화면의 `ALL` 지역 요약과 잠깐 다른 시점일 수 있어요.
 - (=) 지역 요약은 지금 SQL과 같이 차단을 반영하지 않아요. 핀은 매 요청 차단을 제외해요.
-- (=) 지도 조회 결정 기록과 캐시 요청 지표의 이름·태그는 그대로예요. `bypass_filter`는 이제 `GROUP`만 기록해요.
+- (=) 캐시 적중은 `pheeeew.map.read.requests`의 `decision`으로 보고, 같은 지표에 `scope`·`content_type` 태그를 더해 필터별로 나눠요.
+  중복이던 `pheeeew.map.cache.requests`·`rebuilds`·`pin.search`는 지우고, 보정 지표는 `result` 태그 하나로 합쳤어요. `bypass_filter`는 이제 `GROUP`만 기록해요.
 - 재검토: 핀 탐색 수(`pheeeew.map.cache.pin.scanned`)가 내용 필터에서 크게 늘거나, 힙·재생성 시간이 늘거나, `GROUP`·EMD를 다시 쓰게 될 때.
 
 ## Compliance

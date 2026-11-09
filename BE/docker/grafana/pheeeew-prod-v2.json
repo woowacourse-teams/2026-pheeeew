@@ -2704,7 +2704,7 @@
       "id": 161,
       "type": "table",
       "title": "v4 지도 · 조건·경로별 요청 수",
-      "description": "요청 종료 시 한 번 기록한 카운터의 선택 기간 increase 추정치예요. query가 unclassified이면 인증·입력·커서 등의 이유로 검증된 조회 조건을 얻지 못한 요청이에요. 알려진 query에는 이후 DB·기기 오류도 포함돼요. decision은 경로 선택, outcome은 최종 HTTP 결과이며 cache_hit도 응답 성공을 뜻하지 않아요. 표본 로그 횟수와는 달라요. 일부 기간 수집으로도 값이 나올 수 있어요.",
+      "description": "요청 종료 시 한 번 기록한 카운터의 선택 기간 increase 추정치예요. query가 unclassified이면 인증·입력·커서 등의 이유로 검증된 조회 조건을 얻지 못한 요청이에요. 알려진 query에는 이후 DB·기기 오류도 포함돼요. decision은 경로 선택, outcome은 최종 HTTP 결과이며 cache_hit도 응답 성공을 뜻하지 않아요. 표본 로그 횟수와는 달라요. 일부 기간 수집으로도 값이 나올 수 있어요. scope(all·my·group)와 content_type(all·memo·audio)은 요청한 지도 필터예요.",
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
@@ -2728,7 +2728,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (instance, route, query, page, decision, outcome) (increase(pheeeew_map_read_requests_total{job=\"pheeeew-api\",environment=\"prod\",api_version=\"v4\"}[$__range]))",
+          "expr": "sum by (instance, route, query, page, scope, content_type, decision, outcome) (increase(pheeeew_map_read_requests_total{job=\"pheeeew-api\",environment=\"prod\",api_version=\"v4\"}[$__range]))",
           "legendFormat": "",
           "datasource": {
             "type": "prometheus",
@@ -2821,6 +2821,58 @@
       ]
     },
     {
+      "id": 169,
+      "type": "stat",
+      "title": "v4 지도 · 필터별 캐시 응답률",
+      "description": "검증된 조회 조건(query!=unclassified)의 요청 중 캐시가 응답한(cache_hit·cache_load) 비율을 경로·범위·내용 필터별로 보여줘요. cache_fallback(캐시 시도 후 SQL)과 bypass_*(캐시 미시도)는 분자에서 빠져요. 요청 수는 위 조건·경로별 요청 수 표에서 봐요. 분모가 0·없음이면 빈 값이고, 관측된 분모가 양수인데 캐시 응답이 없으면 0%예요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 156,
+        "w": 24,
+        "h": 6
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "noValue": "데이터 없음"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "vertical",
+        "textMode": "auto",
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "((( sum by (route, scope, content_type) (increase(pheeeew_map_read_requests_total{job=\"pheeeew-api\",environment=\"prod\",api_version=\"v4\",query!=\"unclassified\",decision=~\"cache_hit|cache_load\"}[$__range])) ) or on (route, scope, content_type) (( sum by (route, scope, content_type) (increase(pheeeew_map_read_requests_total{job=\"pheeeew-api\",environment=\"prod\",api_version=\"v4\",query!=\"unclassified\"}[$__range])) ) * 0)) / (sum by (route, scope, content_type) (increase(pheeeew_map_read_requests_total{job=\"pheeeew-api\",environment=\"prod\",api_version=\"v4\",query!=\"unclassified\"}[$__range]))) * 100) and on (route, scope, content_type) ((sum by (route, scope, content_type) (increase(pheeeew_map_read_requests_total{job=\"pheeeew-api\",environment=\"prod\",api_version=\"v4\",query!=\"unclassified\"}[$__range]))) > 0)",
+          "legendFormat": "{{route}} · {{scope}} · {{content_type}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": false,
+          "instant": true,
+          "interval": "1m"
+        }
+      ]
+    },
+    {
       "id": 163,
       "type": "timeseries",
       "title": "v4 지도 · 단계별 평균",
@@ -2831,7 +2883,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 156,
+        "y": 162,
         "w": 12,
         "h": 8
       },
@@ -2885,7 +2937,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 156,
+        "y": 162,
         "w": 12,
         "h": 8
       },
@@ -2939,7 +2991,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 164,
+        "y": 170,
         "w": 12,
         "h": 8
       },
@@ -3006,7 +3058,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 164,
+        "y": 170,
         "w": 12,
         "h": 8
       },
@@ -3058,7 +3110,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 172,
+        "y": 178,
         "w": 24,
         "h": 6
       },
