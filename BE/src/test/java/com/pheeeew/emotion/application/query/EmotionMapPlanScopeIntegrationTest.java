@@ -14,6 +14,7 @@ import com.pheeeew.emotion.application.dto.EmotionMapPageView;
 import com.pheeeew.emotion.domain.Emotion;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchFilter;
+import com.pheeeew.emotion.application.mapcache.PinCandidateCache;
 import com.pheeeew.emotion.domain.repository.query.EmotionContentFilter;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchScope;
 import com.pheeeew.emotion.exception.EmotionException;
@@ -45,6 +46,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -69,6 +71,8 @@ class EmotionMapPlanScopeIntegrationTest {
     @Autowired private JdbcClient jdbc;
     @Autowired private PlatformTransactionManager transactionManager;
     @Autowired private PlanObserver observer;
+    /** 핀 캐시가 항상 응답하지 못하게 해서 SQL 대체 경로의 계획 범위를 검증한다. */
+    @MockitoBean private PinCandidateCache pinCandidateCache;
 
     private Device viewer;
     private Emotion emotion;
@@ -282,7 +286,7 @@ class EmotionMapPlanScopeIntegrationTest {
     }
 
     private EmotionMapPageView findMap(UUID deviceId) {
-        // SQL 계획 범위 검증은 캐시 대상이 아닌 MEMO 조회에서 수행한다.
+        // SQL 계획 범위 검증은 핀 캐시를 대체한 MEMO 조회에서 수행한다.
         return service.findContentMapWithinBounds(BOUNDS, deviceId, null, null, null, EmotionContentFilter.MEMO, null, null);
     }
 

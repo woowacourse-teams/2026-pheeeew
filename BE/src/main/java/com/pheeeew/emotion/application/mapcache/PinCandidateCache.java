@@ -1,16 +1,20 @@
 package com.pheeeew.emotion.application.mapcache;
 
 import com.pheeeew.emotion.application.dto.EmotionCursor;
+import com.pheeeew.emotion.application.dto.RegionEmotionSummary;
 import com.pheeeew.emotion.domain.repository.EmotionMapReadRepository;
 import com.pheeeew.emotion.domain.repository.projection.EmotionMapBlocks;
 import com.pheeeew.emotion.domain.repository.projection.EmotionMapPin;
+import com.pheeeew.emotion.domain.repository.query.EmotionSearchFilter;
 import com.pheeeew.emotion.infra.metrics.MapCacheMetrics;
+import com.pheeeew.region.domain.RegionLevel;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.stereotype.Service;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -49,31 +53,48 @@ public class PinCandidateCache implements EmotionMapCacheListener {
     }
 
     public Page find(EmotionCursor cursor, boolean firstPage, Long deviceId, int pageSize) {
-        BatchedSnapshot.Read<Snapshot> read = publication.read();
-        if (!read.loadAllowed()) {
+        Lookup lookup = lookup();
+        if (lookup == null || !firstPage && lookup.snapshot().completeThrough().isBefore(cursor.snapshotAt())) {
             metrics.request("fallback");
             return null;
         }
 
-        Snapshot observed = read.snapshot();
-        Snapshot snapshot = observed == null ? snapshot() : observed;
-
-        if (snapshot == null || snapshot.completeThrough().isAfter(Instant.now(clock))
-                || !firstPage && snapshot.completeThrough().isBefore(cursor.snapshotAt())) {
-            metrics.request("fallback");
-            return null;
-        }
-
-        metrics.request(observed == null ? "miss" : "hit");
+        Snapshot snapshot = lookup.snapshot();
+        metrics.request(lookup.loaded() ? "miss" : "hit");
         EmotionCursor selected = firstPage
                 ? EmotionCursor.initialWithinBounds(cursor.bounds(), snapshot.completeThrough(), cursor.filter()) : cursor;
 
         EmotionMapBlocks blocked = repository.findBlockedTargets(deviceId);
 
         PinCandidates.Selection selection = metrics.measurePinSearch(
-                () -> snapshot.ordered().select(selected, blocked, pageSize + 1), PinCandidates.Selection::scanned);
+                () -> snapshot.ordered().select(selected, deviceId, blocked, pageSize + 1), PinCandidates.Selection::scanned);
 
         return Page.of(selected, selection.pins());
+    }
+
+    /** MY 지역 요약을 핀 후보에서 계산한다. 캐시를 쓸 수 없으면 null이며, 요청 지표는 호출한 지역 캐시가 기록한다. */
+    public DeviceRegions regionSummaries(Long deviceId, EmotionSearchFilter filter) {
+        Lookup lookup = lookup();
+        if (lookup == null) {
+            return null;
+        }
+
+        return new DeviceRegions(lookup.snapshot().ordered().regionSummaries(deviceId, filter), lookup.loaded());
+    }
+
+    private Lookup lookup() {
+        BatchedSnapshot.Read<Snapshot> read = publication.read();
+        if (!read.loadAllowed()) {
+            return null;
+        }
+
+        Snapshot observed = read.snapshot();
+        Snapshot snapshot = observed == null ? snapshot() : observed;
+        if (snapshot == null || snapshot.completeThrough().isAfter(Instant.now(clock))) {
+            return null;
+        }
+
+        return new Lookup(snapshot, observed == null);
     }
 
     @Override
@@ -223,6 +244,12 @@ public class PinCandidateCache implements EmotionMapCacheListener {
         Instant nextActivation = repository.findNextPinActivation(at);
 
         return Snapshot.of(epoch, at, PinCandidates.of(rows, nextActivation));
+    }
+
+    public record DeviceRegions(Map<RegionLevel, Map<String, RegionEmotionSummary>> summaries, boolean loaded) {
+    }
+
+    private record Lookup(Snapshot snapshot, boolean loaded) {
     }
 
     public record Page(EmotionCursor cursor, List<EmotionMapPin> pins) {

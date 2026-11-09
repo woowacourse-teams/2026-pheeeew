@@ -203,13 +203,15 @@ class EmotionMapObservationIntegrationTest {
     }
 
     @Test
-    void 다른_필터와_외부_트랜잭션_EMD_및_빈_지역의_기존_조회_분기를_관찰한다() {
+    void 내용_필터와_MY_지역_요약은_캐시_경로로_관찰하고_외부_트랜잭션_EMD_및_빈_지역_분기도_관찰한다() {
         // given
         EmotionSearchFilter all = EmotionSearchFilter.from(null);
+        EmotionSearchFilter mine = EmotionSearchFilter.of(null, null, null, EmotionSearchScope.MY, null);
 
         // when
         var filtered = observe("pins", () -> queries.findContentMapWithinBoundsV4(BOUNDS, requester.getPublicId(),
                 null, null, EmotionContentFilter.MEMO, EmotionSearchScope.ALL, null));
+        var myRegions = observe("regions", () -> queries.findRegionMap(BOUNDS, RegionLevel.SIDO, requester.getPublicId(), mine));
         var transaction = observe("pins", () -> new TransactionTemplate(transactions).execute(status -> page(null)));
         var emd = observe("regions", () -> queries.findRegionMap(BOUNDS, RegionLevel.EMD, requester.getPublicId(), all));
         emotions.deleteAllInBatch();
@@ -218,8 +220,10 @@ class EmotionMapObservationIntegrationTest {
 
         // then
         assertThat(filtered.value().items()).hasSize(1);
-        assertThat(filtered.details()).containsEntry("query", "other").containsEntry("decision", "bypass_filter")
+        assertThat(filtered.details()).containsEntry("query", "other").containsEntry("decision", "cache_load")
                 .containsEntry("scope", "ALL").containsEntry("contentType", "MEMO");
+        assertThat(myRegions.value()).singleElement().satisfies(item -> assertThat(item.summary().totalCount()).isEqualTo(1));
+        assertThat(myRegions.details()).containsEntry("decision", "cache_hit").containsEntry("scope", "MY");
         assertThat(transaction.value().items()).hasSize(1);
         assertThat(transaction.details()).containsEntry("decision", "bypass_transaction");
         assertThat(emd.value()).hasSize(1);

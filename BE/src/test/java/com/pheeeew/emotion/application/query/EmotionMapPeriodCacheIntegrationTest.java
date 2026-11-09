@@ -201,7 +201,7 @@ class EmotionMapPeriodCacheIntegrationTest {
     }
 
     @Test
-    void 기본이_아닌_내용_필터의_기간_조회는_캐시를_사용하지_않는다() {
+    void 내용_필터의_기간_조회도_캐시에서_응답한다() {
         // given
         double regions = cacheRequests("regions");
         double pins = cacheRequests("pins");
@@ -215,8 +215,8 @@ class EmotionMapPeriodCacheIntegrationTest {
         // then
         assertThat(regionResult).singleElement().satisfies(item -> assertThat(item.summary().totalCount()).isEqualTo(2));
         assertThat(pinResult.items()).extracting(item -> item.id()).containsExactly(lastDay, firstDay);
-        assertThat(cacheRequests("regions")).isEqualTo(regions);
-        assertThat(cacheRequests("pins")).isEqualTo(pins);
+        assertThat(cacheRequests("regions") - regions).isEqualTo(1);
+        assertThat(cacheRequests("pins") - pins).isEqualTo(1);
     }
 
     private EmotionSearchFilter period() {
