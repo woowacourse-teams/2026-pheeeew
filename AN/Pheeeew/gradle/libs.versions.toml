@@ -1,4 +1,5 @@
 [versions]
+jindong = "1.1.0"
 metro = "1.4.5"
 agp = "9.0.1"
 android-compileSdk = "36"
@@ -33,6 +34,7 @@ googleServices = "4.5.0"
 firebaseBom = "35.1.0"
 
 [libraries]
+jindong-core = { module = "io.github.compose-jindong:jindong-core", version.ref = "jindong" }
 androidx-fragment = { module = "androidx.fragment:fragment", version.ref = "androidx-fragment" }
 play-app-update = { module = "com.google.android.play:app-update", version.ref = "play-app-update" }
 play-app-update-ktx = { module = "com.google.android.play:app-update-ktx", version.ref = "play-app-update" }

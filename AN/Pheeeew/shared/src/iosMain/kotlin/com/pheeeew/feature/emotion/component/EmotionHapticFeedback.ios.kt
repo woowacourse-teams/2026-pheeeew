@@ -7,9 +7,11 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pheeeew.core.di.IosGraphs
+import platform.UIKit.UIApplication
+import platform.UIKit.UIApplicationState.UIApplicationStateActive
 
 @Composable
-internal actual fun rememberEmotionHapticFeedback(): () -> Unit {
+internal actual fun rememberNativeEmotionHapticFeedback(): () -> Unit {
     val controller = IosGraphs.app.emotionHaptics
     val lifecycleOwner = LocalLifecycleOwner.current
     val owner = remember(controller, lifecycleOwner) { Any() }
@@ -42,3 +44,10 @@ internal actual fun rememberEmotionHapticFeedback(): () -> Unit {
     }
     return remember(controller, owner) { { controller.play(owner) } }
 }
+
+@Composable
+internal actual fun rememberEmotionHapticContext(): Any? = null
+
+@Composable
+internal actual fun rememberEmotionHapticPlaybackAllowed(): () -> Boolean =
+    remember { { UIApplication.sharedApplication.applicationState == UIApplicationStateActive } }

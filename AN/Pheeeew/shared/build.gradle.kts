@@ -66,6 +66,7 @@ kotlin {
             implementation(libs.metro.viewmodel.compose)
             implementation(libs.sentry)
             implementation(libs.posthog)
+            implementation(libs.jindong.core)
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
@@ -168,4 +169,27 @@ val verifyDeveloperToolsIsolation by tasks.registering {
 
 tasks.matching { it.name.startsWith("link") && it.name.contains("FrameworkIos") }.configureEach {
     dependsOn(verifyDeveloperToolsIsolation)
+}
+
+// Build the same application with either implementation for the conference comparison.
+val emotionHapticBackend = providers.gradleProperty("emotionHapticBackend").orElse("jindong")
+val generateEmotionHapticConfig by tasks.registering {
+    val backend = emotionHapticBackend
+    val outputDirectory = layout.buildDirectory.dir("generated/emotionHaptics/commonMain")
+    inputs.property("backend", backend)
+    outputs.dir(outputDirectory)
+    doLast {
+        val selected = backend.get()
+        require(selected in setOf("native", "jindong")) {
+            "emotionHapticBackend must be native or jindong: $selected"
+        }
+        val output = outputDirectory.get().file("com/pheeeew/core/haptics/EmotionHapticConfig.kt").asFile
+        output.parentFile.mkdirs()
+        output.writeText(
+            "package com.pheeeew.core.haptics\n\ninternal const val USE_JINDONG_HAPTICS: Boolean = ${selected == "jindong"}\n",
+        )
+    }
+}
+kotlin.sourceSets.named("commonMain") {
+    kotlin.srcDir(generateEmotionHapticConfig)
 }
