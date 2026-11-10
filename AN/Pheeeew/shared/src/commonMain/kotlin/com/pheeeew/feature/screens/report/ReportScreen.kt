@@ -14,17 +14,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.component.Snackbar
-import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appBackground
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appInk
 import com.pheeeew.feature.screens.report.component.ReportDescriptionInput
 import com.pheeeew.feature.screens.report.component.ReportHeader
 import com.pheeeew.feature.screens.report.component.ReportReasonOption
@@ -69,7 +72,7 @@ fun ReportScreen(
         modifier =
             modifier
                 .fillMaxSize()
-                .background(AppColors.Background)
+                .background(MaterialTheme.colorScheme.appBackground)
                 .statusBarsPadding()
                 .navigationBarsPadding()
                 .imePadding(),
@@ -82,11 +85,11 @@ fun ReportScreen(
                     Modifier
                         .weight(1f)
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 24.dp),
+                        .padding(horizontal = AppSpacing.screen.dp),
             ) {
                 ReportStampPrompt(emotionStamp = uiState.emotionStamp)
 
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.cardGap.dp)) {
                     reportReasons.forEach { reason ->
                         ReportReasonOption(
                             reason = reason,
@@ -99,8 +102,8 @@ fun ReportScreen(
 
                 Text(
                     text = stringResource(Res.string.report_description_label),
-                    modifier = Modifier.padding(top = 20.dp),
-                    color = AppColors.GroupInk,
+                    modifier = Modifier.padding(top = AppSpacing.xl.dp),
+                    color = MaterialTheme.colorScheme.appInk,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                 )
@@ -108,17 +111,17 @@ fun ReportScreen(
                     value = uiState.description,
                     onValueChange = onDescriptionChange,
                     enabled = !uiState.isSubmitting,
-                    modifier = Modifier.padding(top = 10.dp),
+                    modifier = Modifier.padding(top = AppSpacing.sm.copy(value = 10.dp).dp),
                 )
                 uiState.errorMessage?.let { message ->
                     Text(
                         text = message,
-                        modifier = Modifier.padding(top = 8.dp),
-                        color = Color(0xFFE5484D),
+                        modifier = Modifier.padding(top = AppSpacing.sm.dp),
+                        color = MaterialTheme.appColors.report.error,
                         fontSize = 12.sp,
                     )
                 }
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(AppSpacing.lg.dp))
             }
 
             ReportSubmitButton(
@@ -127,8 +130,12 @@ fun ReportScreen(
                 onClick = onSubmit,
                 modifier =
                     Modifier
-                        .padding(start = 24.dp, top = 8.dp, end = 24.dp, bottom = 16.dp)
-                        .fillMaxWidth(),
+                        .padding(
+                            start = AppSpacing.xxl.dp,
+                            top = AppSpacing.sm.dp,
+                            end = AppSpacing.xxl.dp,
+                            bottom = AppSpacing.lg.dp,
+                        ).fillMaxWidth(),
             )
         }
 
@@ -139,7 +146,7 @@ fun ReportScreen(
                 Modifier
                     .fillMaxWidth()
                     .align(Alignment.TopCenter)
-                    .padding(horizontal = 24.dp, vertical = 8.dp),
+                    .padding(horizontal = AppSpacing.xxl.dp, vertical = AppSpacing.sm.dp),
         )
     }
 }

@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -28,12 +28,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.core.designsystem.theme.appDisabledContent
+import com.pheeeew.core.designsystem.theme.appInk
+import com.pheeeew.core.designsystem.theme.appSurface
+import com.pheeeew.core.designsystem.theme.appSurfaceSubtle
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
@@ -57,7 +61,7 @@ internal fun FilterDateContent(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(vertical = 32.dp)
+                .padding(vertical = AppSpacing.xxxl.dp)
                 .height(200.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -65,8 +69,8 @@ internal fun FilterDateContent(
             Modifier
                 .fillMaxWidth()
                 .height(40.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(AppColors.Gray50),
+                .clip(AppShapes.CompactInput)
+                .background(MaterialTheme.colorScheme.appSurfaceSubtle),
         )
         Row(
             Modifier.fillMaxWidth(),
@@ -99,7 +103,11 @@ internal fun FilterDateContent(
                 .height(80.dp)
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(AppColors.Surface, AppColors.Surface.copy(alpha = 0f)),
+                        colors =
+                            listOf(
+                                MaterialTheme.colorScheme.appSurface,
+                                MaterialTheme.colorScheme.appSurface.copy(alpha = 0f),
+                            ),
                     ),
                 ),
         )
@@ -110,13 +118,17 @@ internal fun FilterDateContent(
                 .height(80.dp)
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(AppColors.Surface.copy(alpha = 0f), AppColors.Surface),
+                        colors =
+                            listOf(
+                                MaterialTheme.colorScheme.appSurface.copy(alpha = 0f),
+                                MaterialTheme.colorScheme.appSurface,
+                            ),
                     ),
                 ),
         )
     }
     FilterActionButton("확인") { onConfirm(date.coerceIn(minimumFilterDate, today)) }
-    Spacer(Modifier.height(24.dp))
+    Spacer(Modifier.height(AppSpacing.xxl.dp))
 }
 
 @Composable
@@ -143,7 +155,7 @@ private fun DateWheel(
             modifier = Modifier.fillMaxWidth().height(200.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            items(2) { Spacer(Modifier.height(40.dp)) }
+            items(2) { Spacer(Modifier.height(AppSpacing.xxxl.copy(value = 40.dp).dp)) }
             itemsIndexed(values) { index, value ->
                 val isSelected = index == listState.firstVisibleItemIndex
                 Box(
@@ -155,11 +167,16 @@ private fun DateWheel(
                     Text(
                         "$value$suffix",
                         fontSize = 16.sp,
-                        color = if (isSelected) AppColors.GroupInk else Color.LightGray,
+                        color =
+                            if (isSelected) {
+                                MaterialTheme.colorScheme.appInk
+                            } else {
+                                MaterialTheme.colorScheme.appDisabledContent
+                            },
                     )
                 }
             }
-            items(2) { Spacer(Modifier.height(40.dp)) }
+            items(2) { Spacer(Modifier.height(AppSpacing.xxxl.copy(value = 40.dp).dp)) }
         }
     }
 }
@@ -168,7 +185,7 @@ private fun DateWheel(
 @Composable
 private fun FilterDateContentPreview() {
     AppTheme {
-        Column(Modifier.background(AppColors.Surface).padding(horizontal = 24.dp)) {
+        Column(Modifier.background(MaterialTheme.colorScheme.appSurface).padding(horizontal = AppSpacing.screen.dp)) {
             FilterDateContent(FilterDate(2026, 9, 1)) {}
         }
     }

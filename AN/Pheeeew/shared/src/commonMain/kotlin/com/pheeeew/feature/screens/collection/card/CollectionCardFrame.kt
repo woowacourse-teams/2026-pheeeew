@@ -30,7 +30,7 @@ import pheeeew.shared.generated.resources.ic_card_corner
 
 @Composable
 internal fun CollectionCardFrame(
-    cornerIconTint: Color,
+    cornerIconTint: Color?,
     modifier: Modifier = Modifier,
     content: @Composable (scale: Float) -> Unit,
 ) {
@@ -59,11 +59,13 @@ internal fun CollectionCardFrame(
             )
             content(scale)
         }
-        CollectionCardCorners(
-            tint = cornerIconTint,
-            scale = scale,
-            modifier = Modifier.fillMaxSize(),
-        )
+        if (cornerIconTint != null) {
+            CollectionCardCorners(
+                tint = cornerIconTint,
+                scale = scale,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
     }
 }
 

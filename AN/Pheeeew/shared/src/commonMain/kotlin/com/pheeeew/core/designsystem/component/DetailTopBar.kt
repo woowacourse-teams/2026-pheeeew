@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -21,7 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.appInk
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import org.jetbrains.compose.resources.painterResource
 import pheeeew.shared.generated.resources.Res
@@ -33,9 +34,10 @@ fun DetailTopBar(
     onBack: () -> Unit,
     backContentDescription: String = "뒤로가기",
     modifier: Modifier = Modifier,
-    titleColor: Color = AppColors.GroupInk,
+    titleColor: Color? = null,
     rightContent: @Composable BoxScope.() -> Unit = {},
 ) {
+    val resolvedTitleColor = titleColor ?: MaterialTheme.colorScheme.appInk
     Row(
         modifier = modifier.fillMaxWidth().height(54.dp).padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -44,14 +46,14 @@ fun DetailTopBar(
             Icon(
                 painter = painterResource(Res.drawable.ic_arrow_back),
                 contentDescription = backContentDescription,
-                tint = titleColor,
+                tint = resolvedTitleColor,
                 modifier = Modifier.size(24.dp),
             )
         }
         Text(
             text = title,
             modifier = Modifier.weight(1f).padding(horizontal = 8.dp).semantics { heading() },
-            color = titleColor,
+            color = resolvedTitleColor,
             fontFamily = notoSansKrFontFamily(),
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,

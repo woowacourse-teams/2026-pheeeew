@@ -34,6 +34,35 @@
     <string name="onboarding_next">다음</string>
     <string name="splash_accessibility">히유, 시작하는 중</string>
 
+    <!-- 화면 사용 가이드 -->
+    <string name="coachmark_skip">건너뛰기</string>
+    <string name="coachmark_next">다음</string>
+    <string name="coachmark_start">확인</string>
+    <string name="coachmark_map_record_title">여기서 감정을 남겨요</string>
+    <string name="coachmark_map_record_description">버블을 터치해 감정을 꺼내면\n지금 있는 자리에 감정이 남아요</string>
+    <string name="coachmark_map_list_title">목록으로 한눈에 봐요</string>
+    <string name="coachmark_map_list_description">지도 위에 남겨진 감정들을\n목록으로 펼쳐 하나씩 살펴볼 수 있어요</string>
+    <string name="coachmark_map_filter_title">보고 싶은 감정만 골라요</string>
+    <string name="coachmark_map_filter_description">필터로 감정 종류를 고르면\n지도에 원하는 감정만 보여요</string>
+    <string name="coachmark_press_tap_title">지금 마음을 눌러봐요</string>
+    <string name="coachmark_press_tap_description">지금 기분과 가까운 감정을 골라\n가볍게 눌러요. 누를수록 숫자가 올라가요</string>
+    <string name="coachmark_press_activity_title">혼자 누르는 게 아니에요</string>
+    <string name="coachmark_press_activity_description">지금 같이 누르고 있는 사람 수가\n실시간으로 보여요</string>
+    <string name="coachmark_press_rank_title">누가 제일 많이 눌렀을까요</string>
+    <string name="coachmark_press_rank_description">전체 순위에서 다른 사람들과\n누른 횟수를 비교해 볼 수 있어요</string>
+    <string name="coachmark_collection_condition_title">조건을 채우면 카드가 열려요</string>
+    <string name="coachmark_collection_condition_description">스탬프와 프레스 목표를 모두 채우면\n감정 카드를 발급받을 수 있어요</string>
+    <string name="coachmark_collection_claim_title">하루에 한 장, 발급받아요</string>
+    <string name="coachmark_collection_claim_description">조건을 달성하면 발급하기가 떠요\n카드는 하루에 한 장만 받을 수 있어요</string>
+    <string name="coachmark_collection_share_title">카드를 눌러 공유할 수 있어요</string>
+    <string name="coachmark_collection_share_description">카드를 누르면 감정카드를 저장하거나 공유할 수 있어요</string>
+    <string name="coachmark_collection_calendar_title">달력에서도 살펴봐요</string>
+    <string name="coachmark_collection_calendar_description">상단 보기 전환을 누르면 날짜별로\n모은 카드를 확인할 수 있어요</string>
+    <string name="coachmark_calendar_month_title">달력을 좌우로 넘겨봐요</string>
+    <string name="coachmark_calendar_month_description">화살표를 누르거나 달력을 좌우로 넘겨\n다른 달의 감정 기록을 살펴볼 수 있어요</string>
+    <string name="coachmark_calendar_day_title">날짜를 눌러 기록을 확인해요</string>
+    <string name="coachmark_calendar_day_description">날짜를 선택하면 그날의 감정 카드와\n기록을 다시 볼 수 있어요</string>
+
     <!-- 바텀바 -->
     <string name="bottom_navigation_map">지도</string>
     <string name="bottom_navigation_press">프레스</string>
@@ -149,6 +178,8 @@
     <!-- 설정 및 약관 -->
     <string name="settings_title">설정</string>
     <string name="settings_permissions">접근 권한 설정</string>
+    <string name="settings_replay_guide">사용방법 다시보기</string>
+    <string name="settings_replay_guide_notice">화면으로 돌아가면 사용방법이 보여요</string>
     <string name="settings_legal_open_source">오픈소스 라이선스</string>
     <string name="settings_legal_privacy">개인정보 처리방침</string>
     <string name="legal_loading">문서를 불러오는 중이에요.</string>
@@ -266,11 +297,15 @@
     <string name="collection_title">나의 감정 컬렉션</string>
     <string name="collection_subtitle">%1$s님의 감정 카드</string>
     <string name="collection_card_count">모은 카드 %1$s장</string>
+    <string name="collection_unissued_card_message">이날은\n발급받은 카드가 없어요!</string>
     <string name="collection_card_action_hint">카드를 눌러 저장하거나 공유해보세요!</string>
     <string name="collection_tomorrow_card_message">컬렉션 카드는 하루에 하나만 발급받을 수 있어요!\n내일 도전해보세요!</string>
     <string name="collection_tomorrow_card_accessibility_description">내일 발급할 수 있는 컬렉션 카드 안내</string>
-    <string name="collection_cover_flow">커버플로</string>
-    <string name="collection_album">앨범</string>
+    <string name="collection_cover_flow">컬렉션</string>
+    <string name="collection_calendar">캘린더</string>
+    <string name="collection_day_cards_error">컬렉션을 불러오지 못했어요</string>
+    <string name="collection_day_emotions_error">감정을 불러오지 못했어요</string>
+    <string name="collection_day_emotions_empty">이날은 남긴 감정이 없어요</string>
     <string name="collection_empty">아직 모은 감정 카드가 없어요</string>
     <string name="collection_empty_hint">감정을 기록하고 카드로 모아보세요</string>
     <string name="collection_save">카드 저장</string>

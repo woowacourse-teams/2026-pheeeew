@@ -19,6 +19,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -27,7 +28,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -38,7 +39,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -51,6 +52,7 @@ import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.core.di.AppGraph
 import com.pheeeew.core.di.UiGraph
+import com.pheeeew.core.navigation.CollectionDayDestination
 import com.pheeeew.core.navigation.CollectionRootDestination
 import com.pheeeew.core.navigation.DailyPressRankingRootDestination
 import com.pheeeew.core.navigation.DoubleBackToExitHandler
@@ -75,9 +77,15 @@ import com.pheeeew.feature.component.AppBottomNavigationBar
 import com.pheeeew.feature.component.AppBottomNavigationBarBottomSpacing
 import com.pheeeew.feature.component.AppBottomNavigationBarOverlaySpace
 import com.pheeeew.feature.component.AppDestination
+import com.pheeeew.feature.guide.FeatureGuide
+import com.pheeeew.feature.guide.FeatureGuideOverlay
+import com.pheeeew.feature.guide.FeatureGuideSession
+import com.pheeeew.feature.guide.LocalFeatureGuideAnchorReporter
 import com.pheeeew.feature.monitoring.product.LocalProductMonitoringVisible
 import com.pheeeew.feature.notification.NotificationClickEffect
 import com.pheeeew.feature.screens.collection.CollectionRoute
+import com.pheeeew.feature.screens.collection.CollectionViewModel
+import com.pheeeew.feature.screens.collection.calendar.detail.CollectionDayRoute
 import com.pheeeew.feature.screens.config.DailyRankingConfigGate
 import com.pheeeew.feature.screens.map.EmotionPinUiModel
 import com.pheeeew.feature.screens.map.HighlightedPinPosition
@@ -121,10 +129,12 @@ import dev.zacsweers.metrox.viewmodel.LocalMetroViewModelFactory
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
+
+private const val FEATURE_GUIDE_ANCHOR_TIMEOUT_MS = 500L
 
 internal fun shouldShowMapFeedback(
     mainFeaturesReady: Boolean,
@@ -636,10 +646,120 @@ private fun AppContent(
             selectedDestination == AppDestination.Map &&
                 (mapUiModel.isEmotionSelectorExpanded || recordUiModel.step != RecordFlowStepUiModel.Closed)
 
+        var isCalendarModeSelected by remember { mutableStateOf(false) }
+        var collectionHasClaimedToday by remember(sessionGeneration) { mutableStateOf<Boolean?>(null) }
+        var featureGuideSession by remember { mutableStateOf<FeatureGuideSession?>(null) }
+        var pendingFeatureGuideSession by remember { mutableStateOf<FeatureGuideSession?>(null) }
+        val featureGuideAnchorBoundsByStep = remember { mutableStateMapOf<Pair<String, Int>, Rect>() }
+        val selectedFeatureGuide =
+            when {
+                selectedDestination == AppDestination.Collection && isCalendarModeSelected -> {
+                    FeatureGuide.Calendar
+                }
+
+                selectedDestination == AppDestination.Map -> {
+                    FeatureGuide.Map
+                }
+
+                selectedDestination == AppDestination.Press -> {
+                    FeatureGuide.Press
+                }
+
+                selectedDestination == AppDestination.Collection -> {
+                    when (collectionHasClaimedToday) {
+                        true -> FeatureGuide.CollectionIssued
+                        false -> FeatureGuide.Collection
+                        null -> null
+                    }
+                }
+
+                else -> {
+                    null
+                }
+            }
+        val canShowFeatureGuide =
+            mainFeaturesReady && startupState.splashDismissed && !shouldPrepareMapDuringSplash &&
+                selectedFeatureGuide != null && !isSettingsVisible && reportTarget == null &&
+                !nearbyState.visible && !isEmotionRecordFlowActive &&
+                detailState == EmotionDetailLoadUiModel.Closed &&
+                (selectedFeatureGuide != FeatureGuide.Map || firstMapFrameReady.value)
+        val visibleFeatureGuideSession =
+            featureGuideSession?.takeIf { canShowFeatureGuide && it.guide == selectedFeatureGuide }
+        val focusCollectionIssuedCard =
+            visibleFeatureGuideSession?.let { it.guide == FeatureGuide.CollectionIssued && it.page == 0 } == true
+        val featureGuideAnchorBounds =
+            visibleFeatureGuideSession?.let { featureGuideAnchorBoundsByStep[it.anchorKey] }
+
+        LaunchedEffect(selectedFeatureGuide, canShowFeatureGuide) {
+            if (!canShowFeatureGuide) {
+                featureGuideSession = null
+                pendingFeatureGuideSession = null
+            } else if (featureGuideSession?.guide != selectedFeatureGuide) {
+                pendingFeatureGuideSession = null
+                featureGuideSession =
+                    if (onboardingStore.isFeatureGuideCompleted(selectedFeatureGuide.storageId)) {
+                        null
+                    } else {
+                        FeatureGuideSession(selectedFeatureGuide)
+                    }
+            }
+        }
+        LaunchedEffect(pendingFeatureGuideSession) {
+            val pendingSession = pendingFeatureGuideSession ?: return@LaunchedEffect
+            delay(FEATURE_GUIDE_ANCHOR_TIMEOUT_MS)
+            if (pendingFeatureGuideSession === pendingSession) {
+                pendingFeatureGuideSession = null
+                featureGuideSession = null
+            }
+        }
+        val guideAnchorReporter =
+            remember {
+                { guideId: String, step: Int, bounds: Rect? ->
+                    val anchorKey = guideId to step
+                    if (bounds == null) {
+                        featureGuideAnchorBoundsByStep.remove(anchorKey)
+                    } else {
+                        featureGuideAnchorBoundsByStep[anchorKey] = bounds
+                        val pendingSession = pendingFeatureGuideSession
+                        if (pendingSession != null && pendingSession.anchorKey == anchorKey) {
+                            featureGuideSession = pendingSession
+                            pendingFeatureGuideSession = null
+                        }
+                    }
+                    Unit
+                }
+            }
+        val advanceFeatureGuide: () -> Unit = {
+            val activeSession = featureGuideSession
+            if (activeSession != null && pendingFeatureGuideSession == null) {
+                if (activeSession.page == activeSession.guide.pages.lastIndex) {
+                    onboardingStore.completeFeatureGuide(activeSession.guide.storageId)
+                    featureGuideSession = null
+                } else {
+                    val nextSession = activeSession.copy(page = activeSession.page + 1)
+                    if (featureGuideAnchorBoundsByStep[nextSession.anchorKey] == null) {
+                        pendingFeatureGuideSession = nextSession
+                    } else {
+                        featureGuideSession = nextSession
+                    }
+                }
+            }
+        }
+        val skipFeatureGuide: () -> Unit = {
+            val session = featureGuideSession
+            if (session != null) {
+                onboardingStore.completeFeatureGuide(session.guide.storageId)
+                featureGuideSession = null
+                pendingFeatureGuideSession = null
+            }
+        }
+
+        var rankingDate by rememberSaveable(sessionGeneration) { mutableStateOf<String?>(null) }
+        val isRankingVisible = currentBackStackEntry?.destination?.hasRoute<RankingRootDestination>() == true
         val pressRaceView =
             when {
                 currentBackStackEntry?.destination?.hasRoute<PressRootDestination>() == true -> PressRaceView.PRESS
-                currentBackStackEntry?.destination?.hasRoute<RankingRootDestination>() == true -> PressRaceView.ALL
+                isRankingVisible && rankingDate == null -> PressRaceView.ALL
                 else -> null
             }
         PressRaceLifecycleEffect(
@@ -765,7 +885,7 @@ private fun AppContent(
                     .fillMaxSize()
                     // Keep the persistent map covered while two opaque destinations crossfade.
                     // Retain transparency throughout transitions that still include the map entry.
-                    .background(if (mapEntryPresent) Color.Transparent else AppColors.GroupBackground)
+                    .background(if (mapEntryPresent) AppColors.Transparent else AppColors.GroupBackground)
                     .then(
                         if (shouldPrepareMapDuringSplash) Modifier.clearAndSetSemantics {} else Modifier,
                     ),
@@ -773,7 +893,10 @@ private fun AppContent(
             NavHost(
                 navController = navController,
                 startDestination = MapRootDestination,
-                modifier = Modifier.fillMaxSize(),
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .then(if (featureGuideAnchorBounds != null) Modifier.clearAndSetSemantics {} else Modifier),
                 enterTransition = { fadeIn(tween(200)) },
                 exitTransition = { fadeOut(tween(200)) },
             ) {
@@ -789,47 +912,49 @@ private fun AppContent(
                         onDispose { mapEntryPresent = false }
                     }
                     Box(modifier = Modifier.fillMaxSize()) {
-                        MapScreen(
-                            viewModel = mapViewModel,
-                            remoteNotice = appConfig.config.noticeMessage,
-                            featuresEnabled = mainFeaturesReady && !shouldPrepareMapDuringSplash,
-                            recordViewModel = mapRecordViewModel,
-                            highlightedEmotion = highlightedEmotion,
-                            onHighlightedEmotionChanged = { highlightedEmotion = it },
-                            highlightedPinPosition = highlightedPinPosition,
-                            recordViewport = recordViewport,
-                            onRecordPreviewScaleChanged = { previewScale = it },
-                            onMapVisibilityChanged = { mapVisible = it },
-                            onMapContentActiveChanged = { mapContentActive = it },
-                            monitoringVisible =
-                                mainFeaturesReady && !shouldPrepareMapDuringSplash && !nearbyState.visible &&
-                                    detailState == EmotionDetailLoadUiModel.Closed &&
-                                    !isSettingsVisible && reportTarget == null,
-                            feedbackVisible =
-                                shouldShowMapFeedback(
-                                    mainFeaturesReady = mainFeaturesReady && !shouldPrepareMapDuringSplash,
-                                    selectedDestination = selectedDestination,
-                                    nearbyVisible = nearbyState.visible,
-                                    detailState = detailState,
-                                    settingsVisible = isSettingsVisible,
-                                    hasReportTarget = reportTarget != null,
-                                ),
-                            onListClick = nearbyViewModel::toggle,
-                            nearbyMapControlHeight = nearbyMapControlHeight,
-                            isMapCameraMoving = isMapCameraMoving,
-                            onSettingClick = { isSettingsVisible = true },
-                            onEmotionBubbleClick = {},
-                            locationPermissionController = uiGraph.locationDependencies.permissionController,
-                            appSettingsLauncher = appSettingsLauncher,
-                            modifier = Modifier.fillMaxSize(),
-                            message = moderationMessage,
-                            onMessageDismiss = { id ->
-                                if (moderationMessage?.id == id) moderationMessage = null
-                            },
-                            detailError = detailState as? EmotionDetailLoadUiModel.Failed,
-                            onRetryDetail = detailViewModel::retry,
-                            onDismissDetailError = detailViewModel::dismiss,
-                        )
+                        CompositionLocalProvider(LocalFeatureGuideAnchorReporter provides guideAnchorReporter) {
+                            MapScreen(
+                                viewModel = mapViewModel,
+                                remoteNotice = appConfig.config.noticeMessage,
+                                featuresEnabled = mainFeaturesReady && !shouldPrepareMapDuringSplash,
+                                recordViewModel = mapRecordViewModel,
+                                highlightedEmotion = highlightedEmotion,
+                                onHighlightedEmotionChanged = { highlightedEmotion = it },
+                                highlightedPinPosition = highlightedPinPosition,
+                                recordViewport = recordViewport,
+                                onRecordPreviewScaleChanged = { previewScale = it },
+                                onMapVisibilityChanged = { mapVisible = it },
+                                onMapContentActiveChanged = { mapContentActive = it },
+                                monitoringVisible =
+                                    mainFeaturesReady && !shouldPrepareMapDuringSplash && !nearbyState.visible &&
+                                        detailState == EmotionDetailLoadUiModel.Closed &&
+                                        !isSettingsVisible && reportTarget == null,
+                                feedbackVisible =
+                                    shouldShowMapFeedback(
+                                        mainFeaturesReady = mainFeaturesReady && !shouldPrepareMapDuringSplash,
+                                        selectedDestination = selectedDestination,
+                                        nearbyVisible = nearbyState.visible,
+                                        detailState = detailState,
+                                        settingsVisible = isSettingsVisible,
+                                        hasReportTarget = reportTarget != null,
+                                    ),
+                                onListClick = nearbyViewModel::toggle,
+                                nearbyMapControlHeight = nearbyMapControlHeight,
+                                isMapCameraMoving = isMapCameraMoving,
+                                onSettingClick = { isSettingsVisible = true },
+                                onEmotionBubbleClick = {},
+                                locationPermissionController = uiGraph.locationDependencies.permissionController,
+                                appSettingsLauncher = appSettingsLauncher,
+                                modifier = Modifier.fillMaxSize(),
+                                message = moderationMessage,
+                                onMessageDismiss = { id ->
+                                    if (moderationMessage?.id == id) moderationMessage = null
+                                },
+                                detailError = detailState as? EmotionDetailLoadUiModel.Failed,
+                                onRetryDetail = detailViewModel::retry,
+                                onDismissDetailError = detailViewModel::dismiss,
+                            )
+                        }
 
                         NearbyEmotionSheet(
                             nearbyViewModel,
@@ -885,29 +1010,68 @@ private fun AppContent(
                     popExitTransition = { if (coldNotificationEntry) ExitTransition.None else null },
                 ) {
                     if (!mainFeaturesReady) return@composable
-                    PressRoute(
-                        onOpenRanking = {
-                            if (navController.currentDestination?.hasRoute<PressRootDestination>() == true) {
-                                navController.navigate(RankingRootDestination) { launchSingleTop = true }
-                            }
-                        },
-                        modifier = Modifier.fillMaxSize(),
-                    )
+                    CompositionLocalProvider(LocalFeatureGuideAnchorReporter provides guideAnchorReporter) {
+                        PressRoute(
+                            onOpenRanking = {
+                                if (navController.currentDestination?.hasRoute<PressRootDestination>() == true) {
+                                    navController.navigate(RankingRootDestination) { launchSingleTop = true }
+                                }
+                            },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
                 }
 
                 composable<CollectionRootDestination> {
                     if (!mainFeaturesReady) return@composable
-                    CollectionRoute(
-                        monitoring = apiDependencies.client.monitoring,
-                        sessionGeneration = sessionGeneration,
-                        currentNickname = appEntryState.currentNickname,
-                        notificationDate = collectionNotificationDate,
-                        refreshRevision = collectionRefreshRevision,
-                        modifier = Modifier.fillMaxSize(),
-                        bottomBar = {
-                            Spacer(Modifier.navigationBarsPadding().height(AppBottomNavigationBarOverlaySpace))
-                        },
-                    )
+                    CompositionLocalProvider(LocalFeatureGuideAnchorReporter provides guideAnchorReporter) {
+                        CollectionRoute(
+                            monitoring = apiDependencies.client.monitoring,
+                            sessionGeneration = sessionGeneration,
+                            currentNickname = appEntryState.currentNickname,
+                            notificationDate = collectionNotificationDate,
+                            refreshRevision = collectionRefreshRevision,
+                            onCalendarModeChanged = { isCalendarModeSelected = it },
+                            onHasClaimedTodayChanged = { collectionHasClaimedToday = it },
+                            focusIssuedCardForGuide = focusCollectionIssuedCard,
+                            onOpenCalendarDay = { month, cardId ->
+                                if (navController.currentDestination?.hasRoute<CollectionRootDestination>() ==
+                                    true
+                                ) {
+                                    navController.navigate(
+                                        CollectionDayDestination(month, cardId),
+                                    ) { launchSingleTop = true }
+                                }
+                            },
+                            modifier = Modifier.fillMaxSize(),
+                            bottomBar = {
+                                Spacer(Modifier.navigationBarsPadding().height(AppBottomNavigationBarOverlaySpace))
+                            },
+                        )
+                    }
+                }
+
+                composable<CollectionDayDestination> { entry ->
+                    if (!mainFeaturesReady) return@composable
+                    val destination = entry.toRoute<CollectionDayDestination>()
+                    val collectionEntry =
+                        remember(entry) {
+                            navController.getBackStackEntry<CollectionRootDestination>()
+                        }
+                    CompositionLocalProvider(LocalViewModelStoreOwner provides collectionEntry) {
+                        CollectionDayRoute(
+                            destination = destination,
+                            viewModel = metroViewModel<CollectionViewModel>(),
+                            sessionGeneration = sessionGeneration,
+                            currentNickname = appEntryState.currentNickname,
+                            monitoring = apiDependencies.client.monitoring,
+                            restoredCardId = entry.savedStateHandle.get<String>("collectionDayCardId"),
+                            onSelectedCardChanged = { entry.savedStateHandle["collectionDayCardId"] = it },
+                            onBack = {
+                                if (navController.currentBackStackEntry == entry) navController.popBackStack()
+                            },
+                        )
+                    }
                 }
 
                 composable<RankingRootDestination> {
@@ -916,6 +1080,10 @@ private fun AppContent(
                         LocalProductMonitoringVisible provides (!isSettingsVisible && reportTarget == null),
                     ) {
                         PressRankingRoute(
+                            selectedDate = rankingDate,
+                            historyEnabled = appConfig.initialized && appConfig.config.dailyPressRankingEnabled,
+                            sessionGeneration = sessionGeneration,
+                            onDateSelected = { rankingDate = it },
                             modifier = Modifier.fillMaxSize(),
                             onBack = { navController.popBackStack() },
                         )
@@ -967,6 +1135,7 @@ private fun AppContent(
                     notificationPreferencesStore = notificationPreferencesStore,
                     modifier = Modifier.fillMaxSize(),
                     settingsContent = settingsContent,
+                    onReplayGuideClick = onboardingStore::resetFeatureGuideHistory,
                 )
             }
 
@@ -977,7 +1146,8 @@ private fun AppContent(
                     modifier =
                         Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(bottom = AppBottomNavigationBarBottomSpacing),
+                            .padding(bottom = AppBottomNavigationBarBottomSpacing)
+                            .then(if (featureGuideAnchorBounds != null) Modifier.clearAndSetSemantics {} else Modifier),
                     selectedDestination = selectedDestination,
                     onDestinationSelected = { destination ->
                         if (!mainFeaturesReady) return@AppBottomNavigationBar
@@ -1019,6 +1189,14 @@ private fun AppContent(
                             }
                         }
                     },
+                )
+            }
+            if (visibleFeatureGuideSession != null && featureGuideAnchorBounds != null) {
+                FeatureGuideOverlay(
+                    session = visibleFeatureGuideSession,
+                    anchorBounds = featureGuideAnchorBounds,
+                    onAdvance = advanceFeatureGuide,
+                    onSkip = skipFeatureGuide,
                 )
             }
         }

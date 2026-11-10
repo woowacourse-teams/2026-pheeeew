@@ -59,6 +59,12 @@ internal fun tapBezier(
     return curve((low + high) / 2, y1, y2)
 }
 
+/** Press cap lift and travel share the same coordinate system as the face artwork. */
+internal object PressButtonDepth {
+    const val REST_OFFSET = -10f
+    const val TRAVEL = 6.0
+}
+
 internal class TapButtonMotion(
     private val buzzer: Boolean = false,
 ) {
@@ -113,7 +119,7 @@ internal class TapButtonMotion(
         if (pressed) return
         pressed = true
         val target =
-            if (buzzer && !reduced) TapTransform(y = 3.0) else TapTransform(y = 4.0, scale = .985)
+            if (buzzer && !reduced) TapTransform(y = PressButtonDepth.TRAVEL) else TapTransform(y = 4.0, scale = .985)
         move(now, target, if (buzzer) 55.0 else 70.0, true, reduced)
     }
 

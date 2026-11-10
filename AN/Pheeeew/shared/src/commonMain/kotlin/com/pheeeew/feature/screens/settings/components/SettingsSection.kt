@@ -6,20 +6,26 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppBorders
-import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.AppTypography
+import com.pheeeew.core.designsystem.theme.appBackground
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appLightDivider
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.feature.screens.settings.SettingsTheme
+
+internal val SettingsCardContentInset = 18.dp
 
 @Composable
 internal fun SettingsSectionTitle(
@@ -28,12 +34,15 @@ internal fun SettingsSectionTitle(
 ) {
     Text(
         text = title,
-        color = SettingsColors.Ink,
+        color = MaterialTheme.appColors.settings.iconInk,
         fontFamily = notoSansKrFontFamily(),
-        fontSize = 16.sp,
-        lineHeight = 22.sp,
-        fontWeight = FontWeight.Bold,
-        modifier = modifier.fillMaxWidth().padding(horizontal = 26.dp).padding(bottom = 5.dp),
+        style = AppTypography.settingsSectionTitle(),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = AppSpacing.xxl.copy(value = 26.dp).dp,
+                ).padding(bottom = AppSpacing.xs.copy(value = 5.dp).dp),
     )
 }
 
@@ -42,16 +51,16 @@ internal fun SettingsCard(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    val shape = RoundedCornerShape(24.dp)
+    val shape = AppShapes.SectionCard
     Column(
         modifier =
             modifier
                 .fillMaxWidth()
-                .padding(horizontal = 21.dp)
+                .padding(horizontal = AppSpacing.xl.copy(value = 21.dp).dp)
                 .shadow(3.dp, shape, clip = false)
-                .border(AppBorders.Standard, SettingsColors.Ink, shape)
-                .background(AppColors.Background, shape)
-                .padding(horizontal = 18.dp),
+                .border(AppBorders.Standard, MaterialTheme.appColors.settings.iconInk, shape)
+                .clip(shape)
+                .background(MaterialTheme.colorScheme.appBackground),
     ) {
         content()
     }
@@ -59,14 +68,18 @@ internal fun SettingsCard(
 
 @Composable
 internal fun SettingsDivider(modifier: Modifier = Modifier) {
-    HorizontalDivider(modifier = modifier, color = SettingsColors.Divider, thickness = 1.dp)
+    HorizontalDivider(
+        modifier = modifier.padding(horizontal = SettingsCardContentInset),
+        color = MaterialTheme.colorScheme.appLightDivider,
+        thickness = AppBorders.Thin,
+    )
 }
 
 @Preview
 @Composable
 private fun SettingsSectionTitlePreview() {
     SettingsTheme {
-        Column(Modifier.background(AppColors.Background)) {
+        Column(Modifier.background(MaterialTheme.colorScheme.appBackground)) {
             SettingsSectionTitle("이용 안내")
         }
     }
@@ -86,7 +99,7 @@ private fun SettingsCardPreview() {
 @Composable
 private fun SettingsDividerPreview() {
     SettingsTheme {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = AppSpacing.xl.dp)) {
             SettingsDivider()
         }
     }

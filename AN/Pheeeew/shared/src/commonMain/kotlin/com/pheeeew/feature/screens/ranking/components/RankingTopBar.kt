@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -23,8 +24,9 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.pheeeew.core.designsystem.component.BasicTopBar
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appPageBackground
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ranking_press_title
@@ -84,8 +86,12 @@ internal fun RankingTopBarOverlay(
         BasicTopBar(
             title = title,
             onBack = onBack,
-            titleColor = AppColors.RankingContent,
-            modifier = Modifier.offset(y = offsetY).background(AppColors.GroupBackground, RectangleShape),
+            titleColor = MaterialTheme.appColors.ranking.content,
+            modifier =
+                Modifier
+                    .offset(
+                        y = offsetY,
+                    ).background(MaterialTheme.colorScheme.appPageBackground, RectangleShape),
         )
     }
 }

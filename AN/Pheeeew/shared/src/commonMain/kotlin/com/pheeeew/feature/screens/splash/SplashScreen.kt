@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -38,6 +39,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appSurface
 import com.pheeeew.feature.component.SoapBubble
 import com.pheeeew.feature.component.stamp.GroupStamp
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
@@ -58,7 +61,6 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 private const val SPLASH_DURATION_MILLIS = 2_000
-private val SplashBackground = Color(0xFFFFFDFD)
 
 /** Plays once, then holds the finished artwork while the startup checks finish. */
 @Composable
@@ -100,7 +102,7 @@ private fun SplashArtwork(
         modifier =
             modifier
                 .fillMaxSize()
-                .background(SplashBackground)
+                .background(MaterialTheme.appColors.splash.background)
                 .clipToBounds()
                 .clearAndSetSemantics { contentDescription = splashDescription },
         contentAlignment = Alignment.Center,
@@ -184,7 +186,7 @@ private fun SplashArtwork(
             ) {
                 Text(
                     text = stringResource(Res.string.onboarding_brand),
-                    color = Color(0xFF202522),
+                    color = MaterialTheme.appColors.splash.title,
                     fontWeight = FontWeight.Bold,
                     fontSize = (64f * scale / fontScale).sp,
                     lineHeight = (80f * scale / fontScale).sp,
@@ -200,6 +202,8 @@ private fun SplashArtwork(
 /** Extra broad reflections make the shared bubble legible at the larger splash size. */
 @Composable
 private fun BubbleReflections(modifier: Modifier) {
+    val splashColors = MaterialTheme.appColors.splash
+    val white = MaterialTheme.colorScheme.appSurface
     val leftReflection =
         remember {
             Path().apply {
@@ -216,7 +220,7 @@ private fun BubbleReflections(modifier: Modifier) {
             drawArc(
                 brush =
                     Brush.linearGradient(
-                        listOf(Color(0x7095C9DD), Color(0x40FFFFFF)),
+                        listOf(splashColors.lightWashStart, splashColors.lightWashEnd),
                         start = Offset(0f, 130f),
                         end = Offset(100f, 0f),
                     ),
@@ -231,13 +235,13 @@ private fun BubbleReflections(modifier: Modifier) {
                 path = leftReflection,
                 brush =
                     Brush.linearGradient(
-                        listOf(Color(0xB398BED2), Color(0xCCFFFFFF)),
+                        listOf(splashColors.deepWashStart, splashColors.deepWashEnd),
                         start = Offset(25f, 22f),
                         end = Offset(12f, 100f),
                     ),
             )
             drawArc(
-                color = Color.White.copy(alpha = 0.9f),
+                color = white.copy(alpha = 0.9f),
                 startAngle = 166f,
                 sweepAngle = 79f,
                 useCenter = false,
@@ -246,7 +250,7 @@ private fun BubbleReflections(modifier: Modifier) {
                 style = Stroke(4f),
             )
             drawArc(
-                color = Color.White.copy(alpha = 0.8f),
+                color = white.copy(alpha = 0.8f),
                 startAngle = -23f,
                 sweepAngle = 80f,
                 useCenter = false,

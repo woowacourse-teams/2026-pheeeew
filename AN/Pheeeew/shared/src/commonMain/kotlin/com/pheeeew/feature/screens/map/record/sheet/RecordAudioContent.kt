@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -28,7 +29,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -36,8 +36,14 @@ import androidx.compose.ui.unit.sp
 import com.pheeeew.core.audio.VoiceRecordingState
 import com.pheeeew.core.designsystem.component.raisedButtonBorder
 import com.pheeeew.core.designsystem.theme.AppBorders
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appBorder
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appOnAccent
+import com.pheeeew.core.designsystem.theme.appPrimary
+import com.pheeeew.core.designsystem.theme.appSurface
+import com.pheeeew.core.designsystem.theme.appTextPrimary
 import com.pheeeew.feature.screens.map.drawPlaybackWaveform
 import com.pheeeew.feature.screens.map.record.noRippleClickable
 import org.jetbrains.compose.resources.painterResource
@@ -75,7 +81,7 @@ internal fun RecordAudioContent(
         )
         RecordInputSupportingText(
             text = audio.error.orEmpty(),
-            color = AppColors.RecordSheetRecording,
+            color = MaterialTheme.appColors.recordSheet.recording,
         )
     }
 }
@@ -95,8 +101,11 @@ private fun RecordAudioPanel(
                 .fillMaxWidth()
                 .height(105.dp)
                 .clip(AppShapes.Input)
-                .border(width = AppBorders.Standard, color = AppColors.Border, shape = AppShapes.Input)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .border(
+                    width = AppBorders.Standard,
+                    color = MaterialTheme.colorScheme.appBorder,
+                    shape = AppShapes.Input,
+                ).padding(horizontal = AppSpacing.lg.dp, vertical = AppSpacing.md.dp),
         contentAlignment = Alignment.Center,
     ) {
         when (panelState) {
@@ -152,7 +161,7 @@ private fun AudioReadyPanel(
                         interactionSource = interactionSource,
                         elevated = !audio.requestingPermission,
                     ).clip(CircleShape)
-                    .background(AppColors.Primary),
+                    .background(MaterialTheme.colorScheme.appPrimary),
             contentAlignment = Alignment.Center,
         ) {
             Image(
@@ -174,7 +183,7 @@ private fun AdioRecordingPanel(
             Modifier
                 .fillMaxSize()
                 .noRippleClickable(onClick = onStopRecording),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.sm.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Row(
@@ -185,18 +194,18 @@ private fun AdioRecordingPanel(
                 modifier =
                     Modifier
                         .size(14.dp)
-                        .background(AppColors.RecordSheetRecording, CircleShape),
+                        .background(MaterialTheme.appColors.recordSheet.recording, CircleShape),
             )
-            Spacer(modifier = Modifier.width(6.dp))
+            Spacer(modifier = Modifier.width(AppSpacing.xs.copy(value = 6.dp).dp))
             Text(
                 text = stringResource(Res.string.record_recording),
-                color = AppColors.RecordSheetRecording,
+                color = MaterialTheme.appColors.recordSheet.recording,
                 fontSize = 14.sp,
             )
             Spacer(modifier = Modifier.weight(1f))
             Text(
                 text = formatAudioTime(audio.elapsedSeconds),
-                color = AppColors.TextPrimary,
+                color = MaterialTheme.colorScheme.appTextPrimary,
                 fontSize = 14.sp,
             )
         }
@@ -213,22 +222,25 @@ private fun AdioRecordingPanel(
                         .weight(1f)
                         .fillMaxHeight(),
             )
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(AppSpacing.lg.dp))
             Box(
                 modifier =
                     Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .border(width = AppBorders.Standard, color = Color.Black, shape = CircleShape)
-                        .background(AppColors.Surface)
-                        .padding(12.dp),
+                        .border(
+                            width = AppBorders.Standard,
+                            color = MaterialTheme.colorScheme.appTextPrimary,
+                            shape = CircleShape,
+                        ).background(MaterialTheme.colorScheme.appSurface)
+                        .padding(AppSpacing.md.dp),
             ) {
                 Box(
                     modifier =
                         Modifier
                             .fillMaxSize()
                             .clip(RoundedCornerShape(4.dp))
-                            .background(AppColors.RecordSheetRecording),
+                            .background(MaterialTheme.appColors.recordSheet.recording),
                 )
             }
         }
@@ -243,7 +255,7 @@ private fun AdioCompletedPanel(
 ) {
     Column(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.sm.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -253,9 +265,9 @@ private fun AdioCompletedPanel(
                 modifier =
                     Modifier
                         .size(14.dp)
-                        .background(AppColors.TextPrimary, CircleShape),
+                        .background(MaterialTheme.colorScheme.appTextPrimary, CircleShape),
             )
-            Spacer(modifier = Modifier.width(6.dp))
+            Spacer(modifier = Modifier.width(AppSpacing.xs.copy(value = 6.dp).dp))
             Text(
                 text =
                     formatAudioTime(
@@ -265,7 +277,7 @@ private fun AdioCompletedPanel(
                             (audio.durationMillis / 1000).toInt().takeIf { it > 0 } ?: audio.elapsedSeconds
                         },
                     ),
-                color = AppColors.TextPrimary,
+                color = MaterialTheme.colorScheme.appTextPrimary,
                 fontSize = 14.sp,
             )
             Spacer(modifier = Modifier.weight(1f))
@@ -279,13 +291,13 @@ private fun AdioCompletedPanel(
                 Icon(
                     painter = painterResource(Res.drawable.ic_refresh),
                     contentDescription = stringResource(Res.string.record_again),
-                    tint = AppColors.TextPrimary,
+                    tint = MaterialTheme.colorScheme.appTextPrimary,
                     modifier = Modifier.size(16.dp),
                 )
-                Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.width(AppSpacing.xs.dp))
                 Text(
                     text = stringResource(Res.string.record_again),
-                    color = AppColors.TextPrimary,
+                    color = MaterialTheme.colorScheme.appTextPrimary,
                     fontSize = 14.sp,
                 )
             }
@@ -298,7 +310,7 @@ private fun AdioCompletedPanel(
                 isPlaying = audio.playing,
                 onClick = onPlayback,
             )
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(AppSpacing.lg.dp))
             AudioWaveform(
                 samples = audio.samples,
                 isRecording = false,
@@ -319,8 +331,9 @@ private fun AudioWaveform(
     playbackProgress: Float,
     modifier: Modifier = Modifier,
 ) {
+    val recordingColor = MaterialTheme.appColors.recordSheet.recording
+    val inactiveColor = MaterialTheme.appColors.map.audioInactive
     Canvas(modifier = modifier) {
-        val activeColor = AppColors.RecordSheetRecording
         val waveform =
             if (isRecording) {
                 List((64 - samples.size).coerceAtLeast(0)) { 0f } + samples.takeLast(64)
@@ -330,8 +343,8 @@ private fun AudioWaveform(
         drawPlaybackWaveform(
             waveform = waveform,
             progress = if (isRecording) 1f else playbackProgress,
-            inactiveColor = if (isRecording) activeColor else Color(0xFFA3ABA5),
-            activeColor = activeColor,
+            inactiveColor = if (isRecording) recordingColor else inactiveColor,
+            activeColor = recordingColor,
         )
     }
 }
@@ -347,25 +360,26 @@ private fun PlaybackButton(
     isPlaying: Boolean,
     onClick: () -> Unit,
 ) {
+    val playbackIconColor = MaterialTheme.colorScheme.appOnAccent
     Box(
         modifier =
             Modifier
                 .size(50.dp)
                 .clip(CircleShape)
-                .background(AppColors.TextPrimary)
+                .background(MaterialTheme.colorScheme.appTextPrimary)
                 .noRippleClickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Canvas(modifier = Modifier.size(22.dp)) {
             if (isPlaying) {
                 drawRect(
-                    color = AppColors.Surface,
+                    color = playbackIconColor,
                     topLeft = Offset(size.width * 0.28f, size.height * 0.18f),
                     size =
                         Size(size.width * 0.16f, size.height * 0.64f),
                 )
                 drawRect(
-                    color = AppColors.Surface,
+                    color = playbackIconColor,
                     topLeft = Offset(size.width * 0.56f, size.height * 0.18f),
                     size =
                         Size(size.width * 0.16f, size.height * 0.64f),
@@ -378,7 +392,7 @@ private fun PlaybackButton(
                         lineTo(size.width * 0.35f, size.height * 0.8f)
                         close()
                     }
-                drawPath(path = playPath, color = AppColors.Surface)
+                drawPath(path = playPath, color = playbackIconColor)
             }
         }
     }
@@ -409,7 +423,7 @@ private fun RecordAudioPreview(audio: VoiceRecordingState) {
         onStopRecording = {},
         onPlayback = {},
         onClearRecording = {},
-        modifier = Modifier.fillMaxWidth().background(AppColors.Surface).padding(20.dp),
+        modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.appSurface).padding(AppSpacing.xl.dp),
     )
 }
 

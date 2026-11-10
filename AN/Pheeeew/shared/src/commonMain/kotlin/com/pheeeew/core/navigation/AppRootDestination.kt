@@ -18,3 +18,9 @@ data class DailyPressRankingRootDestination(
 
 @Serializable
 data object CollectionRootDestination
+
+@Serializable
+data class CollectionDayDestination(
+    val month: String,
+    val cardId: String,
+)

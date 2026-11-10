@@ -15,14 +15,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -32,6 +31,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppBorders
+import com.pheeeew.core.designsystem.theme.AppPalette
+import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appInk
+import com.pheeeew.core.designsystem.theme.appSurface
 import com.pheeeew.feature.component.PressRankBadge
 import com.pheeeew.feature.component.rememberCountUp
 import com.pheeeew.feature.emotion.component.formatCount
@@ -51,25 +57,25 @@ import pheeeew.shared.generated.resources.press_nearby_reconnecting
 import pheeeew.shared.generated.resources.press_nearby_row_description
 import pheeeew.shared.generated.resources.press_nearby_unavailable
 
-private val RankingInk = Color(0xFF202323)
-private val RankingMuted = Color(0xFF858B85)
-
 @Composable
 internal fun PressNearbyRankingCard(
     state: PressNearbyRankingUiState,
     modifier: Modifier = Modifier,
     activity: PressActivityUiState? = null,
 ) {
-    val shape = RoundedCornerShape(16.dp)
+    val shape = AppShapes.Card
     Column(
         modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(Color.White)
-            .border(1.dp, Color(0xFFE0E3DB), shape),
-        verticalArrangement = Arrangement.spacedBy(3.dp),
+            .background(MaterialTheme.colorScheme.appSurface)
+            .border(AppBorders.Thin, MaterialTheme.appColors.press.nearbyCardBorder, shape),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.xs.copy(value = 3.dp).dp),
     ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Column(
+            Modifier.padding(AppSpacing.md.dp),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.xs.copy(value = 3.dp).dp),
+        ) {
             PressNearbyRankingRows(state)
             val message =
                 when {
@@ -98,25 +104,36 @@ internal fun PressNearbyRankingCard(
             if (message !=
                 null
             ) {
-                Text(message, color = RankingMuted, fontSize = 12.sp, modifier = Modifier.padding(10.dp))
+                Text(
+                    message,
+                    color = MaterialTheme.appColors.press.nearbyMuted,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(AppSpacing.sm.copy(value = 10.dp).dp),
+                )
             }
             val progress = normalizedNearbyProgress(state.progress)
             if (progress != null) {
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(AppSpacing.sm.dp))
                 val label = stringResource(Res.string.press_nearby_progress)
                 Box(
                     Modifier
                         .fillMaxWidth()
                         .height(5.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFFEFF0EB))
+                        .background(MaterialTheme.appColors.press.nearbyCardSurface)
                         .clearAndSetSemantics {
                             contentDescription = label
                             progressBarRangeInfo = ProgressBarRangeInfo(progress, 0f..1f)
                         },
                 ) {
                     if (progress > 0f) {
-                        Box(Modifier.fillMaxWidth(progress).height(5.dp).background(RankingInk, CircleShape))
+                        Box(
+                            Modifier
+                                .fillMaxWidth(
+                                    progress,
+                                ).height(5.dp)
+                                .background(MaterialTheme.colorScheme.appInk, CircleShape),
+                        )
                     }
                 }
             }
@@ -131,7 +148,7 @@ internal fun NearbyRankRow(
     modifier: Modifier = Modifier,
     reducedMotion: Boolean = false,
 ) {
-    val shape = RoundedCornerShape(12.dp)
+    val shape = AppShapes.CompactControl
     val name = if (row.isMe) stringResource(Res.string.press_nearby_me) else row.nickname
     val displayedCount by rememberCountUp(row.count, reducedMotion)
     val count = stringResource(Res.string.press_nearby_count, formatCount(displayedCount))
@@ -142,16 +159,24 @@ internal fun NearbyRankRow(
             .fillMaxWidth()
             .defaultMinSize(minHeight = 38.dp)
             .clip(shape)
-            .background(if (row.isMe) Color(0xFFFFE466) else Color.Transparent)
-            .then(if (row.isMe) Modifier.border(1.5.dp, RankingInk, shape) else Modifier)
-            .padding(horizontal = 10.dp, vertical = 6.dp)
+            .background(if (row.isMe) MaterialTheme.appColors.press.highlightAccent else AppPalette.Transparent)
+            .then(if (row.isMe) Modifier.border(1.5.dp, MaterialTheme.colorScheme.appInk, shape) else Modifier)
+            .padding(horizontal = AppSpacing.sm.copy(value = 10.dp).dp, vertical = AppSpacing.xs.copy(value = 6.dp).dp)
             .clearAndSetSemantics { contentDescription = description },
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(AppSpacing.sm.dp),
     ) {
         Box(Modifier.widthIn(min = 26.dp, max = 96.dp), contentAlignment = Alignment.Center) {
             Crossfade(row.rank, animationSpec = tween(if (reducedMotion) 0 else 120), label = "nearby rank") { rank ->
-                PressRankBadge(rank, numberColor = if (row.isMe) RankingInk else RankingMuted)
+                PressRankBadge(
+                    rank,
+                    numberColor =
+                        if (row.isMe) {
+                            MaterialTheme.colorScheme.appInk
+                        } else {
+                            MaterialTheme.appColors.press.nearbyMuted
+                        },
+                )
             }
         }
         Text(
@@ -159,7 +184,7 @@ internal fun NearbyRankRow(
             modifier = Modifier.weight(1f),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            color = if (row.isMe) RankingInk else RankingMuted,
+            color = if (row.isMe) MaterialTheme.colorScheme.appInk else MaterialTheme.appColors.press.nearbyMuted,
             fontSize = 13.sp,
             fontWeight = if (row.isMe) FontWeight.Bold else FontWeight.Medium,
         )
@@ -169,7 +194,7 @@ internal fun NearbyRankRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.End,
-                color = RankingInk,
+                color = MaterialTheme.colorScheme.appInk,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
             )

@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.feature.screens.press.component.PressActivityFooter
 import com.pheeeew.feature.screens.press.component.PressNearbyRankingCard
@@ -41,8 +42,8 @@ private val activityPreviewScenarios =
 private fun ActivityStatesPreview() {
     AppTheme {
         Column(
-            Modifier.verticalScroll(rememberScrollState()).padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            Modifier.verticalScroll(rememberScrollState()).padding(AppSpacing.md.dp),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.cardGap.dp),
         ) {
             activityPreviewScenarios.forEach { PressActivityFooter(it, reducedMotionOverride = true) }
             PressNearbyRankingCard(temporaryNearbyRanking, activity = temporaryPressActivity)
@@ -108,7 +109,10 @@ private fun ActivityReplacementPreview() {
 @Composable
 private fun ActivityAvatarCountPreview() {
     AppTheme {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(12.dp)) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.sm.copy(value = 10.dp).dp),
+            modifier = Modifier.padding(AppSpacing.md.dp),
+        ) {
             (0L..5L).forEach { count ->
                 PressActivityFooter(
                     PressActivityUiState(count, PressActivityStatus.Known),

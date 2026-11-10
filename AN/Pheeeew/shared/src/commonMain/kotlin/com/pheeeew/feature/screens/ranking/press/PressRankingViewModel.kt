@@ -118,3 +118,21 @@ private fun PressRaceParticipant.toPersonRank(meId: String?): PressPersonRank? {
         emotion = EmotionState.entries.firstOrNull { it.name == representativeState }?.toUiKind(),
     )
 }
+
+/** Never relabel yesterday's cached rows as today's result, including during reconnect. */
+internal fun PressRankingUiState.forRankingDate(selectedDate: String): PressRankingUiState =
+    if (date == selectedDate) {
+        this
+    } else {
+        PressRankingUiState(
+            date = selectedDate,
+            status =
+                if (status == PressRankingStatus.Failed ||
+                    hasRefreshError
+                ) {
+                    PressRankingStatus.Failed
+                } else {
+                    PressRankingStatus.Loading
+                },
+        )
+    }

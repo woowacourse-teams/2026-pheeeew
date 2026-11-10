@@ -7,20 +7,23 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppPalette
+import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appPrimary
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.feature.screens.settings.SettingsTheme
 
@@ -37,9 +40,15 @@ internal fun NicknameDialogButton(
         modifier =
             modifier
                 .height(42.dp)
-                .clip(RoundedCornerShape(12.dp))
+                .clip(AppShapes.CompactControl)
                 .background(
-                    if (primary) AppColors.Primary.copy(alpha = if (enabled) 1f else 0.35f) else Color.Transparent,
+                    if (primary) {
+                        MaterialTheme.colorScheme.appPrimary.copy(
+                            alpha = if (enabled) 1f else 0.35f,
+                        )
+                    } else {
+                        AppPalette.Transparent
+                    },
                 ).clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -47,12 +56,17 @@ internal fun NicknameDialogButton(
             CircularProgressIndicator(
                 modifier = Modifier.size(18.dp),
                 strokeWidth = 2.dp,
-                color = SettingsColors.Ink,
+                color = MaterialTheme.appColors.settings.iconInk,
             )
         } else {
             Text(
                 text = text,
-                color = if (enabled) SettingsColors.Ink else SettingsColors.Footer,
+                color =
+                    if (enabled) {
+                        MaterialTheme.appColors.settings.iconInk
+                    } else {
+                        MaterialTheme.appColors.settings.iconFooter
+                    },
                 fontFamily = notoSansKrFontFamily(),
                 fontSize = 14.sp,
                 fontWeight = if (primary) FontWeight.Bold else FontWeight.SemiBold,
@@ -66,7 +80,7 @@ internal fun NicknameDialogButton(
 @Composable
 private fun NicknameDialogButtonPreview() {
     SettingsTheme {
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(AppSpacing.cardGap.dp)) {
             NicknameDialogButton(text = "취소", onClick = {})
             NicknameDialogButton(text = "확인", primary = true, onClick = {})
         }

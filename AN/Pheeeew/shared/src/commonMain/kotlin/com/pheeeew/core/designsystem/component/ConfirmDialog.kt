@@ -5,21 +5,24 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
-import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.core.designsystem.theme.AppTypography
+import com.pheeeew.core.designsystem.theme.appDestructiveAction
+import com.pheeeew.core.designsystem.theme.appDisabledText
+import com.pheeeew.core.designsystem.theme.appInk
+import com.pheeeew.core.designsystem.theme.appSurface
+import com.pheeeew.core.designsystem.theme.appTextSecondary
 
 @Composable
 fun ConfirmDialog(
@@ -45,26 +48,29 @@ private fun ConfirmDialogContent(
     onConfirm: () -> Unit,
     onCancel: () -> Unit,
 ) {
-    Surface(shape = RoundedCornerShape(20.dp), color = AppColors.Surface) {
+    Surface(shape = AppShapes.DetailDialog, color = MaterialTheme.colorScheme.appSurface) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text(title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = AppColors.GroupInk)
-            Text(content, fontSize = 14.sp, lineHeight = 22.sp, color = AppColors.TextSecondary)
+            Text(title, style = AppTypography.confirmDialogTitle(), color = MaterialTheme.colorScheme.appInk)
+            Text(content, style = AppTypography.confirmDialogBody(), color = MaterialTheme.colorScheme.appTextSecondary)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (cancelText != null) {
                     TextButton(
                         onClick = onCancel,
                         modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.textButtonColors(contentColor = Color.Gray),
+                        colors =
+                            ButtonDefaults.textButtonColors(
+                                contentColor = MaterialTheme.colorScheme.appDisabledText,
+                            ),
                     ) {
-                        Text(cancelText, color = AppColors.TextSecondary)
+                        Text(cancelText, color = MaterialTheme.colorScheme.appTextSecondary)
                     }
                 }
                 TextButton(
                     onClick = onConfirm,
                     modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.textButtonColors(contentColor = Color.Gray),
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.appDisabledText),
                 ) {
-                    Text(confirmText, color = Color.Red)
+                    Text(confirmText, color = MaterialTheme.colorScheme.appDestructiveAction)
                 }
             }
         }

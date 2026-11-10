@@ -299,13 +299,17 @@ class NearbyEmotionViewModelTest {
             id: Long,
             type: EmotionReactionType,
             selected: Boolean,
+            expectedSessionGeneration: Long?,
         ) = EmotionResult.Success(Unit)
 
         override suspend fun blockEmotion(emotionId: Long) = EmotionModerationResult.Success
 
         override suspend fun blockUser(emotionId: Long) = EmotionModerationResult.Success
 
-        override suspend fun delete(emotionId: Long) = EmotionModerationResult.Success
+        override suspend fun delete(
+            emotionId: Long,
+            expectedSessionGeneration: Long?,
+        ) = EmotionModerationResult.Success
     }
 
     private companion object {

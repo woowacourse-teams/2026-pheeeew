@@ -44,7 +44,10 @@ fun AppTheme(content: @Composable () -> Unit) {
             )
         }
 
-    AppFontScale {
-        MaterialTheme(typography = typography, content = content)
+    ProvideAppColors {
+        AppFontScale {
+            // Leaving colorScheme unset preserves Material3's built-in component defaults.
+            MaterialTheme(typography = typography, content = content)
+        }
     }
 }

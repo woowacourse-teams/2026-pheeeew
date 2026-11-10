@@ -20,6 +20,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -35,14 +36,21 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppBorders
+import com.pheeeew.core.designsystem.theme.AppPalette
+import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appInk
+import com.pheeeew.core.designsystem.theme.appPrimary
+import com.pheeeew.core.designsystem.theme.appSurface
+import com.pheeeew.core.designsystem.theme.appTextSecondary
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import com.pheeeew.feature.monitoring.product.ProductScreen
 import com.pheeeew.feature.monitoring.product.labels
@@ -69,7 +77,6 @@ import pheeeew.shared.generated.resources.onboarding_slide_press_title
 import pheeeew.shared.generated.resources.onboarding_start
 
 const val WELCOME_ONBOARDING_COMPLETED_KEY = "onboarding_completed"
-private val OnboardingBackground = Color(0xFFFCFCFA)
 
 private data class OnboardingPage(
     val title: StringResource,
@@ -145,51 +152,51 @@ fun OnboardingScreen(
         }
     }
     val isLastPage = pagerState.currentPage == onboardingPages.lastIndex
-    Column(modifier.fillMaxSize().background(OnboardingBackground).safeDrawingPadding()) {
+    Column(modifier.fillMaxSize().background(MaterialTheme.appColors.onboarding.background).safeDrawingPadding()) {
         Row(
-            Modifier.fillMaxWidth().height(48.dp).padding(horizontal = 24.dp),
+            Modifier.fillMaxWidth().height(48.dp).padding(horizontal = AppSpacing.screen.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
                 stringResource(Res.string.onboarding_brand),
-                color = AppColors.GroupInk,
+                color = MaterialTheme.colorScheme.appInk,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
             )
             Text(
                 stringResource(Res.string.onboarding_skip),
-                color = AppColors.TextSecondary,
+                color = MaterialTheme.colorScheme.appTextSecondary,
                 fontSize = 12.sp,
                 modifier =
                     Modifier
                         .clickable(enabled = !isFinishing, role = Role.Button) { finish("skipped") }
-                        .padding(vertical = 14.dp),
+                        .padding(vertical = AppSpacing.md.copy(value = 14.dp).dp),
             )
         }
         HorizontalPager(state = pagerState, modifier = Modifier.weight(1f).fillMaxWidth()) { index ->
             val page = onboardingPages[index]
             Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(AppSpacing.sm.dp))
                 Text(
                     stringResource(page.title),
-                    color = AppColors.GroupInk,
+                    color = MaterialTheme.colorScheme.appInk,
                     fontSize = 24.sp,
                     lineHeight = 34.sp,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = AppSpacing.xl.dp),
                 )
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(AppSpacing.sm.copy(value = 10.dp).dp))
                 Text(
                     stringResource(page.body),
-                    color = AppColors.TextSecondary,
+                    color = MaterialTheme.colorScheme.appTextSecondary,
                     fontSize = 13.sp,
                     lineHeight = 21.sp,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 20.dp),
+                    modifier = Modifier.padding(horizontal = AppSpacing.xl.dp),
                 )
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(AppSpacing.lg.dp))
                 OnboardingPhone(page.screen, stringResource(page.title), Modifier.weight(1f).fillMaxWidth(), index == 3)
             }
         }
@@ -209,7 +216,15 @@ fun OnboardingScreen(
                         Modifier
                             .size(if (index == pagerState.currentPage) 19.dp else 5.dp, 5.dp)
                             .clip(CircleShape)
-                            .background(if (index == pagerState.currentPage) AppColors.GroupInk else Color(0xFFD1D7C9)),
+                            .background(
+                                if (index ==
+                                    pagerState.currentPage
+                                ) {
+                                    MaterialTheme.colorScheme.appInk
+                                } else {
+                                    MaterialTheme.appColors.onboarding.pagerInactive
+                                },
+                            ),
                     )
                 }
             }
@@ -217,10 +232,10 @@ fun OnboardingScreen(
         Box(
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp)
+                .padding(horizontal = AppSpacing.screen.dp)
                 .height(50.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(AppColors.Primary)
+                .clip(AppShapes.CompactControl)
+                .background(MaterialTheme.colorScheme.appPrimary)
                 .clickable(enabled = !isFinishing && !pagerState.isScrollInProgress, role = Role.Button) {
                     if (isLastPage) {
                         finish("completed")
@@ -234,12 +249,12 @@ fun OnboardingScreen(
         ) {
             Text(
                 stringResource(if (isLastPage) Res.string.onboarding_start else Res.string.onboarding_next),
-                color = AppColors.GroupInk,
+                color = MaterialTheme.colorScheme.appInk,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
             )
         }
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(AppSpacing.lg.dp))
     }
 }
 
@@ -251,13 +266,18 @@ private fun OnboardingPhone(
     modifier: Modifier,
     collection: Boolean,
 ) {
+    val onboardingBackground = MaterialTheme.appColors.onboarding.background
     BoxWithConstraints(
         modifier.clipToBounds().drawWithContent {
             drawContent()
             val fade = 70.dp.toPx().coerceAtMost(size.height * 0.22f)
             drawRect(
                 Brush.verticalGradient(
-                    listOf(Color.Transparent, OnboardingBackground.copy(alpha = 0.65f), OnboardingBackground),
+                    listOf(
+                        AppPalette.Transparent,
+                        onboardingBackground.copy(alpha = 0.65f),
+                        onboardingBackground,
+                    ),
                     startY = size.height - fade,
                     endY = size.height,
                 ),
@@ -270,21 +290,27 @@ private fun OnboardingPhone(
         Column(
             Modifier
                 .width(width)
-                .shadow(7.dp, RoundedCornerShape(32.dp))
-                .background(Color(0xFFE7ECE3), RoundedCornerShape(32.dp))
-                .border(1.dp, Color(0xFFD5DCD0), RoundedCornerShape(32.dp))
-                .padding(7.dp)
+                .shadow(7.dp, AppShapes.DeviceFrame)
+                .background(MaterialTheme.appColors.onboarding.deviceSurface, AppShapes.DeviceFrame)
+                .border(AppBorders.Thin, MaterialTheme.appColors.onboarding.deviceBorder, AppShapes.DeviceFrame)
+                .padding(AppSpacing.sm.copy(value = 7.dp).dp)
                 .clip(RoundedCornerShape(25.dp))
-                .background(AppColors.Surface),
+                .background(MaterialTheme.colorScheme.appSurface),
         ) {
-            Box(Modifier.fillMaxWidth().height(20.dp).background(Color(0xFFF9FBF7))) {
+            Box(Modifier.fillMaxWidth().height(20.dp).background(MaterialTheme.appColors.onboarding.captureSurface)) {
                 Text(
                     "9:41",
                     fontSize = 8.sp,
                     lineHeight = 10.sp,
-                    modifier = Modifier.padding(start = 12.dp, top = 5.dp),
+                    modifier = Modifier.padding(start = AppSpacing.md.dp, top = AppSpacing.xs.copy(value = 5.dp).dp),
                 )
-                Box(Modifier.align(Alignment.Center).size(5.dp).background(AppColors.GroupInk, CircleShape))
+                Box(
+                    Modifier
+                        .align(
+                            Alignment.Center,
+                        ).size(5.dp)
+                        .background(MaterialTheme.colorScheme.appInk, CircleShape),
+                )
             }
             OnboardingAppCapture(screen, description, Modifier.fillMaxWidth(), collection)
         }
