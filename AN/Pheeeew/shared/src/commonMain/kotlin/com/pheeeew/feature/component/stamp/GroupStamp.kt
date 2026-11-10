@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import org.jetbrains.compose.resources.painterResource
 
 /** 정사각형 슬롯 안에 모양의 비율을 유지해 스탬프를 그립니다. */
@@ -221,13 +222,13 @@ private val LOW_SURROGATES = '\uDC00'..'\uDFFF'
 @Preview(name = "스탬프 모양 10종")
 @Composable
 private fun GroupStampAppearancePreview() {
-    Column(modifier = Modifier.padding(12.dp)) {
+    Column(modifier = Modifier.padding(AppSpacing.md.dp)) {
         Row {
             StampShapeId.entries.take(5).forEach { shape ->
                 GroupStamp(
                     appearance = sampleAppearance(shape),
                     size = 54.dp,
-                    modifier = Modifier.padding(3.dp),
+                    modifier = Modifier.padding(AppSpacing.xs.copy(value = 3.dp).dp),
                 )
             }
         }
@@ -236,15 +237,31 @@ private fun GroupStampAppearancePreview() {
                 GroupStamp(
                     appearance = sampleAppearance(shape),
                     size = 54.dp,
-                    modifier = Modifier.padding(3.dp),
+                    modifier = Modifier.padding(AppSpacing.xs.copy(value = 3.dp).dp),
                 )
             }
         }
         Row {
-            GroupStamp(sampleAppearance(StampShapeId.CIRCLE), 32.dp, Modifier.padding(3.dp))
-            GroupStamp(sampleAppearance(StampShapeId.CIRCLE), 48.dp, Modifier.padding(3.dp))
-            GroupStamp(sampleAppearance(StampShapeId.CIRCLE), 62.dp, Modifier.padding(3.dp))
-            GroupStamp(sampleAppearance(StampShapeId.CIRCLE), 120.dp, Modifier.padding(3.dp))
+            GroupStamp(
+                sampleAppearance(StampShapeId.CIRCLE),
+                32.dp,
+                Modifier.padding(AppSpacing.xs.copy(value = 3.dp).dp),
+            )
+            GroupStamp(
+                sampleAppearance(StampShapeId.CIRCLE),
+                48.dp,
+                Modifier.padding(AppSpacing.xs.copy(value = 3.dp).dp),
+            )
+            GroupStamp(
+                sampleAppearance(StampShapeId.CIRCLE),
+                62.dp,
+                Modifier.padding(AppSpacing.xs.copy(value = 3.dp).dp),
+            )
+            GroupStamp(
+                sampleAppearance(StampShapeId.CIRCLE),
+                120.dp,
+                Modifier.padding(AppSpacing.xs.copy(value = 3.dp).dp),
+            )
         }
     }
 }
@@ -280,16 +297,16 @@ private fun GroupStampLengthPreview(label: String) {
         contentAlignment = Alignment.Center,
     ) {
         Column(
-            modifier = Modifier.padding(8.dp),
+            modifier = Modifier.padding(AppSpacing.sm.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.xs.copy(value = 6.dp).dp),
         ) {
             Row {
                 StampShapeId.entries.take(5).forEach { shape ->
                     GroupStamp(
                         appearance = sampleAppearance(shape).copy(label = label),
                         size = 56.dp,
-                        modifier = Modifier.padding(3.dp),
+                        modifier = Modifier.padding(AppSpacing.xs.copy(value = 3.dp).dp),
                     )
                 }
             }
@@ -298,7 +315,7 @@ private fun GroupStampLengthPreview(label: String) {
                     GroupStamp(
                         appearance = sampleAppearance(shape).copy(label = label),
                         size = 56.dp,
-                        modifier = Modifier.padding(3.dp),
+                        modifier = Modifier.padding(AppSpacing.xs.copy(value = 3.dp).dp),
                     )
                 }
             }

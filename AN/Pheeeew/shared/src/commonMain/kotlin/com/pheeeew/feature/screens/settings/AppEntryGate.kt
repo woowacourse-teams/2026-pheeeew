@@ -10,6 +10,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.pheeeew.core.designsystem.component.AppDialog
 import com.pheeeew.core.designsystem.component.ConfirmDialog
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.app_entry_authentication_failed
@@ -65,7 +66,7 @@ internal fun AppEntryGate(
                 onDismissRequest = {},
                 properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
             ) {
-                Box(Modifier.padding(24.dp), contentAlignment = Alignment.Center) {
+                Box(Modifier.padding(AppSpacing.xxl.dp), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
             }

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.pheeeew.feature.screens.ranking.RankingDateTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-11-06T03:54:56.304Z" hostname="MacBook-Pro.local" time="0.001">
+  <properties/>
+  <testcase name="자정 이전 결과를 오늘로 바꾸지 않고 오류는 재시도 가능하게 유지한다" classname="com.pheeeew.feature.screens.ranking.RankingDateTest" time="0.0"/>
+  <testcase name="연도와 윤년 경계를 이동한다" classname="com.pheeeew.feature.screens.ranking.RankingDateTest" time="0.001"/>
+  <testcase name="시안의 요일과 한국 자정 기준을 따른다" classname="com.pheeeew.feature.screens.ranking.RankingDateTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

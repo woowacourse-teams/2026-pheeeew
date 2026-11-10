@@ -34,7 +34,11 @@ interface EmotionRepository {
         id: Long,
         type: EmotionReactionType,
         selected: Boolean,
+        expectedSessionGeneration: Long? = null,
     ): EmotionResult<Unit>
 
-    suspend fun delete(emotionId: Long): EmotionModerationResult
+    suspend fun delete(
+        emotionId: Long,
+        expectedSessionGeneration: Long? = null,
+    ): EmotionModerationResult
 }

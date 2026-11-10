@@ -1,7 +1,9 @@
 package com.pheeeew.domain.repository
 
+import com.pheeeew.domain.model.collection.CollectionCalendar
 import com.pheeeew.domain.model.collection.CollectionCard
 import com.pheeeew.domain.model.collection.CollectionCardReference
+import com.pheeeew.domain.model.collection.CollectionEmotionPage
 import com.pheeeew.domain.model.collection.CollectionHistory
 import com.pheeeew.domain.model.collection.CollectionHistoryQuery
 import com.pheeeew.domain.model.collection.CollectionResult
@@ -19,4 +21,16 @@ interface CollectionRepository {
     suspend fun findHistory(query: CollectionHistoryQuery): CollectionResult<CollectionHistory>
 
     suspend fun findCard(cardId: String): CollectionResult<CollectionCard>
+
+    suspend fun findCalendar(month: String): CollectionResult<CollectionCalendar>
+
+    suspend fun findEmotions(
+        cardId: String,
+        cursor: String? = null,
+    ): CollectionResult<CollectionEmotionPage>
+
+    suspend fun findDailyEmotions(
+        date: String,
+        cursor: String? = null,
+    ): CollectionResult<CollectionEmotionPage>
 }

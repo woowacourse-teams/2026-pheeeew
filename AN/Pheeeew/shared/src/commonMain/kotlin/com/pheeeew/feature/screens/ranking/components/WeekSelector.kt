@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -23,7 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.appColors
 
 @Composable
 fun WeekSelector(
@@ -42,13 +43,13 @@ fun WeekSelector(
                 .widthIn(max = 284.dp * fontScale)
                 .fillMaxWidth()
                 .height(36.dp)
-                .background(AppColors.RankingSurface, RoundedCornerShape(24.dp)),
+                .background(MaterialTheme.appColors.ranking.surface, RoundedCornerShape(24.dp)),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         WeekArrow(isPrevious = true, enabled = canGoPrevious, onClick = onPrevious)
         Text(
             text = week,
-            color = AppColors.RankingContent,
+            color = MaterialTheme.appColors.ranking.content,
             fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
@@ -76,7 +77,9 @@ private fun WeekArrow(
                 onClick = onClick,
             ).padding(horizontal = 15.dp, vertical = 11.dp)
 
-    val arrowColor = AppColors.RankingContent.copy(alpha = if (enabled) 1f else 0.35f)
+    val arrowColor =
+        MaterialTheme.appColors.ranking.content
+            .copy(alpha = if (enabled) 1f else 0.35f)
 
     Canvas(arrowModifier) {
         val centerX = size.width / 2f

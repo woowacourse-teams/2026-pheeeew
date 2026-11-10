@@ -19,7 +19,7 @@ import kotlinx.coroutines.launch
 @AssistedInject
 internal class DailyPressRankingViewModel(
     private val repository: PressRankingRepository,
-    @Assisted private val date: String,
+    @Assisted private var date: String,
     @Assisted private var sessionGeneration: Long?,
 ) : ViewModel() {
     @AssistedFactory
@@ -43,6 +43,14 @@ internal class DailyPressRankingViewModel(
     private var notificationRefreshPending = false
 
     init {
+        refresh()
+    }
+
+    fun onDateChanged(selectedDate: String) {
+        if (date == selectedDate) return
+        onRouteHidden()
+        date = selectedDate
+        mutableUiState.value = PressRankingUiState(date = date)
         refresh()
     }
 
@@ -93,6 +101,7 @@ internal class DailyPressRankingViewModel(
 
     private fun refresh(showIndicator: Boolean = false) {
         val generation = sessionGeneration ?: return
+        val requestedDate = date
         val request = ++requestId
         val previous = requestJob
         requestJob = null
@@ -107,10 +116,14 @@ internal class DailyPressRankingViewModel(
         requestJob =
             viewModelScope.launch {
                 try {
-                    when (val result = repository.findDaily(date, generation)) {
+                    when (val result = repository.findDaily(requestedDate, generation)) {
                         is DailyPressRankingLoadResult.Loaded -> {
                             if (request != requestId || generation != sessionGeneration) return@launch
                             val ranking = result.ranking
+                            if (ranking.date != requestedDate) {
+                                fail(hasContent)
+                                return@launch
+                            }
                             mutableUiState.value =
                                 PressRankingUiState(
                                     date = ranking.date,

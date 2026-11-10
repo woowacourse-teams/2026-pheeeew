@@ -1,0 +1,40 @@
+package com.pheeeew
+
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.window.ComposeUIViewController
+import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.feature.screens.ranking.press.PressPersonRank
+import com.pheeeew.feature.screens.ranking.press.PressRankingScreen
+import com.pheeeew.feature.screens.ranking.press.PressRankingStatus
+import com.pheeeew.feature.screens.ranking.press.PressRankingUiState
+import com.pheeeew.feature.screens.ranking.press.components.RankingDateSelector
+
+@Suppress("ktlint:standard:function-naming")
+fun RankingDateQaController() =
+    ComposeUIViewController {
+        AppTheme {
+            var date by remember { mutableStateOf("2026-11-04") }
+            val people =
+                listOf("한숨곰", "구름이", "지친토끼", "느긋한곰", "조용한밤", "마음구름", "졸린오리", "나").mapIndexed { index, name ->
+                    PressPersonRank((index + 1).toLong(), name, 1820L - index * 120L)
+                }
+            PressRankingScreen(
+                onBack = {},
+                uiState =
+                    PressRankingUiState(
+                        date = date,
+                        status = PressRankingStatus.Ready,
+                        people = people,
+                        me = people.last(),
+                    ),
+                onRetry = {},
+                onRefresh = {},
+                dateSelector = { RankingDateSelector(date, "2026-11-06") { date = it } },
+                historical = date != "2026-11-06",
+                dailyDate = date,
+            )
+        }
+    }

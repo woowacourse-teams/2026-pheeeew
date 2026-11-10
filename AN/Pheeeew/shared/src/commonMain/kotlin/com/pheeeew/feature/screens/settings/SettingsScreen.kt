@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -35,7 +36,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pheeeew.core.designsystem.component.Snackbar
-import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appBackground
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.core.navigation.PredictiveBackContent
@@ -74,6 +76,8 @@ import pheeeew.shared.generated.resources.settings_nickname_load_failed
 import pheeeew.shared.generated.resources.settings_nickname_loading
 import pheeeew.shared.generated.resources.settings_permissions
 import pheeeew.shared.generated.resources.settings_profile_section
+import pheeeew.shared.generated.resources.settings_replay_guide
+import pheeeew.shared.generated.resources.settings_replay_guide_notice
 
 @Composable
 fun SettingsScreen(
@@ -90,12 +94,13 @@ fun SettingsScreen(
     onNicknameClick: () -> Unit = {},
     nicknameDialog: (@Composable () -> Unit)? = null,
     notificationPermissionContent: @Composable () -> Unit = {},
+    onReplayGuideClick: () -> Unit = {},
 ) {
     Column(
         modifier =
             modifier
                 .fillMaxSize()
-                .background(AppColors.Background)
+                .background(MaterialTheme.colorScheme.appBackground)
                 .statusBarsPadding()
                 .navigationBarsPadding(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -105,7 +110,7 @@ fun SettingsScreen(
             modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(AppSpacing.xxxl.dp))
 
             SettingsSectionTitle(stringResource(Res.string.settings_profile_section))
             SettingsCard {
@@ -116,7 +121,7 @@ fun SettingsScreen(
                     onClick = onNicknameClick,
                 )
             }
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(AppSpacing.xxxl.dp))
 
             SettingsSectionTitle(stringResource(Res.string.settings_app_section))
             SettingsCard {
@@ -127,9 +132,16 @@ fun SettingsScreen(
                     onClick = onPermissionClick,
                 )
                 notificationPermissionContent()
+                SettingsDivider()
+                SettingsActionRow(
+                    title = stringResource(Res.string.settings_replay_guide),
+                    icon = SettingsIcon.Info,
+                    highlighted = true,
+                    onClick = onReplayGuideClick,
+                )
             }
 
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(AppSpacing.xxxl.dp))
             SettingsSectionTitle(stringResource(Res.string.settings_help_section))
             SettingsCard {
                 SettingsActionRow(
@@ -154,7 +166,7 @@ fun SettingsScreen(
 
             settingsContent()
 
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(AppSpacing.xxxl.dp))
             ContactCard(onClick = onContactClick)
         }
     }
@@ -172,11 +184,13 @@ fun SettingsScreen(
     monitoring: Monitoring = NoOpMonitoring,
     modifier: Modifier = Modifier,
     settingsContent: @Composable () -> Unit = {},
+    onReplayGuideClick: () -> Unit = {},
 ) {
     var versionTaps by remember { mutableStateOf(0) }
     var analyticsIdentity by remember { mutableStateOf<String?>(null) }
     var notificationSettingsVisible by remember { mutableStateOf(false) }
     var selectedLegalDocument by remember { mutableStateOf<LegalDocument?>(null) }
+    var isReplayGuideSnackbarActive by remember { mutableStateOf(false) }
     val telemetry = remember(monitoring) { ProductMonitoring(monitoring, "settings") }
     val legalTelemetry = remember(monitoring) { ProductMonitoring(monitoring, "legaldocument") }
     ProductScreen(telemetry, selectedLegalDocument == null)
@@ -198,6 +212,7 @@ fun SettingsScreen(
     val nicknameViewModel: SettingsViewModel = metroViewModel()
     val nicknameState by nicknameViewModel.uiState.collectAsStateWithLifecycle()
     val nicknameChangedMessage = stringResource(Res.string.settings_nickname_changed)
+    val replayGuideMessage = stringResource(Res.string.settings_replay_guide_notice)
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(notificationSettings, lifecycleOwner, notificationSaveFailedMessage) {
         val model = notificationSettings ?: return@LaunchedEffect
@@ -213,7 +228,7 @@ fun SettingsScreen(
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             viewModel.uiState.map { it.nicknameChangedNoticeId }.filterNotNull().collect { noticeId ->
                 viewModel.acknowledgeNicknameChanged(noticeId)
-                snackbarHostState.showSnackbar(NicknameChangedSnackbarVisuals(nicknameChangedMessage))
+                snackbarHostState.showSnackbar(SettingsSuccessSnackbarVisuals(nicknameChangedMessage))
             }
         }
     }
@@ -302,6 +317,22 @@ fun SettingsScreen(
                                 }
                             }
                         },
+                        onReplayGuideClick = {
+                            telemetry.emit("settings_action_selected", labels("action" to "replay_guide"))
+                            onReplayGuideClick()
+                            if (!isReplayGuideSnackbarActive) {
+                                isReplayGuideSnackbarActive = true
+                                coroutineScope.launch {
+                                    try {
+                                        snackbarHostState.showSnackbar(
+                                            SettingsSuccessSnackbarVisuals(replayGuideMessage),
+                                        )
+                                    } finally {
+                                        isReplayGuideSnackbarActive = false
+                                    }
+                                }
+                            }
+                        },
                         onPrivacyPolicyClick = {
                             telemetry.emit("settings_action_selected", labels("action" to "privacy_policy"))
                             selectedLegalDocument = LegalDocument.PrivacyPolicy
@@ -378,8 +409,8 @@ fun SettingsScreen(
                     Modifier
                         .align(Alignment.TopCenter)
                         .statusBarsPadding()
-                        .padding(top = 64.dp)
-                        .padding(16.dp),
+                        .padding(top = AppSpacing.xxxl.copy(value = 64.dp).dp)
+                        .padding(AppSpacing.lg.dp),
                 snackbar = { data ->
                     Snackbar(
                         message = data.visuals.message,
@@ -392,12 +423,17 @@ fun SettingsScreen(
 
             SnackbarHost(
                 hostState = snackbarHostState,
-                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(16.dp),
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .navigationBarsPadding()
+                        .padding(horizontal = AppSpacing.lg.dp)
+                        .padding(bottom = AppSpacing.xxl.dp),
                 snackbar = { data ->
                     Snackbar(
                         message = data.visuals.message,
                         onDismiss = data::dismiss,
-                        isError = data.visuals !is NicknameChangedSnackbarVisuals,
+                        isError = data.visuals !is SettingsSuccessSnackbarVisuals,
                         maxLines = 3,
                         presentationKey = data,
                     )
@@ -407,7 +443,7 @@ fun SettingsScreen(
     }
 }
 
-private data class NicknameChangedSnackbarVisuals(
+private data class SettingsSuccessSnackbarVisuals(
     override val message: String,
     override val actionLabel: String? = null,
     override val withDismissAction: Boolean = false,

@@ -249,6 +249,108 @@ class DailyPressRankingViewModelTest {
             }
         }
 
+    @Test
+    fun `날짜 변경 뒤 늦은 응답은 무시한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val stale = CompletableDeferred<DailyPressRankingLoadResult>()
+                val repository =
+                    RankingRepository { date, _ ->
+                        if (date == "2026-11-04") {
+                            withContext(NonCancellable) { stale.await() }
+                        } else {
+                            DailyPressRankingLoadResult.Loaded(
+                                DailyPressRanking(
+                                    date,
+                                    "2026-11-04T15:00:00Z",
+                                    "2026-11-05T15:00:00Z",
+                                    emptyList(),
+                                    null,
+                                ),
+                            )
+                        }
+                    }
+                val vm = DailyPressRankingViewModel(repository, "2026-11-04", 1)
+                runCurrent()
+                vm.onDateChanged("2026-11-05")
+                runCurrent()
+                stale.complete(
+                    DailyPressRankingLoadResult.Loaded(
+                        DailyPressRanking(
+                            "2026-11-04",
+                            "2026-11-03T15:00:00Z",
+                            "2026-11-04T15:00:00Z",
+                            listOf(PressRankingItem(1, "지난 결과", 100)),
+                            null,
+                        ),
+                    ),
+                )
+                runCurrent()
+                assertEquals("2026-11-05", vm.uiState.value.date)
+                assertEquals(PressRankingStatus.Ready, vm.uiState.value.status)
+                assertTrue(
+                    vm.uiState.value.people
+                        .isEmpty(),
+                )
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `응답 날짜 불일치는 실패다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val repository =
+                    RankingRepository {
+                        _,
+                        _,
+                        ->
+                        DailyPressRankingLoadResult.Loaded(
+                            DailyPressRanking(
+                                "2026-11-03",
+                                "2026-11-02T15:00:00Z",
+                                "2026-11-03T15:00:00Z",
+                                emptyList(),
+                                null,
+                            ),
+                        )
+                    }
+                val vm = DailyPressRankingViewModel(repository, "2026-11-04", 1)
+                runCurrent()
+                assertEquals("2026-11-04", vm.uiState.value.date)
+                assertEquals(PressRankingStatus.Failed, vm.uiState.value.status)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `내 기록 없음과 전체 기록 없음을 정상 조회로 구분한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                for (items in listOf(emptyList(), listOf(PressRankingItem(1, "다른 참가자", 25)))) {
+                    val repository =
+                        RankingRepository { date, _ ->
+                            DailyPressRankingLoadResult.Loaded(
+                                DailyPressRanking(date, "2026-11-03T15:00:00Z", "2026-11-04T15:00:00Z", items, null),
+                            )
+                        }
+                    val vm = DailyPressRankingViewModel(repository, "2026-11-04", 1)
+                    runCurrent()
+                    assertEquals(PressRankingStatus.Ready, vm.uiState.value.status)
+                    assertEquals(null, vm.uiState.value.me)
+                    assertEquals(items.size, vm.uiState.value.people.size)
+                    vm.onRouteHidden()
+                }
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
     private class RankingRepository(
         private val result: suspend (String, Long?) -> DailyPressRankingLoadResult,
     ) : PressRankingRepository {

@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,7 +35,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -50,6 +50,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appSurface
+import com.pheeeew.core.designsystem.theme.appTextPrimary
 import com.pheeeew.feature.component.SoapBubble
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -161,6 +165,7 @@ internal fun EmotionBubbleCluster(
             animationSpec = tween(durationMillis = 150),
             label = "emotionBubbleCloseProgress",
         )
+    val rippleColor = MaterialTheme.appColors.emotion.bubble.ripple
 
     BoxWithConstraints(
         modifier =
@@ -177,7 +182,11 @@ internal fun EmotionBubbleCluster(
                         .size(112.dp),
             ) {
                 drawCircle(
-                    color = Color(0xA6F7FFFF).copy(alpha = (1f - rippleProgress.value) * 0.6f * (166f / 255f)),
+                    color =
+                        rippleColor.copy(
+                            alpha =
+                                (1f - rippleProgress.value) * 0.6f * (166f / 255f),
+                        ),
                     radius = size.width / 2f * (0.72f + rippleProgress.value * 0.78f),
                     style = Stroke(width = 2.dp.toPx()),
                 )
@@ -219,7 +228,7 @@ internal fun EmotionBubbleCluster(
                                 scaleX = 0.6f + 0.4f * closeProgress
                                 scaleY = scaleX
                             },
-                    tint = Color(0xFF6A7778),
+                    tint = MaterialTheme.appColors.map.emotionBubble.tint,
                 )
             }
         }
@@ -361,7 +370,7 @@ private fun EmotionBubble(
         if (labelAlpha > 0f) {
             Text(
                 text = emotionLabel,
-                color = Color.Black,
+                color = MaterialTheme.colorScheme.appTextPrimary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Center,
@@ -374,7 +383,7 @@ private fun EmotionBubble(
                     LocalTextStyle.current.copy(
                         shadow =
                             Shadow(
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.appSurface,
                                 offset = Offset.Zero,
                                 blurRadius = 10f,
                             ),
@@ -410,7 +419,7 @@ private fun EmotionTypeUiModel.offset(
 @Composable
 fun EmotionBubbleClusterCollapsedPreview() {
     Box(
-        modifier = Modifier.fillMaxSize().background(Color(0xFFECEAE5)).padding(16.dp),
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.appColors.map.background).padding(AppSpacing.lg.dp),
         contentAlignment = Alignment.Center,
     ) {
         EmotionBubbleCluster(isExpanded = false, onToggle = {}, onEmotionClick = {})
@@ -422,7 +431,12 @@ fun EmotionBubbleClusterCollapsedPreview() {
 @Composable
 fun EmotionBubbleClusterExpandedPreview() {
     Box(
-        modifier = Modifier.fillMaxSize().background(Color(0xffc5e4b7)).padding(16.dp),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(
+                    MaterialTheme.appColors.map.recordPreviewBackground,
+                ).padding(AppSpacing.lg.dp),
         contentAlignment = Alignment.Center,
     ) {
         EmotionBubbleCluster(isExpanded = true, onToggle = {}, onEmotionClick = {})

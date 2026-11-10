@@ -12,6 +12,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.feature.screens.press.component.PressNearbyRankingCard
 
@@ -27,8 +28,8 @@ private fun nearbyPreviewRows() =
 private fun NearbyRankingStatesPreview() {
     AppTheme {
         Column(
-            Modifier.verticalScroll(rememberScrollState()).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            Modifier.verticalScroll(rememberScrollState()).padding(AppSpacing.lg.dp),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.cardGap.dp),
         ) {
             PressNearbyRankingCard(PressNearbyRankingUiState(nearbyPreviewRows(), progress = 0.22f))
             PressNearbyRankingCard(
@@ -79,7 +80,7 @@ private fun NearbyRankingLargeTextPreview() {
     AppTheme {
         val density = LocalDensity.current
         CompositionLocalProvider(LocalDensity provides Density(density.density, 1.5f)) {
-            PressNearbyRankingCard(PressNearbyRankingUiState(nearbyPreviewRows()), Modifier.padding(16.dp))
+            PressNearbyRankingCard(PressNearbyRankingUiState(nearbyPreviewRows()), Modifier.padding(AppSpacing.lg.dp))
         }
     }
 }

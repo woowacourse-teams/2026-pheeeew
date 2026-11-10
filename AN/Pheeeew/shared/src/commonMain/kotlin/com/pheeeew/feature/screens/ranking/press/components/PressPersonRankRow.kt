@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -15,8 +16,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.core.designsystem.theme.appColors
 import com.pheeeew.feature.screens.ranking.press.PressPersonRank
 import com.pheeeew.feature.screens.ranking.press.samplePressPersonRanks
 
@@ -28,35 +31,37 @@ internal fun PressPersonRankRow(
     PressRankingCardSurface(
         modifier = modifier,
         shape =
-            androidx.compose.foundation.shape
-                .RoundedCornerShape(20.dp),
+            AppShapes.CardSurface,
     ) {
         Row(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 13.dp),
+                    .padding(
+                        horizontal = AppSpacing.lg.copy(value = 18.dp).dp,
+                        vertical = AppSpacing.md.copy(value = 13.dp).dp,
+                    ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = person.rank.toString().padStart(2, '0'),
-                color = AppColors.RankingContent,
+                color = MaterialTheme.appColors.ranking.content,
                 fontSize = 21.sp,
                 fontWeight = FontWeight.Bold,
             )
-            Spacer(Modifier.width(18.dp))
+            Spacer(Modifier.width(AppSpacing.lg.copy(value = 18.dp).dp))
             Text(
                 text = person.nickname,
-                modifier = Modifier.weight(1f).padding(end = 12.dp),
+                modifier = Modifier.weight(1f).padding(end = AppSpacing.md.dp),
                 maxLines = 1,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                color = AppColors.RankingContent,
+                color = MaterialTheme.appColors.ranking.content,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
             )
             Text(
                 text = person.count.toString(),
-                color = AppColors.RankingContent,
+                color = MaterialTheme.appColors.ranking.content,
                 fontSize = 21.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -68,7 +73,7 @@ internal fun PressPersonRankRow(
 @Composable
 private fun PressPersonRankRowPreview() {
     AppTheme {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.padding(AppSpacing.xl.dp), verticalArrangement = Arrangement.spacedBy(AppSpacing.cardGap.dp)) {
             PressPersonRankRow(samplePressPersonRanks[1])
             PressPersonRankRow(samplePressPersonRanks[0])
         }

@@ -6,7 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -15,7 +15,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.pheeeew.core.designsystem.theme.AppBorders
-import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.appBorder
+import com.pheeeew.core.designsystem.theme.appSurface
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
@@ -31,18 +33,19 @@ internal fun SettingsIconButton(
         modifier =
             modifier
                 .size(44.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .background(AppColors.Surface)
-                .border(width = AppBorders.Standard, color = AppColors.Border, shape = RoundedCornerShape(20.dp)),
+                .clip(AppShapes.Button)
+                .background(MaterialTheme.colorScheme.appSurface)
+                .border(
+                    width = AppBorders.Standard,
+                    color = MaterialTheme.colorScheme.appBorder,
+                    shape = AppShapes.Button,
+                ).clickable(role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Image(
             painter = painterResource(Res.drawable.ic_settings),
             contentDescription = stringResource(Res.string.map_settings),
-            modifier =
-                Modifier
-                    .size(24.dp)
-                    .clickable(role = Role.Button, onClick = onClick),
+            modifier = Modifier.size(24.dp),
         )
     }
 }

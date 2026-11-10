@@ -5,16 +5,18 @@ import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appSurface
 
 /** Native map projection in density-independent screen coordinates. */
 data class HighlightedPinPosition(
@@ -33,6 +35,9 @@ internal fun RegisteredPinHighlight(
     val pulse = remember(position.id) { Animatable(0f) }
     val density = LocalDensity.current
     val center = with(density) { Offset(position.x.dp.toPx(), position.y.dp.toPx()) }
+    val pulseColor = MaterialTheme.appColors.map.pin.pulse
+    val badgeColor = MaterialTheme.colorScheme.appSurface
+    val dangerColor = MaterialTheme.appColors.map.pin.danger
     LaunchedEffect(position.id, repeatPulse) {
         do {
             repeat(2) {
@@ -44,21 +49,22 @@ internal fun RegisteredPinHighlight(
     // This overlay only draws, so map gestures and pin taps pass through it.
     Canvas(Modifier.fillMaxSize().clipToBounds()) {
         drawCircle(
-            color = Color(0xFF398CFF).copy(alpha = 0.5f * (1f - pulse.value)),
+            color =
+                pulseColor.copy(alpha = 0.5f * (1f - pulse.value)),
             radius = (24f * scale + 30f * pulse.value).dp.toPx(),
             center = center,
-            style = Stroke(width = 2.dp.toPx()),
+            style = Stroke(width = 4.dp.toPx()),
         )
         if (!showBadge) return@Canvas
         val badgeOffset = (EMOTION_PIN_SIZE / 2 - 3.dp).toPx()
         val badgeCenter = center + Offset(badgeOffset, -badgeOffset)
         drawCircle(
-            color = Color.White,
+            color = badgeColor,
             radius = 7.dp.toPx(),
             center = badgeCenter,
         )
         drawCircle(
-            color = Color(0xFFFF3B30),
+            color = dangerColor,
             radius = 5.dp.toPx(),
             center = badgeCenter,
         )

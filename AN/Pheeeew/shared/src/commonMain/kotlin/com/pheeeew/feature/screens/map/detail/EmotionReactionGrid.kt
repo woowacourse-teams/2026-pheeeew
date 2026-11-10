@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -21,8 +22,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppBorders
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appInk
+import com.pheeeew.core.designsystem.theme.appPrimary
+import com.pheeeew.core.designsystem.theme.appSurfaceDisabled
+import com.pheeeew.core.designsystem.theme.appTextPrimary
+import com.pheeeew.core.designsystem.theme.appTextSecondary
 import com.pheeeew.feature.screens.map.record.noRippleClickable
 
 @Composable
@@ -32,27 +38,32 @@ internal fun EmotionReactionGrid(
     enabled: Boolean,
     modifier: Modifier,
 ) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(AppSpacing.sm.dp)) {
         reactions.chunked(3).forEach { row ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(AppSpacing.sm.dp)) {
                 row.forEach { reaction ->
 
                     Row(
                         Modifier
                             .weight(1f)
                             .clip(AppShapes.Pill)
-                            .background(if (reaction.isSelected) AppColors.Primary else AppColors.Gray100)
-                            .then(
+                            .background(
+                                if (reaction.isSelected) {
+                                    MaterialTheme.colorScheme.appPrimary
+                                } else {
+                                    MaterialTheme.colorScheme.appSurfaceDisabled
+                                },
+                            ).then(
                                 if (reaction.isSelected) {
                                     Modifier.border(
                                         AppBorders.Standard,
-                                        AppColors.GroupInk,
+                                        MaterialTheme.colorScheme.appInk,
                                         AppShapes.Pill,
                                     )
                                 } else {
                                     Modifier
                                 },
-                            ).padding(vertical = 8.dp, horizontal = 16.dp)
+                            ).padding(vertical = AppSpacing.sm.dp, horizontal = AppSpacing.lg.dp)
                             .noRippleClickable(enabled) { onReactionClick(reaction.id) }
                             .semantics { role = Role.Button },
                         verticalAlignment = Alignment.CenterVertically,
@@ -62,7 +73,12 @@ internal fun EmotionReactionGrid(
 
                         Text(
                             reaction.count.toString(),
-                            color = if (reaction.isSelected) AppColors.TextPrimary else AppColors.TextSecondary,
+                            color =
+                                if (reaction.isSelected) {
+                                    MaterialTheme.colorScheme.appTextPrimary
+                                } else {
+                                    MaterialTheme.colorScheme.appTextSecondary
+                                },
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Normal,
                         )

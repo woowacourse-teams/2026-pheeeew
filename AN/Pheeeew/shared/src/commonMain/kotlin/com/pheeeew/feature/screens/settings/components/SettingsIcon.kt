@@ -8,14 +8,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -23,17 +22,12 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.pheeeew.core.designsystem.theme.AppBorders
+import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appSurface
 
 internal enum class SettingsIcon { Tune, Shield, Document, Info, Mail, Person, Bell }
-
-internal object SettingsColors {
-    val Ink = Color(0xFF252A2C)
-    val IconSurface = Color(0xFFF3F4F4)
-    val Secondary = Color(0xFF848B8C)
-    val Divider = Color(0xFFE8EAEA)
-    val Footer = Color(0xFF9AA0A0)
-    val Error = Color(0xFFB3261E)
-}
 
 @Composable
 internal fun SettingsIconBadge(
@@ -45,13 +39,19 @@ internal fun SettingsIconBadge(
         modifier =
             modifier
                 .size(36.dp)
-                .background(if (highlighted) Color.White else SettingsColors.IconSurface, RoundedCornerShape(12.dp))
-                .then(
+                .background(
+                    if (highlighted) {
+                        MaterialTheme.colorScheme.appSurface
+                    } else {
+                        MaterialTheme.appColors.settings.iconSurface
+                    },
+                    AppShapes.CompactControl,
+                ).then(
                     if (highlighted) {
                         Modifier.border(
                             AppBorders.Standard,
-                            SettingsColors.Ink,
-                            RoundedCornerShape(12.dp),
+                            MaterialTheme.appColors.settings.iconInk,
+                            AppShapes.CompactControl,
                         )
                     } else {
                         Modifier
@@ -65,6 +65,7 @@ internal fun SettingsIconBadge(
 
 @Composable
 internal fun SettingsChevron(modifier: Modifier = Modifier) {
+    val settingsInk = MaterialTheme.appColors.settings.iconInk
     Canvas(modifier.size(18.dp)) {
         val stroke = Stroke(width = 1.8.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
         val path =
@@ -73,7 +74,7 @@ internal fun SettingsChevron(modifier: Modifier = Modifier) {
                 lineTo(size.width * .68f, size.height * .50f)
                 lineTo(size.width * .40f, size.height * .78f)
             }
-        drawPath(path, SettingsColors.Ink, style = stroke)
+        drawPath(path, settingsInk, style = stroke)
     }
 }
 
@@ -82,8 +83,9 @@ internal fun SettingsLineIcon(
     icon: SettingsIcon,
     modifier: Modifier = Modifier,
 ) {
+    val settingsInk = MaterialTheme.appColors.settings.iconInk
     Canvas(modifier) {
-        val color = SettingsColors.Ink
+        val color = settingsInk
         val stroke = Stroke(width = 1.7.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
         val w = size.width
         val h = size.height
@@ -248,7 +250,10 @@ internal fun SettingsLineIcon(
 @Preview
 @Composable
 private fun SettingsIconBadgePreview() {
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(12.dp)) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(AppSpacing.cardGap.dp),
+        modifier = Modifier.padding(AppSpacing.md.dp),
+    ) {
         SettingsIconBadge(SettingsIcon.Tune, highlighted = true)
         SettingsIconBadge(SettingsIcon.Shield)
     }
@@ -257,7 +262,10 @@ private fun SettingsIconBadgePreview() {
 @Preview
 @Composable
 private fun SettingsLineIconPreview() {
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(12.dp)) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(AppSpacing.cardGap.dp),
+        modifier = Modifier.padding(AppSpacing.md.dp),
+    ) {
         SettingsIcon.entries.forEach { icon -> SettingsLineIcon(icon, Modifier.size(24.dp)) }
     }
 }
@@ -265,5 +273,5 @@ private fun SettingsLineIconPreview() {
 @Preview
 @Composable
 private fun SettingsChevronPreview() {
-    SettingsChevron(Modifier.padding(8.dp))
+    SettingsChevron(Modifier.padding(AppSpacing.sm.dp))
 }

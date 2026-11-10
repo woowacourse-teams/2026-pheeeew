@@ -1,6 +1,7 @@
 package com.pheeeew.feature.emotion.model
 
 import androidx.compose.ui.graphics.Color
+import com.pheeeew.core.designsystem.theme.AppColors
 import org.jetbrains.compose.resources.StringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.emotion_label_angry
@@ -13,9 +14,9 @@ enum class EmotionType(
     val label: StringResource,
     val representativeColor: Color,
 ) {
-    FRUSTRATED(Res.string.emotion_label_frustrated, Color(0xFFF6BBAA)),
-    IRRITATED(Res.string.emotion_label_irritated, Color(0xFFF0BFD0)),
-    EXHAUSTED(Res.string.emotion_label_exhausted, Color(0xFFB6A1DC)),
-    DISCOURAGED(Res.string.emotion_label_discouraged, Color(0xFFBBD9E9)),
-    ANGRY(Res.string.emotion_label_angry, Color(0xFFEAA397)),
+    FRUSTRATED(Res.string.emotion_label_frustrated, AppColors.Emotion.Mood.Frustrated),
+    IRRITATED(Res.string.emotion_label_irritated, AppColors.Emotion.Mood.Irritated),
+    EXHAUSTED(Res.string.emotion_label_exhausted, AppColors.Emotion.Mood.Exhausted),
+    DISCOURAGED(Res.string.emotion_label_discouraged, AppColors.Emotion.Mood.Discouraged),
+    ANGRY(Res.string.emotion_label_angry, AppColors.Emotion.Mood.Angry),
 }
