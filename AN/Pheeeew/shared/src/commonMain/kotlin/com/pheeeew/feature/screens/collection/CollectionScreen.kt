@@ -11,6 +11,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.rememberScrollableState
 import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -360,14 +361,18 @@ private fun CollectionViewModeToggle(
         Row {
             CollectionViewMode.entries.forEach { mode ->
                 val selected = mode == selectedMode
+                val interactionSource = remember { MutableInteractionSource() }
+                val focused by interactionSource.collectIsFocusedAsState()
                 Row(
                     Modifier
                         .clip(CircleShape)
                         .width(itemWidth)
                         .height(itemHeight)
-                        .selectable(
+                        .then(
+                            if (focused) Modifier.border(2.dp, AppColors.GroupInk, CircleShape) else Modifier,
+                        ).selectable(
                             selected = selected,
-                            interactionSource = remember { MutableInteractionSource() },
+                            interactionSource = interactionSource,
                             indication = null,
                             role = Role.Tab,
                             onClick = { onModeChange(mode) },
