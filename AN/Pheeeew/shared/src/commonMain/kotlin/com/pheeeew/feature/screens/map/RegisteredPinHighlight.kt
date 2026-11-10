@@ -53,7 +53,7 @@ internal fun RegisteredPinHighlight(
                 pulseColor.copy(alpha = 0.5f * (1f - pulse.value)),
             radius = (24f * scale + 30f * pulse.value).dp.toPx(),
             center = center,
-            style = Stroke(width = 2.dp.toPx()),
+            style = Stroke(width = 4.dp.toPx()),
         )
         if (!showBadge) return@Canvas
         val badgeOffset = (EMOTION_PIN_SIZE / 2 - 3.dp).toPx()

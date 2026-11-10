@@ -31,9 +31,9 @@ import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.core.designsystem.theme.appBorderLight
+import com.pheeeew.core.designsystem.theme.appColors
 import com.pheeeew.core.designsystem.theme.appDisabledText
 import com.pheeeew.core.designsystem.theme.appInk
-import com.pheeeew.core.designsystem.theme.appPrimary
 import com.pheeeew.core.designsystem.theme.appSurface
 import com.pheeeew.core.designsystem.theme.appTextPrimary
 import com.pheeeew.domain.model.emotion.EmotionReactionType
@@ -103,7 +103,7 @@ internal fun EmotionChatItem(
                         ).border(
                             AppBorders.Standard,
                             if (focused) {
-                                MaterialTheme.colorScheme.appPrimary
+                                MaterialTheme.appColors.map.pin.pulse
                             } else {
                                 MaterialTheme.colorScheme.appBorderLight
                             },
