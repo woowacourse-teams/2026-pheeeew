@@ -1,5 +1,7 @@
 package com.pheeeew.feature.screens.map.renderer
 
+import android.animation.ValueAnimator
+import android.view.animation.AccelerateDecelerateInterpolator
 import androidx.compose.ui.graphics.asAndroidBitmap
 import com.google.gson.JsonObject
 import com.pheeeew.feature.screens.map.EmotionPinSymbolImage
@@ -40,7 +42,17 @@ internal class EmotionPinSymbolLayer {
     private var dynamicProperties: DynamicProperties? = null
     private var lastTopPriority = 0
 
+    private val focusScales = mutableMapOf<Long, Float>()
+    private var focusAnimator: ValueAnimator? = null
+
+    fun release() {
+        focusAnimator?.cancel()
+        focusAnimator = null
+    }
+
     fun install(style: Style) {
+        release()
+        focusScales.clear()
         registeredImageKeys.clear()
         registeredImageSignatures.clear()
         renderDataById.clear()
@@ -104,7 +116,7 @@ internal class EmotionPinSymbolLayer {
         // Monitoring IDs change during viewport loads even when the map features do not.
         lastMonitoringLoadId = monitoringLoadId
         if (pins === lastInputPins && !imageChanged) {
-            this.focusedId = focusedId
+            animateFocus(style, focusedId)
             applyDynamicProperties(style, lastTopPriority)
             return false
         }
@@ -115,7 +127,7 @@ internal class EmotionPinSymbolLayer {
         val renderSignature = renderData.map(CachedPinRenderData::signature)
         lastInputPins = pins
         lastRenderedPins = renderedPins
-        this.focusedId = focusedId
+        animateFocus(style, focusedId)
         // Image registration updates the style; only changed drawable pins require a source update.
         val sourceChanged = renderSignature != lastRenderSignature
         if (!sourceChanged) {
@@ -183,6 +195,33 @@ internal class EmotionPinSymbolLayer {
         applyDynamicProperties(style, lastTopPriority)
     }
 
+    private fun animateFocus(
+        style: Style,
+        id: Long?,
+    ) {
+        if (focusedId == id) return
+        focusAnimator?.cancel()
+        focusedId = id
+        val starts = focusScales.toMutableMap()
+        if (id != null) starts.putIfAbsent(id, 1f)
+        focusAnimator =
+            ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = 280L
+                interpolator = AccelerateDecelerateInterpolator()
+                addUpdateListener { animator ->
+                    val progress = animator.animatedValue as Float
+                    starts.forEach { (pinId, start) ->
+                        val target = if (pinId == id) 1.3f else 1f
+                        focusScales[pinId] = start + (target - start) * progress
+                    }
+                    if (progress == 1f) focusScales.keys.retainAll(setOfNotNull(id))
+                    dynamicProperties = null
+                    applyDynamicProperties(style, lastTopPriority)
+                }
+                start()
+            }
+    }
+
     private fun renderData(pin: EmotionPinUiModel): CachedPinRenderData {
         val signature =
             PinRenderSignature(
@@ -217,22 +256,22 @@ internal class EmotionPinSymbolLayer {
         val next = DynamicProperties(focusedId, lastPressedId, lastPressedScale, topPriority)
         if (next == dynamicProperties) return
         val layer = style.getLayer(LAYER_ID) ?: return
-        val focusedScale =
-            focusedId?.let { id ->
+        val baseScale =
+            focusScales.entries.fold(Expression.get(SCALE_PROPERTY)) { fallback, (id, scale) ->
                 Expression.switchCase(
                     Expression.eq(Expression.get(PIN_ID_PROPERTY), Expression.literal(id)),
-                    Expression.literal(1.3),
-                    Expression.get(SCALE_PROPERTY),
+                    Expression.literal(scale.toDouble()),
+                    fallback,
                 )
-            } ?: Expression.get(SCALE_PROPERTY)
+            }
         val iconScale =
             lastPressedId?.let { id ->
                 Expression.switchCase(
                     Expression.eq(Expression.get(PIN_ID_PROPERTY), Expression.literal(id)),
                     Expression.literal(lastPressedScale.toDouble()),
-                    focusedScale,
+                    baseScale,
                 )
-            } ?: focusedScale
+            } ?: baseScale
         val sortPriority =
             focusedId?.let { id ->
                 Expression.switchCase(
