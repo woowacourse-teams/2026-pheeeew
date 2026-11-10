@@ -68,8 +68,6 @@ import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.emotion_tap_accessibility
 import pheeeew.shared.generated.resources.group_emotion_button_base
-import pheeeew.shared.generated.resources.press_button_face_shadow
-import pheeeew.shared.generated.resources.press_button_silver_base
 
 private val activationKeys = setOf(Key.Enter, Key.NumPadEnter, Key.Spacebar, Key.DirectionCenter)
 
@@ -121,14 +119,9 @@ internal fun EmotionPadButton(
     fun Modifier.faceMotion(
         origin: TransformOrigin,
         restOffset: Float,
-        depthShadow: Boolean = false,
     ): Modifier =
         graphicsLayer {
             val transform = motion.sample(frameTime.value)
-            if (depthShadow) {
-                // Raised at rest; fully hidden when the cap is compressed into the base.
-                alpha = 1f - (transform.y / 3.0).toFloat().coerceIn(0f, 1f)
-            }
             transformOrigin = origin
             val motionUnit = if (faceVisual == null) 1f else unit
             translationY = (transform.y.toFloat() * motionUnit + restOffset) * density.density
@@ -138,7 +131,7 @@ internal fun EmotionPadButton(
 
     fun Modifier.capDepth(): Modifier =
         drawWithContent {
-            val depth = (motion.sample(frameTime.value).y / 3.0).toFloat().coerceIn(0f, 1f)
+            val depth = (motion.sample(frameTime.value).y / PressButtonDepth.TRAVEL).toFloat().coerceIn(0f, 1f)
             if (depth == 0f || faceVisual == null || faceVisual.stage == EmotionFaceStage.Burst) {
                 drawContent()
             } else {
@@ -262,45 +255,19 @@ internal fun EmotionPadButton(
             contentAlignment = Alignment.Center,
         ) {
             Image(
-                painter =
-                    painterResource(
-                        if (faceVisual ==
-                            null
-                        ) {
-                            Res.drawable.group_emotion_button_base
-                        } else {
-                            Res.drawable.press_button_silver_base
-                        },
-                    ),
+                painter = painterResource(Res.drawable.group_emotion_button_base),
                 contentDescription = null,
                 modifier = Modifier.size((105 * unit).dp, (110 * unit).dp),
             )
-            if (faceVisual != null) {
-                Image(
-                    painterResource(Res.drawable.press_button_face_shadow),
-                    contentDescription = null,
-                    modifier =
-                        Modifier
-                            .size((105 * unit).dp, (110 * unit).dp)
-                            .faceMotion(
-                                TransformOrigin(
-                                    .5f,
-                                    (55f + PressFaceCatalog.CANVAS_SIZE * .26f - 4f / unit) / 110f,
-                                ),
-                                restOffset = 0f,
-                                depthShadow = true,
-                            ),
-                )
-            }
             val faceModifier =
                 Modifier
                     .requiredSize(
                         ((if (faceVisual == null) 110 else PressFaceCatalog.CANVAS_SIZE) * unit).dp,
                         ((if (faceVisual == null) 115 else PressFaceCatalog.CANVAS_SIZE) * unit).dp,
                     ).faceMotion(
-                        // Both layers pivot at the face's lower edge in button coordinates.
+                        // Pivot the moving face at its lower edge; the base stays fixed.
                         if (faceVisual == null) TransformOrigin(.5f, .8f) else TransformOrigin(.5f, .76f),
-                        restOffset = -4f,
+                        restOffset = if (faceVisual == null) -4f else PressButtonDepth.REST_OFFSET * unit,
                     ).capDepth()
                     .testTag("emotion-surface-${kind.name}")
             if (faceVisual == null) {
