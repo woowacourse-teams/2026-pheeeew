@@ -37,7 +37,7 @@ internal fun SettingsActionRow(
                     if (onClick == null) {
                         row
                     } else {
-                        row.clickable(interactionSource = null, indication = null, onClick = onClick)
+                        row.clickable(onClick = onClick)
                     }
                 },
         verticalAlignment = Alignment.CenterVertically,

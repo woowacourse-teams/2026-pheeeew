@@ -45,7 +45,7 @@ internal fun ContactCard(
                 .shadow(3.dp, shape, clip = false)
                 .border(AppBorders.Standard, MaterialTheme.appColors.settings.iconInk, shape)
                 .background(MaterialTheme.colorScheme.appSurface, shape)
-                .clickable(interactionSource = null, indication = null, onClick = onClick)
+                .clickable(onClick = onClick)
                 .padding(
                     horizontal = AppSpacing.lg.copy(value = 18.dp).dp,
                     vertical = AppSpacing.xxl.copy(value = 28.dp).dp,
