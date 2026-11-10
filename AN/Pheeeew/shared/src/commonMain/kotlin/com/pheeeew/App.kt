@@ -129,9 +129,12 @@ import dev.zacsweers.metrox.viewmodel.LocalMetroViewModelFactory
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
+
+private const val FEATURE_GUIDE_ANCHOR_TIMEOUT_MS = 500L
 
 internal fun shouldShowMapFeedback(
     mainFeaturesReady: Boolean,
@@ -699,6 +702,14 @@ private fun AppContent(
                     } else {
                         FeatureGuideSession(selectedFeatureGuide)
                     }
+            }
+        }
+        LaunchedEffect(pendingFeatureGuideSession) {
+            val pendingSession = pendingFeatureGuideSession ?: return@LaunchedEffect
+            delay(FEATURE_GUIDE_ANCHOR_TIMEOUT_MS)
+            if (pendingFeatureGuideSession === pendingSession) {
+                pendingFeatureGuideSession = null
+                featureGuideSession = null
             }
         }
         val guideAnchorReporter =

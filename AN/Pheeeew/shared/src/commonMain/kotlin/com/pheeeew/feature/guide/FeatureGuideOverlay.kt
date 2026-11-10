@@ -172,6 +172,11 @@ internal enum class FeatureGuide(
             FeatureGuidePage(Res.string.coachmark_calendar_day_title, Res.string.coachmark_calendar_day_description),
         ),
     ),
+    ;
+
+    companion object {
+        val storageIds: List<String> = entries.map { it.storageId }.distinct()
+    }
 }
 
 internal data class FeatureGuidePage(

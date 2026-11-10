@@ -29,6 +29,7 @@ import com.pheeeew.domain.model.device.DevicePlatform
 import com.pheeeew.domain.repository.AppVersionRepository
 import com.pheeeew.domain.repository.OnboardingStore
 import com.pheeeew.domain.repository.RecordAnonymityStore
+import com.pheeeew.feature.guide.FeatureGuide
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.GraphExtension
 import dev.zacsweers.metro.Provides
@@ -237,7 +238,7 @@ private class IosOnboardingStore : OnboardingStore {
 
     override fun resetFeatureGuideHistory() {
         val defaults = NSUserDefaults.standardUserDefaults
-        listOf("map", "press", "collection", "calendar").forEach { guideId ->
+        FeatureGuide.storageIds.forEach { guideId ->
             defaults.removeObjectForKey(featureGuideKey(guideId))
         }
     }
