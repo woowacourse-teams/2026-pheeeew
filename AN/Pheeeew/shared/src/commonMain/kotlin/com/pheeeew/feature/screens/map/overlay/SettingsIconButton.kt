@@ -39,16 +39,13 @@ internal fun SettingsIconButton(
                     width = AppBorders.Standard,
                     color = MaterialTheme.colorScheme.appBorder,
                     shape = AppShapes.Button,
-                ),
+                ).clickable(role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Image(
             painter = painterResource(Res.drawable.ic_settings),
             contentDescription = stringResource(Res.string.map_settings),
-            modifier =
-                Modifier
-                    .size(24.dp)
-                    .clickable(role = Role.Button, onClick = onClick),
+            modifier = Modifier.size(24.dp),
         )
     }
 }
