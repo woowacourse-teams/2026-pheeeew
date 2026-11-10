@@ -14,9 +14,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -44,10 +46,14 @@ internal fun ContactCard(
                 .padding(horizontal = AppSpacing.xl.copy(value = 21.dp).dp)
                 .shadow(3.dp, shape, clip = false)
                 .border(AppBorders.Standard, MaterialTheme.appColors.settings.iconInk, shape)
-                .background(MaterialTheme.colorScheme.appSurface, shape)
-                .clickable(interactionSource = null, indication = null, onClick = onClick)
-                .padding(
-                    horizontal = AppSpacing.lg.copy(value = 18.dp).dp,
+                .clip(shape)
+                .background(MaterialTheme.colorScheme.appSurface)
+                .clickable(
+                    interactionSource = null,
+                    indication = ripple(color = MaterialTheme.appColors.settings.iconSecondary),
+                    onClick = onClick,
+                ).padding(
+                    horizontal = SettingsCardContentInset,
                     vertical = AppSpacing.xxl.copy(value = 28.dp).dp,
                 ),
         verticalAlignment = Alignment.CenterVertically,

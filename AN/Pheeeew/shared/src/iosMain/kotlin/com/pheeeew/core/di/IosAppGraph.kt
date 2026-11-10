@@ -29,6 +29,7 @@ import com.pheeeew.domain.model.device.DevicePlatform
 import com.pheeeew.domain.repository.AppVersionRepository
 import com.pheeeew.domain.repository.OnboardingStore
 import com.pheeeew.domain.repository.RecordAnonymityStore
+import com.pheeeew.feature.guide.FeatureGuide
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.GraphExtension
 import dev.zacsweers.metro.Provides
@@ -228,10 +229,26 @@ private class IosOnboardingStore : OnboardingStore {
         NSUserDefaults.standardUserDefaults.setBool(true, forKey = "onboarding_completed")
     }
 
-    override fun resetCompletion() {
-        val defaults = NSUserDefaults.standardUserDefaults
-        defaults.removeObjectForKey("onboarding_completed")
+    override fun isFeatureGuideCompleted(guideId: String): Boolean =
+        NSUserDefaults.standardUserDefaults.boolForKey(featureGuideKey(guideId))
+
+    override fun completeFeatureGuide(guideId: String) {
+        NSUserDefaults.standardUserDefaults.setBool(true, forKey = featureGuideKey(guideId))
     }
+
+    override fun resetFeatureGuideHistory() {
+        val defaults = NSUserDefaults.standardUserDefaults
+        FeatureGuide.storageIds.forEach { guideId ->
+            defaults.removeObjectForKey(featureGuideKey(guideId))
+        }
+    }
+
+    override fun resetCompletion() {
+        NSUserDefaults.standardUserDefaults.removeObjectForKey("onboarding_completed")
+        resetFeatureGuideHistory()
+    }
+
+    private fun featureGuideKey(guideId: String) = "feature_guide_${guideId}_completed"
 }
 
 fun iosDeviceBuildConfig(): DeviceSessionBuildConfig = IosGraphs.app.apiDependencies.buildConfig

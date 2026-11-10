@@ -22,7 +22,7 @@ internal fun SettingsHeader(
         modifier = modifier,
         height = 64.dp,
         titleStartAligned = true,
-        showBackIndication = false,
+        showBackIndication = true,
     )
 }
 

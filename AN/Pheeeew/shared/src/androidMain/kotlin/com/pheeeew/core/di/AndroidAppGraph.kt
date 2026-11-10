@@ -2,6 +2,7 @@ package com.pheeeew.core.di
 
 import android.app.Application
 import android.content.Context
+import android.content.SharedPreferences
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -41,6 +42,7 @@ import com.pheeeew.domain.permission.LocationPermissionController
 import com.pheeeew.domain.repository.AppVersionRepository
 import com.pheeeew.domain.repository.OnboardingStore
 import com.pheeeew.domain.repository.RecordAnonymityStore
+import com.pheeeew.feature.guide.FeatureGuide
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.GraphExtension
 import dev.zacsweers.metro.Provides
@@ -324,12 +326,34 @@ private class AndroidOnboardingStore(
             .apply()
     }
 
+    override fun isFeatureGuideCompleted(guideId: String): Boolean =
+        preferences.getBoolean(featureGuideKey(guideId), false)
+
+    override fun completeFeatureGuide(guideId: String) {
+        preferences.edit().putBoolean(featureGuideKey(guideId), true).apply()
+    }
+
+    override fun resetFeatureGuideHistory() {
+        preferences
+            .edit()
+            .removeFeatureGuideHistory()
+            .apply()
+    }
+
     override fun resetCompletion() {
         preferences
             .edit()
             .remove("onboarding_completed")
+            .removeFeatureGuideHistory()
             .apply()
     }
+
+    private fun SharedPreferences.Editor.removeFeatureGuideHistory(): SharedPreferences.Editor =
+        apply {
+            FeatureGuide.storageIds.forEach { guideId -> remove(featureGuideKey(guideId)) }
+        }
+
+    private fun featureGuideKey(guideId: String) = "feature_guide_${guideId}_completed"
 }
 
 internal class AttachedLocationPermission(

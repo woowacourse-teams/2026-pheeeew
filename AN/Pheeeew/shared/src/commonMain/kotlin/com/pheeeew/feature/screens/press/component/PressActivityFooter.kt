@@ -58,6 +58,7 @@ import com.pheeeew.feature.emotion.component.EmotionFeedbackCatalog
 import com.pheeeew.feature.emotion.component.formatCount
 import com.pheeeew.feature.emotion.component.rememberTapReducedMotion
 import com.pheeeew.feature.emotion.model.EmotionKind
+import com.pheeeew.feature.guide.reportFeatureGuideAnchor
 import com.pheeeew.feature.screens.press.PressActivityStatus
 import com.pheeeew.feature.screens.press.PressActivityUiState
 import com.pheeeew.feature.screens.press.PressRaceNotice
@@ -127,7 +128,7 @@ internal fun PressActivityFooter(
             .padding(
                 horizontal = AppSpacing.sm.copy(value = 10.dp).dp,
                 vertical = AppSpacing.sm.copy(value = 10.dp).dp,
-            ),
+            ).reportFeatureGuideAnchor("press", 1),
     ) {
         val chipWidth = maxWidth * 0.52f
         Row(

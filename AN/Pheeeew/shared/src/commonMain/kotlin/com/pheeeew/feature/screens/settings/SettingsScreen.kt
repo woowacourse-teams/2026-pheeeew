@@ -76,6 +76,8 @@ import pheeeew.shared.generated.resources.settings_nickname_load_failed
 import pheeeew.shared.generated.resources.settings_nickname_loading
 import pheeeew.shared.generated.resources.settings_permissions
 import pheeeew.shared.generated.resources.settings_profile_section
+import pheeeew.shared.generated.resources.settings_replay_guide
+import pheeeew.shared.generated.resources.settings_replay_guide_notice
 
 @Composable
 fun SettingsScreen(
@@ -92,6 +94,7 @@ fun SettingsScreen(
     onNicknameClick: () -> Unit = {},
     nicknameDialog: (@Composable () -> Unit)? = null,
     notificationPermissionContent: @Composable () -> Unit = {},
+    onReplayGuideClick: () -> Unit = {},
 ) {
     Column(
         modifier =
@@ -129,6 +132,13 @@ fun SettingsScreen(
                     onClick = onPermissionClick,
                 )
                 notificationPermissionContent()
+                SettingsDivider()
+                SettingsActionRow(
+                    title = stringResource(Res.string.settings_replay_guide),
+                    icon = SettingsIcon.Info,
+                    highlighted = true,
+                    onClick = onReplayGuideClick,
+                )
             }
 
             Spacer(Modifier.height(AppSpacing.xxxl.dp))
@@ -174,11 +184,13 @@ fun SettingsScreen(
     monitoring: Monitoring = NoOpMonitoring,
     modifier: Modifier = Modifier,
     settingsContent: @Composable () -> Unit = {},
+    onReplayGuideClick: () -> Unit = {},
 ) {
     var versionTaps by remember { mutableStateOf(0) }
     var analyticsIdentity by remember { mutableStateOf<String?>(null) }
     var notificationSettingsVisible by remember { mutableStateOf(false) }
     var selectedLegalDocument by remember { mutableStateOf<LegalDocument?>(null) }
+    var isReplayGuideSnackbarActive by remember { mutableStateOf(false) }
     val telemetry = remember(monitoring) { ProductMonitoring(monitoring, "settings") }
     val legalTelemetry = remember(monitoring) { ProductMonitoring(monitoring, "legaldocument") }
     ProductScreen(telemetry, selectedLegalDocument == null)
@@ -200,6 +212,7 @@ fun SettingsScreen(
     val nicknameViewModel: SettingsViewModel = metroViewModel()
     val nicknameState by nicknameViewModel.uiState.collectAsStateWithLifecycle()
     val nicknameChangedMessage = stringResource(Res.string.settings_nickname_changed)
+    val replayGuideMessage = stringResource(Res.string.settings_replay_guide_notice)
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(notificationSettings, lifecycleOwner, notificationSaveFailedMessage) {
         val model = notificationSettings ?: return@LaunchedEffect
@@ -215,7 +228,7 @@ fun SettingsScreen(
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             viewModel.uiState.map { it.nicknameChangedNoticeId }.filterNotNull().collect { noticeId ->
                 viewModel.acknowledgeNicknameChanged(noticeId)
-                snackbarHostState.showSnackbar(NicknameChangedSnackbarVisuals(nicknameChangedMessage))
+                snackbarHostState.showSnackbar(SettingsSuccessSnackbarVisuals(nicknameChangedMessage))
             }
         }
     }
@@ -301,6 +314,22 @@ fun SettingsScreen(
                                         "설정 화면을 열지 못했어요.",
                                         duration = SnackbarDuration.Indefinite,
                                     )
+                                }
+                            }
+                        },
+                        onReplayGuideClick = {
+                            telemetry.emit("settings_action_selected", labels("action" to "replay_guide"))
+                            onReplayGuideClick()
+                            if (!isReplayGuideSnackbarActive) {
+                                isReplayGuideSnackbarActive = true
+                                coroutineScope.launch {
+                                    try {
+                                        snackbarHostState.showSnackbar(
+                                            SettingsSuccessSnackbarVisuals(replayGuideMessage),
+                                        )
+                                    } finally {
+                                        isReplayGuideSnackbarActive = false
+                                    }
                                 }
                             }
                         },
@@ -394,12 +423,17 @@ fun SettingsScreen(
 
             SnackbarHost(
                 hostState = snackbarHostState,
-                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(AppSpacing.lg.dp),
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .navigationBarsPadding()
+                        .padding(horizontal = AppSpacing.lg.dp)
+                        .padding(bottom = AppSpacing.xxl.dp),
                 snackbar = { data ->
                     Snackbar(
                         message = data.visuals.message,
                         onDismiss = data::dismiss,
-                        isError = data.visuals !is NicknameChangedSnackbarVisuals,
+                        isError = data.visuals !is SettingsSuccessSnackbarVisuals,
                         maxLines = 3,
                         presentationKey = data,
                     )
@@ -409,7 +443,7 @@ fun SettingsScreen(
     }
 }
 
-private data class NicknameChangedSnackbarVisuals(
+private data class SettingsSuccessSnackbarVisuals(
     override val message: String,
     override val actionLabel: String? = null,
     override val withDismissAction: Boolean = false,

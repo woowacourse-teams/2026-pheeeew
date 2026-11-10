@@ -28,6 +28,9 @@ internal fun CollectionRoute(
     modifier: Modifier = Modifier,
     bottomBar: @Composable () -> Unit = {},
     onRefreshActionChanged: ((() -> Unit)?) -> Unit = {},
+    onCalendarModeChanged: (Boolean) -> Unit = {},
+    onHasClaimedTodayChanged: (Boolean?) -> Unit = {},
+    focusIssuedCardForGuide: Boolean = false,
     onOpenCalendarDay: (month: String, cardId: String) -> Unit,
 ) {
     val viewModel: CollectionViewModel = metroViewModel()
@@ -59,9 +62,17 @@ internal fun CollectionRoute(
         onDispose { exportState.dispose() }
     }
     val currentRefreshActionChanged by rememberUpdatedState(onRefreshActionChanged)
+    val currentHasClaimedTodayChanged by rememberUpdatedState(onHasClaimedTodayChanged)
+    val hasClaimedToday = state.today?.takeIf { it.date == state.todayDate }?.hasClaimedCard
+    LaunchedEffect(hasClaimedToday) {
+        currentHasClaimedTodayChanged(hasClaimedToday)
+    }
     DisposableEffect(viewModel) {
         currentRefreshActionChanged(viewModel::refresh)
-        onDispose { currentRefreshActionChanged(null) }
+        onDispose {
+            currentRefreshActionChanged(null)
+            currentHasClaimedTodayChanged(null)
+        }
     }
     LaunchedEffect(viewModel, sessionGeneration, currentNickname, refreshRevision) {
         viewModel.onSessionChanged(sessionGeneration, currentNickname)
@@ -106,5 +117,7 @@ internal fun CollectionRoute(
         onRetryCard = viewModel::retrySelectedCard,
         onCalendarMonthChange = viewModel::setCalendarMonth,
         onCalendarDayClick = { onOpenCalendarDay(state.calendarMonth, it) },
+        onCalendarModeChanged = onCalendarModeChanged,
+        focusIssuedCardForGuide = focusIssuedCardForGuide,
     )
 }

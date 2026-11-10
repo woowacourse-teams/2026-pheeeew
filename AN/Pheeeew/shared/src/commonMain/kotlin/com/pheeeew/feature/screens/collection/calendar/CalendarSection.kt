@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.emotion.model.EmotionType
+import com.pheeeew.feature.guide.reportFeatureGuideAnchor
 import com.pheeeew.feature.screens.collection.CollectionPreviewTheme
 import com.pheeeew.feature.screens.collection.card.CollectionCardUiModel
 import org.jetbrains.compose.resources.painterResource
@@ -91,7 +92,10 @@ fun CalendarSection(
             nextMonth = nextMonth,
             todayMonth = todayMonth,
             onMonthChange = onMonthChange,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier =
+                Modifier
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .reportFeatureGuideAnchor("calendar", 0),
         )
 
         CalendarDayOfWeek()
@@ -106,7 +110,10 @@ fun CalendarSection(
                     }
                 }
             }
-            HorizontalPager(state = pagerState, modifier = Modifier.fillMaxWidth()) { page ->
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxWidth().reportFeatureGuideAnchor("calendar", 1),
+            ) { page ->
                 val pageMonth = collectionMonthFromIndex(page)
                 val monthDays = remember(pageMonth) { collectionMonthDays(pageMonth) }
                 Column(

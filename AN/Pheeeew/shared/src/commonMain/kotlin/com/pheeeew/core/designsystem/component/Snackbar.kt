@@ -5,6 +5,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -36,16 +37,19 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppBorders
@@ -174,22 +178,24 @@ private fun SnackbarContentLayout(
     modifier: Modifier = Modifier,
     icon: @Composable () -> Unit,
 ) {
+    val shape = RoundedCornerShape(20.dp)
     Surface(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .widthIn(max = 354.dp)
+                .padding(start = 4.dp, end = 4.dp, bottom = 8.dp)
                 .heightIn(min = 48.dp)
+                .dropShadow(
+                    shape = shape,
+                    shadow = Shadow(radius = 4.dp, offset = DpOffset(0.dp, 4.dp), alpha = 0.2f),
+                ).raisedBorderBase(shape, borderColor, depth = 1.dp)
                 .semantics { liveRegion = LiveRegionMode.Polite }
                 .then(modifier),
-        shape = RoundedCornerShape(20.dp),
+        shape = shape,
         color = MaterialTheme.colorScheme.appSurface,
         contentColor = MaterialTheme.colorScheme.appTextPrimary,
-        border =
-            androidx.compose.foundation.BorderStroke(
-                AppBorders.Standard,
-                borderColor,
-            ),
+        border = BorderStroke(AppBorders.Standard, borderColor),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),

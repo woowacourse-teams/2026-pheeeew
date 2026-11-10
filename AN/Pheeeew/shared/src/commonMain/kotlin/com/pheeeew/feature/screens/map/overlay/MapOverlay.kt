@@ -50,6 +50,7 @@ import com.pheeeew.core.designsystem.theme.appColors
 import com.pheeeew.core.designsystem.theme.appSurface
 import com.pheeeew.core.designsystem.theme.appTextPrimary
 import com.pheeeew.feature.component.AppBottomNavigationBarOverlaySpace
+import com.pheeeew.feature.guide.reportFeatureGuideAnchor
 import com.pheeeew.feature.screens.map.record.EmotionBubbleCluster
 import com.pheeeew.feature.screens.map.record.EmotionPromptLabel
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
@@ -180,6 +181,7 @@ fun MapOverlay(
                                     color = MaterialTheme.colorScheme.appBorder,
                                     shape = RoundedCornerShape(100.dp),
                                 ).clickable(onClick = onListClick)
+                                .reportFeatureGuideAnchor("map", 1)
                                 .padding(
                                     horizontal = AppSpacing.xxl.dp,
                                     vertical = AppSpacing.sm.copy(value = 10.dp).dp,
@@ -222,7 +224,10 @@ fun MapOverlay(
                     MapControlButton(
                         icon = if (isFilterApplied) Res.drawable.ic_map_filter_active else Res.drawable.ic_map_filter,
                         contentDescription = stringResource(Res.string.map_filter),
-                        modifier = Modifier.semantics { stateDescription = filterStateDescription },
+                        modifier =
+                            Modifier
+                                .semantics { stateDescription = filterStateDescription }
+                                .reportFeatureGuideAnchor("map", 2),
                         onClick = onFilterClick,
                         tint = Color.Unspecified,
                     )
@@ -265,7 +270,8 @@ fun MapOverlay(
                     modifier =
                         Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(bottom = MAP_CONTROL_BOTTOM_SPACE),
+                            .padding(bottom = MAP_CONTROL_BOTTOM_SPACE)
+                            .reportFeatureGuideAnchor("map", 0),
                 )
             }
         }

@@ -11,6 +11,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -23,6 +24,8 @@ import com.pheeeew.core.designsystem.theme.appColors
 import com.pheeeew.core.designsystem.theme.appLightDivider
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.feature.screens.settings.SettingsTheme
+
+internal val SettingsCardContentInset = 18.dp
 
 @Composable
 internal fun SettingsSectionTitle(
@@ -56,8 +59,8 @@ internal fun SettingsCard(
                 .padding(horizontal = AppSpacing.xl.copy(value = 21.dp).dp)
                 .shadow(3.dp, shape, clip = false)
                 .border(AppBorders.Standard, MaterialTheme.appColors.settings.iconInk, shape)
-                .background(MaterialTheme.colorScheme.appBackground, shape)
-                .padding(horizontal = AppSpacing.lg.copy(value = 18.dp).dp),
+                .clip(shape)
+                .background(MaterialTheme.colorScheme.appBackground),
     ) {
         content()
     }
@@ -66,7 +69,7 @@ internal fun SettingsCard(
 @Composable
 internal fun SettingsDivider(modifier: Modifier = Modifier) {
     HorizontalDivider(
-        modifier = modifier,
+        modifier = modifier.padding(horizontal = SettingsCardContentInset),
         color = MaterialTheme.colorScheme.appLightDivider,
         thickness = AppBorders.Thin,
     )

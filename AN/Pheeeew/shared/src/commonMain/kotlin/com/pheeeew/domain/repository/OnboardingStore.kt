@@ -5,6 +5,13 @@ interface OnboardingStore {
 
     fun complete()
 
-    /** Reset viewing flags while preserving notification permission history and other local data. */
+    fun isFeatureGuideCompleted(guideId: String): Boolean
+
+    fun completeFeatureGuide(guideId: String)
+
+    /** Reset feature-guide viewing flags while preserving onboarding completion. */
+    fun resetFeatureGuideHistory()
+
+    /** Reset onboarding and feature-guide viewing flags while preserving other local data. */
     fun resetCompletion()
 }
