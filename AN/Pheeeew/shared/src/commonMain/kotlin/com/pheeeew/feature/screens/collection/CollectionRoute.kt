@@ -28,6 +28,7 @@ internal fun CollectionRoute(
     modifier: Modifier = Modifier,
     bottomBar: @Composable () -> Unit = {},
     onRefreshActionChanged: ((() -> Unit)?) -> Unit = {},
+    onCalendarModeChanged: (Boolean) -> Unit = {},
     onOpenCalendarDay: (month: String, cardId: String) -> Unit,
 ) {
     val viewModel: CollectionViewModel = metroViewModel()
@@ -106,5 +107,6 @@ internal fun CollectionRoute(
         onRetryCard = viewModel::retrySelectedCard,
         onCalendarMonthChange = viewModel::setCalendarMonth,
         onCalendarDayClick = { onOpenCalendarDay(state.calendarMonth, it) },
+        onCalendarModeChanged = onCalendarModeChanged,
     )
 }

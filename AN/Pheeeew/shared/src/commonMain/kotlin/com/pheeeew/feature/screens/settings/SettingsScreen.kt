@@ -76,6 +76,7 @@ import pheeeew.shared.generated.resources.settings_nickname_load_failed
 import pheeeew.shared.generated.resources.settings_nickname_loading
 import pheeeew.shared.generated.resources.settings_permissions
 import pheeeew.shared.generated.resources.settings_profile_section
+import pheeeew.shared.generated.resources.settings_replay_guide
 
 @Composable
 fun SettingsScreen(
@@ -92,6 +93,7 @@ fun SettingsScreen(
     onNicknameClick: () -> Unit = {},
     nicknameDialog: (@Composable () -> Unit)? = null,
     notificationPermissionContent: @Composable () -> Unit = {},
+    onReplayGuideClick: () -> Unit = {},
 ) {
     Column(
         modifier =
@@ -129,6 +131,12 @@ fun SettingsScreen(
                     onClick = onPermissionClick,
                 )
                 notificationPermissionContent()
+                SettingsDivider()
+                SettingsActionRow(
+                    title = stringResource(Res.string.settings_replay_guide),
+                    icon = SettingsIcon.Info,
+                    onClick = onReplayGuideClick,
+                )
             }
 
             Spacer(Modifier.height(AppSpacing.xxxl.dp))
@@ -174,6 +182,7 @@ fun SettingsScreen(
     monitoring: Monitoring = NoOpMonitoring,
     modifier: Modifier = Modifier,
     settingsContent: @Composable () -> Unit = {},
+    onReplayGuideClick: () -> Unit = {},
 ) {
     var versionTaps by remember { mutableStateOf(0) }
     var analyticsIdentity by remember { mutableStateOf<String?>(null) }
@@ -303,6 +312,10 @@ fun SettingsScreen(
                                     )
                                 }
                             }
+                        },
+                        onReplayGuideClick = {
+                            telemetry.emit("settings_action_selected", labels("action" to "replay_guide"))
+                            onReplayGuideClick()
                         },
                         onPrivacyPolicyClick = {
                             telemetry.emit("settings_action_selected", labels("action" to "privacy_policy"))

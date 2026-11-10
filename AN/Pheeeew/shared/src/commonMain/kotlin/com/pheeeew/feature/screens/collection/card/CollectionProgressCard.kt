@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.emotion.model.EmotionType
+import com.pheeeew.feature.guide.reportFeatureGuideAnchor
 import com.pheeeew.feature.screens.collection.CollectionEmotionProgress
 import com.pheeeew.feature.screens.collection.CollectionPreviewTheme
 import com.pheeeew.feature.screens.collection.CollectionProgressUiModel
@@ -83,9 +84,10 @@ internal fun CollectionProgressCard(
     CollectionCardFrame(
         cornerIconTint = progress.emotion.representativeColor,
         modifier =
-            modifier.semantics {
-                contentDescription = cardDescription
-            },
+            modifier
+                .semantics {
+                    contentDescription = cardDescription
+                }.reportFeatureGuideAnchor("collection", 0),
     ) { scale ->
         Column(
             Modifier
@@ -234,7 +236,11 @@ internal fun CollectionProgressCard(
                         contentColor = AppColors.GroupInk,
                     ),
                 contentPadding = PaddingValues(horizontal = 24.dp, vertical = 0.dp),
-                modifier = Modifier.fillMaxWidth().height(52.dp * scale),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(52.dp * scale)
+                        .reportFeatureGuideAnchor("collection", 1),
             ) {
                 Text(
                     text = stringResource(Res.string.collection_issue_card),

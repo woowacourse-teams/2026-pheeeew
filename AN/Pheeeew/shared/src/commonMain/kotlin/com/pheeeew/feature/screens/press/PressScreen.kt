@@ -39,6 +39,7 @@ import com.pheeeew.feature.emotion.component.formatCount
 import com.pheeeew.feature.emotion.model.EmotionCountUiModel
 import com.pheeeew.feature.emotion.model.EmotionFaceVisual
 import com.pheeeew.feature.emotion.model.EmotionKind
+import com.pheeeew.feature.guide.reportFeatureGuideAnchor
 import com.pheeeew.feature.screens.press.component.PressNearbyRankingCard
 import com.pheeeew.feature.screens.press.component.PressRankingEntry
 import kotlinx.coroutines.CoroutineStart
@@ -111,7 +112,11 @@ internal fun PressScreen(
             }
             PressRankingEntry(
                 onClick = onOpenRanking,
-                modifier = Modifier.align(Alignment.End).padding(horizontal = AppSpacing.screen.dp),
+                modifier =
+                    Modifier
+                        .align(Alignment.End)
+                        .padding(horizontal = AppSpacing.screen.dp)
+                        .reportFeatureGuideAnchor("press", 2),
             )
             PressNearbyRankingCard(
                 nearbyRanking,
@@ -156,7 +161,11 @@ internal fun PressScreen(
                     accepted
                 },
                 arrangement = EmotionPadArrangement.TwoThree,
-                modifier = Modifier.width(padWidth).padding(horizontal = AppSpacing.lg.dp),
+                modifier =
+                    Modifier
+                        .width(padWidth)
+                        .padding(horizontal = AppSpacing.lg.dp)
+                        .reportFeatureGuideAnchor("press", 0),
             )
         }
         Spacer(Modifier.height(AppSpacing.xxl.dp))

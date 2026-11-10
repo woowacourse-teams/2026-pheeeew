@@ -228,10 +228,26 @@ private class IosOnboardingStore : OnboardingStore {
         NSUserDefaults.standardUserDefaults.setBool(true, forKey = "onboarding_completed")
     }
 
-    override fun resetCompletion() {
-        val defaults = NSUserDefaults.standardUserDefaults
-        defaults.removeObjectForKey("onboarding_completed")
+    override fun isFeatureGuideCompleted(guideId: String): Boolean =
+        NSUserDefaults.standardUserDefaults.boolForKey(featureGuideKey(guideId))
+
+    override fun completeFeatureGuide(guideId: String) {
+        NSUserDefaults.standardUserDefaults.setBool(true, forKey = featureGuideKey(guideId))
     }
+
+    override fun resetFeatureGuideHistory() {
+        val defaults = NSUserDefaults.standardUserDefaults
+        listOf("map", "press", "collection", "calendar").forEach { guideId ->
+            defaults.removeObjectForKey(featureGuideKey(guideId))
+        }
+    }
+
+    override fun resetCompletion() {
+        NSUserDefaults.standardUserDefaults.removeObjectForKey("onboarding_completed")
+        resetFeatureGuideHistory()
+    }
+
+    private fun featureGuideKey(guideId: String) = "feature_guide_${guideId}_completed"
 }
 
 fun iosDeviceBuildConfig(): DeviceSessionBuildConfig = IosGraphs.app.apiDependencies.buildConfig

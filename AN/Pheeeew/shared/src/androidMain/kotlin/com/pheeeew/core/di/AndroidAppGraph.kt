@@ -324,12 +324,35 @@ private class AndroidOnboardingStore(
             .apply()
     }
 
+    override fun isFeatureGuideCompleted(guideId: String): Boolean =
+        preferences.getBoolean(featureGuideKey(guideId), false)
+
+    override fun completeFeatureGuide(guideId: String) {
+        preferences.edit().putBoolean(featureGuideKey(guideId), true).apply()
+    }
+
+    override fun resetFeatureGuideHistory() {
+        preferences
+            .edit()
+            .remove(featureGuideKey("map"))
+            .remove(featureGuideKey("press"))
+            .remove(featureGuideKey("collection"))
+            .remove(featureGuideKey("calendar"))
+            .apply()
+    }
+
     override fun resetCompletion() {
         preferences
             .edit()
             .remove("onboarding_completed")
+            .remove(featureGuideKey("map"))
+            .remove(featureGuideKey("press"))
+            .remove(featureGuideKey("collection"))
+            .remove(featureGuideKey("calendar"))
             .apply()
     }
+
+    private fun featureGuideKey(guideId: String) = "feature_guide_${guideId}_completed"
 }
 
 internal class AttachedLocationPermission(

@@ -66,6 +66,7 @@ import com.pheeeew.core.designsystem.component.Snackbar
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.feature.emotion.model.EmotionType
+import com.pheeeew.feature.guide.reportFeatureGuideAnchor
 import com.pheeeew.feature.screens.collection.calendar.CalendarSection
 import com.pheeeew.feature.screens.collection.card.CollectionCardUiModel
 import com.pheeeew.feature.screens.collection.coverflow.CoverflowSection
@@ -99,8 +100,12 @@ fun CollectionScreen(
     onCardClick: (String) -> Unit = {},
     onCalendarMonthChange: (String) -> Unit = {},
     onCalendarDayClick: (String) -> Unit = {},
+    onCalendarModeChanged: (Boolean) -> Unit = {},
 ) {
     var viewMode by rememberSaveable { mutableStateOf(CollectionViewMode.COVER_FLOW) }
+    LaunchedEffect(viewMode) {
+        onCalendarModeChanged(viewMode == CollectionViewMode.ALBUM)
+    }
     val sectionLoad =
         if (viewMode == CollectionViewMode.COVER_FLOW) uiModel.coverflowLoad else uiModel.calendarLoad
     val sectionFailure =
@@ -315,7 +320,11 @@ private fun CollectionScreenHeader(
                 fontSize = 12.sp,
                 color = AppColors.TextSecondary,
             )
-            CollectionViewModeToggle(selectedMode = viewMode, onModeChange = onViewModeChange)
+            CollectionViewModeToggle(
+                selectedMode = viewMode,
+                onModeChange = onViewModeChange,
+                modifier = Modifier.reportFeatureGuideAnchor("collection", 2),
+            )
         }
     }
 }
