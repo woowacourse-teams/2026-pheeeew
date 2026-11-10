@@ -434,6 +434,7 @@ private class AndroidFoundationMapHost(
     }
 
     fun release() {
+        emotionPinSymbolLayer.release()
         if (released) return
         saveCamera()
         mapView.removeOnDidFailLoadingMapListener(mapLoadFailureListener)
