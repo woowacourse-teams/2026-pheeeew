@@ -29,6 +29,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -70,9 +71,17 @@ import com.pheeeew.core.designsystem.input.limitMemoValue
 import com.pheeeew.core.designsystem.input.rememberTextEditor
 import com.pheeeew.core.designsystem.input.usesNativeTextEditor
 import com.pheeeew.core.designsystem.theme.AppBorders
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appBorder
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appOnAccent
+import com.pheeeew.core.designsystem.theme.appPrimary
+import com.pheeeew.core.designsystem.theme.appScrim
+import com.pheeeew.core.designsystem.theme.appSurface
+import com.pheeeew.core.designsystem.theme.appSurfaceDisabled
+import com.pheeeew.core.designsystem.theme.appTextPrimary
+import com.pheeeew.core.designsystem.theme.appTextSecondary
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
 import com.pheeeew.feature.screens.map.record.noRippleClickable
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -123,8 +132,8 @@ fun RecordBottomSheet(
         dragFromContent = true,
         restoreOnSwipeDismissRequest = true,
         shape = AppShapes.BottomSheet,
-        containerColor = AppColors.Surface,
-        scrimColor = AppColors.Black.copy(alpha = 0.3f),
+        containerColor = MaterialTheme.colorScheme.appSurface,
+        scrimColor = MaterialTheme.colorScheme.appScrim.copy(alpha = 0.3f),
         dragHandle = { SheetDragHandle() },
     ) {
         dismissConfirmationContent()
@@ -219,7 +228,7 @@ private fun RecordBottomSheetContent(
             modifier
                 .fillMaxWidth()
                 .clip(AppShapes.BottomSheet)
-                .background(AppColors.Surface)
+                .background(MaterialTheme.colorScheme.appSurface)
                 .onGloballyPositioned { sheetPosition = it.positionInRoot() }
                 .pointerInput(focusManager, keyboardController, inputMode) {
                     awaitEachGesture {
@@ -261,7 +270,7 @@ private fun RecordBottomSheetContent(
                         ),
                     modifier = Modifier.weight(1f),
                     lineHeight = 22.sp,
-                    color = AppColors.TextPrimary,
+                    color = MaterialTheme.colorScheme.appTextPrimary,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                 )
@@ -273,7 +282,7 @@ private fun RecordBottomSheetContent(
         Text(
             text = stringResource(Res.string.record_single_attachment_hint),
             fontSize = 12.sp,
-            color = AppColors.TextSecondary,
+            color = MaterialTheme.colorScheme.appTextSecondary,
         )
 
         Row(
@@ -299,7 +308,7 @@ private fun RecordBottomSheetContent(
             ) {
                 Text(
                     text = stringResource(Res.string.record_anonymous),
-                    color = AppColors.TextPrimary,
+                    color = MaterialTheme.colorScheme.appTextPrimary,
                     fontSize = 12.sp,
                 )
                 Checkbox(
@@ -307,9 +316,9 @@ private fun RecordBottomSheetContent(
                     onCheckedChange = null,
                     colors =
                         CheckboxDefaults.colors(
-                            checkedColor = AppColors.RecordSheetAction,
-                            uncheckedColor = AppColors.TextSecondary,
-                            checkmarkColor = AppColors.Surface,
+                            checkedColor = MaterialTheme.appColors.recordSheet.action,
+                            uncheckedColor = MaterialTheme.colorScheme.appTextSecondary,
+                            checkmarkColor = MaterialTheme.colorScheme.appOnAccent,
                         ),
                     modifier = Modifier.padding(start = AppSpacing.xs.dp),
                 )
@@ -404,8 +413,13 @@ private fun RecordSheetActions(
                         interactionSource = interactionSource,
                         elevated = enabled,
                     ).clip(AppShapes.Pill)
-                    .background(if (enabled) AppColors.Primary else AppColors.Gray100)
-                    .noRippleClickable(
+                    .background(
+                        if (enabled) {
+                            MaterialTheme.colorScheme.appPrimary
+                        } else {
+                            MaterialTheme.colorScheme.appSurfaceDisabled
+                        },
+                    ).noRippleClickable(
                         enabled = enabled,
                         interactionSource = interactionSource,
                         onClick = onNext,
@@ -414,7 +428,7 @@ private fun RecordSheetActions(
         ) {
             Text(
                 text = stringResource(Res.string.record_next),
-                color = AppColors.TextPrimary,
+                color = MaterialTheme.colorScheme.appTextPrimary,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -436,7 +450,7 @@ private fun MemoPanel(
                         .fillMaxWidth()
                         .height(105.dp)
                         .clip(AppShapes.Input)
-                        .border(AppBorders.Standard, AppColors.Border, AppShapes.Input)
+                        .border(AppBorders.Standard, MaterialTheme.colorScheme.appBorder, AppShapes.Input)
                         .padding(AppSpacing.lg.dp),
             ) {
                 NativeTextEditor(
@@ -461,11 +475,14 @@ private fun MemoPanel(
                         .fillMaxWidth()
                         .height(105.dp)
                         .clip(AppShapes.Input)
-                        .border(width = AppBorders.Standard, color = AppColors.Border, shape = AppShapes.Input)
-                        .padding(AppSpacing.lg.dp),
+                        .border(
+                            width = AppBorders.Standard,
+                            color = MaterialTheme.colorScheme.appBorder,
+                            shape = AppShapes.Input,
+                        ).padding(AppSpacing.lg.dp),
                 textStyle =
                     LocalTextStyle.current.copy(
-                        color = AppColors.TextPrimary,
+                        color = MaterialTheme.colorScheme.appTextPrimary,
                         fontSize = 14.sp,
                         lineHeight = 22.sp,
                     ),
@@ -480,7 +497,7 @@ private fun MemoPanel(
                             ) {
                                 Text(
                                     text = stringResource(Res.string.record_memo_prompt),
-                                    color = AppColors.Border.copy(alpha = 0.45f),
+                                    color = MaterialTheme.colorScheme.appBorder.copy(alpha = 0.45f),
                                     fontSize = 16.sp,
                                 )
                             }
@@ -514,8 +531,8 @@ private fun RecordInputModeToggle(
             modifier
                 .height(42.dp)
                 .clip(AppShapes.Pill)
-                .background(AppColors.Surface)
-                .border(AppBorders.Standard, AppColors.Border, AppShapes.Pill),
+                .background(MaterialTheme.colorScheme.appSurface)
+                .border(AppBorders.Standard, MaterialTheme.colorScheme.appBorder, AppShapes.Pill),
     ) {
         val tabWidth = maxWidth / 2
         val indicatorOffset by animateDpAsState(
@@ -530,8 +547,8 @@ private fun RecordInputModeToggle(
                     .width(tabWidth)
                     .fillMaxHeight()
                     .clip(AppShapes.Pill)
-                    .background(AppColors.Primary)
-                    .border(AppBorders.Standard, AppColors.Border, AppShapes.Pill),
+                    .background(MaterialTheme.colorScheme.appPrimary)
+                    .border(AppBorders.Standard, MaterialTheme.colorScheme.appBorder, AppShapes.Pill),
         )
         Row(modifier = Modifier.fillMaxSize()) {
             RecordInputModeTab(
@@ -567,7 +584,7 @@ private fun RecordInputModeTab(
     ) {
         Text(
             text = label,
-            color = AppColors.TextPrimary,
+            color = MaterialTheme.colorScheme.appTextPrimary,
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,

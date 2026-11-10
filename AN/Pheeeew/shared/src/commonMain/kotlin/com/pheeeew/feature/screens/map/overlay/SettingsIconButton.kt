@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -14,8 +15,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.pheeeew.core.designsystem.theme.AppBorders
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.appBorder
+import com.pheeeew.core.designsystem.theme.appSurface
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
@@ -32,8 +34,12 @@ internal fun SettingsIconButton(
             modifier
                 .size(44.dp)
                 .clip(AppShapes.Button)
-                .background(AppColors.Surface)
-                .border(width = AppBorders.Standard, color = AppColors.Border, shape = AppShapes.Button),
+                .background(MaterialTheme.colorScheme.appSurface)
+                .border(
+                    width = AppBorders.Standard,
+                    color = MaterialTheme.colorScheme.appBorder,
+                    shape = AppShapes.Button,
+                ),
         contentAlignment = Alignment.Center,
     ) {
         Image(

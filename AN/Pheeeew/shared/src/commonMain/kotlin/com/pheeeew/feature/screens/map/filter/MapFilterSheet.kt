@@ -21,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LocalRippleConfiguration
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RippleConfiguration
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -44,10 +45,18 @@ import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.component.AppNavigableBottomSheet
 import com.pheeeew.core.designsystem.component.RaisedCardButton
 import com.pheeeew.core.designsystem.component.SheetDragHandle
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.core.designsystem.theme.appBorderLight
+import com.pheeeew.core.designsystem.theme.appError
+import com.pheeeew.core.designsystem.theme.appInk
+import com.pheeeew.core.designsystem.theme.appPrimary
+import com.pheeeew.core.designsystem.theme.appScrim
+import com.pheeeew.core.designsystem.theme.appSurface
+import com.pheeeew.core.designsystem.theme.appSurfaceSubtle
+import com.pheeeew.core.designsystem.theme.appTextPrimary
+import com.pheeeew.core.designsystem.theme.appTextSecondary
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -83,8 +92,8 @@ fun MapFilterSheet(
         outsideContentDescription = if (state.page == FilterPage.Filters) "필터 닫기" else "필터로 돌아가기",
         sheetState = sheetState,
         shape = AppShapes.BottomSheet,
-        containerColor = AppColors.Surface,
-        scrimColor = AppColors.Black.copy(alpha = 0.3f),
+        containerColor = MaterialTheme.colorScheme.appSurface,
+        scrimColor = MaterialTheme.colorScheme.appScrim.copy(alpha = 0.3f),
         dragHandle = { SheetDragHandle() },
     ) {
         Column(
@@ -138,12 +147,12 @@ internal fun MapFilterContent(
                 Text(
                     text = "초기화",
                     fontSize = 12.sp,
-                    color = AppColors.TextSecondary,
+                    color = MaterialTheme.colorScheme.appTextSecondary,
                 )
             }
         }
     }
-    Box(Modifier.fillMaxWidth().height(1.dp).background(AppColors.BorderLight))
+    Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.appBorderLight))
     Spacer(Modifier.height(AppSpacing.sectionGap.dp))
     FilterLabel(label = "조회 기간")
     Spacer(Modifier.height(AppSpacing.sm.dp))
@@ -161,7 +170,7 @@ internal fun MapFilterContent(
             horizontalArrangement = Arrangement.spacedBy(AppSpacing.sm.copy(value = 10.dp).dp),
         ) {
             DateField(state.startDate, "시작일", Modifier.weight(1f), enabled = !state.applying) { onOpenDate(true) }
-            Text("~", color = AppColors.TextSecondary)
+            Text("~", color = MaterialTheme.colorScheme.appTextSecondary)
             DateField(state.endDate, "종료일", Modifier.weight(1f), enabled = !state.applying) { onOpenDate(false) }
         }
     }
@@ -183,7 +192,12 @@ internal fun MapFilterContent(
     ) { onScope(FilterScope.entries[it]) }
 
     state.applyError?.let { error ->
-        Text(error, modifier = Modifier.padding(top = AppSpacing.md.dp), color = AppColors.Error, fontSize = 13.sp)
+        Text(
+            error,
+            modifier = Modifier.padding(top = AppSpacing.md.dp),
+            color = MaterialTheme.colorScheme.appError,
+            fontSize = 13.sp,
+        )
     }
     Spacer(Modifier.height(AppSpacing.xxxl.copy(value = 64.dp).dp))
     if (state.applying) {
@@ -202,7 +216,7 @@ internal fun MapFilterContent(
 
 @Composable
 private fun FilterLabel(label: String) {
-    Text(label, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = AppColors.GroupInk)
+    Text(label, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.appInk)
 }
 
 @Composable
@@ -212,6 +226,7 @@ private fun FilterChoices(
     enabled: Boolean = true,
     onSelect: (Int) -> Unit,
 ) {
+    val selectionSurface = MaterialTheme.colorScheme.appSurface
     val selectionPosition by animateFloatAsState(
         targetValue = selected.toFloat(),
         animationSpec = tween(220, easing = FastOutSlowInEasing),
@@ -221,13 +236,13 @@ private fun FilterChoices(
         Modifier
             .fillMaxWidth()
             .clip(AppShapes.Card)
-            .background(AppColors.Gray50)
+            .background(MaterialTheme.colorScheme.appSurfaceSubtle)
             .padding(AppSpacing.xs.dp)
             .drawBehind {
                 if (labels.isNotEmpty()) {
                     val itemWidth = size.width / labels.size
                     drawRoundRect(
-                        color = AppColors.Surface,
+                        color = selectionSurface,
                         topLeft = Offset(itemWidth * selectionPosition, 0f),
                         size = Size(itemWidth, size.height),
                         cornerRadius = CornerRadius(12.dp.toPx()),
@@ -238,7 +253,12 @@ private fun FilterChoices(
         labels.forEachIndexed { index, label ->
             val active = index == selected
             val textColor by animateColorAsState(
-                targetValue = if (active) AppColors.TextPrimary else AppColors.TextSecondary,
+                targetValue =
+                    if (active) {
+                        MaterialTheme.colorScheme.appTextPrimary
+                    } else {
+                        MaterialTheme.colorScheme.appTextSecondary
+                    },
                 animationSpec = tween(150),
                 label = "FilterChoiceTextColor",
             )
@@ -270,11 +290,11 @@ private fun DateField(
     enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
-    val textColor = if (date == null) AppColors.TextSecondary else AppColors.GroupInk
+    val textColor = if (date == null) MaterialTheme.colorScheme.appTextSecondary else MaterialTheme.colorScheme.appInk
     Box(
         modifier
             .clip(AppShapes.CompactControl)
-            .background(AppColors.Gray50)
+            .background(MaterialTheme.colorScheme.appSurfaceSubtle)
             .padding(vertical = AppSpacing.sm.copy(value = 10.dp).dp)
             .clickable(enabled = enabled, interactionSource = null, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center,
@@ -293,7 +313,7 @@ internal fun FilterActionButton(
     onClick: () -> Unit,
 ) {
     RaisedCardButton(
-        backgroundColor = AppColors.Primary,
+        backgroundColor = MaterialTheme.colorScheme.appPrimary,
         onClick = onClick,
         modifier = Modifier.fillMaxWidth().height(56.dp),
     ) {
@@ -311,7 +331,7 @@ internal fun FilterActionButton(
 @Composable
 private fun MapFilterContentPreview() {
     AppTheme {
-        Column(Modifier.background(AppColors.Surface).padding(horizontal = AppSpacing.screen.dp)) {
+        Column(Modifier.background(MaterialTheme.colorScheme.appSurface).padding(horizontal = AppSpacing.screen.dp)) {
             MapFilterContent(
                 MapFilterUiModel(
                     visible = true,

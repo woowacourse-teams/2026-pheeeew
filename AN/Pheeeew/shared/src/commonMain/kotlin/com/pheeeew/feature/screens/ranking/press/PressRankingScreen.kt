@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -48,8 +49,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.component.LoadErrorContent
 import com.pheeeew.core.designsystem.component.RefreshErrorBanner
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appInk
+import com.pheeeew.core.designsystem.theme.appPageBackground
 import com.pheeeew.feature.emotion.component.rememberTapReducedMotion
 import com.pheeeew.feature.monitoring.product.ProductScreen
 import com.pheeeew.feature.screens.press.measurement.pressRaceDrawMeasurement
@@ -218,7 +221,7 @@ internal fun PressRankingScreen(
             (widestCount.toDp() + 12.dp).coerceIn(40.dp, 140.dp)
         }
     ProvideRaceAnimationClock(reducedMotion, motionScale) { animationClock ->
-        Column(modifier.fillMaxSize().background(AppColors.GroupBackground).statusBarsPadding()) {
+        Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.appPageBackground).statusBarsPadding()) {
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -250,7 +253,7 @@ internal fun PressRankingScreen(
                             dailyDate,
                             fontSize = 12.sp,
                             lineHeight = 18.sp,
-                            color = AppColors.Press.RankingMuted,
+                            color = MaterialTheme.appColors.press.rankingMuted,
                             textAlign = TextAlign.Center,
                         )
                     }
@@ -318,7 +321,7 @@ internal fun PressRankingScreen(
                                             Modifier.fillMaxWidth().padding(AppSpacing.xxxl.copy(value = 48.dp).dp),
                                             contentAlignment = Alignment.Center,
                                         ) {
-                                            CircularLoadingIndicator(color = AppColors.GroupInk)
+                                            CircularLoadingIndicator(color = MaterialTheme.colorScheme.appInk)
                                         }
                                     }
                                 }

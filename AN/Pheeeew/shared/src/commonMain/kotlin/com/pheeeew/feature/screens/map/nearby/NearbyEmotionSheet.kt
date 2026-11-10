@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -33,8 +34,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pheeeew.core.designsystem.component.ConfirmDialog
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appPageBackground
 import com.pheeeew.core.navigation.PredictiveBackEffect
 import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.usecase.BlockUserUseCase
@@ -186,6 +187,7 @@ fun NearbyEmotionSheet(
                 (layout.visibleItemsInfo.lastOrNull()?.index ?: 0) >= layout.totalItemsCount - 3
         }
     }
+    val fadeColor = MaterialTheme.colorScheme.appPageBackground
     LaunchedEffect(atEnd, state.nextCursor, state.loading, state.loadingMore, state.error) {
         if (atEnd && !state.loading && !state.loadingMore && state.error == null) viewModel.loadMore()
     }
@@ -223,8 +225,8 @@ fun NearbyEmotionSheet(
                                     Brush.verticalGradient(
                                         colors =
                                             listOf(
-                                                AppColors.GroupBackground,
-                                                AppColors.GroupBackground.copy(alpha = 0f),
+                                                fadeColor,
+                                                fadeColor.copy(alpha = 0f),
                                             ),
                                         endY = fadeHeight,
                                     ),

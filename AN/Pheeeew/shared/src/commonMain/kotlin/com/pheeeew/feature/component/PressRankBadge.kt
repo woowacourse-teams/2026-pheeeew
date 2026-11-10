@@ -2,6 +2,7 @@ package com.pheeeew.feature.component
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -11,7 +12,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.appColors
 import org.jetbrains.compose.resources.painterResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.press_ranking_medal_1
@@ -23,9 +24,10 @@ import pheeeew.shared.generated.resources.press_ranking_medal_3
 internal fun PressRankBadge(
     rank: Long,
     modifier: Modifier = Modifier,
-    numberColor: Color = AppColors.Press.RankingMuted,
+    numberColor: Color? = null,
     numberSize: TextUnit = 12.sp,
 ) {
+    val resolvedNumberColor = numberColor ?: MaterialTheme.appColors.press.rankingMuted
     val medal =
         when (rank) {
             1L -> Res.drawable.press_ranking_medal_1
@@ -43,7 +45,7 @@ internal fun PressRankBadge(
             overflow = TextOverflow.Ellipsis,
             fontSize = numberSize,
             fontWeight = FontWeight.Bold,
-            color = numberColor,
+            color = resolvedNumberColor,
         )
     }
 }

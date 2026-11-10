@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -14,6 +15,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.designsystem.theme.AppTypography
+import com.pheeeew.core.designsystem.theme.appColors
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.feature.screens.settings.SettingsTheme
 
@@ -44,7 +46,7 @@ internal fun SettingsActionRow(
         Spacer(Modifier.width(AppSpacing.md.copy(value = 14.dp).dp))
         Text(
             text = title,
-            color = SettingsColors.Ink,
+            color = MaterialTheme.appColors.settings.iconInk,
             fontFamily = notoSansKrFontFamily(),
             style = AppTypography.settingsActionTitle(),
             modifier = Modifier.weight(1f),
@@ -52,7 +54,7 @@ internal fun SettingsActionRow(
         if (trailingText != null) {
             Text(
                 text = trailingText,
-                color = SettingsColors.Secondary,
+                color = MaterialTheme.appColors.settings.iconSecondary,
                 fontFamily = notoSansKrFontFamily(),
                 style = AppTypography.settingsActionSecondary(),
             )

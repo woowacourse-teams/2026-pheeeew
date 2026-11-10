@@ -10,13 +10,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
-import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.appColors
 
 /** The halo breathes without changing layout or repeatedly announcing activity to accessibility services. */
 @Composable
@@ -51,9 +52,9 @@ internal fun PressActivityLiveIndicator(
                     alpha = if (active && pulseEnabled) 1.3f - scale * 0.5f else 1f
                 }.background(
                     if (active) {
-                        AppColors.Press.LiveIndicator.ActiveSurface
+                        MaterialTheme.appColors.press.liveIndicator.activeSurface
                     } else {
-                        AppColors.Press.LiveIndicator.InactiveSurface
+                        MaterialTheme.appColors.press.liveIndicator.inactiveSurface
                     },
                     CircleShape,
                 ),
@@ -63,7 +64,11 @@ internal fun PressActivityLiveIndicator(
                 .size(
                     6.dp,
                 ).background(
-                    if (active) AppColors.Press.LiveIndicator.Active else AppColors.Press.LiveIndicator.Inactive,
+                    if (active) {
+                        MaterialTheme.appColors.press.liveIndicator.active
+                    } else {
+                        MaterialTheme.appColors.press.liveIndicator.inactive
+                    },
                     CircleShape,
                 ),
         )

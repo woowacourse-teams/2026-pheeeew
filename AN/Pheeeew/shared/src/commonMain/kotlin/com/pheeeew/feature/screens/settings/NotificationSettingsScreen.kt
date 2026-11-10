@@ -20,6 +20,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -36,8 +37,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppBorders
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appBackground
+import com.pheeeew.core.designsystem.theme.appInk
+import com.pheeeew.core.designsystem.theme.appPrimary
+import com.pheeeew.core.designsystem.theme.appSurface
+import com.pheeeew.core.designsystem.theme.appSurfaceDisabled
+import com.pheeeew.core.designsystem.theme.appTextPrimary
 import com.pheeeew.core.notification.NotificationAuthorization
 import com.pheeeew.core.notification.NotificationKind
 import com.pheeeew.core.notification.NotificationPreferences
@@ -66,7 +72,7 @@ internal fun NotificationSettingsScreen(
         modifier =
             modifier
                 .fillMaxSize()
-                .background(AppColors.Background)
+                .background(MaterialTheme.colorScheme.appBackground)
                 .statusBarsPadding()
                 .navigationBarsPadding(),
     ) {
@@ -109,16 +115,16 @@ internal fun NotificationSettingsScreen(
                     },
                     colors =
                         SwitchDefaults.colors(
-                            checkedTrackColor = AppColors.Primary,
-                            checkedThumbColor = AppColors.White,
-                            checkedBorderColor = AppColors.TextPrimary,
-                            uncheckedThumbColor = AppColors.White,
-                            uncheckedTrackColor = AppColors.White,
-                            uncheckedBorderColor = AppColors.TextPrimary,
-                            disabledCheckedTrackColor = AppColors.Gray100,
-                            disabledCheckedThumbColor = AppColors.White,
-                            disabledUncheckedTrackColor = AppColors.White,
-                            disabledUncheckedThumbColor = AppColors.White,
+                            checkedTrackColor = MaterialTheme.colorScheme.appPrimary,
+                            checkedThumbColor = MaterialTheme.colorScheme.appSurface,
+                            checkedBorderColor = MaterialTheme.colorScheme.appTextPrimary,
+                            uncheckedThumbColor = MaterialTheme.colorScheme.appSurface,
+                            uncheckedTrackColor = MaterialTheme.colorScheme.appSurface,
+                            uncheckedBorderColor = MaterialTheme.colorScheme.appTextPrimary,
+                            disabledCheckedTrackColor = MaterialTheme.colorScheme.appSurfaceDisabled,
+                            disabledCheckedThumbColor = MaterialTheme.colorScheme.appSurface,
+                            disabledUncheckedTrackColor = MaterialTheme.colorScheme.appSurface,
+                            disabledUncheckedThumbColor = MaterialTheme.colorScheme.appSurface,
                         ),
                 )
             }
@@ -184,7 +190,7 @@ private fun NotificationToggleRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(AppSpacing.cardGap.dp),
     ) {
-        Text(title, modifier = Modifier.weight(1f), color = AppColors.GroupInk, fontSize = 14.sp)
+        Text(title, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.appInk, fontSize = 14.sp)
         Switch(
             modifier =
                 Modifier.clearAndSetSemantics {}.drawWithContent {
@@ -198,12 +204,12 @@ private fun NotificationToggleRow(
             thumbContent = { NotificationSwitchThumb(checked = checked) },
             colors =
                 SwitchDefaults.colors(
-                    checkedTrackColor = AppColors.Primary,
-                    checkedThumbColor = AppColors.White,
-                    checkedBorderColor = AppColors.TextPrimary,
-                    uncheckedThumbColor = AppColors.White,
-                    uncheckedTrackColor = AppColors.White,
-                    uncheckedBorderColor = AppColors.TextPrimary,
+                    checkedTrackColor = MaterialTheme.colorScheme.appPrimary,
+                    checkedThumbColor = MaterialTheme.colorScheme.appSurface,
+                    checkedBorderColor = MaterialTheme.colorScheme.appTextPrimary,
+                    uncheckedThumbColor = MaterialTheme.colorScheme.appSurface,
+                    uncheckedTrackColor = MaterialTheme.colorScheme.appSurface,
+                    uncheckedBorderColor = MaterialTheme.colorScheme.appTextPrimary,
                 ),
         )
     }
@@ -214,7 +220,7 @@ private fun NotificationSwitchThumb(checked: Boolean) {
     Box(
         Modifier.size(24.dp).border(
             width = AppBorders.Standard,
-            color = AppColors.TextPrimary,
+            color = MaterialTheme.colorScheme.appTextPrimary,
             shape = CircleShape,
         ),
     )

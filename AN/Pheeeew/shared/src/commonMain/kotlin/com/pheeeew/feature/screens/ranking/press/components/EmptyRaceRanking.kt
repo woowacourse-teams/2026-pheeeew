@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -36,15 +37,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppBorders
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appInk
 import org.jetbrains.compose.resources.painterResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.press_blocked_stage_0
-
-private val emptyInk = AppColors.GroupInk
-private val emptyMuted = AppColors.Press.RankingMuted
 
 @Composable
 internal fun MyRaceEmptyCard(
@@ -52,7 +51,7 @@ internal fun MyRaceEmptyCard(
     onPress: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    PressRankingCardSurface(modifier, color = AppColors.Press.EmptyRankingHighlight) {
+    PressRankingCardSurface(modifier, color = MaterialTheme.appColors.press.emptyRankingHighlight) {
         BoxWithConstraints(Modifier.fillMaxWidth().padding(AppSpacing.lg.copy(value = 18.dp).dp)) {
             val stack = maxWidth < 290.dp || LocalDensity.current.fontScale > 1.3f
             val copy: @Composable () -> Unit = {
@@ -63,13 +62,13 @@ internal fun MyRaceEmptyCard(
                         fontSize = 22.sp,
                         lineHeight = 28.sp,
                         fontWeight = FontWeight.Bold,
-                        color = emptyInk,
+                        color = MaterialTheme.colorScheme.appInk,
                     )
                     Text(
                         if (historical) "다른 날의 내 기록을 살펴보세요." else "첫 프레스로 레이스를 시작해 보세요.",
                         fontSize = 13.sp,
                         lineHeight = 19.sp,
-                        color = emptyMuted,
+                        color = MaterialTheme.appColors.press.rankingMuted,
                     )
                     if (historical) {
                         EmptyRaceLabel("참여 기록 없음")
@@ -104,8 +103,8 @@ internal fun EmptyRaceRanking(
     Column(
         Modifier
             .fillMaxWidth()
-            .background(AppColors.Press.EmptyRankingSurface, AppShapes.SectionCard)
-            .border(AppBorders.Thin, AppColors.Press.EmptyRankingBorder, AppShapes.SectionCard)
+            .background(MaterialTheme.appColors.press.emptyRankingSurface, AppShapes.SectionCard)
+            .border(AppBorders.Thin, MaterialTheme.appColors.press.emptyRankingBorder, AppShapes.SectionCard)
             .padding(
                 horizontal = AppSpacing.xl.copy(value = 22.dp).dp,
                 vertical = AppSpacing.xxl.copy(value = 28.dp).dp,
@@ -121,7 +120,7 @@ internal fun EmptyRaceRanking(
             lineHeight = 30.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
-            color = emptyInk,
+            color = MaterialTheme.colorScheme.appInk,
         )
         Text(
             if (historical) {
@@ -132,7 +131,7 @@ internal fun EmptyRaceRanking(
             fontSize = 14.sp,
             lineHeight = 22.sp,
             textAlign = TextAlign.Center,
-            color = emptyMuted,
+            color = MaterialTheme.appColors.press.rankingMuted,
         )
         if (historical) {
             onChooseDate?.let { EmptyRaceAction("다른 날짜 보기", it) }
@@ -149,12 +148,12 @@ private fun EmptyRaceLabel(text: String) {
     Text(
         text,
         Modifier
-            .background(AppColors.Press.EmptyRankingSurface, RoundedCornerShape(50))
-            .border(AppBorders.Thin, AppColors.Press.EmptyRankingPillBorder, RoundedCornerShape(50))
+            .background(MaterialTheme.appColors.press.emptyRankingSurface, RoundedCornerShape(50))
+            .border(AppBorders.Thin, MaterialTheme.appColors.press.emptyRankingPillBorder, RoundedCornerShape(50))
             .padding(horizontal = AppSpacing.sm.copy(value = 10.dp).dp, vertical = AppSpacing.xs.copy(value = 3.dp).dp),
         fontSize = 11.sp,
         fontWeight = FontWeight.SemiBold,
-        color = emptyInk,
+        color = MaterialTheme.colorScheme.appInk,
     )
 }
 
@@ -168,8 +167,17 @@ private fun EmptyRaceAction(
         Modifier
             .fillMaxWidth()
             .heightIn(min = 48.dp)
-            .then(if (outlined) Modifier.border(AppBorders.Thin, emptyInk, AppShapes.Card) else Modifier)
-            .clickable(
+            .then(
+                if (outlined) {
+                    Modifier.border(
+                        AppBorders.Thin,
+                        MaterialTheme.colorScheme.appInk,
+                        AppShapes.Card,
+                    )
+                } else {
+                    Modifier
+                },
+            ).clickable(
                 interactionSource =
                     remember {
                         MutableInteractionSource()
@@ -180,7 +188,13 @@ private fun EmptyRaceAction(
             ).padding(horizontal = AppSpacing.md.dp, vertical = AppSpacing.sm.copy(value = 10.dp).dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, fontSize = 14.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, color = emptyInk)
+        Text(
+            text,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.appInk,
+        )
     }
 }
 
@@ -190,8 +204,13 @@ private fun EmptyRaceArtwork(
     halo: Boolean = false,
     showCharacter: Boolean = true,
 ) {
+    val trackColor = MaterialTheme.colorScheme.appInk
     Box(modifier, contentAlignment = Alignment.Center) {
-        if (halo) Box(Modifier.size(135.dp).background(AppColors.Press.EmptyRankingHighlight, CircleShape))
+        if (halo) {
+            Box(
+                Modifier.size(135.dp).background(MaterialTheme.appColors.press.emptyRankingHighlight, CircleShape),
+            )
+        }
         Canvas(Modifier.matchParentSize()) {
             val track =
                 Path().apply {
@@ -207,7 +226,7 @@ private fun EmptyRaceArtwork(
                 }
             drawPath(
                 track,
-                emptyInk,
+                trackColor,
                 style =
                     Stroke(
                         width = 2.dp.toPx(),

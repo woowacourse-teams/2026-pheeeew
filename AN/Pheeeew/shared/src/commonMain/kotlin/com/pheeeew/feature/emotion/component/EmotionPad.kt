@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -32,6 +33,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import com.pheeeew.core.designsystem.theme.appColors
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.feature.emotion.model.EmotionCountUiModel
 import com.pheeeew.feature.emotion.model.EmotionFaceVisual
@@ -79,6 +81,7 @@ internal fun EmotionPad(
     var rootWidth by remember { mutableStateOf(402.0) }
     val density = LocalDensity.current
     val font = notoSansKrFontFamily()
+    val emotionInk = MaterialTheme.appColors.emotion.ink
     val measurer = rememberTextMeasurer()
     val scope = rememberCoroutineScope()
     val reduce = reducedMotion || scope.coroutineContext[MotionDurationScale]?.scaleFactor == 0f
@@ -178,7 +181,7 @@ internal fun EmotionPad(
                 measurer
                     .measure(
                         reaction.value,
-                        stickerStyle(reaction, font),
+                        stickerStyle(reaction, font, emotionInk),
                         maxLines = 1,
                         softWrap = false,
                     ).size

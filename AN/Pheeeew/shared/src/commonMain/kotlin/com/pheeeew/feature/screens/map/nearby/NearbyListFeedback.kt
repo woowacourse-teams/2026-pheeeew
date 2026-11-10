@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -26,10 +27,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.component.raisedButtonBorder
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appPrimary
+import com.pheeeew.core.designsystem.theme.appSurface
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.feature.component.emotion.EmotionListLoadError
 import com.pheeeew.feature.component.emotion.face
@@ -42,9 +45,6 @@ import pheeeew.shared.generated.resources.nearby_leave_emotion
 import pheeeew.shared.generated.resources.nearby_load_error
 import pheeeew.shared.generated.resources.nearby_next_load_error
 import pheeeew.shared.generated.resources.nearby_no_visible_stamps
-
-private val FeedbackInk = AppColors.Feedback.ErrorInk
-private val FeedbackSecondary = AppColors.Feedback.SecondaryText
 
 @Composable
 internal fun NearbyEmptyState(
@@ -68,13 +68,13 @@ internal fun NearbyEmptyState(
         }
         Text(
             stringResource(Res.string.nearby_initial_empty_title),
-            color = FeedbackInk,
+            color = MaterialTheme.appColors.feedback.errorInk,
             fontSize = 17.sp,
             fontWeight = FontWeight.Bold,
         )
         Text(
             stringResource(Res.string.nearby_no_visible_stamps),
-            color = FeedbackSecondary,
+            color = MaterialTheme.appColors.feedback.secondaryText,
             fontSize = 13.sp,
             lineHeight = 19.sp,
             textAlign = TextAlign.Center,
@@ -109,16 +109,22 @@ internal fun NearbyNotice(
 ) {
     Surface(
         Modifier.fillMaxWidth().padding(horizontal = AppSpacing.lg.dp, vertical = AppSpacing.xs.dp),
-        color = AppColors.Map.NearbyFeedbackSurface,
+        color = MaterialTheme.appColors.map.nearbyFeedbackSurface,
         shape = AppShapes.Card,
     ) {
         Row(
             Modifier.padding(start = AppSpacing.md.copy(value = 14.dp).dp, end = AppSpacing.sm.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(message, Modifier.weight(1f), color = FeedbackInk, fontSize = 13.sp, lineHeight = 18.sp)
+            Text(
+                message,
+                Modifier.weight(1f),
+                color = MaterialTheme.appColors.feedback.errorInk,
+                fontSize = 13.sp,
+                lineHeight = 18.sp,
+            )
             TextButton(onClick = onDismiss) {
-                Text(stringResource(Res.string.nearby_confirm), color = FeedbackInk)
+                Text(stringResource(Res.string.nearby_confirm), color = MaterialTheme.appColors.feedback.errorInk)
             }
         }
     }
@@ -138,8 +144,13 @@ private fun FeedbackButton(
         shape = CircleShape,
         colors =
             ButtonDefaults.buttonColors(
-                containerColor = if (highlighted) AppColors.Primary else AppColors.White,
-                contentColor = FeedbackInk,
+                containerColor =
+                    if (highlighted) {
+                        MaterialTheme.colorScheme.appPrimary
+                    } else {
+                        MaterialTheme.colorScheme.appSurface
+                    },
+                contentColor = MaterialTheme.appColors.feedback.errorInk,
             ),
     ) { Text(label, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
 }

@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -49,8 +50,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pheeeew.core.designsystem.theme.AppBorders
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appInk
+import com.pheeeew.core.designsystem.theme.appOnAccent
 import com.pheeeew.feature.emotion.component.EmotionFeedbackCatalog
 import com.pheeeew.feature.emotion.component.formatCount
 import com.pheeeew.feature.emotion.component.rememberTapReducedMotion
@@ -120,7 +123,7 @@ internal fun PressActivityFooter(
         modifier
             .fillMaxWidth()
             .heightIn(min = minimumHeight)
-            .background(AppColors.Press.SubtleSurface)
+            .background(MaterialTheme.appColors.press.subtleSurface)
             .padding(
                 horizontal = AppSpacing.sm.copy(value = 10.dp).dp,
                 vertical = AppSpacing.sm.copy(value = 10.dp).dp,
@@ -189,13 +192,13 @@ private fun ActivityPeople(
                     Modifier
                         .requiredSize(20.dp)
                         .clip(CircleShape)
-                        .background(AppColors.GroupInk, CircleShape)
-                        .border(AppBorders.Thin, AppColors.Press.SubtleSurface, CircleShape),
+                        .background(MaterialTheme.colorScheme.appInk, CircleShape)
+                        .border(AppBorders.Thin, MaterialTheme.appColors.press.subtleSurface, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         "+${formatCount(overflowCount)}",
-                        color = AppColors.White,
+                        color = MaterialTheme.colorScheme.appOnAccent,
                         modifier = Modifier.fillMaxWidth(),
                         style =
                             LocalTextStyle.current.copy(
@@ -230,7 +233,7 @@ private fun ActivityPeople(
                 activityText,
                 style = style,
                 fontSize = fontSize.sp,
-                color = AppColors.GroupInk,
+                color = MaterialTheme.colorScheme.appInk,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -308,11 +311,13 @@ private fun RaceChip(
         fontSize = 10.sp,
         lineHeight = 12.sp,
         fontWeight = FontWeight.Bold,
-        color = if (dark) AppColors.White else AppColors.GroupInk,
+        color = if (dark) MaterialTheme.colorScheme.appOnAccent else MaterialTheme.colorScheme.appInk,
         modifier =
             modifier
-                .background(if (dark) AppColors.GroupInk else AppColors.Press.HighlightAccent, CircleShape)
-                .border(AppBorders.Thin, AppColors.GroupInk, CircleShape)
+                .background(
+                    if (dark) MaterialTheme.colorScheme.appInk else MaterialTheme.appColors.press.highlightAccent,
+                    CircleShape,
+                ).border(AppBorders.Thin, MaterialTheme.colorScheme.appInk, CircleShape)
                 .padding(
                     horizontal = AppSpacing.xs.copy(value = 6.dp).dp,
                     vertical = AppSpacing.xs.copy(value = 3.dp).dp,

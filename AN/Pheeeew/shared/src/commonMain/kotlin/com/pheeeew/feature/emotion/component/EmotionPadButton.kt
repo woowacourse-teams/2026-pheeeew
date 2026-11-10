@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
@@ -57,7 +58,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
-import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appMutedText
 import com.pheeeew.feature.emotion.model.EmotionFaceStage
 import com.pheeeew.feature.emotion.model.EmotionFaceVisual
 import com.pheeeew.feature.emotion.model.EmotionKind
@@ -70,8 +72,6 @@ import pheeeew.shared.generated.resources.press_button_face_shadow
 import pheeeew.shared.generated.resources.press_button_silver_base
 
 private val activationKeys = setOf(Key.Enter, Key.NumPadEnter, Key.Spacebar, Key.DirectionCenter)
-private val emotionCountColor = AppColors.Common.MutedText
-private val emotionInk = AppColors.Emotion.Ink
 
 /** Owns one button's pointer, keyboard, accessibility, and pressed-state behavior. */
 @Composable
@@ -318,7 +318,7 @@ internal fun EmotionPadButton(
                 modifier = Modifier.fillMaxWidth(),
                 style =
                     TextStyle(
-                        color = emotionInk,
+                        color = MaterialTheme.appColors.emotion.ink,
                         fontFamily = font,
                         fontSize = (16 * unit).sp,
                         lineHeight = (19 * unit).sp,
@@ -332,7 +332,7 @@ internal fun EmotionPadButton(
                 modifier = Modifier.fillMaxWidth(),
                 style =
                     TextStyle(
-                        color = emotionCountColor,
+                        color = MaterialTheme.colorScheme.appMutedText,
                         fontFamily = font,
                         fontSize = (20 * unit).sp,
                         lineHeight = (24 * unit).sp,

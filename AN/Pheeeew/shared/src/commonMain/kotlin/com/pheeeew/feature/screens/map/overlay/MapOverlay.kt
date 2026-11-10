@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,8 +44,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppBorders
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appBorder
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appSurface
+import com.pheeeew.core.designsystem.theme.appTextPrimary
 import com.pheeeew.feature.component.AppBottomNavigationBarOverlaySpace
 import com.pheeeew.feature.screens.map.record.EmotionBubbleCluster
 import com.pheeeew.feature.screens.map.record.EmotionPromptLabel
@@ -70,7 +74,6 @@ private const val EMOTION_PROMPT_DAMPING_RATIO = 0.8205f
 private const val EMOTION_PROMPT_STIFFNESS = 380f
 private val MAP_CONTROL_BOTTOM_SPACE = AppBottomNavigationBarOverlaySpace + 24.dp
 private val MAP_BOTTOM_BAR_LIFT = MAP_CONTROL_BOTTOM_SPACE - 56.dp
-private val MAP_CONTROL_TINT = AppColors.Map.ControlTint
 
 @Composable
 fun MapOverlay(
@@ -171,10 +174,10 @@ fun MapOverlay(
                         modifier =
                             Modifier
                                 .clip(RoundedCornerShape(100.dp))
-                                .background(AppColors.Surface)
+                                .background(MaterialTheme.colorScheme.appSurface)
                                 .border(
                                     width = AppBorders.Standard,
-                                    color = AppColors.Border,
+                                    color = MaterialTheme.colorScheme.appBorder,
                                     shape = RoundedCornerShape(100.dp),
                                 ).clickable(onClick = onListClick)
                                 .padding(
@@ -227,7 +230,7 @@ fun MapOverlay(
                         icon = Res.drawable.ic_refresh,
                         contentDescription = stringResource(Res.string.map_refresh),
                         onClick = onRefreshClick,
-                        tint = AppColors.TextPrimary,
+                        tint = MaterialTheme.colorScheme.appTextPrimary,
                     )
                 }
             }
@@ -276,15 +279,16 @@ internal fun MapControlButton(
     onClick: () -> Unit,
     enabled: Boolean = true,
     modifier: Modifier = Modifier,
-    tint: Color = MAP_CONTROL_TINT,
+    tint: Color? = null,
 ) {
+    val resolvedTint = tint ?: MaterialTheme.appColors.map.controlTint
     Box(
         modifier =
             modifier
                 .size(44.dp)
                 .shadow(elevation = 4.dp, shape = CircleShape)
                 .clip(CircleShape)
-                .background(AppColors.Surface)
+                .background(MaterialTheme.colorScheme.appSurface)
                 .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -292,7 +296,7 @@ internal fun MapControlButton(
             painter = painterResource(icon),
             contentDescription = contentDescription,
             modifier = Modifier.size(20.dp),
-            tint = tint,
+            tint = resolvedTint,
         )
     }
 }
@@ -331,7 +335,7 @@ private fun MapOverlayPreviewContent(
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(AppColors.Map.Background),
+                .background(MaterialTheme.appColors.map.background),
     ) {
         MapOverlay(
             onListClick = {},

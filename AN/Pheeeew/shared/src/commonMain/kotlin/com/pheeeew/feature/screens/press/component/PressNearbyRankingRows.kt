@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
@@ -26,9 +27,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppBorders
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appInk
 import com.pheeeew.feature.emotion.component.rememberTapReducedMotion
 import com.pheeeew.feature.screens.press.PressNearbyRankingUiState
 import com.pheeeew.feature.screens.press.nearbyRankingItemKey
@@ -77,12 +79,12 @@ internal fun PressNearbyRankingRows(state: PressNearbyRankingUiState) {
 
 @Composable
 private fun PendingRankRow(modifier: Modifier) {
-    val ink = AppColors.GroupInk
-    val muted = AppColors.Press.NearbyMuted
+    val ink = MaterialTheme.colorScheme.appInk
+    val muted = MaterialTheme.appColors.press.nearbyMuted
     Row(
         modifier
             .fillMaxWidth()
-            .background(AppColors.Press.RankBadgeSurface, AppShapes.CompactControl)
+            .background(MaterialTheme.appColors.press.rankBadgeSurface, AppShapes.CompactControl)
             .padding(horizontal = AppSpacing.sm.copy(value = 10.dp).dp, vertical = AppSpacing.xs.copy(value = 6.dp).dp),
         horizontalArrangement = Arrangement.spacedBy(AppSpacing.sm.dp),
         verticalAlignment = Alignment.CenterVertically,

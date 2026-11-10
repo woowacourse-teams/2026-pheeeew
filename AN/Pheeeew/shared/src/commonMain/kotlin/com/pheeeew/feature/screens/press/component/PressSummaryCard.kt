@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
@@ -26,9 +27,13 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppBorders
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appBorderLight
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appSurfaceSubtle
+import com.pheeeew.core.designsystem.theme.appTextPrimary
+import com.pheeeew.core.designsystem.theme.appTextSecondary
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.feature.emotion.component.formatCount
 import org.jetbrains.compose.resources.stringResource
@@ -54,17 +59,17 @@ internal fun PressSummaryCard(
             modifier
                 .fillMaxWidth()
                 .clip(AppShapes.CardSurface)
-                .background(AppColors.Gray50)
-                .border(AppBorders.Thin, AppColors.BorderLight, AppShapes.CardSurface)
+                .background(MaterialTheme.colorScheme.appSurfaceSubtle)
+                .border(AppBorders.Thin, MaterialTheme.colorScheme.appBorderLight, AppShapes.CardSurface)
                 .padding(horizontal = AppSpacing.lg.copy(value = 18.dp).dp, vertical = AppSpacing.lg.dp),
     ) {
         Text(
             text = stringResource(Res.string.press_summary_title),
-            color = AppColors.TextSecondary,
+            color = MaterialTheme.colorScheme.appTextSecondary,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
         )
-        HorizontalDivider(thickness = AppBorders.Thin, color = AppColors.BorderLight)
+        HorizontalDivider(thickness = AppBorders.Thin, color = MaterialTheme.colorScheme.appBorderLight)
 
         BoxWithConstraints(Modifier.fillMaxWidth().padding(top = AppSpacing.sm.dp)) {
             val numberWidth =
@@ -102,7 +107,7 @@ internal fun PressSummaryCard(
                 )
                 VerticalDivider(
                     thickness = AppBorders.Thin,
-                    color = AppColors.BorderLight,
+                    color = MaterialTheme.colorScheme.appBorderLight,
                     modifier = Modifier.height(30.dp),
                 )
                 PressSummaryValue(
@@ -129,7 +134,7 @@ private fun PressSummaryValue(
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = label,
-            color = AppColors.TextSecondary,
+            color = MaterialTheme.colorScheme.appTextSecondary,
             fontSize = 12.sp,
             fontFamily = font,
             fontWeight = FontWeight.Medium,
@@ -144,7 +149,7 @@ private fun PressSummaryValue(
                 text =
                     value?.let(::formatCount)
                         ?: if (isLoading) "…" else stringResource(Res.string.press_count_unavailable),
-                color = AppColors.TextPrimary,
+                color = MaterialTheme.colorScheme.appTextPrimary,
                 fontSize = numberFontSize,
                 fontFamily = font,
                 fontWeight = FontWeight.Black,
@@ -155,7 +160,7 @@ private fun PressSummaryValue(
             if (value != null) {
                 Text(
                     text = "회",
-                    color = AppColors.Press.SummaryText,
+                    color = MaterialTheme.appColors.press.summaryText,
                     fontSize = 13.sp,
                     fontFamily = font,
                     fontWeight = FontWeight.SemiBold,

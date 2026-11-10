@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -49,17 +50,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppBorders
-import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppPalette
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appDisabledContent
+import com.pheeeew.core.designsystem.theme.appInk
+import com.pheeeew.core.designsystem.theme.appPageBackground
 import com.pheeeew.feature.screens.ranking.press.rankingDateLabel
 import com.pheeeew.feature.screens.ranking.press.rankingMonthDays
 import com.pheeeew.feature.screens.ranking.press.rankingWeekday
 import com.pheeeew.feature.screens.ranking.press.shiftRankingDate
 import com.pheeeew.feature.screens.ranking.press.shiftRankingMonth
-
-private val dateInk = AppColors.GroupInk
-private val dateYellow = AppColors.Press.MyRaceCardAccent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,6 +73,7 @@ internal fun RankingDateSelector(
     onSelect: (String) -> Unit,
 ) {
     var showingCalendar by rememberSaveable { mutableStateOf(false) }
+    val selectorInk = MaterialTheme.colorScheme.appInk
     LaunchedEffect(openRequest) {
         if (openRequest > 0) {
             showingCalendar = true
@@ -94,7 +97,7 @@ internal fun RankingDateSelector(
                 Modifier
                     .weight(1f)
                     .fillMaxHeight()
-                    .border(AppBorders.Thin, dateInk, AppShapes.CompactControl)
+                    .border(AppBorders.Thin, MaterialTheme.colorScheme.appInk, AppShapes.CompactControl)
                     .clip(AppShapes.CompactControl)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
@@ -121,19 +124,19 @@ internal fun RankingDateSelector(
                         maxLines = 2,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
-                        color = dateInk,
+                        color = MaterialTheme.colorScheme.appInk,
                     )
                     Canvas(Modifier.padding(start = AppSpacing.sm.dp).size(10.dp)) {
                         val stroke = 1.5.dp.toPx()
                         drawLine(
-                            dateInk,
+                            selectorInk,
                             Offset(0f, size.height * 0.3f),
                             Offset(size.width / 2, size.height * 0.7f),
                             stroke,
                             StrokeCap.Round,
                         )
                         drawLine(
-                            dateInk,
+                            selectorInk,
                             Offset(size.width / 2, size.height * 0.7f),
                             Offset(size.width, size.height * 0.3f),
                             stroke,
@@ -150,8 +153,15 @@ internal fun RankingDateSelector(
                     .widthIn(min = controlHeight * 1.7f)
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(50))
-                    .background(if (date == today) AppColors.Press.SubtleSurface else AppColors.Press.DateAccent)
-                    .clickable(
+                    .background(
+                        if (date ==
+                            today
+                        ) {
+                            MaterialTheme.appColors.press.subtleSurface
+                        } else {
+                            MaterialTheme.appColors.press.dateAccent
+                        },
+                    ).clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                         enabled =
@@ -170,9 +180,9 @@ internal fun RankingDateSelector(
                         if (date ==
                             today
                         ) {
-                            AppColors.Press.RankingMuted
+                            MaterialTheme.appColors.press.rankingMuted
                         } else {
-                            dateInk
+                            MaterialTheme.colorScheme.appInk
                         },
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -184,8 +194,8 @@ internal fun RankingDateSelector(
         ModalBottomSheet(
             onDismissRequest = { showingCalendar = false },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            containerColor = AppColors.GroupBackground,
-            contentColor = dateInk,
+            containerColor = MaterialTheme.colorScheme.appPageBackground,
+            contentColor = MaterialTheme.colorScheme.appInk,
         ) {
             RankingCalendar(date, today) {
                 onSelect(it)
@@ -217,7 +227,7 @@ private fun RankingCalendar(
         Row(Modifier.fillMaxWidth()) {
             "일월화수목금토".forEach { day ->
                 Box(Modifier.weight(1f).height(36.dp), contentAlignment = Alignment.Center) {
-                    Text(day.toString(), color = AppColors.Press.RankingMuted)
+                    Text(day.toString(), color = MaterialTheme.appColors.press.rankingMuted)
                 }
             }
         }
@@ -260,14 +270,18 @@ private fun RankingCalendar(
                                         if (day ==
                                             selectedDate
                                         ) {
-                                            dateYellow
+                                            MaterialTheme.appColors.press.myRaceCardAccent
                                         } else {
-                                            AppColors.Transparent
+                                            AppPalette.Transparent
                                         },
                                         CircleShape,
                                     ).then(
                                         if (day == today) {
-                                            Modifier.border(AppBorders.Thin, dateInk, CircleShape)
+                                            Modifier.border(
+                                                AppBorders.Thin,
+                                                MaterialTheme.colorScheme.appInk,
+                                                CircleShape,
+                                            )
                                         } else {
                                             Modifier
                                         },
@@ -276,7 +290,12 @@ private fun RankingCalendar(
                             ) {
                                 Text(
                                     day.takeLast(2).toInt().toString(),
-                                    color = if (enabled) dateInk else AppColors.LightGray,
+                                    color =
+                                        if (enabled) {
+                                            MaterialTheme.colorScheme.appInk
+                                        } else {
+                                            MaterialTheme.colorScheme.appDisabledContent
+                                        },
                                 )
                             }
                         }
@@ -285,10 +304,10 @@ private fun RankingCalendar(
             }
         }
         Spacer(Modifier.height(AppSpacing.lg.dp))
-        Text("오늘 이후 날짜는 선택할 수 없어요", fontSize = 12.sp, color = AppColors.Press.RankingMuted)
+        Text("오늘 이후 날짜는 선택할 수 없어요", fontSize = 12.sp, color = MaterialTheme.appColors.press.rankingMuted)
         Spacer(Modifier.height(AppSpacing.lg.dp))
         PressRankingCardSurface(
-            color = dateYellow,
+            color = MaterialTheme.appColors.press.myRaceCardAccent,
             shape = AppShapes.Action,
             onClick = { onConfirm(selectedDate) },
         ) {
@@ -315,6 +334,7 @@ private fun DateArrow(
     modifier: Modifier = Modifier.size(32.dp),
     onClick: () -> Unit,
 ) {
+    val arrowColor = if (enabled) MaterialTheme.colorScheme.appInk else MaterialTheme.colorScheme.appDisabledContent
     Box(
         modifier
             .clip(CircleShape)
@@ -331,12 +351,11 @@ private fun DateArrow(
         contentAlignment = Alignment.Center,
     ) {
         Canvas(Modifier.size(16.dp)) {
-            val color = if (enabled) dateInk else AppColors.LightGray
             val outerX = size.width * if (text == "‹") 0.65f else 0.35f
             val innerX = size.width * if (text == "‹") 0.35f else 0.65f
             val center = Offset(innerX, size.height / 2)
-            drawLine(color, Offset(outerX, size.height * 0.15f), center, 2.dp.toPx(), StrokeCap.Round)
-            drawLine(color, center, Offset(outerX, size.height * 0.85f), 2.dp.toPx(), StrokeCap.Round)
+            drawLine(arrowColor, Offset(outerX, size.height * 0.15f), center, 2.dp.toPx(), StrokeCap.Round)
+            drawLine(arrowColor, center, Offset(outerX, size.height * 0.85f), 2.dp.toPx(), StrokeCap.Round)
         }
     }
 }

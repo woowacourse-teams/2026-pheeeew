@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -36,10 +37,12 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppPalette
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appSurface
 import com.pheeeew.domain.model.emotion.EmotionReactionType
 
 @Composable
@@ -60,7 +63,7 @@ internal fun EmotionActionsMenu(
         onDismissRequest = onDismiss,
         modifier = Modifier.width(296.dp),
         shape = RoundedCornerShape(0.dp),
-        containerColor = AppColors.Transparent,
+        containerColor = AppPalette.Transparent,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
@@ -71,10 +74,10 @@ internal fun EmotionActionsMenu(
                         .fillMaxWidth()
                         .shadow(5.dp, cardShape)
                         .clip(cardShape)
-                        .background(AppColors.White),
+                        .background(MaterialTheme.colorScheme.appSurface),
                 ) {
                     EmotionMenuAction("차단하기", busy || onBlock == null) { onBlock?.invoke() }
-                    HorizontalDivider(thickness = 0.5.dp, color = AppColors.Core.ActionDivider)
+                    HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.appColors.core.actionDivider)
                     EmotionMenuAction("신고하기", busy || onReport == null) { onReport?.invoke() }
                 }
                 Spacer(Modifier.height(AppSpacing.sm.dp))
@@ -85,7 +88,7 @@ internal fun EmotionActionsMenu(
                         .fillMaxWidth()
                         .shadow(5.dp, cardShape)
                         .clip(cardShape)
-                        .background(AppColors.White)
+                        .background(MaterialTheme.colorScheme.appSurface)
                         .padding(horizontal = AppSpacing.sm.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -132,14 +135,14 @@ private fun EmotionMenuAction(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, color = AppColors.Emotion.ActionDanger, fontSize = 16.sp)
+        Text(label, color = MaterialTheme.appColors.emotion.actionDanger, fontSize = 16.sp)
         EmotionWarningIcon()
     }
 }
 
 @Composable
 private fun EmotionWarningIcon() {
-    val red = AppColors.Emotion.ActionDanger
+    val red = MaterialTheme.appColors.emotion.actionDanger
     Canvas(Modifier.size(18.dp)) {
         val w = size.width
         val h = size.height

@@ -1,8 +1,6 @@
 package com.pheeeew.feature.emotion.component
 
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.emotion.model.EmotionKind
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
@@ -42,7 +40,6 @@ internal data class TapReaction(
 )
 
 internal data class TapEmotion(
-    val color: Color,
     val face: DrawableResource,
     val texts: List<StringResource>,
     val emojis: List<String>,
@@ -78,7 +75,6 @@ internal object TapCatalog {
         when (kind) {
             EmotionKind.Blocked -> {
                 TapEmotion(
-                    color = AppColors.Emotion.TapPalette.Frustrated,
                     face = EmotionFeedbackCatalog.face(kind),
                     texts =
                         listOf(
@@ -93,7 +89,6 @@ internal object TapCatalog {
 
             EmotionKind.Annoyed -> {
                 TapEmotion(
-                    color = AppColors.Emotion.TapPalette.Annoyed,
                     face = EmotionFeedbackCatalog.face(kind),
                     texts =
                         listOf(
@@ -108,7 +103,6 @@ internal object TapCatalog {
 
             EmotionKind.Tired -> {
                 TapEmotion(
-                    color = AppColors.Emotion.TapPalette.Tired,
                     face = EmotionFeedbackCatalog.face(kind),
                     texts =
                         listOf(
@@ -123,7 +117,6 @@ internal object TapCatalog {
 
             EmotionKind.Defeated -> {
                 TapEmotion(
-                    color = AppColors.Emotion.TapPalette.Discouraged,
                     face = EmotionFeedbackCatalog.face(kind),
                     texts =
                         listOf(
@@ -138,7 +131,6 @@ internal object TapCatalog {
 
             EmotionKind.Angry -> {
                 TapEmotion(
-                    color = AppColors.Emotion.TapPalette.Angry,
                     face = EmotionFeedbackCatalog.face(kind),
                     texts =
                         listOf(

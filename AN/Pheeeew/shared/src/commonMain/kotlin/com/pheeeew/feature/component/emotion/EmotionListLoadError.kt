@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,18 +24,17 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.component.raisedButtonBorder
-import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppPalette
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appSurface
 import com.pheeeew.domain.model.emotion.EmotionState
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.emotion_list_retry
-
-private val ErrorInk = AppColors.Feedback.ErrorInk
-private val ErrorSecondary = AppColors.Feedback.SecondaryText
 
 @Composable
 internal fun EmotionListLoadError(
@@ -47,7 +47,7 @@ internal fun EmotionListLoadError(
     Surface(
         modifier = modifier,
         shape = AppShapes.CardSurface,
-        color = AppColors.Transparent,
+        color = AppPalette.Transparent,
     ) {
         Column(
             Modifier.fillMaxWidth().padding(AppSpacing.card.dp),
@@ -61,11 +61,17 @@ internal fun EmotionListLoadError(
                     modifier = Modifier.size(32.dp),
                 )
             }
-            Text(title, color = ErrorInk, fontSize = 16.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+            Text(
+                title,
+                color = MaterialTheme.appColors.feedback.errorInk,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+            )
             if (message != null) {
                 Text(
                     message,
-                    color = ErrorSecondary,
+                    color = MaterialTheme.appColors.feedback.secondaryText,
                     fontSize = 13.sp,
                     lineHeight = 19.sp,
                     textAlign = TextAlign.Center,
@@ -91,8 +97,8 @@ private fun EmotionListRetryButton(onClick: () -> Unit) {
         shape = CircleShape,
         colors =
             ButtonDefaults.buttonColors(
-                containerColor = AppColors.White,
-                contentColor = ErrorInk,
+                containerColor = MaterialTheme.colorScheme.appSurface,
+                contentColor = MaterialTheme.appColors.feedback.errorInk,
             ),
     ) {
         Text(stringResource(Res.string.emotion_list_retry), fontSize = 13.sp, fontWeight = FontWeight.Bold)

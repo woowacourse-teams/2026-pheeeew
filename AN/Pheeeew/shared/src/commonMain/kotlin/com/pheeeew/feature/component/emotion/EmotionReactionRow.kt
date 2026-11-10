@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -24,9 +25,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appTextPrimary
 import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.domain.model.emotion.ReactionCount
 import org.jetbrains.compose.resources.painterResource
@@ -65,7 +67,11 @@ internal fun EmotionReactionRow(
                 Modifier
                     .height(24.dp)
                     .background(
-                        if (reaction.selected) AppColors.Emotion.ReactionSelected else AppColors.Emotion.ReactionIdle,
+                        if (reaction.selected) {
+                            MaterialTheme.appColors.emotion.reactionSelected
+                        } else {
+                            MaterialTheme.appColors.emotion.reactionIdle
+                        },
                         RoundedCornerShape(50),
                     ).clickable(enabled = !busy && onReact != null, role = Role.Button) {
                         onReact?.invoke(reaction.type)
@@ -79,7 +85,7 @@ internal fun EmotionReactionRow(
                 Text(reaction.type.glyph, fontSize = 14.sp)
                 Text(
                     reaction.count.toString(),
-                    color = AppColors.Black,
+                    color = MaterialTheme.colorScheme.appTextPrimary,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                 )
@@ -90,7 +96,7 @@ internal fun EmotionReactionRow(
                 Box(
                     Modifier
                         .size(24.dp)
-                        .background(AppColors.Emotion.ReactionIdle, CircleShape)
+                        .background(MaterialTheme.appColors.emotion.reactionIdle, CircleShape)
                         .clickable(
                             enabled = !busy && onOpenMenu != null,
                             role = Role.Button,
@@ -101,7 +107,7 @@ internal fun EmotionReactionRow(
                     Icon(
                         painterResource(Res.drawable.ic_plus),
                         contentDescription = addReactionDescription,
-                        tint = AppColors.Black,
+                        tint = MaterialTheme.colorScheme.appTextPrimary,
                         modifier = Modifier.size(14.dp),
                     )
                 }

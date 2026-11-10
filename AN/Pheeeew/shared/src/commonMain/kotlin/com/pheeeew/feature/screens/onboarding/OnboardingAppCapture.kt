@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
@@ -18,7 +19,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
-import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.appSurface
 import com.pheeeew.feature.component.AppBottomNavigationBar
 import com.pheeeew.feature.component.AppDestination
 import org.jetbrains.compose.resources.DrawableResource
@@ -44,7 +45,7 @@ internal fun OnboardingAppCapture(
                         Alignment.BottomCenter,
                     ).fillMaxWidth()
                     .height(maxHeight * 0.105f)
-                    .background(AppColors.White),
+                    .background(MaterialTheme.colorScheme.appSurface),
                 contentAlignment = Alignment.Center,
             ) {
                 CompositionLocalProvider(LocalDensity provides Density(density.density * scale, 1f)) {

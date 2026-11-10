@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -18,9 +19,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appTextPrimary
+import com.pheeeew.core.designsystem.theme.appTextSecondary
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.map_refresh_nearby
@@ -39,7 +41,7 @@ internal fun NearbySheetHeader(
     ) {
         Text(
             text = "감정 목록",
-            color = AppColors.TextPrimary,
+            color = MaterialTheme.colorScheme.appTextPrimary,
             fontSize = 18.sp,
             fontWeight = FontWeight.SemiBold,
         )
@@ -54,7 +56,7 @@ internal fun NearbySheetHeader(
         ) {
             Text(
                 text = stringResource(Res.string.map_refresh_nearby_action),
-                color = AppColors.TextSecondary.copy(alpha = if (loading) 0.4f else 1f),
+                color = MaterialTheme.colorScheme.appTextSecondary.copy(alpha = if (loading) 0.4f else 1f),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Normal,
             )

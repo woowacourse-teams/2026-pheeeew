@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -15,8 +16,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppBorders
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appSurface
 
 @Composable
 internal fun EmotionPromptLabel(
@@ -29,14 +31,14 @@ internal fun EmotionPromptLabel(
         modifier =
             modifier
                 .clip(shape)
-                .background(AppColors.White)
-                .border(width = AppBorders.Standard, color = AppColors.Emotion.PromptInk, shape = shape)
+                .background(MaterialTheme.colorScheme.appSurface)
+                .border(width = AppBorders.Standard, color = MaterialTheme.appColors.emotion.promptInk, shape = shape)
                 .padding(horizontal = AppSpacing.lg.dp, vertical = AppSpacing.xs.copy(value = 5.dp).dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = if (isExpanded) "지금 감정이 어때요?" else "터치해서 감정을 꺼내보세요",
-            color = AppColors.Emotion.PromptInk,
+            color = MaterialTheme.appColors.emotion.promptInk,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
         )

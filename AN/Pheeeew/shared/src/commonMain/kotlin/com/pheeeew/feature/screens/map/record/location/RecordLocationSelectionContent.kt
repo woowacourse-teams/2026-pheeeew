@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -46,9 +47,15 @@ import com.pheeeew.core.designsystem.component.BasicTopBar
 import com.pheeeew.core.designsystem.component.SheetDragHandle
 import com.pheeeew.core.designsystem.component.raisedButtonBorder
 import com.pheeeew.core.designsystem.theme.AppBorders
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appInk
+import com.pheeeew.core.designsystem.theme.appPrimary
+import com.pheeeew.core.designsystem.theme.appSurface
+import com.pheeeew.core.designsystem.theme.appSurfaceDisabled
+import com.pheeeew.core.designsystem.theme.appTextPrimary
+import com.pheeeew.core.designsystem.theme.appTextSecondary
 import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.feature.screens.map.overlay.MapControlButton
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
@@ -193,7 +200,7 @@ fun RecordLocationSelectionContent(
                 Modifier
                     .align(Alignment.TopCenter)
                     .fillMaxWidth()
-                    .background(AppColors.Surface)
+                    .background(MaterialTheme.colorScheme.appSurface)
                     .noRippleClickable {}
                     .statusBarsPadding(),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -208,13 +215,16 @@ fun RecordLocationSelectionContent(
                     Modifier
                         .fillMaxWidth()
                         .padding(start = AppSpacing.xxl.dp, end = AppSpacing.xxl.dp, bottom = AppSpacing.md.dp)
-                        .border(AppBorders.Thin, AppColors.TextSecondary.copy(alpha = 0.35f), AppShapes.Pill)
-                        .padding(horizontal = AppSpacing.md.dp, vertical = AppSpacing.xs.copy(value = 6.dp).dp),
+                        .border(
+                            AppBorders.Thin,
+                            MaterialTheme.colorScheme.appTextSecondary.copy(alpha = 0.35f),
+                            AppShapes.Pill,
+                        ).padding(horizontal = AppSpacing.md.dp, vertical = AppSpacing.xs.copy(value = 6.dp).dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = stringResource(Res.string.record_location_limit),
-                    color = AppColors.TextPrimary,
+                    color = MaterialTheme.colorScheme.appTextPrimary,
                     fontSize = 12.sp,
                 )
             }
@@ -222,7 +232,7 @@ fun RecordLocationSelectionContent(
         if (isSubmitting) {
             CircularProgressIndicator(
                 modifier = Modifier.align(Alignment.Center),
-                color = AppColors.Primary,
+                color = MaterialTheme.colorScheme.appPrimary,
             )
         }
         // A fixed panel, with no dismiss or swipe behavior.
@@ -241,7 +251,7 @@ fun RecordLocationSelectionContent(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .background(AppColors.Surface, AppShapes.BottomSheet)
+                        .background(MaterialTheme.colorScheme.appSurface, AppShapes.BottomSheet)
                         .noRippleClickable {}
                         .navigationBarsPadding()
                         .padding(horizontal = AppSpacing.screen.dp),
@@ -251,7 +261,7 @@ fun RecordLocationSelectionContent(
                 Text(
                     text = stringResource(Res.string.record_location_confirm),
                     modifier = Modifier.fillMaxWidth().padding(top = AppSpacing.xxl.dp, bottom = AppSpacing.xxl.dp),
-                    color = AppColors.GroupInk,
+                    color = MaterialTheme.colorScheme.appInk,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                 )
@@ -266,7 +276,13 @@ fun RecordLocationSelectionContent(
                                 elevated =
                                     canConfirm && !isSubmitting,
                             ).background(
-                                if (canConfirm && !isSubmitting) AppColors.Primary else AppColors.Gray100,
+                                if (canConfirm &&
+                                    !isSubmitting
+                                ) {
+                                    MaterialTheme.colorScheme.appPrimary
+                                } else {
+                                    MaterialTheme.colorScheme.appSurfaceDisabled
+                                },
                                 AppShapes.Button,
                             ).noRippleClickable(
                                 enabled = canConfirm && !isSubmitting,
@@ -277,7 +293,7 @@ fun RecordLocationSelectionContent(
                 ) {
                     Text(
                         stringResource(Res.string.record_location_submit),
-                        color = AppColors.TextPrimary,
+                        color = MaterialTheme.colorScheme.appTextPrimary,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -302,7 +318,7 @@ private fun RecordLocationMovedPreview() {
 
 @Composable
 private fun RecordLocationPreview(selected: GeoCoordinate) {
-    Box(Modifier.fillMaxSize().background(AppColors.Map.Background)) {
+    Box(Modifier.fillMaxSize().background(MaterialTheme.appColors.map.background)) {
         RecordLocationSelectionContent(
             origin = GeoCoordinate(37.5665, 126.9780),
             selectedCoordinate = selected,

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -30,8 +31,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppBorders
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.core.designsystem.theme.appBackground
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appInk
+import com.pheeeew.core.designsystem.theme.appSurface
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -60,7 +64,7 @@ fun LoadErrorContent(
         Spacer(Modifier.height(24.dp))
         Text(
             text = stringResource(Res.string.group_home_error_title),
-            color = AppColors.RankingContent,
+            color = MaterialTheme.appColors.ranking.content,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
@@ -68,7 +72,7 @@ fun LoadErrorContent(
         Spacer(Modifier.height(19.dp))
         Text(
             text = stringResource(Res.string.group_home_error_description),
-            color = AppColors.RankingSecondaryContent,
+            color = MaterialTheme.appColors.ranking.secondaryContent,
             fontSize = 12.sp,
             textAlign = TextAlign.Center,
         )
@@ -81,7 +85,7 @@ fun LoadErrorContent(
                     .height(50.dp)
                     .raisedButtonBorder(shape, interactionSource = interactionSource)
                     .clip(shape)
-                    .background(AppColors.White)
+                    .background(MaterialTheme.colorScheme.appSurface)
                     .clickable(
                         interactionSource = interactionSource,
                         indication = null,
@@ -92,7 +96,7 @@ fun LoadErrorContent(
         ) {
             Text(
                 text = stringResource(Res.string.group_home_retry),
-                color = AppColors.GroupInk,
+                color = MaterialTheme.colorScheme.appInk,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 fontFamily = notoSansKrFontFamily(),
@@ -114,8 +118,8 @@ fun RefreshErrorBanner(
             modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
-                .background(AppColors.RankingSurface)
-                .border(AppBorders.Standard, AppColors.GroupInk, RoundedCornerShape(12.dp))
+                .background(MaterialTheme.appColors.ranking.surface)
+                .border(AppBorders.Standard, MaterialTheme.colorScheme.appInk, RoundedCornerShape(12.dp))
                 .clickable(role = Role.Button, onClick = onRetry)
                 .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -124,14 +128,14 @@ fun RefreshErrorBanner(
         Text(
             text = message,
             modifier = Modifier.weight(1f),
-            color = AppColors.RankingContent,
+            color = MaterialTheme.appColors.ranking.content,
             fontSize = 13.sp,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
         Text(
             text = stringResource(Res.string.group_home_retry),
-            color = AppColors.RankingContent,
+            color = MaterialTheme.appColors.ranking.content,
             fontWeight = FontWeight.SemiBold,
             fontSize = 13.sp,
             maxLines = 1,
@@ -145,7 +149,7 @@ private fun LoadErrorContentPreview() {
     AppTheme {
         LoadErrorContent(
             onRetry = {},
-            modifier = Modifier.background(AppColors.Background).padding(32.dp),
+            modifier = Modifier.background(MaterialTheme.colorScheme.appBackground).padding(32.dp),
         )
     }
 }
@@ -157,7 +161,7 @@ private fun RankingRefreshErrorBannerPreview() {
         RefreshErrorBanner(
             message = "랭킹을 새로고침하지 못했어요.",
             onRetry = {},
-            modifier = Modifier.background(AppColors.Background).padding(24.dp),
+            modifier = Modifier.background(MaterialTheme.colorScheme.appBackground).padding(24.dp),
         )
     }
 }

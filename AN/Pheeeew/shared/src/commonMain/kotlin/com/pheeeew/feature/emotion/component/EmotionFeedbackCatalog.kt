@@ -1,7 +1,5 @@
 package com.pheeeew.feature.emotion.component
 
-import androidx.compose.ui.graphics.Color
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.emotion.model.EmotionKind
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
@@ -78,15 +76,6 @@ internal object EmotionFeedbackCatalog {
         val rotation = listOf(-7f, 5f, -3f, 7f, 2f)[lane]
         return EmotionBurst(id, emotion, stickerKind, variant, horizontalDrift, verticalLaunchOffset, rotation)
     }
-
-    fun color(emotion: EmotionKind): Color =
-        when (emotion) {
-            EmotionKind.Blocked -> AppColors.Emotion.Feedback.Blocked
-            EmotionKind.Annoyed -> AppColors.Emotion.Feedback.Annoyed
-            EmotionKind.Tired -> AppColors.Emotion.Feedback.Tired
-            EmotionKind.Defeated -> AppColors.Emotion.Feedback.Defeated
-            EmotionKind.Angry -> AppColors.Emotion.Feedback.Angry
-        }
 
     fun face(emotion: EmotionKind): DrawableResource =
         when (emotion) {

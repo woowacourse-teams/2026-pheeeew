@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -26,10 +27,15 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppBorders
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.core.designsystem.theme.appBorderLight
+import com.pheeeew.core.designsystem.theme.appDisabledText
+import com.pheeeew.core.designsystem.theme.appInk
+import com.pheeeew.core.designsystem.theme.appPrimary
+import com.pheeeew.core.designsystem.theme.appSurface
+import com.pheeeew.core.designsystem.theme.appTextPrimary
 import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.domain.model.emotion.ReactionCount
 import org.jetbrains.compose.resources.painterResource
@@ -71,7 +77,7 @@ internal fun EmotionChatItem(
             if (!item.isMine) EmotionFace(item)
             Text(
                 if (item.isMine) "${item.nickname} · 나" else item.nickname,
-                color = AppColors.GroupInk,
+                color = MaterialTheme.colorScheme.appInk,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 13.sp,
             )
@@ -96,9 +102,13 @@ internal fun EmotionChatItem(
                             if (item.content is EmotionChatContentUiModel.Audio) Modifier.fillMaxWidth() else Modifier,
                         ).border(
                             AppBorders.Standard,
-                            if (focused) AppColors.Primary else BubbleBorder,
+                            if (focused) {
+                                MaterialTheme.colorScheme.appPrimary
+                            } else {
+                                MaterialTheme.colorScheme.appBorderLight
+                            },
                             AppShapes.Card,
-                        ).background(AppColors.White, AppShapes.Card)
+                        ).background(MaterialTheme.colorScheme.appSurface, AppShapes.Card)
                         .combinedClickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
@@ -119,7 +129,7 @@ internal fun EmotionChatItem(
                             is EmotionChatContentUiModel.Text -> {
                                 Text(
                                     text = content.value?.takeIf { it.isNotBlank() } ?: "메모 없이 남긴 감정",
-                                    color = AppColors.TextPrimary,
+                                    color = MaterialTheme.colorScheme.appTextPrimary,
                                     fontSize = 14.sp,
                                 )
                             }
@@ -140,7 +150,7 @@ internal fun EmotionChatItem(
                                             playing -> "■ 재생 중지"
                                             else -> "▶ 녹음 듣기${content.durationLabel?.let { " $it" }.orEmpty()}"
                                         },
-                                        color = AppColors.TextPrimary,
+                                        color = MaterialTheme.colorScheme.appTextPrimary,
                                         fontSize = 14.sp,
                                     )
                                 }
@@ -191,10 +201,8 @@ private fun MessageTime(
     label: String,
     modifier: Modifier,
 ) {
-    Text(label, modifier.widthIn(max = 48.dp), fontSize = 10.sp, color = AppColors.Gray)
+    Text(label, modifier.widthIn(max = 48.dp), fontSize = 10.sp, color = MaterialTheme.colorScheme.appDisabledText)
 }
-
-private val BubbleBorder = AppColors.BorderLight
 
 @Preview(name = "공통 감정 아이템 · 텍스트", widthDp = 402, showBackground = true)
 @Composable

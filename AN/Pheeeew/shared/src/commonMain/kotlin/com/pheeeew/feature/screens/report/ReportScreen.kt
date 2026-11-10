@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -23,8 +24,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.component.Snackbar
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appBackground
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appInk
 import com.pheeeew.feature.screens.report.component.ReportDescriptionInput
 import com.pheeeew.feature.screens.report.component.ReportHeader
 import com.pheeeew.feature.screens.report.component.ReportReasonOption
@@ -69,7 +72,7 @@ fun ReportScreen(
         modifier =
             modifier
                 .fillMaxSize()
-                .background(AppColors.Background)
+                .background(MaterialTheme.colorScheme.appBackground)
                 .statusBarsPadding()
                 .navigationBarsPadding()
                 .imePadding(),
@@ -100,7 +103,7 @@ fun ReportScreen(
                 Text(
                     text = stringResource(Res.string.report_description_label),
                     modifier = Modifier.padding(top = AppSpacing.xl.dp),
-                    color = AppColors.GroupInk,
+                    color = MaterialTheme.colorScheme.appInk,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                 )
@@ -114,7 +117,7 @@ fun ReportScreen(
                     Text(
                         text = message,
                         modifier = Modifier.padding(top = AppSpacing.sm.dp),
-                        color = AppColors.Report.Error,
+                        color = MaterialTheme.appColors.report.error,
                         fontSize = 12.sp,
                     )
                 }

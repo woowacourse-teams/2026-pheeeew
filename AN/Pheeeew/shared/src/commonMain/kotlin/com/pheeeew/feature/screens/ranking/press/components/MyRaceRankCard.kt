@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -36,9 +37,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppBorders
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appInk
 import com.pheeeew.feature.screens.ranking.press.PressPersonRank
 import com.pheeeew.feature.screens.ranking.press.PressRankingStatus
 import com.pheeeew.feature.screens.ranking.press.raceCountText
@@ -57,9 +59,6 @@ import pheeeew.shared.generated.resources.press_my_rank_retry
 import pheeeew.shared.generated.resources.press_my_rank_running
 import pheeeew.shared.generated.resources.press_my_rank_title
 import pheeeew.shared.generated.resources.press_my_rank_top_three
-
-private val cardInk = AppColors.GroupInk
-private val cardYellow = AppColors.Press.MyRaceCardAccent
 
 @Composable
 internal fun MyRaceRankCard(
@@ -80,15 +79,15 @@ internal fun MyRaceRankCard(
         Column(
             modifier
                 .fillMaxWidth()
-                .background(cardYellow, AppShapes.RankingRow)
-                .border(AppBorders.Thin, cardInk, AppShapes.RankingRow)
+                .background(MaterialTheme.appColors.press.myRaceCardAccent, AppShapes.RankingRow)
+                .border(AppBorders.Thin, MaterialTheme.colorScheme.appInk, AppShapes.RankingRow)
                 .padding(horizontal = AppSpacing.lg.dp, vertical = AppSpacing.sm.copy(value = 10.dp).dp),
         ) {
             Text(
                 if (historical) "이날 나의 레이스" else stringResource(Res.string.press_my_rank_title),
                 fontSize = 11.sp,
                 lineHeight = 16.sp,
-                color = cardInk,
+                color = MaterialTheme.colorScheme.appInk,
             )
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -97,7 +96,7 @@ internal fun MyRaceRankCard(
                     fontSize = 22.sp,
                     lineHeight = 30.sp,
                     fontWeight = FontWeight.Black,
-                    color = cardInk,
+                    color = MaterialTheme.colorScheme.appInk,
                 )
                 Text(
                     stringResource(Res.string.press_my_rank_count, raceCountText(me.count)),
@@ -105,7 +104,7 @@ internal fun MyRaceRankCard(
                     fontSize = 12.sp,
                     lineHeight = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = cardInk,
+                    color = MaterialTheme.colorScheme.appInk,
                     textAlign = TextAlign.End,
                 )
             }
@@ -136,23 +135,27 @@ internal fun MyRaceRankCard(
         Column(
             modifier
                 .fillMaxWidth()
-                .background(AppColors.Press.MyRaceRowSurface, AppShapes.RankingRow)
-                .border(AppBorders.Thin, AppColors.Press.RankingCardBorder, AppShapes.RankingRow)
+                .background(MaterialTheme.appColors.press.myRaceRowSurface, AppShapes.RankingRow)
+                .border(AppBorders.Thin, MaterialTheme.appColors.press.rankingCardBorder, AppShapes.RankingRow)
                 .padding(AppSpacing.lg.dp),
         ) {
-            Text(title, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = cardInk)
+            Text(title, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.appInk)
             if (status == PressRankingStatus.Ready && !historical) {
                 Text(
                     stringResource(Res.string.press_my_rank_invite),
                     fontSize = 12.sp,
-                    color = AppColors.Press.RankingMuted,
+                    color = MaterialTheme.appColors.press.rankingMuted,
                 )
             }
             if (status == PressRankingStatus.Failed || (status == PressRankingStatus.Ready && !historical)) {
                 Button(
                     onClick = if (status == PressRankingStatus.Ready) onPress else onRetry,
                     shape = AppShapes.CompactControl,
-                    colors = ButtonDefaults.buttonColors(containerColor = cardYellow, contentColor = cardInk),
+                    colors =
+                        ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.appColors.press.myRaceCardAccent,
+                            contentColor = MaterialTheme.colorScheme.appInk,
+                        ),
                     modifier = Modifier.align(Alignment.End).padding(top = AppSpacing.sm.dp),
                 ) {
                     Text(
@@ -184,14 +187,16 @@ internal fun MyRaceRankCard(
     val rankLabel = stringResource(Res.string.press_my_rank_position, me.rank.toString())
     val countLabel = stringResource(Res.string.press_my_rank_count, raceCountText(me.count))
     val shape = AppShapes.LargeCard
+    val dateAccent = MaterialTheme.appColors.press.dateAccent
+    val raceAccent = MaterialTheme.appColors.press.myRaceAccent
     Box(modifier.fillMaxWidth().padding(bottom = AppSpacing.xs.dp)) {
-        Box(Modifier.matchParentSize().offset(y = 4.dp).background(cardInk, shape))
+        Box(Modifier.matchParentSize().offset(y = 4.dp).background(MaterialTheme.colorScheme.appInk, shape))
         Box(
             Modifier
                 .fillMaxWidth()
                 .clip(shape)
-                .background(cardYellow)
-                .border(AppBorders.Standard, cardInk, shape)
+                .background(MaterialTheme.appColors.press.myRaceCardAccent)
+                .border(AppBorders.Standard, MaterialTheme.colorScheme.appInk, shape)
                 .clearAndSetSemantics { contentDescription = description },
         ) {
             Canvas(Modifier.matchParentSize()) {
@@ -203,10 +208,10 @@ internal fun MyRaceRankCard(
                         lineTo(size.width, size.height)
                         close()
                     }
-                drawPath(diagonal, AppColors.Press.DateAccent)
+                drawPath(diagonal, dateAccent)
                 for (fraction in listOf(0.62f, 0.74f)) {
                     drawLine(
-                        AppColors.Press.MyRaceAccent,
+                        raceAccent,
                         Offset(size.width * fraction, size.height),
                         Offset(size.width * (fraction + 0.38f), 0f),
                         2.dp.toPx(),
@@ -229,7 +234,7 @@ internal fun MyRaceRankCard(
                     Text(
                         if (historical) "이날 나의 레이스" else stringResource(Res.string.press_my_rank_title),
                         fontSize = 11.sp,
-                        color = cardInk,
+                        color = MaterialTheme.colorScheme.appInk,
                         fontWeight = FontWeight.Bold,
                     )
                     BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -242,7 +247,7 @@ internal fun MyRaceRankCard(
                             rankLabel,
                             fontSize = (56f * ratio).sp,
                             fontWeight = FontWeight.Black,
-                            color = cardInk,
+                            color = MaterialTheme.colorScheme.appInk,
                             maxLines = 1,
                             softWrap = false,
                         )
@@ -251,10 +256,12 @@ internal fun MyRaceRankCard(
                         countLabel,
                         modifier =
                             Modifier
-                                .background(AppColors.Press.MyRaceHighlightSurface, AppShapes.CompactControl)
-                                .border(
+                                .background(
+                                    MaterialTheme.appColors.press.myRaceHighlightSurface,
+                                    AppShapes.CompactControl,
+                                ).border(
                                     AppBorders.Thin,
-                                    cardInk,
+                                    MaterialTheme.colorScheme.appInk,
                                     AppShapes.CompactControl,
                                 ).padding(
                                     horizontal = AppSpacing.sm.copy(value = 10.dp).dp,
@@ -262,7 +269,7 @@ internal fun MyRaceRankCard(
                                 ),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
-                        color = cardInk,
+                        color = MaterialTheme.colorScheme.appInk,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -280,7 +287,7 @@ internal fun MyRaceRankCard(
                             Text(
                                 "✦",
                                 fontSize = 27.sp,
-                                color = cardInk,
+                                color = MaterialTheme.colorScheme.appInk,
                                 modifier = Modifier.align(Alignment.TopEnd).padding(end = AppSpacing.sm.dp),
                             )
                         }
@@ -299,9 +306,9 @@ internal fun MyRaceRankCard(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .background(cardInk, AppShapes.Action)
+                                .background(MaterialTheme.colorScheme.appInk, AppShapes.Action)
                                 .padding(horizontal = AppSpacing.xs.copy(value = 6.dp).dp, vertical = AppSpacing.xs.dp),
-                        color = AppColors.Press.RankBadgeSurface,
+                        color = MaterialTheme.appColors.press.rankBadgeSurface,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,

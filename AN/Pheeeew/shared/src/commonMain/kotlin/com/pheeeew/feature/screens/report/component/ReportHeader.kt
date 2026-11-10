@@ -1,10 +1,11 @@
 package com.pheeeew.feature.screens.report.component
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.pheeeew.core.designsystem.component.BasicTopBar
-import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.appInk
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.report_title
@@ -21,7 +22,7 @@ fun ReportHeader(
         modifier = modifier,
         enabled = enabled,
         backContentDescription = "뒤로",
-        titleColor = AppColors.GroupInk,
+        titleColor = MaterialTheme.colorScheme.appInk,
     )
 }
 

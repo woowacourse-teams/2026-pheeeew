@@ -5,6 +5,7 @@ import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -14,7 +15,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appSurface
 
 /** Native map projection in density-independent screen coordinates. */
 data class HighlightedPinPosition(
@@ -33,6 +35,9 @@ internal fun RegisteredPinHighlight(
     val pulse = remember(position.id) { Animatable(0f) }
     val density = LocalDensity.current
     val center = with(density) { Offset(position.x.dp.toPx(), position.y.dp.toPx()) }
+    val pulseColor = MaterialTheme.appColors.map.pin.pulse
+    val badgeColor = MaterialTheme.colorScheme.appSurface
+    val dangerColor = MaterialTheme.appColors.map.pin.danger
     LaunchedEffect(position.id, repeatPulse) {
         do {
             repeat(2) {
@@ -45,8 +50,7 @@ internal fun RegisteredPinHighlight(
     Canvas(Modifier.fillMaxSize().clipToBounds()) {
         drawCircle(
             color =
-                AppColors.Map.Pin.Pulse
-                    .copy(alpha = 0.5f * (1f - pulse.value)),
+                pulseColor.copy(alpha = 0.5f * (1f - pulse.value)),
             radius = (24f * scale + 30f * pulse.value).dp.toPx(),
             center = center,
             style = Stroke(width = 2.dp.toPx()),
@@ -55,12 +59,12 @@ internal fun RegisteredPinHighlight(
         val badgeOffset = (EMOTION_PIN_SIZE / 2 - 3.dp).toPx()
         val badgeCenter = center + Offset(badgeOffset, -badgeOffset)
         drawCircle(
-            color = AppColors.White,
+            color = badgeColor,
             radius = 7.dp.toPx(),
             center = badgeCenter,
         )
         drawCircle(
-            color = AppColors.Map.Pin.Danger,
+            color = dangerColor,
             radius = 5.dp.toPx(),
             center = badgeCenter,
         )

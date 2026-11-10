@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -20,9 +21,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.pheeeew.core.designsystem.component.AppDialog
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appInk
+import com.pheeeew.core.designsystem.theme.appSurface
+import com.pheeeew.core.designsystem.theme.appTextSecondary
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.core.update.AppUpdateState
 import com.pheeeew.feature.screens.settings.components.NicknameDialogButton
@@ -94,12 +97,12 @@ fun AppUpdatePrompt(
                     .widthIn(max = 356.dp)
                     .fillMaxWidth()
                     .clip(AppShapes.LargeCard)
-                    .background(AppColors.Surface)
+                    .background(MaterialTheme.colorScheme.appSurface)
                     .padding(AppSpacing.xxl.dp),
             ) {
                 Text(
                     stringResource(title),
-                    color = AppColors.GroupInk,
+                    color = MaterialTheme.colorScheme.appInk,
                     fontFamily = notoSansKrFontFamily(),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
@@ -107,7 +110,7 @@ fun AppUpdatePrompt(
                 Spacer(Modifier.height(AppSpacing.lg.copy(value = 18.dp).dp))
                 Text(
                     stringResource(message),
-                    color = AppColors.TextSecondary,
+                    color = MaterialTheme.colorScheme.appTextSecondary,
                     fontFamily = notoSansKrFontFamily(),
                     fontSize = 14.sp,
                     lineHeight = 22.sp,

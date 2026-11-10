@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -17,10 +18,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.core.designsystem.theme.appColors
 import com.pheeeew.feature.screens.ranking.press.PressEmotion
 import com.pheeeew.feature.screens.ranking.press.PressPersonRank
 import com.pheeeew.feature.screens.ranking.press.samplePressPersonRanks
@@ -52,12 +53,12 @@ internal fun MyPressRankCard(
         }
     val cardColor =
         when (emotion) {
-            PressEmotion.All -> AppColors.Emotion.PressPalette.All
-            PressEmotion.Frustrated -> AppColors.Emotion.TapPalette.Frustrated
-            PressEmotion.Annoyed -> AppColors.Emotion.PressPalette.Annoyed
-            PressEmotion.Tired -> AppColors.Emotion.PressPalette.Tired
-            PressEmotion.Discouraged -> AppColors.Emotion.PressPalette.Discouraged
-            PressEmotion.Angry -> AppColors.Emotion.PressPalette.Angry
+            PressEmotion.All -> MaterialTheme.appColors.emotion.pressPalette.all
+            PressEmotion.Frustrated -> MaterialTheme.appColors.emotion.tapPalette.frustrated
+            PressEmotion.Annoyed -> MaterialTheme.appColors.emotion.pressPalette.annoyed
+            PressEmotion.Tired -> MaterialTheme.appColors.emotion.pressPalette.tired
+            PressEmotion.Discouraged -> MaterialTheme.appColors.emotion.pressPalette.discouraged
+            PressEmotion.Angry -> MaterialTheme.appColors.emotion.pressPalette.angry
         }
 
     PressRankingCardSurface(
@@ -86,7 +87,7 @@ internal fun MyPressRankCard(
             Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.xs.copy(value = 1.dp).dp)) {
                 Text(
                     text = "내 순위 · ${person.nickname}",
-                    color = AppColors.RankingContent,
+                    color = MaterialTheme.appColors.ranking.content,
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     fontSize = 14.sp,
@@ -94,7 +95,7 @@ internal fun MyPressRankCard(
                 )
                 Text(
                     text = stringResource(Res.string.group_detail_rank_number, person.rank),
-                    color = AppColors.RankingContent,
+                    color = MaterialTheme.appColors.ranking.content,
                     fontSize = 36.sp,
                     lineHeight = 42.sp,
                     fontWeight = FontWeight.ExtraBold,
@@ -106,7 +107,7 @@ internal fun MyPressRankCard(
                         } else {
                             "${person.count}번의 ${emotion.phrase} 마음"
                         },
-                    color = AppColors.RankingContent,
+                    color = MaterialTheme.appColors.ranking.content,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                 )

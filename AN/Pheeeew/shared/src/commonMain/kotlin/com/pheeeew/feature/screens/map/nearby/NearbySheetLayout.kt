@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -45,9 +46,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.pheeeew.core.designsystem.component.SheetDragHandle
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appPageBackground
 
 internal const val NEARBY_COLLAPSED_MAP_HEIGHT_FRACTION = 0.55f
 
@@ -177,7 +179,7 @@ internal fun NearbySheetLayout(
                                 }
                             },
                     shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-                    color = AppColors.GroupBackground,
+                    color = MaterialTheme.colorScheme.appPageBackground,
                     shadowElevation = 12.dp,
                 ) {
                     Column(
@@ -246,7 +248,7 @@ private fun NearbySheetPreviewContent(
     var expanded by remember { mutableStateOf(initialExpanded) }
     val emotions = remember { nearbyPreviewItems() }
     AppTheme {
-        Box(Modifier.fillMaxSize().background(AppColors.Map.NearbySheetBackground)) {
+        Box(Modifier.fillMaxSize().background(MaterialTheme.appColors.map.nearbySheetBackground)) {
             NearbySheetLayout(
                 visible = true,
                 expanded = expanded,

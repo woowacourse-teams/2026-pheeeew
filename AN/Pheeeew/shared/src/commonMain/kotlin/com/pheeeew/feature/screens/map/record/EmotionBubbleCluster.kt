@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -49,8 +50,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appSurface
+import com.pheeeew.core.designsystem.theme.appTextPrimary
 import com.pheeeew.feature.component.SoapBubble
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -162,6 +165,7 @@ internal fun EmotionBubbleCluster(
             animationSpec = tween(durationMillis = 150),
             label = "emotionBubbleCloseProgress",
         )
+    val rippleColor = MaterialTheme.appColors.emotion.bubble.ripple
 
     BoxWithConstraints(
         modifier =
@@ -179,7 +183,7 @@ internal fun EmotionBubbleCluster(
             ) {
                 drawCircle(
                     color =
-                        AppColors.Emotion.Bubble.Ripple.copy(
+                        rippleColor.copy(
                             alpha =
                                 (1f - rippleProgress.value) * 0.6f * (166f / 255f),
                         ),
@@ -224,7 +228,7 @@ internal fun EmotionBubbleCluster(
                                 scaleX = 0.6f + 0.4f * closeProgress
                                 scaleY = scaleX
                             },
-                    tint = AppColors.Map.EmotionBubble.Tint,
+                    tint = MaterialTheme.appColors.map.emotionBubble.tint,
                 )
             }
         }
@@ -366,7 +370,7 @@ private fun EmotionBubble(
         if (labelAlpha > 0f) {
             Text(
                 text = emotionLabel,
-                color = AppColors.Black,
+                color = MaterialTheme.colorScheme.appTextPrimary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Center,
@@ -379,7 +383,7 @@ private fun EmotionBubble(
                     LocalTextStyle.current.copy(
                         shadow =
                             Shadow(
-                                color = AppColors.White,
+                                color = MaterialTheme.colorScheme.appSurface,
                                 offset = Offset.Zero,
                                 blurRadius = 10f,
                             ),
@@ -415,7 +419,7 @@ private fun EmotionTypeUiModel.offset(
 @Composable
 fun EmotionBubbleClusterCollapsedPreview() {
     Box(
-        modifier = Modifier.fillMaxSize().background(AppColors.Map.Background).padding(AppSpacing.lg.dp),
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.appColors.map.background).padding(AppSpacing.lg.dp),
         contentAlignment = Alignment.Center,
     ) {
         EmotionBubbleCluster(isExpanded = false, onToggle = {}, onEmotionClick = {})
@@ -427,7 +431,12 @@ fun EmotionBubbleClusterCollapsedPreview() {
 @Composable
 fun EmotionBubbleClusterExpandedPreview() {
     Box(
-        modifier = Modifier.fillMaxSize().background(AppColors.Map.RecordPreviewBackground).padding(AppSpacing.lg.dp),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(
+                    MaterialTheme.appColors.map.recordPreviewBackground,
+                ).padding(AppSpacing.lg.dp),
         contentAlignment = Alignment.Center,
     ) {
         EmotionBubbleCluster(isExpanded = true, onToggle = {}, onEmotionClick = {})

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -29,9 +30,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.theme.AppBorders
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appInk
+import com.pheeeew.core.designsystem.theme.appOnAccent
 import com.pheeeew.feature.screens.map.drawPlaybackWaveform
 import com.pheeeew.feature.screens.map.record.noRippleClickable
 
@@ -41,12 +44,15 @@ internal fun EmotionAudioPlayer(
     onPlaybackClick: () -> Unit,
     modifier: Modifier,
 ) {
+    val playbackIconColor = MaterialTheme.colorScheme.appOnAccent
+    val audioInactiveColor = MaterialTheme.appColors.map.audioInactive
+    val recordingColor = MaterialTheme.appColors.recordSheet.recording
     Column(modifier, verticalArrangement = Arrangement.spacedBy(AppSpacing.sm.dp)) {
         Row(
             Modifier
                 .fillMaxWidth()
                 .height(80.dp)
-                .border(AppBorders.Standard, AppColors.GroupInk, AppShapes.CompactControl)
+                .border(AppBorders.Standard, MaterialTheme.colorScheme.appInk, AppShapes.CompactControl)
                 .padding(horizontal = AppSpacing.lg.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(AppSpacing.lg.dp),
@@ -54,7 +60,7 @@ internal fun EmotionAudioPlayer(
             Box(
                 Modifier
                     .size(48.dp)
-                    .background(AppColors.GroupInk, CircleShape)
+                    .background(MaterialTheme.colorScheme.appInk, CircleShape)
                     .noRippleClickable(
                         !audio.isPreparing && (audio.durationMillis != null || audio.error != null),
                         onPlaybackClick,
@@ -71,12 +77,12 @@ internal fun EmotionAudioPlayer(
                 contentAlignment = Alignment.Center,
             ) {
                 if (audio.isPreparing) {
-                    CircularLoadingIndicator(Modifier.size(24.dp), color = AppColors.White, strokeWidth = 2.dp)
+                    CircularLoadingIndicator(Modifier.size(24.dp), color = playbackIconColor, strokeWidth = 2.dp)
                 } else {
                     Canvas(Modifier.size(24.dp)) {
                         if (audio.isPlaying) {
                             drawRect(
-                                AppColors.White,
+                                playbackIconColor,
                                 Offset(size.width * .2f, size.height * .2f),
                                 Size(size.width * .6f, size.height * .6f),
                             )
@@ -88,7 +94,7 @@ internal fun EmotionAudioPlayer(
                                     lineTo(size.width * .2f, size.height)
                                     close()
                                 },
-                                AppColors.White,
+                                playbackIconColor,
                             )
                         }
                     }
@@ -98,15 +104,15 @@ internal fun EmotionAudioPlayer(
                 drawPlaybackWaveform(
                     audio.waveform,
                     audio.playbackProgress(),
-                    AppColors.Map.AudioInactive,
-                    AppColors.RecordSheetRecording,
+                    audioInactiveColor,
+                    recordingColor,
                 )
             }
             audio.timelineLabel()?.let { label ->
-                Text(label, color = AppColors.GroupInk, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text(label, color = MaterialTheme.colorScheme.appInk, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
         }
-        audio.error?.let { Text(it, color = AppColors.RecordSheetRecording, fontSize = 12.sp) }
+        audio.error?.let { Text(it, color = MaterialTheme.appColors.recordSheet.recording, fontSize = 12.sp) }
     }
 }
 

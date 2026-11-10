@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
@@ -22,9 +23,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.audio.PressSoundPlayer
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.core.designsystem.theme.appMutedText
+import com.pheeeew.core.designsystem.theme.appPageBackground
+import com.pheeeew.core.designsystem.theme.appTextPrimary
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.press.AllDailyPressSnapshot
@@ -83,7 +86,7 @@ internal fun PressScreen(
         modifier =
             modifier
                 .fillMaxSize()
-                .background(AppColors.GroupBackground)
+                .background(MaterialTheme.colorScheme.appPageBackground)
                 .statusBarsPadding(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -92,7 +95,7 @@ internal fun PressScreen(
             Column(modifier = Modifier.fillMaxWidth().padding(horizontal = AppSpacing.screen.dp)) {
                 Text(
                     text = stringResource(Res.string.press_screen_title),
-                    color = AppColors.TextPrimary,
+                    color = MaterialTheme.colorScheme.appTextPrimary,
                     fontSize = 24.sp,
                     fontFamily = font,
                     fontWeight = FontWeight.Black,
@@ -100,7 +103,7 @@ internal fun PressScreen(
                 Spacer(Modifier.height(AppSpacing.xs.dp))
                 Text(
                     text = stringResource(Res.string.press_screen_subtitle),
-                    color = AppColors.Common.MutedText,
+                    color = MaterialTheme.colorScheme.appMutedText,
                     fontSize = 14.sp,
                     fontFamily = font,
                     fontWeight = FontWeight.Medium,
@@ -119,7 +122,7 @@ internal fun PressScreen(
                 Text(
                     stringResource(Res.string.press_race_input_recovery_required),
                     modifier = Modifier.padding(horizontal = AppSpacing.xxl.dp, vertical = AppSpacing.sm.dp),
-                    color = AppColors.TextPrimary,
+                    color = MaterialTheme.colorScheme.appTextPrimary,
                     fontFamily = font,
                     fontSize = 12.sp,
                 )

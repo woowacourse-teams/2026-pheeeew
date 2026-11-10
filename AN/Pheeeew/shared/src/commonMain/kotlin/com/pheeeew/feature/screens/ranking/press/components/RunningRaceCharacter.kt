@@ -2,6 +2,7 @@ package com.pheeeew.feature.screens.ranking.press.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.derivedStateOf
@@ -14,7 +15,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.dp
-import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.appColors
 import com.pheeeew.feature.emotion.component.rememberTapReducedMotion
 import com.pheeeew.feature.emotion.model.EmotionKind
 import org.jetbrains.compose.resources.DrawableResource
@@ -85,6 +86,7 @@ internal fun RunningRaceCharacter(
         }
     val pose = if (!stopped && visible) phase.value else stillPose
     val resource = runningRaceResource(emotion, pose.secondImage)
+    val characterColor = MaterialTheme.appColors.press.runningCharacter
     val visibilityModifier =
         if (clock == null) {
             modifier
@@ -96,7 +98,7 @@ internal fun RunningRaceCharacter(
         }
     if (resource == null) {
         Canvas(visibilityModifier) {
-            drawCircle(AppColors.Press.RunningCharacter, radius = size.minDimension * 0.22f)
+            drawCircle(characterColor, radius = size.minDimension * 0.22f)
         }
     } else {
         Image(
