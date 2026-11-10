@@ -300,6 +300,7 @@ private fun CollectionEmotionReactionRow(
     onOpenPicker: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val reactionShape = RoundedCornerShape(50)
     val visible = reactions.filter { it.count > 0 || it.selected }
     val addDescription = stringResource(Res.string.emotion_chat_add_reaction)
     FlowRow(
@@ -311,7 +312,8 @@ private fun CollectionEmotionReactionRow(
             Row(
                 Modifier
                     .height(24.dp)
-                    .background(if (reaction.selected) Color(0xFFFFE987) else Color(0xFFF2F2F2), RoundedCornerShape(50))
+                    .clip(reactionShape)
+                    .background(if (reaction.selected) Color(0xFFFFE987) else Color(0xFFF2F2F2), reactionShape)
                     .clickable(enabled = !busy, role = Role.Button) { onReact(reaction.type) }
                     .semantics {
                         val selection = if (reaction.selected) "선택됨" else "선택 안 됨"
@@ -329,6 +331,7 @@ private fun CollectionEmotionReactionRow(
                 Box(
                     Modifier
                         .size(24.dp)
+                        .clip(CircleShape)
                         .background(Color(0xFFF2F2F2), CircleShape)
                         .clickable(enabled = !busy, role = Role.Button, onClick = onOpenPicker)
                         .semantics { contentDescription = addDescription },
