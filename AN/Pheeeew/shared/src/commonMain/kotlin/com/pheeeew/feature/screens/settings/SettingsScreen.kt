@@ -423,7 +423,12 @@ fun SettingsScreen(
 
             SnackbarHost(
                 hostState = snackbarHostState,
-                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(AppSpacing.lg.dp),
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .navigationBarsPadding()
+                        .padding(horizontal = AppSpacing.lg.dp)
+                        .padding(bottom = AppSpacing.xxl.dp),
                 snackbar = { data ->
                     Snackbar(
                         message = data.visuals.message,

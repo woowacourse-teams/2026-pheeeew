@@ -25,6 +25,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,6 +40,7 @@ import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.designsystem.theme.appBackground
+import com.pheeeew.core.designsystem.theme.appColors
 import com.pheeeew.core.designsystem.theme.appInk
 import com.pheeeew.core.designsystem.theme.appPrimary
 import com.pheeeew.core.designsystem.theme.appSurface
@@ -48,6 +50,7 @@ import com.pheeeew.core.notification.NotificationAuthorization
 import com.pheeeew.core.notification.NotificationKind
 import com.pheeeew.core.notification.NotificationPreferences
 import com.pheeeew.feature.screens.settings.components.SettingsCard
+import com.pheeeew.feature.screens.settings.components.SettingsCardContentInset
 import com.pheeeew.feature.screens.settings.components.SettingsDivider
 import com.pheeeew.feature.screens.settings.components.SettingsHeader
 import org.jetbrains.compose.resources.stringResource
@@ -157,7 +160,13 @@ private fun NotificationSettingsRows(
             onCheckedChange = { enabled -> onToggle(kind, enabled) },
         )
     }
-    Column(Modifier.padding(bottom = AppSpacing.md.dp), verticalArrangement = Arrangement.spacedBy(AppSpacing.sm.dp)) {
+    Column(
+        modifier =
+            Modifier
+                .padding(horizontal = SettingsCardContentInset)
+                .padding(bottom = AppSpacing.md.dp),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.sm.dp),
+    ) {
         if (state.failed && state.preferences == null) {
             Text(stringResource(Res.string.notification_settings_failed), fontSize = 12.sp)
             TextButton(onClick = onRetry, enabled = !state.busy) {
@@ -183,10 +192,12 @@ private fun NotificationToggleRow(
                 .semantics(mergeDescendants = true) {}
                 .toggleable(
                     value = checked,
+                    interactionSource = null,
+                    indication = ripple(color = MaterialTheme.appColors.settings.iconSecondary),
                     enabled = enabled,
                     role = Role.Switch,
                     onValueChange = onCheckedChange,
-                ),
+                ).padding(horizontal = SettingsCardContentInset),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(AppSpacing.cardGap.dp),
     ) {
