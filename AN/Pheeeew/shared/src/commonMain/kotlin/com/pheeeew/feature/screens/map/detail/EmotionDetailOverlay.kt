@@ -309,7 +309,10 @@ private object PreviewActionRepositories : BlockRepository, EmotionRepository {
 
     override suspend fun blockUser(emotionId: Long) = EmotionModerationResult.Success
 
-    override suspend fun delete(emotionId: Long) = EmotionModerationResult.Success
+    override suspend fun delete(
+        emotionId: Long,
+        expectedSessionGeneration: Long?,
+    ) = EmotionModerationResult.Success
 
     override suspend fun firstPage(bounds: EmotionBounds): Nothing = error("Preview does not load data")
 
@@ -321,5 +324,6 @@ private object PreviewActionRepositories : BlockRepository, EmotionRepository {
         id: Long,
         type: EmotionReactionType,
         selected: Boolean,
+        expectedSessionGeneration: Long?,
     ): Nothing = error("Preview does not load data")
 }

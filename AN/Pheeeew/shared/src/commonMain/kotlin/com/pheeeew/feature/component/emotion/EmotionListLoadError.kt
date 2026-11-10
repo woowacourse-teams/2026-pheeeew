@@ -31,6 +31,7 @@ import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.core.designsystem.theme.appColors
 import com.pheeeew.core.designsystem.theme.appSurface
 import com.pheeeew.domain.model.emotion.EmotionState
+import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
@@ -43,6 +44,7 @@ internal fun EmotionListLoadError(
     hasItems: Boolean,
     onRetry: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    icon: DrawableResource? = if (hasItems) null else EmotionState.FRUSTRATED.face,
 ) {
     Surface(
         modifier = modifier,
@@ -54,9 +56,9 @@ internal fun EmotionListLoadError(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
         ) {
-            if (!hasItems) {
+            if (icon != null) {
                 Image(
-                    painter = painterResource(EmotionState.FRUSTRATED.face),
+                    painter = painterResource(icon),
                     contentDescription = null,
                     modifier = Modifier.size(32.dp),
                 )

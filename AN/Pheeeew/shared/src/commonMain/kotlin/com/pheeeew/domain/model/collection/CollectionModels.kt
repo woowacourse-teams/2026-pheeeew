@@ -1,5 +1,6 @@
 package com.pheeeew.domain.model.collection
 
+import com.pheeeew.domain.model.emotion.EmotionReaction
 import com.pheeeew.domain.model.emotion.EmotionState
 
 data class CollectionImages(
@@ -74,6 +75,33 @@ data class CollectionHistory(
     val nickname: String?,
     val cards: List<CollectionCard>,
     val counts: CollectionCounts,
+    val hasNext: Boolean,
+    val nextCursor: String?,
+)
+
+data class CollectionCalendar(
+    val cards: List<CollectionCard>,
+)
+
+data class CollectionEmotion(
+    val id: Long,
+    val createdAt: String,
+    val state: EmotionState,
+    val contentType: CollectionEmotionContentType,
+    val memo: String?,
+    val audio: CollectionEmotionAudio?,
+    val emojis: List<EmotionReaction> = emptyList(),
+)
+
+enum class CollectionEmotionContentType { NONE, MEMO, AUDIO }
+
+data class CollectionEmotionAudio(
+    val playbackUrl: String,
+    val expiresAt: String,
+)
+
+data class CollectionEmotionPage(
+    val items: List<CollectionEmotion>,
     val hasNext: Boolean,
     val nextCursor: String?,
 )

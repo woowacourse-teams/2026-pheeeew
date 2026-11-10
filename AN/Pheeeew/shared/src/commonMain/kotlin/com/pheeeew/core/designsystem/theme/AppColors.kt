@@ -23,6 +23,7 @@ object AppColors {
 
     val Gray50 = AppPalette.Gray50
     val Gray100 = AppPalette.Gray100
+    val Gray200 = AppPalette.Gray200
     val RecordSheetInputSurface = AppPalette.RecordSheetInputSurface
     val RecordSheetAction = AppPalette.RecordSheetAction
     val RecordSheetRecording = AppPalette.RecordSheetRecording

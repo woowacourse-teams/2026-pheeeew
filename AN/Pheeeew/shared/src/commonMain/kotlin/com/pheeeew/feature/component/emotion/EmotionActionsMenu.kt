@@ -55,6 +55,7 @@ internal fun EmotionActionsMenu(
     onReact: ((EmotionReactionType) -> Unit)?,
     onBlock: (() -> Unit)?,
     onReport: (() -> Unit)?,
+    onDelete: (() -> Unit)? = null,
 ) {
     val expandedMode = mode ?: return
     val cardShape = AppShapes.CompactControl
@@ -68,7 +69,7 @@ internal fun EmotionActionsMenu(
         shadowElevation = 0.dp,
     ) {
         Column(Modifier.padding(AppSpacing.sm.dp)) {
-            if (expandedMode == EmotionActionsMenuMode.Actions && !isMine) {
+            if (expandedMode == EmotionActionsMenuMode.Actions && (!isMine || onDelete != null)) {
                 Column(
                     Modifier
                         .fillMaxWidth()
@@ -76,11 +77,15 @@ internal fun EmotionActionsMenu(
                         .clip(cardShape)
                         .background(MaterialTheme.colorScheme.appSurface),
                 ) {
-                    EmotionMenuAction("차단하기", busy || onBlock == null) { onBlock?.invoke() }
-                    HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.appColors.core.actionDivider)
-                    EmotionMenuAction("신고하기", busy || onReport == null) { onReport?.invoke() }
+                    if (isMine) {
+                        EmotionMenuAction("삭제하기", busy) { onDelete?.invoke() }
+                    } else {
+                        EmotionMenuAction("차단하기", busy || onBlock == null) { onBlock?.invoke() }
+                        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.appColors.core.actionDivider)
+                        EmotionMenuAction("신고하기", busy || onReport == null) { onReport?.invoke() }
+                    }
                 }
-                Spacer(Modifier.height(AppSpacing.sm.dp))
+                if (onReact != null) Spacer(Modifier.height(AppSpacing.sm.dp))
             }
             if (onReact != null) {
                 Row(

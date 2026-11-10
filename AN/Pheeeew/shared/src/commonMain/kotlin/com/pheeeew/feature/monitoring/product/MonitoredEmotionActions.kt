@@ -31,10 +31,12 @@ class MonitoredEmotionRepository(
 ) : EmotionRepository by delegate {
     private val telemetry = ProductMonitoring(monitoring, "map")
 
-    override suspend fun delete(emotionId: Long) =
-        telemetry
-            .operation(
-                "emotion_delete_finished",
-                labels("entry_key" to emotionId.toString(), "entry_source" to "map", "action" to "delete"),
-            ).observe(::resultLabel) { delegate.delete(emotionId) }
+    override suspend fun delete(
+        emotionId: Long,
+        expectedSessionGeneration: Long?,
+    ) = telemetry
+        .operation(
+            "emotion_delete_finished",
+            labels("entry_key" to emotionId.toString(), "entry_source" to "map", "action" to "delete"),
+        ).observe(::resultLabel) { delegate.delete(emotionId, expectedSessionGeneration) }
 }
