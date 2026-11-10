@@ -13,13 +13,13 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -29,9 +29,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.component.raisedPressEffect
 import com.pheeeew.core.designsystem.theme.AppBorders
-import com.pheeeew.core.designsystem.theme.AppColors
-
-private val selectedReasonColor = Color(0xFFFFF8DA)
+import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appBackground
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appInk
 
 @Composable
 fun ReportReasonOption(
@@ -43,13 +44,19 @@ fun ReportReasonOption(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val shape = RoundedCornerShape(15.dp)
-    Box(modifier = modifier.fillMaxWidth().padding(end = 3.dp, bottom = 3.dp)) {
+    Box(
+        modifier =
+            modifier.fillMaxWidth().padding(
+                end = AppSpacing.xs.copy(value = 3.dp).dp,
+                bottom = AppSpacing.xs.copy(value = 3.dp).dp,
+            ),
+    ) {
         Box(
             modifier =
                 Modifier
                     .matchParentSize()
                     .offset(x = 3.dp, y = 3.dp)
-                    .background(AppColors.GroupInk, shape),
+                    .background(MaterialTheme.colorScheme.appInk, shape),
         )
         Row(
             modifier =
@@ -58,8 +65,13 @@ fun ReportReasonOption(
                     .height(54.dp)
                     .raisedPressEffect(interactionSource, enabled = enabled)
                     .clip(shape)
-                    .background(if (selected) selectedReasonColor else AppColors.Background)
-                    .border(AppBorders.Standard, AppColors.GroupInk, shape)
+                    .background(
+                        if (selected) {
+                            MaterialTheme.appColors.report.selectedSurface
+                        } else {
+                            MaterialTheme.colorScheme.appBackground
+                        },
+                    ).border(AppBorders.Standard, MaterialTheme.colorScheme.appInk, shape)
                     .clickable(
                         interactionSource = interactionSource,
                         indication = null,
@@ -67,14 +79,14 @@ fun ReportReasonOption(
                         role = Role.RadioButton,
                         onClick = onClick,
                     ).semantics { this.selected = selected }
-                    .padding(horizontal = 14.dp),
+                    .padding(horizontal = AppSpacing.md.copy(value = 14.dp).dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             ReportRadioButton(selected = selected)
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(AppSpacing.md.dp))
             Text(
                 text = reason,
-                color = AppColors.GroupInk,
+                color = MaterialTheme.colorScheme.appInk,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
             )

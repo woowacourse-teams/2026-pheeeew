@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupPositionProvider
 import com.pheeeew.core.designsystem.component.AppPopup
 import com.pheeeew.core.designsystem.component.Snackbar
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.feature.screens.map.MapFeedbackAction
 import com.pheeeew.feature.screens.map.MapTransientNoticeUiModel
 import com.pheeeew.feature.screens.map.MapUiModel
@@ -139,7 +140,7 @@ internal fun MapFeedbackOverlay(
                 onAction = action,
                 showDismissAction = source == MapFeedbackSource.Detail,
                 modifier =
-                    Modifier.widthIn(max = 560.dp).fillMaxWidth().padding(horizontal = 16.dp).then(
+                    Modifier.widthIn(max = 560.dp).fillMaxWidth().padding(horizontal = AppSpacing.lg.dp).then(
                         if (source ==
                             null
                         ) {

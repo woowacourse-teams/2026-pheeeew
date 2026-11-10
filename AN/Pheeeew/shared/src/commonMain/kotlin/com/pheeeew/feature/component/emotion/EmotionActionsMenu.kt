@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -27,7 +28,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -37,7 +37,12 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppPalette
+import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appSurface
 import com.pheeeew.domain.model.emotion.EmotionReactionType
 
 @Composable
@@ -53,34 +58,34 @@ internal fun EmotionActionsMenu(
     onDelete: (() -> Unit)? = null,
 ) {
     val expandedMode = mode ?: return
-    val cardShape = RoundedCornerShape(12.dp)
+    val cardShape = AppShapes.CompactControl
     DropdownMenu(
         expanded = true,
         onDismissRequest = onDismiss,
         modifier = Modifier.width(296.dp),
         shape = RoundedCornerShape(0.dp),
-        containerColor = Color.Transparent,
+        containerColor = AppPalette.Transparent,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
-        Column(Modifier.padding(8.dp)) {
+        Column(Modifier.padding(AppSpacing.sm.dp)) {
             if (expandedMode == EmotionActionsMenuMode.Actions && (!isMine || onDelete != null)) {
                 Column(
                     Modifier
                         .fillMaxWidth()
                         .shadow(5.dp, cardShape)
                         .clip(cardShape)
-                        .background(Color.White),
+                        .background(MaterialTheme.colorScheme.appSurface),
                 ) {
                     if (isMine) {
                         EmotionMenuAction("삭제하기", busy) { onDelete?.invoke() }
                     } else {
                         EmotionMenuAction("차단하기", busy || onBlock == null) { onBlock?.invoke() }
-                        HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFD9D9D9))
+                        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.appColors.core.actionDivider)
                         EmotionMenuAction("신고하기", busy || onReport == null) { onReport?.invoke() }
                     }
                 }
-                if (onReact != null) Spacer(Modifier.height(8.dp))
+                if (onReact != null) Spacer(Modifier.height(AppSpacing.sm.dp))
             }
             if (onReact != null) {
                 Row(
@@ -88,8 +93,8 @@ internal fun EmotionActionsMenu(
                         .fillMaxWidth()
                         .shadow(5.dp, cardShape)
                         .clip(cardShape)
-                        .background(Color.White)
-                        .padding(horizontal = 8.dp),
+                        .background(MaterialTheme.colorScheme.appSurface)
+                        .padding(horizontal = AppSpacing.sm.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     EmotionReactionType.entries.forEach { type ->
@@ -131,18 +136,18 @@ private fun EmotionMenuAction(
             .fillMaxWidth()
             .height(44.dp)
             .clickable(enabled = !disabled, role = Role.Button, onClick = onClick)
-            .padding(horizontal = 20.dp),
+            .padding(horizontal = AppSpacing.xl.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, color = Color(0xFFFF1717), fontSize = 16.sp)
+        Text(label, color = MaterialTheme.appColors.emotion.actionDanger, fontSize = 16.sp)
         EmotionWarningIcon()
     }
 }
 
 @Composable
 private fun EmotionWarningIcon() {
-    val red = Color(0xFFFF1717)
+    val red = MaterialTheme.appColors.emotion.actionDanger
     Canvas(Modifier.size(18.dp)) {
         val w = size.width
         val h = size.height
@@ -174,7 +179,7 @@ private fun EmotionWarningIcon() {
 @Composable
 private fun EmotionActionsMenuPreview() {
     AppTheme {
-        Box(Modifier.padding(32.dp)) {
+        Box(Modifier.padding(AppSpacing.xxxl.dp)) {
             EmotionActionsMenu(
                 mode = EmotionActionsMenuMode.Actions,
                 isMine = false,
@@ -193,7 +198,7 @@ private fun EmotionActionsMenuPreview() {
 @Composable
 private fun EmotionActionsMenuMinePreview() {
     AppTheme {
-        Box(Modifier.padding(32.dp)) {
+        Box(Modifier.padding(AppSpacing.xxxl.dp)) {
             EmotionActionsMenu(
                 mode = EmotionActionsMenuMode.Actions,
                 isMine = true,
@@ -212,7 +217,7 @@ private fun EmotionActionsMenuMinePreview() {
 @Composable
 private fun EmotionActionsMenuDisabledPreview() {
     AppTheme {
-        Box(Modifier.padding(32.dp)) {
+        Box(Modifier.padding(AppSpacing.xxxl.dp)) {
             EmotionActionsMenu(
                 mode = EmotionActionsMenuMode.Actions,
                 isMine = false,
@@ -231,7 +236,7 @@ private fun EmotionActionsMenuDisabledPreview() {
 @Composable
 private fun EmotionReactionsMenuPreview() {
     AppTheme {
-        Box(Modifier.padding(32.dp)) {
+        Box(Modifier.padding(AppSpacing.xxxl.dp)) {
             EmotionActionsMenu(
                 mode = EmotionActionsMenuMode.Reactions,
                 isMine = false,

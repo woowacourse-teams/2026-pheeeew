@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -21,7 +21,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.pheeeew.core.designsystem.component.AppDialog
-import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appInk
+import com.pheeeew.core.designsystem.theme.appSurface
+import com.pheeeew.core.designsystem.theme.appTextSecondary
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.core.update.AppUpdateState
 import com.pheeeew.feature.screens.settings.components.NicknameDialogButton
@@ -87,32 +91,32 @@ fun AppUpdatePrompt(
                 dismissOnClickOutside = !required,
             ),
     ) {
-        Box(Modifier.fillMaxWidth().padding(horizontal = 24.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxWidth().padding(horizontal = AppSpacing.screen.dp), contentAlignment = Alignment.Center) {
             Column(
                 Modifier
                     .widthIn(max = 356.dp)
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(22.dp))
-                    .background(AppColors.Surface)
-                    .padding(24.dp),
+                    .clip(AppShapes.LargeCard)
+                    .background(MaterialTheme.colorScheme.appSurface)
+                    .padding(AppSpacing.xxl.dp),
             ) {
                 Text(
                     stringResource(title),
-                    color = AppColors.GroupInk,
+                    color = MaterialTheme.colorScheme.appInk,
                     fontFamily = notoSansKrFontFamily(),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                 )
-                Spacer(Modifier.height(18.dp))
+                Spacer(Modifier.height(AppSpacing.lg.copy(value = 18.dp).dp))
                 Text(
                     stringResource(message),
-                    color = AppColors.TextSecondary,
+                    color = MaterialTheme.colorScheme.appTextSecondary,
                     fontFamily = notoSansKrFontFamily(),
                     fontSize = 14.sp,
                     lineHeight = 22.sp,
                 )
-                Spacer(Modifier.height(30.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Spacer(Modifier.height(AppSpacing.xxxl.copy(value = 30.dp).dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(AppSpacing.cardGap.dp)) {
                     if (!required) {
                         NicknameDialogButton(
                             text = stringResource(Res.string.app_update_later),
@@ -130,7 +134,7 @@ fun AppUpdatePrompt(
                     )
                 }
                 if (fallback) {
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(AppSpacing.sm.dp))
                     NicknameDialogButton(
                         text = stringResource(Res.string.app_update_open_store),
                         modifier = Modifier.fillMaxWidth(),
@@ -138,7 +142,7 @@ fun AppUpdatePrompt(
                     )
                 }
                 if (required) {
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(AppSpacing.sm.dp))
                     NicknameDialogButton(
                         text = stringResource(Res.string.app_update_retry),
                         modifier = Modifier.fillMaxWidth(),

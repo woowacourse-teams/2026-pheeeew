@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -23,8 +24,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.pheeeew.core.designsystem.component.raisedPressEffect
 import com.pheeeew.core.designsystem.theme.AppBorders
-import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.core.designsystem.theme.appInk
+import com.pheeeew.core.designsystem.theme.appSurface
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.press_ranking_person
@@ -32,13 +36,15 @@ import pheeeew.shared.generated.resources.press_ranking_person
 @Composable
 internal fun PressRankingCardSurface(
     modifier: Modifier = Modifier,
-    color: Color = Color.White,
-    shape: RoundedCornerShape = RoundedCornerShape(22.dp),
+    color: Color? = null,
+    shape: RoundedCornerShape = AppShapes.LargeCard,
     onClick: (() -> Unit)? = null,
     restingOffset: androidx.compose.ui.unit.Dp = 0.dp,
     pressedOffset: androidx.compose.ui.unit.Dp = 2.dp,
     content: @Composable BoxScope.() -> Unit,
 ) {
+    val surfaceColor = color ?: MaterialTheme.colorScheme.appSurface
+    val shadowColor = MaterialTheme.colorScheme.appInk
     val interactionSource = remember { MutableInteractionSource() }
     val clickableModifier =
         if (onClick == null) {
@@ -61,17 +67,17 @@ internal fun PressRankingCardSurface(
                         val shadowSize = Size(size.width, (size.height - shadowOffset).coerceAtLeast(0f))
                         drawOutline(
                             outline = shape.createOutline(shadowSize, layoutDirection, this),
-                            color = AppColors.GroupInk,
+                            color = shadowColor,
                         )
                     }
-                }.padding(bottom = 3.dp)
+                }.padding(bottom = AppSpacing.xs.copy(value = 3.dp).dp)
                 .raisedPressEffect(
                     interactionSource,
                     enabled = onClick != null,
                     restingOffset = restingOffset,
                     pressedOffset = pressedOffset,
-                ).background(color, shape)
-                .border(AppBorders.Standard, AppColors.GroupInk, shape)
+                ).background(surfaceColor, shape)
+                .border(AppBorders.Standard, shadowColor, shape)
                 .then(clickableModifier),
         content = content,
     )
@@ -81,8 +87,8 @@ internal fun PressRankingCardSurface(
 @Composable
 private fun PressRankingCardSurfacePreview() {
     AppTheme {
-        PressRankingCardSurface(Modifier.padding(20.dp)) {
-            Text(stringResource(Res.string.press_ranking_person), Modifier.padding(24.dp))
+        PressRankingCardSurface(Modifier.padding(AppSpacing.xl.dp)) {
+            Text(stringResource(Res.string.press_ranking_person), Modifier.padding(AppSpacing.xxl.dp))
         }
     }
 }

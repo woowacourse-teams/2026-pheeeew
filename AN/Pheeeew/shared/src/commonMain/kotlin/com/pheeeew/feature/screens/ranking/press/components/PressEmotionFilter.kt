@@ -12,11 +12,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -26,8 +25,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppBorders
-import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appInk
+import com.pheeeew.core.designsystem.theme.appPrimary
 import com.pheeeew.feature.screens.ranking.press.PressEmotion
 
 @Composable
@@ -38,7 +41,7 @@ internal fun PressEmotionFilter(
 ) {
     Row(
         modifier = modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(AppSpacing.sm.dp),
     ) {
         PressEmotion.entries.forEach { emotion ->
             val isSelected = emotion == selectedEmotion
@@ -48,11 +51,15 @@ internal fun PressEmotionFilter(
                         .width(72.dp)
                         .height(44.dp)
                         .background(
-                            if (isSelected) AppColors.Primary else Color(0xFFF0F0EC),
-                            RoundedCornerShape(16.dp),
+                            if (isSelected) {
+                                MaterialTheme.colorScheme.appPrimary
+                            } else {
+                                MaterialTheme.appColors.press.emotionFilterSurface
+                            },
+                            AppShapes.Card,
                         ).then(
                             if (isSelected) {
-                                Modifier.border(AppBorders.Standard, AppColors.GroupInk, RoundedCornerShape(16.dp))
+                                Modifier.border(AppBorders.Standard, MaterialTheme.colorScheme.appInk, AppShapes.Card)
                             } else {
                                 Modifier
                             },
@@ -66,14 +73,14 @@ internal fun PressEmotionFilter(
             ) {
                 Text(
                     text = emotion.label,
-                    color = AppColors.RankingContent,
+                    color = MaterialTheme.appColors.ranking.content,
                     fontSize = 13.sp,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                     textAlign = TextAlign.Center,
                 )
             }
         }
-        Spacer(Modifier.width(24.dp))
+        Spacer(Modifier.width(AppSpacing.xxl.dp))
     }
 }
 

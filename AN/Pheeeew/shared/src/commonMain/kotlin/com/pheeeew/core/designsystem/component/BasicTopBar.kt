@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -17,13 +18,12 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppTypography
+import com.pheeeew.core.designsystem.theme.appInk
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import org.jetbrains.compose.resources.painterResource
 import pheeeew.shared.generated.resources.Res
@@ -37,11 +37,12 @@ fun BasicTopBar(
     enabled: Boolean = true,
     showBackIndication: Boolean = true,
     backContentDescription: String = "뒤로가기",
-    titleColor: Color = AppColors.GroupInk,
+    titleColor: Color? = null,
     titleFontFamily: FontFamily? = null,
     height: Dp = 56.dp,
     titleStartAligned: Boolean = false,
 ) {
+    val resolvedTitleColor = titleColor ?: MaterialTheme.colorScheme.appInk
     Box(modifier = modifier.fillMaxWidth().height(height), contentAlignment = Alignment.Center) {
         onBack?.let { onBackClick ->
             val backButtonModifier = Modifier.align(Alignment.CenterStart).padding(start = 8.dp).size(48.dp)
@@ -54,7 +55,7 @@ fun BasicTopBar(
                     Icon(
                         painter = painterResource(Res.drawable.ic_arrow_back),
                         contentDescription = backContentDescription,
-                        tint = titleColor,
+                        tint = resolvedTitleColor,
                         modifier = Modifier.size(24.dp),
                     )
                 }
@@ -73,7 +74,7 @@ fun BasicTopBar(
                     Icon(
                         painter = painterResource(Res.drawable.ic_arrow_back),
                         contentDescription = backContentDescription,
-                        tint = titleColor,
+                        tint = resolvedTitleColor,
                         modifier = Modifier.size(24.dp),
                     )
                 }
@@ -81,10 +82,9 @@ fun BasicTopBar(
         }
         Text(
             text = title,
-            color = titleColor,
+            color = resolvedTitleColor,
             fontFamily = titleFontFamily ?: notoSansKrFontFamily(),
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
+            style = AppTypography.basicTopBarTitle(),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = if (titleStartAligned) TextAlign.Start else TextAlign.Center,

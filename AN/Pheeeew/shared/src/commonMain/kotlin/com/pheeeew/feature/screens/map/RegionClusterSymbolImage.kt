@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
@@ -15,7 +16,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Canvas
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -33,6 +33,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appOnAccent
+import com.pheeeew.core.designsystem.theme.appSurface
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
 import kotlinx.coroutines.withContext
@@ -101,6 +105,9 @@ private class RegionClusterDrawing(
 @Composable
 private fun regionClusterDrawing(region: RegionClusterUiModel): RegionClusterDrawing {
     val density = LocalDensity.current
+    val clusterColors = MaterialTheme.appColors.map.cluster
+    val badgeTextColor = MaterialTheme.colorScheme.appOnAccent
+    val badgeSurfaceColor = MaterialTheme.colorScheme.appSurface
     val textMeasurer = rememberTextMeasurer()
     val leftGlint = painterResource(Res.drawable.map_cluster_glint_left)
     val leftEdge = painterResource(Res.drawable.map_cluster_glint_left_edge)
@@ -110,14 +117,14 @@ private fun regionClusterDrawing(region: RegionClusterUiModel): RegionClusterDra
     val clusterFont = notoSansKrFontFamily()
     val labelStyle =
         TextStyle(
-            color = Color(0xFF293540),
+            color = clusterColors.labelInk,
             fontSize = 10.sp,
             fontFamily = clusterFont,
             fontWeight = FontWeight.SemiBold,
         )
     val badgeStyle =
         TextStyle(
-            color = Color.White,
+            color = badgeTextColor,
             fontSize = 7.sp,
             fontFamily = clusterFont,
             fontWeight = FontWeight.SemiBold,
@@ -160,7 +167,7 @@ private fun regionClusterDrawing(region: RegionClusterUiModel): RegionClusterDra
             val bubbleHeight = BUBBLE_HEIGHT_DP * scale
             val radius = bubbleHeight / 2f
             drawRoundRect(
-                color = Color(0x2699A5D0),
+                color = clusterColors.halo,
                 topLeft = Offset(bubbleLeft, bubbleTop + 2f * scale),
                 size = Size(bubbleWidth, bubbleHeight),
                 cornerRadius =
@@ -170,7 +177,11 @@ private fun regionClusterDrawing(region: RegionClusterUiModel): RegionClusterDra
             drawRoundRect(
                 brush =
                     Brush.verticalGradient(
-                        listOf(Color(0xB8DFF3FF), Color(0x4DFFFFFF), Color(0xA6DFD3F5)),
+                        listOf(
+                            clusterColors.fillStart,
+                            clusterColors.highlight,
+                            clusterColors.fillEnd,
+                        ),
                         startY = bubbleTop,
                         endY = bubbleTop + bubbleHeight,
                     ),
@@ -181,7 +192,7 @@ private fun regionClusterDrawing(region: RegionClusterUiModel): RegionClusterDra
                         .CornerRadius(radius),
             )
             drawRoundRect(
-                color = Color(0x99BC9CEB),
+                color = clusterColors.badgeBackground,
                 topLeft = Offset(bubbleLeft, bubbleTop),
                 size = Size(bubbleWidth, bubbleHeight),
                 cornerRadius =
@@ -232,8 +243,12 @@ private fun regionClusterDrawing(region: RegionClusterUiModel): RegionClusterDra
             }
             val badgeDiameter = badgeDiameterDp * scale
             val badgeCenter = Offset(bubbleLeft + bubbleWidth - 0.5f * scale, bubbleTop + 3f * scale)
-            drawCircle(Color.White, radius = badgeDiameter / 2f, center = badgeCenter)
-            drawCircle(Color(0xFFFF625F), radius = badgeDiameter / 2f - 0.75f * scale, center = badgeCenter)
+            drawCircle(badgeSurfaceColor, radius = badgeDiameter / 2f, center = badgeCenter)
+            drawCircle(
+                clusterColors.badgeAccent,
+                radius = badgeDiameter / 2f - 0.75f * scale,
+                center = badgeCenter,
+            )
             drawText(
                 badge,
                 topLeft =
@@ -269,8 +284,8 @@ private fun RegionClusterPreviewSamples(displayScale: Float) {
             "성남시 분당구" to 12345L,
         )
     Column(
-        modifier = Modifier.background(Color(0xFFECEAE5)).padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.background(MaterialTheme.appColors.map.background).padding(AppSpacing.xl.dp),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.cardGap.dp),
     ) {
         EmotionTypeUiModel.entries.forEachIndexed { index, emotion ->
             val (name, count) = samples[index]

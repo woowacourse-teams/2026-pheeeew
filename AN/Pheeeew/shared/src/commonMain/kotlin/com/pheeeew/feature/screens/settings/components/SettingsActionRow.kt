@@ -6,14 +6,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.AppTypography
+import com.pheeeew.core.designsystem.theme.appColors
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.feature.screens.settings.SettingsTheme
 
@@ -41,23 +43,20 @@ internal fun SettingsActionRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         SettingsIconBadge(icon = icon, highlighted = highlighted)
-        Spacer(Modifier.width(14.dp))
+        Spacer(Modifier.width(AppSpacing.md.copy(value = 14.dp).dp))
         Text(
             text = title,
-            color = SettingsColors.Ink,
+            color = MaterialTheme.appColors.settings.iconInk,
             fontFamily = notoSansKrFontFamily(),
-            fontSize = 14.sp,
-            lineHeight = 20.sp,
-            fontWeight = FontWeight.SemiBold,
+            style = AppTypography.settingsActionTitle(),
             modifier = Modifier.weight(1f),
         )
         if (trailingText != null) {
             Text(
                 text = trailingText,
-                color = SettingsColors.Secondary,
+                color = MaterialTheme.appColors.settings.iconSecondary,
                 fontFamily = notoSansKrFontFamily(),
-                fontSize = 12.sp,
-                lineHeight = 16.sp,
+                style = AppTypography.settingsActionSecondary(),
             )
         } else if (onClick != null) {
             SettingsChevron()

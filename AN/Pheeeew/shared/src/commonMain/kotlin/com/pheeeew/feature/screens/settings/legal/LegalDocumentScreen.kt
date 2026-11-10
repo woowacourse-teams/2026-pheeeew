@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -26,7 +27,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.component.BasicTopBar
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
-import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appBackground
+import com.pheeeew.core.designsystem.theme.appInk
+import com.pheeeew.core.designsystem.theme.appSurface
+import com.pheeeew.core.designsystem.theme.appTextSecondary
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
@@ -48,13 +53,13 @@ internal fun LegalDocumentScreen(
         modifier =
             modifier
                 .fillMaxSize()
-                .background(AppColors.Background)
+                .background(MaterialTheme.colorScheme.appBackground)
                 .statusBarsPadding(),
     ) {
         BasicTopBar(
             title = stringResource(document.title),
             onBack = { onAction(LegalDocumentAction.Back) },
-            titleColor = AppColors.GroupInk,
+            titleColor = MaterialTheme.colorScheme.appInk,
         )
 
         Box(modifier = Modifier.fillMaxSize()) {
@@ -92,18 +97,18 @@ private fun LegalDocumentLoading(modifier: Modifier = Modifier) {
         modifier =
             modifier
                 .fillMaxSize()
-                .background(AppColors.Background)
+                .background(MaterialTheme.colorScheme.appBackground)
                 .semantics { liveRegion = LiveRegionMode.Polite },
         contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            CircularLoadingIndicator(color = AppColors.GroupInk)
+            CircularLoadingIndicator(color = MaterialTheme.colorScheme.appInk)
             Text(
                 text = stringResource(Res.string.legal_loading),
                 fontFamily = notoSansKrFontFamily(),
                 fontSize = 14.sp,
-                color = AppColors.GroupInk,
-                modifier = Modifier.padding(top = 16.dp),
+                color = MaterialTheme.colorScheme.appInk,
+                modifier = Modifier.padding(top = AppSpacing.lg.dp),
             )
         }
     }
@@ -119,8 +124,8 @@ private fun LegalDocumentErrorContent(
         modifier =
             modifier
                 .fillMaxSize()
-                .background(AppColors.Background)
-                .padding(24.dp)
+                .background(MaterialTheme.colorScheme.appBackground)
+                .padding(AppSpacing.xxl.dp)
                 .semantics { liveRegion = LiveRegionMode.Assertive },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -130,24 +135,24 @@ private fun LegalDocumentErrorContent(
             fontFamily = notoSansKrFontFamily(),
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
-            color = AppColors.GroupInk,
+            color = MaterialTheme.colorScheme.appInk,
             textAlign = TextAlign.Center,
         )
         Text(
             text = error.message(),
             fontFamily = notoSansKrFontFamily(),
             fontSize = 14.sp,
-            color = AppColors.TextSecondary,
+            color = MaterialTheme.colorScheme.appTextSecondary,
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 8.dp),
+            modifier = Modifier.padding(top = AppSpacing.sm.dp),
         )
-        TextButton(onClick = onRetry, modifier = Modifier.padding(top = 8.dp)) {
+        TextButton(onClick = onRetry, modifier = Modifier.padding(top = AppSpacing.sm.dp)) {
             Text(
                 text = stringResource(Res.string.legal_retry),
                 fontFamily = notoSansKrFontFamily(),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = AppColors.GroupInk,
+                color = MaterialTheme.colorScheme.appInk,
             )
         }
     }
@@ -163,21 +168,21 @@ private fun BoxScope.LegalDocumentBlockedNavigationNotice(
             modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(AppSpacing.lg.dp)
                 .semantics { liveRegion = LiveRegionMode.Assertive },
-        color = AppColors.Surface,
-        contentColor = AppColors.GroupInk,
+        color = MaterialTheme.colorScheme.appSurface,
+        contentColor = MaterialTheme.colorScheme.appInk,
     ) {
         Row(
-            modifier = Modifier.padding(start = 16.dp, end = 4.dp),
+            modifier = Modifier.padding(start = AppSpacing.lg.dp, end = AppSpacing.xs.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = stringResource(Res.string.legal_external_page_unavailable),
                 fontFamily = notoSansKrFontFamily(),
                 fontSize = 14.sp,
-                color = AppColors.GroupInk,
-                modifier = Modifier.weight(1f).padding(vertical = 16.dp),
+                color = MaterialTheme.colorScheme.appInk,
+                modifier = Modifier.weight(1f).padding(vertical = AppSpacing.lg.dp),
             )
             TextButton(onClick = onDismiss) {
                 Text(
@@ -185,7 +190,7 @@ private fun BoxScope.LegalDocumentBlockedNavigationNotice(
                     fontFamily = notoSansKrFontFamily(),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = AppColors.GroupInk,
+                    color = MaterialTheme.colorScheme.appInk,
                 )
             }
         }
