@@ -27,7 +27,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -769,7 +768,7 @@ private fun AppContent(
                     .fillMaxSize()
                     // Keep the persistent map covered while two opaque destinations crossfade.
                     // Retain transparency throughout transitions that still include the map entry.
-                    .background(if (mapEntryPresent) Color.Transparent else AppColors.GroupBackground)
+                    .background(if (mapEntryPresent) AppColors.Transparent else AppColors.GroupBackground)
                     .then(
                         if (shouldPrepareMapDuringSplash) Modifier.clearAndSetSemantics {} else Modifier,
                     ),

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -24,8 +25,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.pheeeew.core.designsystem.theme.AppBorders
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.core.designsystem.theme.appInk
+import com.pheeeew.core.designsystem.theme.appPrimary
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -42,13 +44,14 @@ fun RaisedCardButton(
     val currentEnabled by rememberUpdatedState(enabled)
     val currentOnClick by rememberUpdatedState(onClick)
     val shape = RoundedCornerShape(16.dp)
+    val ink = MaterialTheme.colorScheme.appInk
     Box(
         modifier =
             modifier
                 .drawBehind {
                     val shadowOffset = 3.dp.toPx()
                     drawRoundRect(
-                        color = AppColors.GroupInk,
+                        color = ink,
                         topLeft = Offset(0f, shadowOffset),
                         size = Size(size.width, (size.height - shadowOffset).coerceAtLeast(0f)),
                         cornerRadius = CornerRadius(18.dp.toPx()),
@@ -60,7 +63,7 @@ fun RaisedCardButton(
                     pressDurationMillis = 60,
                     releaseDurationMillis = 120,
                 ).background(backgroundColor, shape)
-                .border(AppBorders.Standard, AppColors.GroupInk, shape)
+                .border(AppBorders.Standard, ink, shape)
                 .clickable(
                     enabled = enabled,
                     interactionSource = interactionSource,
@@ -82,7 +85,7 @@ fun RaisedCardButton(
 private fun RaisedCardButtonPreview() {
     AppTheme {
         RaisedCardButton(
-            backgroundColor = AppColors.Primary,
+            backgroundColor = MaterialTheme.colorScheme.appPrimary,
             onClick = {},
             modifier = Modifier.padding(16.dp),
         ) {

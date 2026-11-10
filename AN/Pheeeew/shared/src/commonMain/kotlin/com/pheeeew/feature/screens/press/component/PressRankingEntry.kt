@@ -7,13 +7,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
@@ -21,6 +21,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appInk
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
@@ -31,7 +33,7 @@ internal fun PressRankingEntry(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val ink = Color(0xFF202323)
+    val ink = MaterialTheme.colorScheme.appInk
     Row(
         modifier = modifier.height(48.dp).clickable(role = Role.Button, onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,
@@ -44,7 +46,7 @@ internal fun PressRankingEntry(
                 drawRect(ink, Offset(16f, 14f), Size(6f, 9f), style = stroke)
             }
         }
-        Spacer(Modifier.width(6.dp))
+        Spacer(Modifier.width(AppSpacing.xs.copy(value = 6.dp).dp))
         Text(
             text = stringResource(Res.string.press_view_ranking),
             color = ink,
@@ -52,7 +54,7 @@ internal fun PressRankingEntry(
             fontFamily = notoSansKrFontFamily(),
             fontWeight = FontWeight.Bold,
         )
-        Spacer(Modifier.width(6.dp))
+        Spacer(Modifier.width(AppSpacing.xs.copy(value = 6.dp).dp))
         Canvas(Modifier.size(width = 8.dp, height = 14.dp)) {
             drawLine(
                 ink,

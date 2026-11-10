@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,7 +31,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -47,7 +47,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppBorders
-import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appInk
+import com.pheeeew.core.designsystem.theme.appOnAccent
+import com.pheeeew.core.designsystem.theme.appPrimary
+import com.pheeeew.core.designsystem.theme.appSurface
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -58,7 +62,6 @@ import pheeeew.shared.generated.resources.bottom_navigation_press
 import pheeeew.shared.generated.resources.nav_collection
 import pheeeew.shared.generated.resources.nav_press
 
-private val NavigationInk = Color(0xFF202323)
 internal val AppBottomNavigationBarHeight = 57.dp
 internal val AppBottomNavigationBarBottomSpacing = 12.dp
 internal val AppBottomNavigationBarContentGap = 12.dp
@@ -92,7 +95,7 @@ internal fun AppBottomNavigationBar(
     BoxWithConstraints(
         modifier =
             modifier
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = AppSpacing.xl.dp)
                 .fillMaxWidth()
                 .wrapContentWidth(Alignment.CenterHorizontally)
                 .widthIn(max = 356.dp)
@@ -100,8 +103,8 @@ internal fun AppBottomNavigationBar(
                 .navigationBarsPadding()
                 .height(AppBottomNavigationBarHeight)
                 .clip(CircleShape)
-                .background(Color.White, CircleShape)
-                .border(AppBorders.Standard, NavigationInk, CircleShape),
+                .background(MaterialTheme.colorScheme.appSurface, CircleShape)
+                .border(AppBorders.Standard, MaterialTheme.colorScheme.appInk, CircleShape),
         contentAlignment = Alignment.CenterStart,
     ) {
         val itemWidth = maxWidth / destinations.size
@@ -117,8 +120,8 @@ internal fun AppBottomNavigationBar(
                 .width(itemWidth - indicatorInset * 2)
                 .height(AppBottomNavigationBarHeight - indicatorInset * 2)
                 .clip(CircleShape)
-                .background(AppColors.Primary, CircleShape)
-                .border(1.5.dp, NavigationInk, CircleShape),
+                .background(MaterialTheme.colorScheme.appPrimary, CircleShape)
+                .border(1.5.dp, MaterialTheme.colorScheme.appInk, CircleShape),
         )
         Row(Modifier.fillMaxWidth()) {
             destinations.forEach { destination ->
@@ -150,7 +153,7 @@ internal fun AppBottomNavigationBar(
                             },
                         pressScale = 1f,
                     )
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(AppSpacing.xs.copy(value = 6.dp).dp))
                     Text(
                         text =
                             stringResource(
@@ -160,7 +163,7 @@ internal fun AppBottomNavigationBar(
                                     AppDestination.Collection -> Res.string.bottom_navigation_collection
                                 },
                             ),
-                        color = NavigationInk,
+                        color = MaterialTheme.colorScheme.appInk,
                         fontSize = 14.sp,
                         fontFamily = navigationFont,
                         fontWeight = FontWeight.Bold,
@@ -189,6 +192,8 @@ private fun DestinationIconView(
         PressNavigationIcon(pressScale = icon.visualScale * pressScale)
         return
     }
+    val iconInk = MaterialTheme.colorScheme.appInk
+    val iconWhite = MaterialTheme.colorScheme.appOnAccent
     Canvas(
         Modifier
             .size(20.dp)
@@ -215,32 +220,32 @@ private fun DestinationIconView(
                             close()
                         }
                     val stroke = Stroke(width = 1.6f, cap = StrokeCap.Round, join = StrokeJoin.Round)
-                    drawPath(outline, Color.White)
-                    drawPath(outline, NavigationInk, style = stroke)
-                    drawLine(NavigationInk, Offset(7.6f, 2.8f), Offset(7.6f, 14.8f), 1.6f, cap = StrokeCap.Round)
-                    drawLine(NavigationInk, Offset(12.4f, 5.2f), Offset(12.4f, 17.2f), 1.6f, cap = StrokeCap.Round)
+                    drawPath(outline, iconWhite)
+                    drawPath(outline, iconInk, style = stroke)
+                    drawLine(iconInk, Offset(7.6f, 2.8f), Offset(7.6f, 14.8f), 1.6f, cap = StrokeCap.Round)
+                    drawLine(iconInk, Offset(12.4f, 5.2f), Offset(12.4f, 17.2f), 1.6f, cap = StrokeCap.Round)
                 }
 
                 DestinationIcon.Collection -> {
                     val stroke = Stroke(width = 1.5f, cap = StrokeCap.Round, join = StrokeJoin.Round)
                     drawRect(
-                        Color.White,
+                        iconWhite,
                         Offset(5f, 2f),
                         androidx.compose.ui.geometry
                             .Size(11f, 15f),
                     )
                     drawRect(
-                        NavigationInk,
+                        iconInk,
                         Offset(5f, 2f),
                         androidx.compose.ui.geometry
                             .Size(11f, 15f),
                         style = stroke,
                     )
-                    drawLine(NavigationInk, Offset(3f, 5f), Offset(3f, 19f), 1.5f, cap = StrokeCap.Round)
-                    drawLine(NavigationInk, Offset(3f, 19f), Offset(13f, 19f), 1.5f, cap = StrokeCap.Round)
-                    drawLine(NavigationInk, Offset(8f, 6f), Offset(13f, 6f), 1.5f, cap = StrokeCap.Round)
-                    drawLine(NavigationInk, Offset(8f, 9f), Offset(13f, 9f), 1.5f, cap = StrokeCap.Round)
-                    drawLine(NavigationInk, Offset(8f, 12f), Offset(11f, 12f), 1.5f, cap = StrokeCap.Round)
+                    drawLine(iconInk, Offset(3f, 5f), Offset(3f, 19f), 1.5f, cap = StrokeCap.Round)
+                    drawLine(iconInk, Offset(3f, 19f), Offset(13f, 19f), 1.5f, cap = StrokeCap.Round)
+                    drawLine(iconInk, Offset(8f, 6f), Offset(13f, 6f), 1.5f, cap = StrokeCap.Round)
+                    drawLine(iconInk, Offset(8f, 9f), Offset(13f, 9f), 1.5f, cap = StrokeCap.Round)
+                    drawLine(iconInk, Offset(8f, 12f), Offset(11f, 12f), 1.5f, cap = StrokeCap.Round)
                 }
             }
         }

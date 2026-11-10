@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -11,7 +12,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appInk
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
@@ -31,8 +33,8 @@ internal fun RecordStampDragGuide(modifier: Modifier = Modifier) {
         )
         Text(
             text = stringResource(Res.string.record_drag_stamp),
-            modifier = Modifier.padding(bottom = 6.dp),
-            color = AppColors.GroupInk,
+            modifier = Modifier.padding(bottom = AppSpacing.xs.copy(value = 6.dp).dp),
+            color = MaterialTheme.colorScheme.appInk,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
         )

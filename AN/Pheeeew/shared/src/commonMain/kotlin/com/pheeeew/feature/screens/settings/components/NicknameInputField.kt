@@ -8,10 +8,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.InputTransformation
 import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -23,7 +23,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
@@ -35,7 +34,13 @@ import com.pheeeew.core.designsystem.input.NativeTextEditor
 import com.pheeeew.core.designsystem.input.TextEditorSynchronization
 import com.pheeeew.core.designsystem.input.rememberTextEditor
 import com.pheeeew.core.designsystem.input.usesNativeTextEditor
-import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppBorders
+import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appBorder
+import com.pheeeew.core.designsystem.theme.appBorderLight
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appSurface
 import com.pheeeew.domain.model.device.DeviceNicknamePolicy
 import com.pheeeew.feature.screens.settings.SettingsTheme
 import org.jetbrains.compose.resources.stringResource
@@ -116,25 +121,25 @@ internal fun NicknameInputField(
         placeholder = {
             Text(
                 text = stringResource(Res.string.settings_nickname_hint),
-                color = SettingsColors.Footer,
+                color = MaterialTheme.appColors.settings.iconFooter,
                 fontSize = 14.sp,
             )
         },
         lineLimits = TextFieldLineLimits.SingleLine,
         supportingText = { NicknameCharacterCount(editor.state.text.toString()) },
-        shape = RoundedCornerShape(10.dp),
+        shape = AppShapes.CompactInput,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
         onKeyboardAction = { onImeDone() },
         colors =
             OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = AppColors.Border,
-                unfocusedBorderColor = AppColors.BorderLight,
-                focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color.White,
-                focusedTextColor = SettingsColors.Ink,
-                unfocusedTextColor = SettingsColors.Ink,
-                cursorColor = SettingsColors.Ink,
-                errorBorderColor = SettingsColors.Error,
+                focusedBorderColor = MaterialTheme.colorScheme.appBorder,
+                unfocusedBorderColor = MaterialTheme.colorScheme.appBorderLight,
+                focusedContainerColor = MaterialTheme.colorScheme.appSurface,
+                unfocusedContainerColor = MaterialTheme.colorScheme.appSurface,
+                focusedTextColor = MaterialTheme.appColors.settings.iconInk,
+                unfocusedTextColor = MaterialTheme.appColors.settings.iconInk,
+                cursorColor = MaterialTheme.appColors.settings.iconInk,
+                errorBorderColor = MaterialTheme.appColors.settings.iconError,
             ),
     )
 }
@@ -153,16 +158,19 @@ private fun NativeNicknameInput(
     SideEffect {
         if (synchronization.acceptExternal(value)) editingText = value
     }
-    val shape = RoundedCornerShape(10.dp)
+    val shape = AppShapes.CompactInput
     Column(modifier.fillMaxWidth()) {
         Box(
             Modifier
                 .fillMaxWidth()
                 .height(56.dp)
                 .clip(shape)
-                .background(Color.White)
-                .border(1.dp, if (isError) SettingsColors.Error else AppColors.Border, shape)
-                .padding(16.dp),
+                .background(MaterialTheme.colorScheme.appSurface)
+                .border(
+                    AppBorders.Thin,
+                    if (isError) MaterialTheme.appColors.settings.iconError else MaterialTheme.colorScheme.appBorder,
+                    shape,
+                ).padding(AppSpacing.lg.dp),
         ) {
             NativeTextEditor(
                 text = value,
@@ -177,11 +185,11 @@ private fun NativeNicknameInput(
                 enabled = enabled,
                 onSearch = onImeDone,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, autoCorrectEnabled = false),
-                containerColor = Color.White,
+                containerColor = MaterialTheme.colorScheme.appSurface,
                 acceptText = { acceptedNicknameInput(it) != null },
             )
         }
-        Box(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+        Box(Modifier.padding(horizontal = AppSpacing.lg.dp, vertical = AppSpacing.xs.dp)) {
             NicknameCharacterCount(editingText)
         }
     }
@@ -198,7 +206,7 @@ private fun NicknameCharacterCount(text: String) {
             ),
         modifier = Modifier.fillMaxWidth(),
         textAlign = TextAlign.End,
-        color = SettingsColors.Footer,
+        color = MaterialTheme.appColors.settings.iconFooter,
         fontSize = 12.sp,
     )
 }

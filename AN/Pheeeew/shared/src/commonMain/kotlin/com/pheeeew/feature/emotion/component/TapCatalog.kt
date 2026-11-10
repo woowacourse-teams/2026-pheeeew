@@ -1,7 +1,6 @@
 package com.pheeeew.feature.emotion.component
 
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 import com.pheeeew.feature.emotion.model.EmotionKind
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
@@ -41,7 +40,6 @@ internal data class TapReaction(
 )
 
 internal data class TapEmotion(
-    val color: Color,
     val face: DrawableResource,
     val texts: List<StringResource>,
     val emojis: List<String>,
@@ -77,7 +75,6 @@ internal object TapCatalog {
         when (kind) {
             EmotionKind.Blocked -> {
                 TapEmotion(
-                    color = Color(0xFFF8D3C0),
                     face = EmotionFeedbackCatalog.face(kind),
                     texts =
                         listOf(
@@ -92,7 +89,6 @@ internal object TapCatalog {
 
             EmotionKind.Annoyed -> {
                 TapEmotion(
-                    color = Color(0xFFF3C7D6),
                     face = EmotionFeedbackCatalog.face(kind),
                     texts =
                         listOf(
@@ -107,7 +103,6 @@ internal object TapCatalog {
 
             EmotionKind.Tired -> {
                 TapEmotion(
-                    color = Color(0xFFE1D9F0),
                     face = EmotionFeedbackCatalog.face(kind),
                     texts =
                         listOf(
@@ -122,7 +117,6 @@ internal object TapCatalog {
 
             EmotionKind.Defeated -> {
                 TapEmotion(
-                    color = Color(0xFFCCE5F2),
                     face = EmotionFeedbackCatalog.face(kind),
                     texts =
                         listOf(
@@ -137,7 +131,6 @@ internal object TapCatalog {
 
             EmotionKind.Angry -> {
                 TapEmotion(
-                    color = Color(0xFFF5BEB3),
                     face = EmotionFeedbackCatalog.face(kind),
                     texts =
                         listOf(

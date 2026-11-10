@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.key
@@ -26,11 +27,10 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.appColors
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.feature.emotion.model.EmotionKind
 import org.jetbrains.compose.resources.painterResource
-
-private val TapInk = Color(0xFF242725)
 
 /** Draws the short-lived reactions independently from the input controls. */
 @Composable
@@ -42,11 +42,22 @@ internal fun EmotionFeedbackLayer(
 ) {
     val density = LocalDensity.current
     val font = notoSansKrFontFamily()
+    val emotionInk = MaterialTheme.appColors.emotion.ink
+    val plusAccent = MaterialTheme.appColors.core.snackbarAccent
     Box(modifier = modifier) {
         particles.forEach { particle ->
             key(particle.id) {
                 val reaction = particle.reaction
                 val emotion = TapCatalog.emotion(particle.key)
+                val tapColors = MaterialTheme.appColors.emotion.tapPalette
+                val emotionColor =
+                    when (particle.key) {
+                        EmotionKind.Blocked -> tapColors.frustrated
+                        EmotionKind.Annoyed -> tapColors.annoyed
+                        EmotionKind.Tired -> tapColors.tired
+                        EmotionKind.Defeated -> tapColors.discouraged
+                        EmotionKind.Angry -> tapColors.angry
+                    }
                 // Alpha compositing clips to the layer bounds, so include the sticker shadow.
                 val shadowPadding =
                     when (reaction.kind) {
@@ -81,7 +92,7 @@ internal fun EmotionFeedbackLayer(
                         TapReactionKind.Emoji -> {
                             BasicText(
                                 reaction.value,
-                                style = stickerStyle(reaction, font),
+                                style = stickerStyle(reaction, font, emotionInk),
                             )
                         }
 
@@ -91,13 +102,19 @@ internal fun EmotionFeedbackLayer(
                             Canvas(Modifier.fillMaxSize()) {
                                 val d = density.density
                                 val radius = CornerRadius(12 * d)
-                                drawRoundRect(TapInk, Offset(1 * d, 4 * d), size, radius)
+                                drawRoundRect(emotionInk, Offset(1 * d, 4 * d), size, radius)
                                 drawRoundRect(
-                                    if (reaction.kind == TapReactionKind.Plus) Color(0xFFFFE36E) else emotion.color,
+                                    if (reaction.kind ==
+                                        TapReactionKind.Plus
+                                    ) {
+                                        plusAccent
+                                    } else {
+                                        emotionColor
+                                    },
                                     cornerRadius = radius,
                                 )
                                 drawRoundRect(
-                                    TapInk,
+                                    emotionInk,
                                     Offset(d, d),
                                     Size(size.width - 2 * d, size.height - 2 * d),
                                     CornerRadius(11 * d),
@@ -115,7 +132,7 @@ internal fun EmotionFeedbackLayer(
                                                 (-1).dp
                                             },
                                     ),
-                                style = stickerStyle(reaction, font),
+                                style = stickerStyle(reaction, font, emotionInk),
                             )
                         }
                     }
@@ -128,12 +145,13 @@ internal fun EmotionFeedbackLayer(
 internal fun stickerStyle(
     reaction: TapReaction,
     font: FontFamily,
+    ink: Color,
 ): TextStyle =
     if (reaction.kind == TapReactionKind.Emoji) {
         TextStyle(fontSize = 35.sp, lineHeight = 42.sp)
     } else {
         TextStyle(
-            color = TapInk,
+            color = ink,
             fontFamily = font,
             fontWeight = FontWeight.Black,
             fontSize = 19.sp,
