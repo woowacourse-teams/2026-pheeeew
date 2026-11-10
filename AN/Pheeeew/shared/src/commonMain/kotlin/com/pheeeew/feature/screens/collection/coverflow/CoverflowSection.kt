@@ -45,6 +45,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.emotion.model.EmotionType
+import com.pheeeew.feature.guide.COLLECTION_ISSUED_GUIDE_ANCHOR
+import com.pheeeew.feature.guide.reportFeatureGuideAnchor
 import com.pheeeew.feature.screens.collection.CollectionCarouselItem
 import com.pheeeew.feature.screens.collection.CollectionCommonError
 import com.pheeeew.feature.screens.collection.CollectionPreviewTheme
@@ -73,6 +75,7 @@ internal fun CoverflowSection(
     onLoadMore: () -> Unit,
     onCardClick: (CollectionCardUiModel) -> Unit,
     modifier: Modifier = Modifier,
+    focusIssuedCardForGuide: Boolean = false,
 ) {
     val coverFlowItems = uiModel.coverFlowItems
     val todayCardIndex =
@@ -86,7 +89,7 @@ internal fun CoverflowSection(
     var appliedScrollRequest by rememberSaveable { mutableStateOf<Long?>(null) }
     var appliedTodayCardId by rememberSaveable { mutableStateOf<String?>(null) }
     var appliedTodayCardIndex by rememberSaveable { mutableStateOf(-1) }
-    LaunchedEffect(uiModel.scrollToTopRequestId, uiModel.todayCardId, todayCardIndex) {
+    LaunchedEffect(uiModel.scrollToTopRequestId, uiModel.todayCardId, todayCardIndex, focusIssuedCardForGuide) {
         if (appliedScrollRequest != uiModel.scrollToTopRequestId ||
             appliedTodayCardId != uiModel.todayCardId ||
             appliedTodayCardIndex != todayCardIndex
@@ -95,6 +98,10 @@ internal fun CoverflowSection(
             appliedScrollRequest = uiModel.scrollToTopRequestId
             appliedTodayCardId = uiModel.todayCardId
             appliedTodayCardIndex = todayCardIndex
+        } else if (focusIssuedCardForGuide && todayCardIndex >= 0 &&
+            (pagerState.currentPage != todayCardIndex || pagerState.isScrollInProgress)
+        ) {
+            pagerState.scrollToPage(todayCardIndex)
         }
     }
 
@@ -111,6 +118,7 @@ internal fun CoverflowSection(
         onLoadMore = onLoadMore,
         onCardClick = onCardClick,
         modifier = modifier,
+        guideCardId = uiModel.todayCardId.takeIf { focusIssuedCardForGuide },
     )
 }
 
@@ -178,6 +186,7 @@ private fun CollectionCoverFlow(
     onLoadMore: () -> Unit,
     onCardClick: (CollectionCardUiModel) -> Unit,
     modifier: Modifier = Modifier,
+    guideCardId: String? = null,
 ) {
     val latestLoadMore by rememberUpdatedState(onLoadMore)
     LaunchedEffect(pagerState, items.size, hasNext, isLoadingNext) {
@@ -229,7 +238,15 @@ private fun CollectionCoverFlow(
                             animatedModifier
                         }
                     if (issuedCard != null) {
-                        CollectionCard(uiModel = issuedCard, modifier = cardModifier)
+                        val issuedCardModifier =
+                            if (issuedCard.id == guideCardId && page == pagerState.settledPage &&
+                                !pagerState.isScrollInProgress
+                            ) {
+                                cardModifier.reportFeatureGuideAnchor("collection", COLLECTION_ISSUED_GUIDE_ANCHOR)
+                            } else {
+                                cardModifier
+                            }
+                        CollectionCard(uiModel = issuedCard, modifier = issuedCardModifier)
                     } else if (item.isTomorrow) {
                         CollectionTomorrowCard(modifier = animatedModifier)
                     } else {

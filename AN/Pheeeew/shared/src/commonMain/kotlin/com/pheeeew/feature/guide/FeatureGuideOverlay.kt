@@ -65,6 +65,8 @@ import pheeeew.shared.generated.resources.coachmark_collection_claim_description
 import pheeeew.shared.generated.resources.coachmark_collection_claim_title
 import pheeeew.shared.generated.resources.coachmark_collection_condition_description
 import pheeeew.shared.generated.resources.coachmark_collection_condition_title
+import pheeeew.shared.generated.resources.coachmark_collection_share_description
+import pheeeew.shared.generated.resources.coachmark_collection_share_title
 import pheeeew.shared.generated.resources.coachmark_map_filter_description
 import pheeeew.shared.generated.resources.coachmark_map_filter_title
 import pheeeew.shared.generated.resources.coachmark_map_list_description
@@ -83,6 +85,16 @@ import pheeeew.shared.generated.resources.coachmark_start
 
 internal val LocalFeatureGuideAnchorReporter =
     staticCompositionLocalOf<((String, Int, Rect?) -> Unit)?> { null }
+
+internal const val COLLECTION_ISSUED_GUIDE_ANCHOR = 3
+internal const val COLLECTION_CALENDAR_GUIDE_ANCHOR = 2
+
+private val collectionCalendarGuidePage =
+    FeatureGuidePage(
+        Res.string.coachmark_collection_calendar_title,
+        Res.string.coachmark_collection_calendar_description,
+        anchorStep = COLLECTION_CALENDAR_GUIDE_ANCHOR,
+    )
 
 @Composable
 internal fun Modifier.reportFeatureGuideAnchor(
@@ -136,10 +148,18 @@ internal enum class FeatureGuide(
                 Res.string.coachmark_collection_claim_title,
                 Res.string.coachmark_collection_claim_description,
             ),
+            collectionCalendarGuidePage,
+        ),
+    ),
+    CollectionIssued(
+        "collection",
+        listOf(
             FeatureGuidePage(
-                Res.string.coachmark_collection_calendar_title,
-                Res.string.coachmark_collection_calendar_description,
+                Res.string.coachmark_collection_share_title,
+                Res.string.coachmark_collection_share_description,
+                anchorStep = COLLECTION_ISSUED_GUIDE_ANCHOR,
             ),
+            collectionCalendarGuidePage,
         ),
     ),
     Calendar(
@@ -158,6 +178,7 @@ internal data class FeatureGuidePage(
     val title: StringResource,
     val description: StringResource,
     val spotlightShape: FeatureGuideSpotlightShape = FeatureGuideSpotlightShape.RoundedRectangle,
+    val anchorStep: Int? = null,
 )
 
 internal enum class FeatureGuideSpotlightShape {
@@ -168,7 +189,10 @@ internal enum class FeatureGuideSpotlightShape {
 internal data class FeatureGuideSession(
     val guide: FeatureGuide,
     val page: Int = 0,
-)
+) {
+    val anchorKey: Pair<String, Int>
+        get() = guide.storageId to (guide.pages[page].anchorStep ?: page)
+}
 
 @Composable
 internal fun FeatureGuideOverlay(

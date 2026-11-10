@@ -644,6 +644,7 @@ private fun AppContent(
                 (mapUiModel.isEmotionSelectorExpanded || recordUiModel.step != RecordFlowStepUiModel.Closed)
 
         var isCalendarModeSelected by remember { mutableStateOf(false) }
+        var collectionHasClaimedToday by remember(sessionGeneration) { mutableStateOf<Boolean?>(null) }
         var featureGuideSession by remember { mutableStateOf<FeatureGuideSession?>(null) }
         var pendingFeatureGuideSession by remember { mutableStateOf<FeatureGuideSession?>(null) }
         val featureGuideAnchorBoundsByStep = remember { mutableStateMapOf<Pair<String, Int>, Rect>() }
@@ -662,7 +663,11 @@ private fun AppContent(
                 }
 
                 selectedDestination == AppDestination.Collection -> {
-                    FeatureGuide.Collection
+                    when (collectionHasClaimedToday) {
+                        true -> FeatureGuide.CollectionIssued
+                        false -> FeatureGuide.Collection
+                        null -> null
+                    }
                 }
 
                 else -> {
@@ -677,8 +682,10 @@ private fun AppContent(
                 (selectedFeatureGuide != FeatureGuide.Map || firstMapFrameReady.value)
         val visibleFeatureGuideSession =
             featureGuideSession?.takeIf { canShowFeatureGuide && it.guide == selectedFeatureGuide }
+        val focusCollectionIssuedCard =
+            visibleFeatureGuideSession?.let { it.guide == FeatureGuide.CollectionIssued && it.page == 0 } == true
         val featureGuideAnchorBounds =
-            visibleFeatureGuideSession?.let { featureGuideAnchorBoundsByStep[it.guide.storageId to it.page] }
+            visibleFeatureGuideSession?.let { featureGuideAnchorBoundsByStep[it.anchorKey] }
 
         LaunchedEffect(selectedFeatureGuide, canShowFeatureGuide) {
             if (!canShowFeatureGuide) {
@@ -703,7 +710,7 @@ private fun AppContent(
                     } else {
                         featureGuideAnchorBoundsByStep[anchorKey] = bounds
                         val pendingSession = pendingFeatureGuideSession
-                        if (pendingSession?.guide?.storageId == guideId && pendingSession.page == step) {
+                        if (pendingSession != null && pendingSession.anchorKey == anchorKey) {
                             featureGuideSession = pendingSession
                             pendingFeatureGuideSession = null
                         }
@@ -719,7 +726,7 @@ private fun AppContent(
                     featureGuideSession = null
                 } else {
                     val nextSession = activeSession.copy(page = activeSession.page + 1)
-                    if (featureGuideAnchorBoundsByStep[nextSession.guide.storageId to nextSession.page] == null) {
+                    if (featureGuideAnchorBoundsByStep[nextSession.anchorKey] == null) {
                         pendingFeatureGuideSession = nextSession
                     } else {
                         featureGuideSession = nextSession
@@ -1014,6 +1021,8 @@ private fun AppContent(
                             notificationDate = collectionNotificationDate,
                             refreshRevision = collectionRefreshRevision,
                             onCalendarModeChanged = { isCalendarModeSelected = it },
+                            onHasClaimedTodayChanged = { collectionHasClaimedToday = it },
+                            focusIssuedCardForGuide = focusCollectionIssuedCard,
                             onOpenCalendarDay = { month, cardId ->
                                 if (navController.currentDestination?.hasRoute<CollectionRootDestination>() ==
                                     true

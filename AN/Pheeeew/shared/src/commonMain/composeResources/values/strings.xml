@@ -54,6 +54,8 @@
     <string name="coachmark_collection_condition_description">스탬프와 프레스 목표를 모두 채우면\n감정 카드를 발급받을 수 있어요</string>
     <string name="coachmark_collection_claim_title">하루에 한 장, 발급받아요</string>
     <string name="coachmark_collection_claim_description">조건을 달성하면 발급하기가 떠요\n카드는 하루에 한 장만 받을 수 있어요</string>
+    <string name="coachmark_collection_share_title">카드를 눌러 공유할 수 있어요</string>
+    <string name="coachmark_collection_share_description">카드를 누르면 감정카드를 저장하거나 공유할 수 있어요</string>
     <string name="coachmark_collection_calendar_title">달력에서도 살펴봐요</string>
     <string name="coachmark_collection_calendar_description">상단 보기 전환을 누르면 날짜별로\n모은 카드를 확인할 수 있어요</string>
     <string name="coachmark_calendar_month_title">달력을 좌우로 넘겨봐요</string>
