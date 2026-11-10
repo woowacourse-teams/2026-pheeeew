@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -49,6 +50,7 @@ internal fun EmotionReactionRow(
     onBlock: (() -> Unit)?,
     onReport: (() -> Unit)?,
 ) {
+    val reactionShape = RoundedCornerShape(50)
     val addReactionDescription = stringResource(Res.string.emotion_chat_add_reaction)
     val visibleReactions = reactions.filter { it.count > 0 || it.selected }
     val showAddReaction =
@@ -66,13 +68,14 @@ internal fun EmotionReactionRow(
             Row(
                 Modifier
                     .height(24.dp)
+                    .clip(reactionShape)
                     .background(
                         if (reaction.selected) {
                             MaterialTheme.appColors.emotion.reactionSelected
                         } else {
                             MaterialTheme.appColors.emotion.reactionIdle
                         },
-                        RoundedCornerShape(50),
+                        reactionShape,
                     ).clickable(enabled = !busy && onReact != null, role = Role.Button) {
                         onReact?.invoke(reaction.type)
                     }.semantics {
@@ -96,6 +99,7 @@ internal fun EmotionReactionRow(
                 Box(
                     Modifier
                         .size(24.dp)
+                        .clip(CircleShape)
                         .background(MaterialTheme.appColors.emotion.reactionIdle, CircleShape)
                         .clickable(
                             enabled = !busy && onOpenMenu != null,
