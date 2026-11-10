@@ -177,6 +177,7 @@
     <string name="settings_title">설정</string>
     <string name="settings_permissions">접근 권한 설정</string>
     <string name="settings_replay_guide">사용방법 다시보기</string>
+    <string name="settings_replay_guide_notice">화면으로 돌아가면 사용방법이 보여요</string>
     <string name="settings_legal_open_source">오픈소스 라이선스</string>
     <string name="settings_legal_privacy">개인정보 처리방침</string>
     <string name="legal_loading">문서를 불러오는 중이에요.</string>
