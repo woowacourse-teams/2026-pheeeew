@@ -67,7 +67,7 @@ import kotlin.math.sin
 import kotlin.time.TimeSource
 
 internal object EventPressColors {
-    val Background = Color(0xFF202023)
+    val Background = Color(0xFF242428)
     val Ink = Color.White
     val Surface = Color(0xFF1F1F29)
     val SurfaceBorder = Color(0xFF3B3B4A)
@@ -77,6 +77,10 @@ internal object EventPressColors {
 private const val RESULT_OVERLAY_MIN_MILLIS = 2_000L
 private const val WAVE_DURATION_NANOS = 500_000_000L
 private const val MAX_WAVES = 12
+private const val COUNTDOWN_START_SCALE = 1.8f
+private const val COUNTDOWN_SHRINK_MILLIS = 900
+private const val COUNTDOWN_FADE_DELAY_MILLIS = 600L
+private const val COUNTDOWN_FADE_MILLIS = 300
 private const val COUNTER_POP_SCALE = 1.18f
 private const val COUNTER_MAX_POP_SCALE = 1.6f
 private const val COUNTER_RAPID_POP_STEP = 0.14f
@@ -243,13 +247,7 @@ internal fun PressEventScreen(
                     color = Color.White,
                 )
                 Spacer(Modifier.height(16.dp))
-                Text(
-                    "${state.seconds}",
-                    fontFamily = font,
-                    fontSize = 96.sp,
-                    fontWeight = FontWeight.Black,
-                    color = Color.White,
-                )
+                CountdownNumber(state.seconds, reducedMotion)
             }
         }
     }
@@ -306,6 +304,40 @@ private fun EventResultOverlay() {
             color = Color.White,
         )
     }
+}
+
+@Composable
+private fun CountdownNumber(
+    seconds: Int,
+    reducedMotion: Boolean,
+) {
+    val scale = remember { Animatable(1f) }
+    val alpha = remember { Animatable(1f) }
+    LaunchedEffect(seconds, reducedMotion) {
+        if (reducedMotion) {
+            scale.snapTo(1f)
+            alpha.snapTo(1f)
+            return@LaunchedEffect
+        }
+        scale.snapTo(COUNTDOWN_START_SCALE)
+        alpha.snapTo(1f)
+        launch { scale.animateTo(1f, tween(COUNTDOWN_SHRINK_MILLIS, easing = FastOutSlowInEasing)) }
+        delay(COUNTDOWN_FADE_DELAY_MILLIS)
+        alpha.animateTo(0f, tween(COUNTDOWN_FADE_MILLIS, easing = LinearEasing))
+    }
+    Text(
+        "$seconds",
+        fontFamily = notoSansKrFontFamily(),
+        fontSize = 96.sp,
+        fontWeight = FontWeight.Black,
+        color = Color.White,
+        modifier =
+            Modifier.graphicsLayer {
+                scaleX = scale.value
+                scaleY = scale.value
+                this.alpha = alpha.value
+            },
+    )
 }
 
 @Composable
