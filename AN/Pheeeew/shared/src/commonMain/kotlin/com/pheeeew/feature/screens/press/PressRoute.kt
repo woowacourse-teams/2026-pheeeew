@@ -9,15 +9,18 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pheeeew.core.audio.rememberPressSoundPlayer
 import com.pheeeew.feature.screens.press.measurement.pressRaceDrawMeasurement
 import dev.zacsweers.metrox.viewmodel.metroViewModel
+import kotlinx.coroutines.flow.StateFlow
 
 @Composable
 internal fun PressRoute(
     onOpenRanking: () -> Unit,
     onOpenEvent: () -> Unit,
+    eventButtonEnabled: StateFlow<Boolean>,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: PressViewModel = metroViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val isEventButtonVisible by eventButtonEnabled.collectAsStateWithLifecycle()
     val faceDemo = rememberPressFaceDemoState()
     val soundPlayer = rememberPressSoundPlayer()
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onScreenResumed() }
@@ -32,6 +35,7 @@ internal fun PressRoute(
         },
         onOpenRanking = onOpenRanking,
         onOpenEvent = onOpenEvent,
+        isEventButtonVisible = isEventButtonVisible,
         soundPlayer = soundPlayer,
         modifier = modifier.pressRaceDrawMeasurement(uiState.frameKey, viewModel::onFrameDrawn),
         nearbyRanking = uiState.nearbyRanking,

@@ -38,6 +38,7 @@ play-app-update = { module = "com.google.android.play:app-update", version.ref =
 play-app-update-ktx = { module = "com.google.android.play:app-update-ktx", version.ref = "play-app-update" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 firebase-messaging = { module = "com.google.firebase:firebase-messaging" }
+firebase-config = { module = "com.google.firebase:firebase-config" }
 metro-viewmodel-compose = { module = "dev.zacsweers.metro:metrox-viewmodel-compose", version.ref = "metro" }
 sentry = { module = "io.sentry:sentry-kotlin-multiplatform", version = "0.27.0" }
 posthog = { module = "com.posthog:posthog-kmp", version = "0.5.1" }

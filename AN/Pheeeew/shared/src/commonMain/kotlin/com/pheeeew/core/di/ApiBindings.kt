@@ -32,6 +32,7 @@ import com.pheeeew.data.remote.datasource.PressApiStatisticsDataSource
 import com.pheeeew.data.repository.AppConfigRepository
 import com.pheeeew.data.repository.DeviceNicknameRepositoryImpl
 import com.pheeeew.data.repository.DeviceSessionRepositoryImpl
+import com.pheeeew.data.repository.PressEventConfigRepository
 import com.pheeeew.data.repository.PressRepositoryImpl
 import com.pheeeew.domain.model.device.DeviceDiagnosticOutcome
 import com.pheeeew.domain.model.device.DevicePlatform
@@ -54,6 +55,11 @@ import kotlinx.coroutines.SupervisorJob
 import kotlin.time.Clock
 
 internal interface ApiBindings {
+    @Provides
+    @SingleIn(AppScope::class)
+    fun providePressEventConfig(build: DeviceSessionBuildConfig): PressEventConfigRepository =
+        PressEventConfigRepository(build.environment, build.isDebug)
+
     @Provides
     @SingleIn(AppScope::class)
     fun provideAppConfig(

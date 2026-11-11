@@ -26,12 +26,14 @@ struct iOSApp: App {
                         IosMonitoring.shared.foreground()
                         RevisitNotificationLifecycle.shared.foreground()
                         PushTokenLifecycle.foreground()
+                        PressEventConfigLifecycle.foreground()
                     }
                     if phase == .background {
                         IosNotificationMessages.shared.inbox.clearPending()
                         IosMonitoring.shared.background()
                         RevisitNotificationLifecycle.shared.background()
                         PushTokenLifecycle.background()
+                        PressEventConfigLifecycle.background()
                     }
                 }
                 .onAppear {
@@ -39,6 +41,7 @@ struct iOSApp: App {
                         IosMonitoring.shared.foreground()
                         RevisitNotificationLifecycle.shared.foreground()
                         PushTokenLifecycle.foreground()
+                        PressEventConfigLifecycle.foreground()
                     }
 #if DEBUG
                     if !monitoringSmokeTestScheduled,
