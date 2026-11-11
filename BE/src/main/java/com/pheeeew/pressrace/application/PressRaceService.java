@@ -28,6 +28,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
@@ -198,6 +200,19 @@ public class PressRaceService {
             }
             return repository.counts(deviceId, today);
         });
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void lockEventPress(long deviceId) {
+        String revision = admission.openRevision();
+        checkServer(lockServerFence(revision), serverGeneration);
+        repository.lockDevice(deviceId);
+        admission.requireOpen(revision);
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void applyEventPress(long deviceId, Map<EmotionState, Integer> counts, Instant now) {
+        increase(deviceId, date(now), counts, now);
     }
 
     private void connect(PressConnection connection, boolean recoveryOnly, String revision) {
