@@ -67,7 +67,7 @@ import kotlin.math.sin
 import kotlin.time.TimeSource
 
 internal object EventPressColors {
-    val Background = Color(0xFF3E3E47)
+    val Background = Color(0xFF202023)
     val Ink = Color.White
     val Surface = Color(0xFF1F1F29)
     val SurfaceBorder = Color(0xFF3B3B4A)
