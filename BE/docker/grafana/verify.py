@@ -554,6 +554,10 @@ def verify():
             assert [panels[panel_id]["type"] for panel_id in (217, 202, 205)] == ["row", "timeseries", "timeseries"]
             tests.extend(map_cache_panel_tests(panels))
             tests.extend(map_cache_alert_tests(alert_rules))
+            assert panels[15]["targets"][0]["expr"].startswith(
+                '{job="pheeeew-api", environment="dev",'
+                ' event=~"http_request_failed|http_request_slow|scheduled_task_failed"}\n'
+                '  | json\n  | verification != "true"\n')
             assert panels[167]["type"] == "logs"
             assert panels[167]["targets"][0]["expr"] == (
                 '{job="pheeeew-api",environment="dev",event="map_read_sample"}'

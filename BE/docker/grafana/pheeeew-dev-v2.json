@@ -2676,7 +2676,7 @@
       "id": 15,
       "type": "logs",
       "title": "최근 오류와 느린 요청",
-      "description": "검토된 두 HTTP 이벤트만 수집해요. 오류·느린 요청이 없으면 비어 있을 수 있어요. correlationId는 JSON 본문에서 찾아요. verification=true 검증 로그는 제외해요. 상세 내용을 펼쳐 JSON 필드를 확인해요.",
+      "description": "HTTP 오류·느린 요청과 스케줄 작업 실패만 보여요. 해당 로그가 없으면 비어 있을 수 있어요. correlationId는 JSON 본문에서 찾아요. verification=true 검증 로그는 제외해요. 상세 내용을 펼쳐 JSON 필드를 확인해요.",
       "datasource": {
         "type": "loki",
         "uid": "${DS_LOKI}"
@@ -2690,7 +2690,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "{job=\"pheeeew-api\", environment=\"dev\"}\n  | json\n  | json cause=\"errorMessages[0]\"\n  | line_format `{{ if .route }}{{ .method }} {{ .route }}  {{ .status }}  {{ .durationMs }}ms{{ else }}{{ .event }}{{ end }}{{ if .exceptionType }}  {{ .exceptionType }}{{ end }}{{ if .origin }} at {{ .origin }}{{ end }}{{ if .sqlState }}  SQL {{ .sqlState }}{{ end }}{{ if .cause }}  {{ .cause }}{{ end }}`",
+          "expr": "{job=\"pheeeew-api\", environment=\"dev\", event=~\"http_request_failed|http_request_slow|scheduled_task_failed\"}\n  | json\n  | verification != \"true\"\n  | json cause=\"errorMessages[0]\"\n  | line_format `{{ if .route }}{{ .method }} {{ .route }}  {{ .status }}  {{ .durationMs }}ms{{ else }}{{ .event }}{{ end }}{{ if .exceptionType }}  {{ .exceptionType }}{{ end }}{{ if .origin }} at {{ .origin }}{{ end }}{{ if .sqlState }}  SQL {{ .sqlState }}{{ end }}{{ if .cause }}  {{ .cause }}{{ end }}`",
           "datasource": {
             "type": "loki",
             "uid": "${DS_LOKI}"
