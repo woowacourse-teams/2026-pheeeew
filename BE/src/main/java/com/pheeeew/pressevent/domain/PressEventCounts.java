@@ -16,8 +16,6 @@ import lombok.experimental.Accessors;
 @Accessors(fluent = true)
 public final class PressEventCounts {
 
-    public static final int MAX_TOTAL = 400;
-
     private static final Set<EmotionState> REQUIRED_STATES = Set.of(EmotionState.values());
 
     private final Map<EmotionState, Integer> counts;
@@ -34,7 +32,7 @@ public final class PressEventCounts {
             throw new PheeeewException(INVALID_COUNTS, null);
         }
         long total = counts.values().stream().mapToLong(Integer::longValue).sum();
-        if (total > MAX_TOTAL) {
+        if (total > Integer.MAX_VALUE) {
             throw new PheeeewException(INVALID_COUNTS, null);
         }
         return new PressEventCounts(counts, (int) total);

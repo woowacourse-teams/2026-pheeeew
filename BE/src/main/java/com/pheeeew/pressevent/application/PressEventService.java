@@ -3,7 +3,6 @@ package com.pheeeew.pressevent.application;
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
 import static com.pheeeew.pressevent.exception.PressEventErrorCode.EVENT_NOT_FOUND;
 import static com.pheeeew.pressevent.exception.PressEventErrorCode.EVENT_NOT_OPEN;
-import static com.pheeeew.pressevent.exception.PressEventErrorCode.EVENT_RATE_LIMITED;
 import static com.pheeeew.pressevent.exception.PressEventErrorCode.REQUEST_CONFLICT;
 
 import com.pheeeew.common.exception.PheeeewException;
@@ -17,7 +16,6 @@ import com.pheeeew.pressevent.domain.PressEventCounts;
 import com.pheeeew.pressevent.infra.PressEventRepository;
 import com.pheeeew.pressevent.infra.PressEventRepository.SavedAttempt;
 import com.pheeeew.pressrace.application.PressRaceService;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -29,8 +27,6 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Service
 public class PressEventService {
-
-    private static final Duration GAME_DURATION = Duration.ofSeconds(20);
 
     private final DeviceRepository devices;
     private final PressEventRepository events;
@@ -54,11 +50,6 @@ public class PressEventService {
         if (!event.accepts(now)) {
             throw new PheeeewException(EVENT_NOT_OPEN, null);
         }
-        long recent = events.findRecentPressCount(deviceId, now.minus(GAME_DURATION));
-        if (recent + Math.max(counts.total(), 1) > PressEventCounts.MAX_TOTAL) {
-            throw new PheeeewException(EVENT_RATE_LIMITED, null, GAME_DURATION);
-        }
-
         if (counts.total() > 0) {
             pressRaceService.applyEventPress(deviceId, counts.counts(), now);
         }

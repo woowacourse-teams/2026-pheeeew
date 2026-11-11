@@ -8,7 +8,6 @@ import static com.pheeeew.emotion.domain.EmotionState.FRUSTRATED;
 import static com.pheeeew.emotion.domain.EmotionState.IRRITATED;
 import static com.pheeeew.pressevent.exception.PressEventErrorCode.EVENT_NOT_FOUND;
 import static com.pheeeew.pressevent.exception.PressEventErrorCode.EVENT_NOT_OPEN;
-import static com.pheeeew.pressevent.exception.PressEventErrorCode.EVENT_RATE_LIMITED;
 import static com.pheeeew.pressevent.exception.PressEventErrorCode.INVALID_CURSOR;
 import static com.pheeeew.pressevent.exception.PressEventErrorCode.REQUEST_CONFLICT;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -30,7 +29,6 @@ import com.pheeeew.pressrace.exception.PressRaceException;
 import com.pheeeew.pressrace.v2.domain.PressParticipant;
 import com.pheeeew.pressrace.v2.domain.repository.PressSnapshotRepository;
 import com.pheeeew.support.PostgisDataJpaTest;
-import java.time.Duration;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -225,9 +223,9 @@ class PressEventServiceIntegrationTest {
         assertThat(빈_순위.leader()).isNull();
         assertThat(빈_순위.items()).isEmpty();
         assertThat(빈_순위.me()).isNull();
-        제출한다(deviceId, 160);
-        제출한다(다른_기기, 160);
-        제출한다(deviceId, 160);
+        제출한다(deviceId, 600);
+        제출한다(다른_기기, 600);
+        제출한다(deviceId, 600);
         var 미참여 = 순위를_조회한다(낮은_점수_기기, null, 1);
         assertThat(미참여.leader()).isNotNull();
         assertThat(미참여.me()).isNull();
@@ -278,26 +276,25 @@ class PressEventServiceIntegrationTest {
     }
 
     @Test
-    void 기기별_최근_20초_한도를_다른_이벤트에도_적용하고_재시도는_차감하지_않는다() {
+    void 연속_제출한_400회_초과_도전은_모두_가산하고_같은_도전은_한_번만_가산한다() {
         // given
         UUID 다른_이벤트 = 이벤트를_등록한다();
         UUID requestId = UUID.randomUUID();
-        eventService.submit(eventId, deviceId, requestId, 도전_횟수(400));
+        var 최초 = eventService.submit(eventId, deviceId, requestId, 도전_횟수(500));
 
-        // when & then
-        assertThat(eventService.submit(eventId, deviceId, requestId, 도전_횟수(400)).replayed()).isTrue();
-        assertThatThrownBy(() -> eventService.submit(다른_이벤트, deviceId, requestId, 도전_횟수(1)))
-                .isInstanceOfSatisfying(PheeeewException.class, exception -> {
-                    오류를_확인한다(exception, EVENT_RATE_LIMITED);
-                    assertThat(exception.getRetryAfter()).isEqualTo(Duration.ofSeconds(20));
-                });
-        assertThat(pressQueryService.findMyDailyPresses(deviceId, 0).total()).isEqualTo(400);
-
-        jdbc.sql("UPDATE press_event_attempts SET submitted_at = clock_timestamp() - INTERVAL '20 seconds'").update();
+        // when
+        var 재도전 = 제출한다(deviceId, 450);
+        var 재시도 = eventService.submit(eventId, deviceId, requestId, 도전_횟수(500));
         var 영점_도전 = eventService.submit(다른_이벤트, deviceId, requestId, 도전_횟수(0));
+
+        // then
+        assertThat(최초.total()).isEqualTo(500);
+        assertThat(재도전.total()).isEqualTo(450);
+        assertThat(재도전.bestScore()).isEqualTo(500);
+        assertThat(재시도.replayed()).isTrue();
         assertThat(영점_도전.bestScore()).isZero();
         assertThat(영점_도전.rank()).isEqualTo(1);
-        assertThat(pressQueryService.findMyDailyPresses(deviceId, 0).total()).isEqualTo(400);
+        assertThat(pressQueryService.findMyDailyPresses(deviceId, 0).total()).isEqualTo(950);
     }
 
     private UUID 이벤트를_등록한다() {
