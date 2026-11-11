@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
@@ -200,9 +199,11 @@ private fun CollectionDayEmotionRow(
         ) {
             Text(
                 emotion.timeLabel,
-                modifier = Modifier.align(Alignment.Bottom).padding(bottom = 6.dp).widthIn(max = 48.dp),
+                modifier = Modifier.align(Alignment.Bottom).padding(bottom = 6.dp),
                 color = Color.Gray,
                 fontSize = 10.sp,
+                maxLines = 1,
+                softWrap = false,
             )
             Box(Modifier.weight(1f, fill = false).padding(horizontal = 8.dp)) {
                 Box(
@@ -595,7 +596,7 @@ private fun CollectionDayEmotionListPreview() {
                         listOf(
                             CollectionDayEmotionUiModel(
                                 id = 3,
-                                timeLabel = "방금 전",
+                                timeLabel = "2026.11.11",
                                 emotion = EmotionType.EXHAUSTED,
                                 contentType = CollectionEmotionContentType.MEMO,
                                 memo = "오늘은 여기까지만.",
@@ -605,7 +606,7 @@ private fun CollectionDayEmotionListPreview() {
                             ),
                             CollectionDayEmotionUiModel(
                                 id = 2,
-                                timeLabel = "방금 전",
+                                timeLabel = "2026.11.11",
                                 emotion = EmotionType.EXHAUSTED,
                                 contentType = CollectionEmotionContentType.AUDIO,
                                 memo = null,

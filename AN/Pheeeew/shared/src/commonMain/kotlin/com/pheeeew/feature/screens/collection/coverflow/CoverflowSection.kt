@@ -209,8 +209,9 @@ private fun CollectionCoverFlow(
             val accessoryHeight = (maxHeight - 160.dp).coerceAtLeast(0.dp)
             val paginationHeight = minOf(56.dp, accessoryHeight).takeIf { it >= 8.dp } ?: 0.dp
             val actionHintHeight =
-                minOf(64.dp, accessoryHeight - paginationHeight).takeIf { it >= 32.dp } ?: 0.dp
-            val cardHeight = (maxHeight - paginationHeight - actionHintHeight).coerceAtLeast(0.dp)
+                minOf(32.dp, (accessoryHeight - paginationHeight) / 2).takeIf { it >= 32.dp } ?: 0.dp
+            // Balance the hint below the card with equal space above it.
+            val cardHeight = (maxHeight - paginationHeight - actionHintHeight * 2).coerceAtLeast(0.dp)
             val availableWidth = maxWidth
             val cardWidth = minOf(availableWidth * 0.76f, cardHeight * 0.75f)
             val actualCardHeight = cardWidth / 0.75f
@@ -219,46 +220,52 @@ private fun CollectionCoverFlow(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Top,
             ) {
-                HorizontalPager(
-                    state = pagerState,
-                    modifier = Modifier.fillMaxWidth().height(actualCardHeight),
-                    pageSize = PageSize.Fixed(cardWidth),
-                    contentPadding = PaddingValues(horizontal = (availableWidth - cardWidth) / 2),
-                    pageSpacing = availableWidth * 0.04f,
-                    key = { page -> items.getOrNull(page)?.id ?: "stale-page-$page" },
-                ) { page ->
-                    val item = items.getOrNull(page) ?: return@HorizontalPager
-                    val issuedCard = item.card
-                    val progress = item.progress
-                    val animatedModifier = Modifier.fillMaxWidth().coverFlowItem(pagerState, page)
-                    val cardModifier =
-                        if (issuedCard != null) {
-                            animatedModifier.clickable(role = Role.Button) { onCardClick(issuedCard) }
-                        } else {
-                            animatedModifier
-                        }
-                    if (issuedCard != null) {
-                        val issuedCardModifier =
-                            if (issuedCard.id == guideCardId && page == pagerState.settledPage &&
-                                !pagerState.isScrollInProgress
-                            ) {
-                                cardModifier.reportFeatureGuideAnchor("collection", COLLECTION_ISSUED_GUIDE_ANCHOR)
+                Spacer(Modifier.height(actionHintHeight))
+                Box(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxWidth().height(actualCardHeight),
+                        pageSize = PageSize.Fixed(cardWidth),
+                        contentPadding = PaddingValues(horizontal = (availableWidth - cardWidth) / 2),
+                        pageSpacing = availableWidth * 0.04f,
+                        key = { page -> items.getOrNull(page)?.id ?: "stale-page-$page" },
+                    ) { page ->
+                        val item = items.getOrNull(page) ?: return@HorizontalPager
+                        val issuedCard = item.card
+                        val progress = item.progress
+                        val animatedModifier = Modifier.fillMaxWidth().coverFlowItem(pagerState, page)
+                        val cardModifier =
+                            if (issuedCard != null) {
+                                animatedModifier.clickable(role = Role.Button) { onCardClick(issuedCard) }
                             } else {
-                                cardModifier
+                                animatedModifier
                             }
-                        CollectionCard(uiModel = issuedCard, modifier = issuedCardModifier)
-                    } else if (item.isTomorrow) {
-                        CollectionTomorrowCard(modifier = animatedModifier)
-                    } else {
-                        val unissuedProgress = requireNotNull(progress)
-                        CollectionProgressCard(
-                            progress = unissuedProgress,
-                            isLoading = isLoadingToday,
-                            error = todayError,
-                            onClaim = { onClaim(unissuedProgress.emotion) },
-                            onRetry = onRetryToday,
-                            modifier = cardModifier,
-                        )
+                        if (issuedCard != null) {
+                            val issuedCardModifier =
+                                if (issuedCard.id == guideCardId && page == pagerState.settledPage &&
+                                    !pagerState.isScrollInProgress
+                                ) {
+                                    cardModifier.reportFeatureGuideAnchor("collection", COLLECTION_ISSUED_GUIDE_ANCHOR)
+                                } else {
+                                    cardModifier
+                                }
+                            CollectionCard(uiModel = issuedCard, modifier = issuedCardModifier)
+                        } else if (item.isTomorrow) {
+                            CollectionTomorrowCard(modifier = animatedModifier)
+                        } else {
+                            val unissuedProgress = requireNotNull(progress)
+                            CollectionProgressCard(
+                                progress = unissuedProgress,
+                                isLoading = isLoadingToday,
+                                error = todayError,
+                                onClaim = { onClaim(unissuedProgress.emotion) },
+                                onRetry = onRetryToday,
+                                modifier = cardModifier,
+                            )
+                        }
                     }
                 }
                 val selectedIndex = collectionCardIndex(pagerState.currentPage, items.size)
