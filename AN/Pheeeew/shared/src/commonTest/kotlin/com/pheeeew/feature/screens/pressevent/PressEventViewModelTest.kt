@@ -3,6 +3,7 @@ package com.pheeeew.feature.screens.pressevent
 import androidx.lifecycle.ViewModelStore
 import com.pheeeew.domain.model.pressevent.PressEventAttempt
 import com.pheeeew.domain.model.pressevent.PressEventAttemptResult
+import com.pheeeew.domain.model.pressevent.PressEventMyRank
 import com.pheeeew.domain.model.pressevent.PressEventRankingEntry
 import com.pheeeew.domain.model.pressevent.PressEventRankingPage
 import com.pheeeew.domain.repository.PressEventFailure
@@ -34,6 +35,25 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PressEventViewModelTest {
+    @Test
+    fun previousRankingStaysFixedWhileCurrentRankingRefreshes() =
+        runTest {
+            fixture { vm, repo ->
+                val previous = PressEventMyRank(100, 5)
+                repo.pages[null] = PressEventResult.Success(page().copy(me = previous))
+                vm.onScreenResumed()
+                runCurrent()
+                vm.start()
+                assertEquals(previous, vm.uiState.value.previousResult)
+                assertTrue(vm.uiState.value.previousResultKnown)
+                repo.pages[null] = PressEventResult.Success(page().copy(me = PressEventMyRank(200, 2)))
+                vm.refreshRankings()
+                runCurrent()
+                assertEquals(previous, vm.uiState.value.previousResult)
+                assertEquals(PressEventMyRank(200, 2), vm.uiState.value.me)
+            }
+        }
+
     @Test
     fun freezesSubmissionAndRetriesSameIdAndCountsBeforeAllowingNewAttempt() =
         runTest {
