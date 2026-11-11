@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PageSize
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberOverscrollEffect
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -33,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
@@ -124,147 +126,140 @@ internal fun CollectionDayDetailScreen(
         }.distinctUntilChanged()
             .collect { index ->
                 if (emotionItems != null && emotionItems.canLoadMore && index != null &&
-                    index >= emotionItems.items.size
+                    index >= emotionItems.items.lastIndex
                 ) {
                     onLoadMoreEmotions()
                 }
             }
     }
 
-    Column(
+    BoxWithConstraints(
         modifier.fillMaxSize().background(AppColors.GroupBackground).navigationBarsPadding(),
     ) {
-        val selectedPage = pages.firstOrNull { it.date == selectedCardId }
-        CollectionDayHeader(title = selectedPage?.title, onBack = onBack)
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-            contentPadding = PaddingValues(bottom = 28.dp),
-        ) {
-            item(key = "card-header") {
-                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                    selectedPage?.let {
-                        Text(
-                            text = it.subtitle,
-                            modifier = Modifier.padding(bottom = 16.dp),
-                            color = AppColors.TextSecondary,
-                            fontSize = 12.sp,
-                        )
-                    }
-
-                    BoxWithConstraints(Modifier.fillMaxWidth()) {
-                        val cardWidth = maxWidth * 0.65f
-                        val cardHeight = cardWidth / 0.75f
-                        if (cardLoadError != null) {
-                            EmotionListLoadError(
-                                title = stringResource(Res.string.collection_day_cards_error),
-                                message = cardLoadError,
-                                hasItems = false,
-                                icon =
-                                    if (isCommonError) {
-                                        Res.drawable.ic_emotion_frustrated
-                                    } else {
-                                        Res.drawable.ic_emotion_discouraged
-                                    },
-                                onRetry = onRetryCardLoad,
-                                modifier = Modifier.fillMaxWidth().heightIn(min = cardHeight),
-                            )
+        val availableWidth = maxWidth
+        val cardHeight = maxHeight * 0.35f
+        val cardWidth = cardHeight * 0.75f
+        Column(Modifier.fillMaxSize()) {
+            val selectedPage = pages.firstOrNull { it.date == selectedCardId }
+            CollectionDayHeader(title = selectedPage?.title, onBack = onBack)
+            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = stringResource(Res.string.collection_card_action_hint),
+                    modifier =
+                        if (selectedPage?.card != null &&
+                            cardLoadError == null
+                        ) {
+                            Modifier.padding(bottom = 8.dp)
                         } else {
-                            HorizontalPager(
-                                state = pagerState,
-                                modifier = Modifier.fillMaxWidth().height(cardHeight),
-                                pageSize = PageSize.Fixed(cardWidth),
-                                contentPadding = PaddingValues(horizontal = (maxWidth - cardWidth) / 2),
-                                pageSpacing = maxWidth * 0.04f,
-                                key = { index -> dates.getOrNull(index) ?: "empty-$index" },
-                            ) { page ->
-                                val pageModel = pages.getOrNull(page) ?: return@HorizontalPager
-                                val card = pageModel.card
-                                if (card != null) {
-                                    CollectionCard(
-                                        uiModel = card,
-                                        modifier =
-                                            Modifier
-                                                .fillMaxWidth()
-                                                .coverFlowItem(pagerState, page)
-                                                .clickable(role = Role.Button) { onOpenCard(card.id) },
-                                    )
-                                } else if (pageModel.date == todayDate && todayProgress != null) {
-                                    CollectionProgressCard(
-                                        progress = todayProgress,
-                                        isLoading = isLoadingToday,
-                                        error = todayClaimError,
-                                        onClaim = { onClaimToday(todayProgress.emotion) },
-                                        onRetry = onRetryTodayClaim,
-                                        modifier = Modifier.fillMaxWidth().coverFlowItem(pagerState, page),
-                                    )
-                                } else if (isLoadingCalendar || (pageModel.date == todayDate && isLoadingToday)) {
-                                    Box(
-                                        Modifier.fillMaxSize().coverFlowItem(pagerState, page),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        CircularLoadingIndicator(color = AppColors.Primary)
-                                    }
+                            Modifier.padding(bottom = 8.dp).alpha(0f).clearAndSetSemantics {}
+                        },
+                    color = AppColors.TextSecondary,
+                    fontSize = 10.sp,
+                )
+                Box(Modifier.fillMaxWidth()) {
+                    if (cardLoadError != null) {
+                        EmotionListLoadError(
+                            title = stringResource(Res.string.collection_day_cards_error),
+                            message = cardLoadError,
+                            hasItems = false,
+                            icon =
+                                if (isCommonError) {
+                                    Res.drawable.ic_emotion_frustrated
                                 } else {
-                                    CollectionUnissuedCard(
-                                        modifier = Modifier.fillMaxWidth().coverFlowItem(pagerState, page),
-                                    )
+                                    Res.drawable.ic_emotion_discouraged
+                                },
+                            onRetry = onRetryCardLoad,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = cardHeight),
+                        )
+                    } else {
+                        HorizontalPager(
+                            state = pagerState,
+                            modifier = Modifier.fillMaxWidth().height(cardHeight),
+                            pageSize = PageSize.Fixed(cardWidth),
+                            contentPadding = PaddingValues(horizontal = (availableWidth - cardWidth) / 2),
+                            pageSpacing = availableWidth * 0.04f,
+                            key = { index -> dates.getOrNull(index) ?: "empty-$index" },
+                        ) { page ->
+                            val pageModel = pages.getOrNull(page) ?: return@HorizontalPager
+                            val card = pageModel.card
+                            if (card != null) {
+                                CollectionCard(
+                                    uiModel = card,
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .coverFlowItem(pagerState, page)
+                                            .clickable(role = Role.Button) { onOpenCard(card.id) },
+                                )
+                            } else if (pageModel.date == todayDate && todayProgress != null) {
+                                CollectionProgressCard(
+                                    progress = todayProgress,
+                                    isLoading = isLoadingToday,
+                                    error = todayClaimError,
+                                    onClaim = { onClaimToday(todayProgress.emotion) },
+                                    onRetry = onRetryTodayClaim,
+                                    modifier = Modifier.fillMaxWidth().coverFlowItem(pagerState, page),
+                                )
+                            } else if (isLoadingCalendar || (pageModel.date == todayDate && isLoadingToday)) {
+                                Box(
+                                    Modifier.fillMaxSize().coverFlowItem(pagerState, page),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    CircularLoadingIndicator(color = AppColors.Primary)
                                 }
+                            } else {
+                                CollectionUnissuedCard(
+                                    modifier = Modifier.fillMaxWidth().coverFlowItem(pagerState, page),
+                                )
                             }
                         }
                     }
-                    Text(
-                        text = stringResource(Res.string.collection_card_action_hint),
-                        modifier =
-                            if (selectedPage?.card != null &&
-                                cardLoadError == null
-                            ) {
-                                Modifier
-                            } else {
-                                Modifier.alpha(0f).clearAndSetSemantics {}
-                            },
-                        color = AppColors.TextSecondary,
-                        fontSize = 10.sp,
-                    )
+                }
 
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text("내가 남긴 감정", color = AppColors.GroupInk, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                        emotionCount?.takeIf { it > 0 }?.let {
-                            Text(
-                                "  $it",
-                                color = AppColors.TextSecondary,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                            )
-                        }
-                        Spacer(Modifier.weight(1f))
-                        Text("최신순", color = AppColors.TextSecondary, fontSize = 11.sp)
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("내가 남긴 감정", color = AppColors.GroupInk, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    emotionCount?.takeIf { it > 0 }?.let {
+                        Text(
+                            "  $it",
+                            color = AppColors.TextSecondary,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
                     }
+                    Spacer(Modifier.weight(1f))
+                    Text("최신순", color = AppColors.TextSecondary, fontSize = 11.sp)
                 }
             }
-            if (emotionContent != CollectionDayEmotionContent.Waiting) {
-                collectionDayEmotionItems(
-                    content = emotionContent,
-                    nickname = nickname,
-                    audio = audio,
-                    onRetryEmotions = onRetryEmotions,
-                    onDeleteEmotion = { if (canInteractWithEmotions()) onDeleteEmotion(it) },
-                    onRetryNextEmotions = onRetryNextEmotions,
-                    onReact = { id, type -> if (canInteractWithEmotions()) onReactToEmotion(id, type) },
-                    pendingReactionIds = pendingReactionIds,
-                )
-                if (reactionError != null) {
-                    item(key = "emotion-reaction-error") {
-                        Text(
-                            text = reactionError,
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
-                            color = AppColors.RecordSheetRecording,
-                            textAlign = TextAlign.Center,
-                        )
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.weight(1f).fillMaxWidth().clipToBounds(),
+                contentPadding = PaddingValues(bottom = 28.dp),
+                overscrollEffect = rememberOverscrollEffect(),
+            ) {
+                if (emotionContent != CollectionDayEmotionContent.Waiting) {
+                    collectionDayEmotionItems(
+                        content = emotionContent,
+                        nickname = nickname,
+                        audio = audio,
+                        onRetryEmotions = onRetryEmotions,
+                        onDeleteEmotion = { if (canInteractWithEmotions()) onDeleteEmotion(it) },
+                        onRetryNextEmotions = onRetryNextEmotions,
+                        onReact = { id, type -> if (canInteractWithEmotions()) onReactToEmotion(id, type) },
+                        pendingReactionIds = pendingReactionIds,
+                    )
+                    if (reactionError != null) {
+                        item(key = "emotion-reaction-error") {
+                            Text(
+                                text = reactionError,
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+                                color = AppColors.RecordSheetRecording,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
                     }
                 }
             }

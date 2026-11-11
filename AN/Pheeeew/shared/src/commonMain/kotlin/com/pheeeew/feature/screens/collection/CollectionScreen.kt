@@ -1,5 +1,6 @@
 package com.pheeeew.feature.screens.collection
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -185,61 +186,68 @@ fun CollectionScreen(
                 )
             }
             Box(Modifier.fillMaxSize()) {
-                tabState.SaveableStateProvider(viewMode.name) {
-                    Column(
-                        Modifier
-                            .fillMaxSize()
-                            .graphicsLayer {
-                                translationY = pullState.offset
-                            }.scrollable(
-                                state = rememberScrollableState { 0f },
-                                orientation = Orientation.Vertical,
-                                enabled = viewMode == CollectionViewMode.COVER_FLOW,
-                            ),
-                    ) {
-                        CollectionScreenHeader(
-                            nickname = uiModel.nickname,
-                            cardCount = uiModel.totalCount,
-                            viewMode = viewMode,
-                            onViewModeChange = { viewMode = it },
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            translationY = pullState.offset
+                        }.scrollable(
+                            state = rememberScrollableState { 0f },
+                            orientation = Orientation.Vertical,
+                            enabled = viewMode == CollectionViewMode.COVER_FLOW,
+                        ),
+                ) {
+                    CollectionScreenHeader(
+                        nickname = uiModel.nickname,
+                        cardCount = uiModel.totalCount,
+                        viewMode = viewMode,
+                        onViewModeChange = { viewMode = it },
+                    )
+                    if (uiModel.isNotificationDateOutdated) {
+                        Text(
+                            text = stringResource(Res.string.collection_notification_outdated),
+                            color = AppColors.TextSecondary,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
                         )
-                        if (uiModel.isNotificationDateOutdated) {
-                            Text(
-                                text = stringResource(Res.string.collection_notification_outdated),
-                                color = AppColors.TextSecondary,
-                                fontSize = 12.sp,
-                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-                            )
-                        }
-                        if (viewMode == CollectionViewMode.COVER_FLOW) {
-                            CoverflowSection(
-                                uiModel = uiModel,
-                                focusIssuedCardForGuide = focusIssuedCardForGuide,
-                                onClaim = onClaim,
-                                onRetryToday = onRetryToday,
-                                onLoadMore = onLoadMore,
-                                onCardClick = { card ->
-                                    selectedCardId = card.id
-                                    onCardClick(card.id)
-                                },
-                                modifier = Modifier.weight(1f).fillMaxWidth(),
-                            )
-                        } else {
-                            CalendarSection(
-                                month = uiModel.calendarMonth,
-                                todayDate = uiModel.todayDate,
-                                cards = uiModel.calendarCards,
-                                isLoading =
-                                    uiModel.calendarLoad == CollectionSectionLoad.InitialLoading ||
-                                        uiModel.isLoadingCalendar,
-                                hasLoaded =
-                                    uiModel.commonError != CollectionCommonError.Initial &&
-                                        uiModel.calendarLoad is CollectionSectionLoad.Content,
-                                showRefreshIndicator = !uiModel.isRefreshRequestActive,
-                                onMonthChange = onCalendarMonthChange,
-                                onDateClick = onCalendarDayClick,
-                                modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
-                            )
+                    }
+                    Crossfade(
+                        targetState = viewMode,
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                        animationSpec = tween(120),
+                        label = "collectionViewModeContent",
+                    ) { mode ->
+                        tabState.SaveableStateProvider(mode.name) {
+                            if (mode == CollectionViewMode.COVER_FLOW) {
+                                CoverflowSection(
+                                    uiModel = uiModel,
+                                    focusIssuedCardForGuide = focusIssuedCardForGuide,
+                                    onClaim = onClaim,
+                                    onRetryToday = onRetryToday,
+                                    onLoadMore = onLoadMore,
+                                    onCardClick = { card ->
+                                        selectedCardId = card.id
+                                        onCardClick(card.id)
+                                    },
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            } else {
+                                CalendarSection(
+                                    month = uiModel.calendarMonth,
+                                    todayDate = uiModel.todayDate,
+                                    cards = uiModel.calendarCards,
+                                    isLoading =
+                                        uiModel.calendarLoad == CollectionSectionLoad.InitialLoading ||
+                                            uiModel.isLoadingCalendar,
+                                    hasLoaded =
+                                        uiModel.commonError != CollectionCommonError.Initial &&
+                                            uiModel.calendarLoad is CollectionSectionLoad.Content,
+                                    showRefreshIndicator = !uiModel.isRefreshRequestActive,
+                                    onMonthChange = onCalendarMonthChange,
+                                    onDateClick = onCalendarDayClick,
+                                    modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+                                )
+                            }
                         }
                     }
                 }
