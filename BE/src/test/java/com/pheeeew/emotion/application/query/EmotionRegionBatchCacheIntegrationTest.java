@@ -24,6 +24,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
@@ -61,6 +62,8 @@ class EmotionRegionBatchCacheIntegrationTest {
     private MapCacheTestTime.ManualScheduledExecutor tasks;
     @Autowired
     private MeterRegistry meters;
+
+    private final List<String> decisions = new CopyOnWriteArrayList<>();
     @Autowired
     private EmotionMapCacheCoordinator coordinator;
     @Autowired
@@ -168,15 +171,14 @@ class EmotionRegionBatchCacheIntegrationTest {
         // given
         regions();
         register();
-        double rebuilt = meters.get("pheeeew.map.cache.rebuilds").tag("cache", "regions").counter().count();
+        double rebuilt = rebuildAttempts();
 
         // when
         clock.advance(Duration.ofSeconds(3));
 
         // then
         assertThat(regions().getFirst().summary().totalCount()).isEqualTo(2);
-        assertThat(meters.get("pheeeew.map.cache.rebuilds").tag("cache", "regions").counter().count())
-                .isEqualTo(rebuilt);
+        assertThat(rebuildAttempts()).isEqualTo(rebuilt);
         assertRequests(0, 1, 1);
     }
 
@@ -185,8 +187,7 @@ class EmotionRegionBatchCacheIntegrationTest {
         // given
         regions();
         regions();
-        double hits = meters.get("pheeeew.map.cache.requests").tags("cache", "regions", "result", "hit").counter().count();
-        double rebuilt = meters.get("pheeeew.map.cache.rebuilds").tag("cache", "regions").counter().count();
+        double rebuilt = rebuildAttempts();
 
         // when
         tasks.shutdownNow();
@@ -194,10 +195,7 @@ class EmotionRegionBatchCacheIntegrationTest {
         regions();
 
         // then
-        assertThat(meters.get("pheeeew.map.cache.requests").tags("cache", "regions", "result", "hit").counter().count())
-                .isEqualTo(hits);
-        assertThat(meters.get("pheeeew.map.cache.rebuilds").tag("cache", "regions").counter().count())
-                .isEqualTo(rebuilt);
+        assertThat(rebuildAttempts()).isEqualTo(rebuilt);
         assertRequests(1, 1, 2);
     }
 
@@ -283,16 +281,17 @@ class EmotionRegionBatchCacheIntegrationTest {
                 assertThat(item.summary().totalCount()).isEqualTo(1));
     }
 
-    private void assertRequests(double hits, double misses, double fallbacks) {
-        assertThat(requests("hit")).isEqualTo(hits);
-        assertThat(requests("miss")).isEqualTo(misses);
-        assertThat(requests("fallback")).isEqualTo(fallbacks);
+    /** 이 테스트에서 regions()로 조회한 요청의 캐시 적중·적재·SQL 대체 횟수를 확인한다. */
+    private void assertRequests(long hits, long loads, long fallbacks) {
+        assertThat(decisions).filteredOn("cache_hit"::equals).hasSize((int) hits);
+        assertThat(decisions).filteredOn("cache_load"::equals).hasSize((int) loads);
+        assertThat(decisions).filteredOn("cache_fallback"::equals).hasSize((int) fallbacks);
     }
 
-    private double requests(String result) {
-        var counter = meters.find("pheeeew.map.cache.requests")
-                .tags("cache", "regions", "result", result).counter();
-        return counter == null ? 0 : counter.count();
+    /** 재생성 시도 횟수다. 실패와 상한 초과도 포함한다. */
+    private double rebuildAttempts() {
+        var timer = meters.find("pheeeew.map.cache.rebuild").tag("cache", "regions").timer();
+        return timer == null ? 0 : timer.count();
     }
 
     private void await(CountDownLatch latch) {
@@ -312,7 +311,9 @@ class EmotionRegionBatchCacheIntegrationTest {
     }
 
     private List<EmotionRegionMapItemView> regions() {
-        return queries.findRegionMap(EmotionSearchBounds.of(126, 37, 128, 39), RegionLevel.SIDO,
-                requester.getPublicId(), EmotionSearchFilter.from(null));
+        var read = MapReadDecisions.regions(meters, () -> queries.findRegionMap(EmotionSearchBounds.of(126, 37, 128, 39),
+                RegionLevel.SIDO, requester.getPublicId(), EmotionSearchFilter.from(null)));
+        decisions.add(read.decision());
+        return read.value();
     }
 }

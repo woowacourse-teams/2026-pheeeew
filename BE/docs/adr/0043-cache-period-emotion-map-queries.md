@@ -5,6 +5,7 @@
 Accepted (2026-11-04, [#1091](https://github.com/woowacourse-teams/2026-pheeeew/issues/1091)). ADR-0040의 캐시 적용 범위를 기간 조회까지 넓혀요.
 ADR-0040의 쓰기·재집계 직렬화, 등록 3초 지연, 수정·삭제 즉시 반영, SQL 대체 계약은 그대로 유지해요.
 구현·테스트 검증은 완료했으며 배포·운영 지표 확인은 아직 하지 않았어요.
+2026-11-09: `MY`·`MEMO`·`AUDIO` 필터까지 넓힌 결정은 [ADR-0044](0044-cache-my-and-content-filtered-emotion-map-queries.md)에 있어요.
 
 ## Context
 

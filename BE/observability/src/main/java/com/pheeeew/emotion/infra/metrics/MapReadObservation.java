@@ -196,8 +196,9 @@ public final class MapReadObservation implements AutoCloseable {
         }
         try {
             registry.counter("pheeeew.map.read.requests", "api_version", route.apiVersion(), "route", route.route(),
-                    "query", query, "page", page, "decision", decision.name().toLowerCase(Locale.ROOT),
-                    "outcome", outcome).increment();
+                    "query", query, "page", page, "scope", scope.toLowerCase(Locale.ROOT),
+                    "content_type", contentType.toLowerCase(Locale.ROOT),
+                    "decision", decision.name().toLowerCase(Locale.ROOT), "outcome", outcome).increment();
         } catch (RuntimeException ignored) {
             // 계측 실패 시에도 요청 문맥은 close에서 정리한다.
         }

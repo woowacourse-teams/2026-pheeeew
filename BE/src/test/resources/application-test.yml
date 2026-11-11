@@ -4,5 +4,10 @@ pheeeew.notification.dispatch.automatic-start: false
 
 # 한 JVM 안에서 컨텍스트가 다시 뜰 때마다 Flyway가 같은 마이그레이션 45개를 다시 검증한다.
 # 첫 컨텍스트가 빈 스키마에 적용한 파일과 같은 파일이므로 그 뒤의 검증은 실패할 수 없다.
-# 전체 실행에서 컨텍스트가 105번 뜨고 검증 1회가 약 123ms 다.
+# 전체 실행에서 컨텍스트가 약 125번 뜨고(2026-11-09 측정) 검증 1회가 약 123ms 다.
 spring.flyway.validate-on-migrate: false
+
+# Hikari 기본값은 최소 유휴 연결 수가 풀 크기(10)와 같아서, 캐시에 남은 컨텍스트마다 쓰지 않는 연결 10개를 쥔다.
+# 캐시 상한 8개면 공유 PostGIS 연결 한도 100 중 80을 놀린다. 연결은 필요할 때 열고 10초 쉬면 닫는다.
+spring.datasource.hikari.minimum-idle: 1
+spring.datasource.hikari.idle-timeout: 10000

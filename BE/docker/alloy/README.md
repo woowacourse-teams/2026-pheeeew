@@ -88,7 +88,7 @@
 
 BE 활동 통계 제거에 따라 활동 지표와 기록·집계 오류 로그는 더 이상 전송하지 않아요. 기존 활동 지표와 삭제한 logger/event 조합이 차단되는지도 검증해요. 앱 버전 확인 전용 지표도 #881에서 허용 목록에서 제거해요. 버전 정책 API와 공통 서버 모니터링은 유지해요.
 
-기본 지도 캐시는 `pheeeew_map_cache_requests_total`의 `cache=regions|pins`, `result`로 적중·SQL 대체 경로를 구분해요. `lock_wait_seconds`는 쓰기 잠금 대기, `rebuild_seconds`는 캐시별 원본 재생성 시간, `maintenance_seconds`는 복구·보정 작업 시간이에요. `maintenance_busy_total`은 잠금을 얻지 못한 횟수이며 `maintenance_failures_total`은 재생성·예약 실패예요. `pending_age_seconds`는 아직 공개하지 않은 등록 배치의 나이이며 없거나 무효화된 경우 0이에요. `candidates{cache="pins"}`는 현재 메모리에 보관한 후보 수이며 상한 초과·미준비·무효화 시 0이에요. DB 전체 건수를 뜻하지 않아요. 핀 `pin_search_seconds`와 `pin_scanned`는 영역 탐색 시간과 검사 후보 수예요. 횟수·합계·최댓값을 제공하며 히스토그램을 켜지 않으면 p95·p99를 계산할 수 없어요.
+지도 캐시의 적중·적재·SQL 대체는 `pheeeew_map_read_requests_total`의 `decision`(`cache_hit`·`cache_load`·`cache_fallback`)으로 구분하고, `route`·`scope`·`content_type`으로 조회 종류별로 나눠 봐요([map-read-timing.md](map-read-timing.md)). `pheeeew_map_cache_*`는 캐시 내부 상태만 다뤄요. `failures_total`은 재생성 실패예요. `lock_wait_seconds`는 쓰기 잠금 대기, `rebuild_seconds`는 캐시별 원본 재생성 시도 시간이며 `_count`가 시도 횟수예요. `maintenance_seconds`는 복구·보정 작업 시간이며 `result=success|busy|failed`로 결과를 나눠요. `busy`는 쓰기 잠금을 얻지 못한 실행이고, 실행기가 예약을 거절하면 시간 0의 `failed`로 기록해요. `pending_age_seconds`는 아직 공개하지 않은 등록 배치의 나이이며 없거나 무효화된 경우 0이에요. `candidates{cache="pins"}`는 현재 메모리에 보관한 후보 수이며 상한 초과·미준비·무효화 시 0이에요. DB 전체 건수를 뜻하지 않아요. 핀 `pin_scanned`는 한 번의 선택에서 검사한 후보 수예요. 탐색 시간은 요청 단계 `stage=map_pins_cache`에 포함돼요. 횟수·합계·최댓값을 제공하며 히스토그램을 켜지 않으면 p95·p99를 계산할 수 없어요.
 
 기간을 지정한 지역 요약 결과는 Caffeine에 보관하고 Micrometer 표준 지표 `cache_gets_total`, `cache_puts_total`, `cache_evictions_total`, `cache_size`를 `cache="map_region_periods"`로 노출해요. `cache_gets_total{result="hit|miss"}`로 같은 기간 결과의 재사용 비율을 계산해요. 전체 기간 요약과 SQL 우회 요청은 이 분모에 포함되지 않아요.
 

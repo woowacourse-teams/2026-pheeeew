@@ -11,28 +11,31 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.web.MockHttpServletRequest;
 
 class MapCacheMetricsTest {
 
     @Test
-    void 캐시별_요청_결과와_재생성_성공실패를_기존_이름과_태그로_기록한다() {
+    void 요청_결과는_지도_조회_결정에만_넘기고_재생성_실패는_캐시별로_센다() {
         // given
         var meters = new SimpleMeterRegistry();
         var pins = new MapCacheMetrics(meters, "pins");
         var regions = new MapCacheMetrics(meters, "regions");
+        var request = new MockHttpServletRequest("GET", "/api/v4/emotions/map");
 
         // when
-        pins.request("hit");
-        pins.request("miss");
-        regions.request("fallback");
-        pins.rebuilt();
+        String decision;
+        try (var observation = MapReadObservation.open(request, meters)) {
+            MapReadObservation.decision(MapReadObservation.Decision.CACHE_ATTEMPT);
+            regions.request("hit");
+            pins.request("miss");
+            decision = (String) observation.details().get("decision");
+        }
         regions.failed();
 
         // then
-        assertThat(meters.get("pheeeew.map.cache.requests").tags("cache", "pins", "result", "hit").counter().count()).isEqualTo(1);
-        assertThat(meters.get("pheeeew.map.cache.requests").tags("cache", "pins", "result", "miss").counter().count()).isEqualTo(1);
-        assertThat(meters.get("pheeeew.map.cache.requests").tags("cache", "regions", "result", "fallback").counter().count()).isEqualTo(1);
-        assertThat(meters.get("pheeeew.map.cache.rebuilds").tag("cache", "pins").counter().count()).isEqualTo(1);
+        assertThat(decision).isEqualTo("cache_load");
+        assertThat(meters.find("pheeeew.map.cache.requests").meters()).isEmpty();
         assertThat(meters.get("pheeeew.map.cache.failures").tag("cache", "regions").counter().count()).isEqualTo(1);
     }
 
@@ -71,7 +74,7 @@ class MapCacheMetricsTest {
     }
 
     @Test
-    void 핀_선택_결과는_그대로_반환하고_성공한_선택만_시간과_검사수를_기록한다() {
+    void 핀_선택_결과는_그대로_반환하고_성공한_선택만_검사수를_기록한다() {
         // given
         var meters = new SimpleMeterRegistry();
         var metrics = new MapCacheMetrics(meters, "pins");
@@ -86,7 +89,7 @@ class MapCacheMetricsTest {
         assertThatThrownBy(() -> metrics.<List<Integer>>measurePinSearch(() -> {
             throw failure;
         }, List::size)).isSameAs(failure);
-        assertThat(meters.get("pheeeew.map.cache.pin.search").timer().count()).isEqualTo(1);
+        assertThat(meters.find("pheeeew.map.cache.pin.search").meters()).isEmpty();
         assertThat(meters.get("pheeeew.map.cache.pin.scanned").summary().count()).isEqualTo(1);
         assertThat(meters.get("pheeeew.map.cache.pin.scanned").summary().totalAmount()).isEqualTo(3);
     }
