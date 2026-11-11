@@ -18,6 +18,22 @@ main push는 `prod-<SHA>` 이미지만 빌드한다. Actions → BE CD → Run w
 
 전환 중 실패하면 이전 슬롯으로 되돌린다. 되돌리기도 확인하지 못하면 두 슬롯과 전환 기록을 남기고 멈춘다. 이 경우 기록을 확인하기 전에는 다시 배포하지 않는다.
 
+## 직전 버전으로 되돌리기
+
+[#1168](https://github.com/woowacourse-teams/2026-pheeeew/issues/1168). 배포가 끝난 뒤 문제를 발견하면 이미 올라가 있는 이전 `prod-<SHA>` 이미지로 다시 전환한다. 빌드하지 않고, 평소 배포와 같은 blue/green 전환을 쓴다.
+
+1. 직전에 성공한 운영 배포의 커밋을 찾는다. 두 번째 항목이 직전 버전이다.
+
+   ```bash
+   gh run list --workflow be-deploy.yml --event workflow_dispatch --status success --limit 2 --json headSha,createdAt
+   ```
+
+2. 그 커밋 이후 Flyway 마이그레이션이 있었다면, 직전 이미지가 지금 스키마에서 `ddl-auto: validate`를 통과하는지 먼저 확인한다. 통과하지 못하면 새 슬롯이 기동 확인에서 실패하고 현재 버전이 그대로 남는다.
+3. Actions → BE CD → Run workflow에서 **main**, **build_only=false**, **image_tag=`prod-<headSha>`** 로 실행한다. `build_only`가 기본값 true이면 아무것도 배포하지 않는다.
+4. 실행한 run 번호와 시작, 완료 시각을 남긴다.
+
+`image_tag`는 `prod-<40자리 SHA>` 형식만 받는다. 되돌아가는 것은 앱 이미지뿐이고 compose, nginx, Alloy 설정은 main의 현재 파일이 올라간다. 세대 계약 표시가 없는 과거 이미지는 배포 셸이 거절한다.
+
 ## 개발 CD와 다른 점
 
 - 올리는 파일: `compose.prod.yml`, `compose.nginx.prod.yml`, `nginx/api-prod-bluegreen.conf`(서버에서는 `api-bluegreen.conf`), `compose.monitoring.prod.yml`, `alloy/config.prod-bluegreen.alloy`
