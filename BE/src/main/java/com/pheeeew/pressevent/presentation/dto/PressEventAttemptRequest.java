@@ -21,7 +21,7 @@ public record PressEventAttemptRequest(
         @NotNull
         @JsonDeserialize(using = CountsDeserializer.class)
         @Schema(
-                description = "다섯 감정 키가 모두 필요합니다. 각 값은 0 이상인 JSON 정수이며 합계는 최대 400입니다.",
+                description = "다섯 감정 키가 모두 필요합니다. 각 값은 0 이상인 JSON 정수이며 합계는 32비트 정수 범위여야 합니다.",
                 example = """
                         {"FRUSTRATED":0,"IRRITATED":0,"EXHAUSTED":3,"DISCOURAGED":0,"ANGRY":9}
                         """
