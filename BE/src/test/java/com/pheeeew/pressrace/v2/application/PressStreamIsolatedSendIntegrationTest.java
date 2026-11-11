@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
@@ -376,7 +377,7 @@ class PressStreamIsolatedSendIntegrationTest {
     }
 
     private void 발행기(int sendThreads, int sendQueueCapacity, Duration sendTimeout) {
-        publisher = new PressStreamPublisher(new PressSnapshotService(repository), clock, PUBLISH_INTERVAL,
+        publisher = new PressStreamPublisher(new PressSnapshotService(new PressDatabaseSnapshotService(repository), Optional.empty(), Optional.empty()), clock, PUBLISH_INTERVAL,
                 HEARTBEAT_INTERVAL, PressStreamSendMode.ISOLATED, sendThreads, sendQueueCapacity, sendTimeout);
     }
 

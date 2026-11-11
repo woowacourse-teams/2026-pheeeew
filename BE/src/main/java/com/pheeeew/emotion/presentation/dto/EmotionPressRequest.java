@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
 import java.util.Map;
+import java.util.UUID;
 
 public record EmotionPressRequest(
         @NotNull
@@ -18,7 +19,15 @@ public record EmotionPressRequest(
                         {"ANGRY": 9, "EXHAUSTED": 3}
                         """
         )
-        Map<EmotionState, Integer> counts
+        Map<EmotionState, Integer> counts,
+
+        @Schema(
+                description = "같은 묶음을 다시 보낼 때 재사용하는 요청 식별자. 선택 값입니다. "
+                        + "값이 있으면 같은 기기의 같은 requestId 는 10분 안에 한 번만 반영하고, 다시 보내면 반영 없이 오늘 집계를 돌려줍니다. "
+                        + "같은 requestId 에 다른 counts 를 보내면 거절합니다. 값이 없으면 보낼 때마다 반영합니다.",
+                example = "6f1c2b8e-3a4d-4c5e-9f60-7a8b9c0d1e2f"
+        )
+        UUID requestId
 ) {
 
     @AssertTrue(message = "감정별 횟수는 null 이 아닌 0 이상인 값만 담아야 합니다.")

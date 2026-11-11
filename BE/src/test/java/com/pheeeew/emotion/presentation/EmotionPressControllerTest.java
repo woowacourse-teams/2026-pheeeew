@@ -78,9 +78,26 @@ class EmotionPressControllerTest {
     }
 
     @Test
+    void 요청_식별자가_있으면_서비스로_함께_넘긴다() {
+        // given
+        UUID requestId = UUID.fromString("6f1c2b8e-3a4d-4c5e-9f60-7a8b9c0d1e2f");
+        when(emotionPressService.press(DEVICE_PUBLIC_ID, Map.of(EmotionState.ANGRY, 9), requestId))
+                .thenReturn(집계(9, 0));
+
+        // when
+        RestTestClient.ResponseSpec 응답 = 누른다("""
+                {"counts": {"ANGRY": 9}, "requestId": "6f1c2b8e-3a4d-4c5e-9f60-7a8b9c0d1e2f"}
+                """, "access-token");
+
+        // then
+        응답.expectStatus().isOk();
+        verify(emotionPressService).press(DEVICE_PUBLIC_ID, Map.of(EmotionState.ANGRY, 9), requestId);
+    }
+
+    @Test
     void 감정별_횟수를_서비스로_넘기고_오늘_집계를_반환한다() {
         // given
-        when(emotionPressService.press(DEVICE_PUBLIC_ID, Map.of(EmotionState.ANGRY, 9, EmotionState.EXHAUSTED, 3)))
+        when(emotionPressService.press(DEVICE_PUBLIC_ID, Map.of(EmotionState.ANGRY, 9, EmotionState.EXHAUSTED, 3), null))
                 .thenReturn(집계(9, 3));
 
         // when
@@ -96,13 +113,13 @@ class EmotionPressControllerTest {
                 .jsonPath("$.counts.FRUSTRATED").isEqualTo(0)
                 .jsonPath("$.counts.IRRITATED").isEqualTo(0)
                 .jsonPath("$.counts.DISCOURAGED").isEqualTo(0);
-        verify(emotionPressService).press(DEVICE_PUBLIC_ID, Map.of(EmotionState.ANGRY, 9, EmotionState.EXHAUSTED, 3));
+        verify(emotionPressService).press(DEVICE_PUBLIC_ID, Map.of(EmotionState.ANGRY, 9, EmotionState.EXHAUSTED, 3), null);
     }
 
     @Test
     void 빈_감정_목록도_거절하지_않고_오늘_집계를_반환한다() {
         // given
-        when(emotionPressService.press(DEVICE_PUBLIC_ID, Map.of()))
+        when(emotionPressService.press(DEVICE_PUBLIC_ID, Map.of(), null))
                 .thenReturn(집계(0, 0));
 
         // when
@@ -112,13 +129,13 @@ class EmotionPressControllerTest {
 
         // then
         응답.expectStatus().isOk().expectBody().jsonPath("$.total").isEqualTo(0);
-        verify(emotionPressService).press(DEVICE_PUBLIC_ID, Map.of());
+        verify(emotionPressService).press(DEVICE_PUBLIC_ID, Map.of(), null);
     }
 
     @Test
     void 값이_영인_감정도_거절하지_않고_영이_그대로_서비스로_간다() {
         // given
-        when(emotionPressService.press(DEVICE_PUBLIC_ID, Map.of(EmotionState.ANGRY, 0)))
+        when(emotionPressService.press(DEVICE_PUBLIC_ID, Map.of(EmotionState.ANGRY, 0), null))
                 .thenReturn(집계(7, 0));
 
         // when
@@ -131,7 +148,7 @@ class EmotionPressControllerTest {
                 .expectBody()
                 .jsonPath("$.counts.ANGRY").isEqualTo(7)
                 .jsonPath("$.total").isEqualTo(7);
-        verify(emotionPressService).press(DEVICE_PUBLIC_ID, Map.of(EmotionState.ANGRY, 0));
+        verify(emotionPressService).press(DEVICE_PUBLIC_ID, Map.of(EmotionState.ANGRY, 0), null);
     }
 
     @ParameterizedTest
@@ -160,7 +177,7 @@ class EmotionPressControllerTest {
     @Test
     void 서비스가_던진_실패_상태와_코드를_그대로_전달한다() {
         // given
-        when(emotionPressService.press(any(), any()))
+        when(emotionPressService.press(any(), any(), any()))
                 .thenThrow(new DeviceException(DeviceErrorCode.DEVICE_NOT_FOUND));
 
         // when

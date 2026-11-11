@@ -9,6 +9,7 @@ import com.pheeeew.auth.infra.jwt.TokenProperties;
 import com.pheeeew.device.application.dto.AccessTokenResult;
 import com.pheeeew.device.application.dto.DeviceAttestation;
 import com.pheeeew.device.application.dto.DeviceSaveResult;
+import com.pheeeew.device.application.event.DeviceNicknameUpdatedEvent;
 import com.pheeeew.device.application.token.AccessTokenIssuer;
 import com.pheeeew.device.application.token.IssuedRefreshToken;
 import com.pheeeew.device.application.token.RefreshTokenIssuer;
@@ -22,6 +23,7 @@ import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +37,7 @@ public class DeviceService {
     private final AccessTokenIssuer accessTokenIssuer;
     private final DeviceAttestationVerifier deviceAttestationVerifier;
     private final TokenProperties tokenProperties;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     // 구버전 v2 등록은 닉네임을 비워 두고, 앱 업데이트 후 인증된 수정 요청으로 설정한다.
     public DeviceSaveResult save(UUID requestId, DeviceAttestation attestation) {
@@ -86,6 +89,7 @@ public class DeviceService {
             }
             throw cause;
         }
+        applicationEventPublisher.publishEvent(DeviceNicknameUpdatedEvent.of(devicePublicId, device.getNickname()));
     }
 
     private DeviceSaveResult reissueTokens(Device device) {

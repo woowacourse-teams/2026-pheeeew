@@ -30,7 +30,7 @@ public class EmotionPressController implements EmotionPressControllerApi {
             @RequestBody EmotionPressRequest request,
             @CurrentDevice UUID devicePublicId
     ) {
-        return EmotionPressResponse.from(emotionPressService.press(devicePublicId, request.counts()));
+        return EmotionPressResponse.from(emotionPressService.press(devicePublicId, request.counts(), request.requestId()));
     }
 
     @Override

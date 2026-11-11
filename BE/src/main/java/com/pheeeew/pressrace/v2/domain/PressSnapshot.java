@@ -16,10 +16,10 @@ import java.util.UUID;
  */
 public class PressSnapshot {
 
-    private static final Duration ACTIVE_WINDOW = Duration.ofSeconds(5);
-    private static final int TOP_SIZE = 100;
-    private static final int NEARBY_SIZE = 3;
-    private static final int LEADER_SIZE = 2;
+    public static final Duration ACTIVE_WINDOW = Duration.ofSeconds(5);
+    public static final int TOP_SIZE = 100;
+    public static final int NEARBY_SIZE = 3;
+    public static final int LEADER_SIZE = 2;
 
     private final LocalDate date;
     private final Instant generatedAt;

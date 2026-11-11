@@ -3,6 +3,7 @@ package com.pheeeew.pressrace.v2.application;
 import static com.pheeeew.pressrace.v2.exception.PressStreamErrorCode.PRESS_STREAM_SUBSCRIPTION_LIMIT_EXCEEDED;
 
 import com.pheeeew.common.logging.ScheduledTaskErrorHandler;
+import com.pheeeew.pressrace.exception.PressRaceException;
 import com.pheeeew.pressrace.v2.domain.PressScreen;
 import com.pheeeew.pressrace.v2.domain.PressSnapshot;
 import com.pheeeew.pressrace.v2.domain.PressView;
@@ -52,6 +53,7 @@ import org.springframework.stereotype.Service;
 public class PressStreamPublisher implements SmartLifecycle {
 
     static final int MAX_SUBSCRIPTIONS_PER_DEVICE = 2;
+    private static final String STORE_UNAVAILABLE = "STORE_UNAVAILABLE";
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     private final PressSnapshotService pressSnapshotService;
@@ -256,6 +258,14 @@ public class PressStreamPublisher implements SmartLifecycle {
             synchronized (generation) {
                 return generate();
             }
+        } catch (PressRaceException exception) {
+            if (STORE_UNAVAILABLE.equals(exception.code())) {
+                log.warn("실시간 프레스 저장소를 읽지 못해 모든 구독을 닫습니다.");
+                subscriptions.forEach(Subscription::close);
+                return null;
+            }
+            log.warn("실시간 프레스 공통 순위를 만들지 못해 이번 주기를 건너뜁니다.", exception);
+            return null;
         } catch (RuntimeException exception) {
             log.warn("실시간 프레스 공통 순위를 만들지 못해 이번 주기를 건너뜁니다.", exception);
             return null;
