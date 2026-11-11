@@ -1,8 +1,6 @@
 package com.pheeeew.feature.screens.ranking.press.components
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.derivedStateOf
@@ -15,7 +13,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.dp
-import com.pheeeew.core.designsystem.theme.appColors
 import com.pheeeew.feature.emotion.component.rememberTapReducedMotion
 import com.pheeeew.feature.emotion.model.EmotionKind
 import org.jetbrains.compose.resources.DrawableResource
@@ -32,18 +29,17 @@ import pheeeew.shared.generated.resources.race_defeated_b
 import pheeeew.shared.generated.resources.race_tired_a
 import pheeeew.shared.generated.resources.race_tired_b
 
-/** Missing or future API values must not be presented as a known representative emotion. */
+/** Missing representative emotions use the defeated runner as a visual fallback. */
 internal fun runningRaceResource(
     emotion: EmotionKind?,
     secondPose: Boolean,
-): DrawableResource? =
+): DrawableResource =
     when (emotion) {
         EmotionKind.Angry -> if (secondPose) Res.drawable.race_angry_b else Res.drawable.race_angry_a
         EmotionKind.Annoyed -> if (secondPose) Res.drawable.race_annoyed_b else Res.drawable.race_annoyed_a
         EmotionKind.Blocked -> if (secondPose) Res.drawable.race_blocked_b else Res.drawable.race_blocked_a
-        EmotionKind.Defeated -> if (secondPose) Res.drawable.race_defeated_b else Res.drawable.race_defeated_a
+        EmotionKind.Defeated, null -> if (secondPose) Res.drawable.race_defeated_b else Res.drawable.race_defeated_a
         EmotionKind.Tired -> if (secondPose) Res.drawable.race_tired_b else Res.drawable.race_tired_a
-        null -> null
     }
 
 private data class RunningPose(
@@ -86,29 +82,22 @@ internal fun RunningRaceCharacter(
         }
     val pose = if (!stopped && visible) phase.value else stillPose
     val resource = runningRaceResource(emotion, pose.secondImage)
-    val characterColor = MaterialTheme.appColors.press.runningCharacter
     val visibilityModifier =
         if (clock == null) {
             modifier
         } else {
             modifier.onGloballyPositioned { coordinates ->
-                val next = emotion != null && raceCharacterVisible(coordinates.boundsInWindow(), clock.viewport.value)
+                val next = raceCharacterVisible(coordinates.boundsInWindow(), clock.viewport.value)
                 if (visible != next) visible = next
             }
         }
-    if (resource == null) {
-        Canvas(visibilityModifier) {
-            drawCircle(characterColor, radius = size.minDimension * 0.22f)
-        }
-    } else {
-        Image(
-            painter = painterResource(resource),
-            contentDescription = null,
-            modifier =
-                visibilityModifier.graphicsLayer {
-                    translationY = if (stopped || !visible) 0f else pose.bounce.dp.toPx()
-                    rotationZ = if (stopped || !visible) 0f else pose.lean
-                },
-        )
-    }
+    Image(
+        painter = painterResource(resource),
+        contentDescription = null,
+        modifier =
+            visibilityModifier.graphicsLayer {
+                translationY = if (stopped || !visible) 0f else pose.bounce.dp.toPx()
+                rotationZ = if (stopped || !visible) 0f else pose.lean
+            },
+    )
 }
