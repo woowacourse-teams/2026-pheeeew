@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -29,6 +32,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.MotionDurationScale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -108,12 +112,15 @@ internal fun PressEventRankingScreen(
                             when {
                                 !state.configured -> Text("이벤트 준비 중이에요", color = MaterialTheme.colorScheme.appMutedText)
                                 state.rankingLoading -> Text("순위를 불러오고 있어요")
-                                state.rankingError -> TextButton(onClick = onRefresh) { Text("순위를 불러오지 못했어요 · 다시 시도") }
+                                state.rankingError -> Unit
                                 state.rankedAt != null && rows.isEmpty() -> Text("아직 참여 기록이 없어요. 첫 도전을 시작해 보세요!")
                                 else -> Unit
                             }
                         }
                         item { PressRaceHeader(40.dp, 72.dp) }
+                        if (state.configured && state.rankingError && !state.rankingLoading) {
+                            item { RankingErrorContent(onRetry = onRefresh, Modifier.padding(vertical = 24.dp)) }
+                        }
                         items(rows, key = { requireNotNull(it.publicId) }) { row ->
                             PressRaceRow(
                                 row,
@@ -172,6 +179,28 @@ internal fun PressEventRankingScreen(
     }
 }
 
+@Composable
+private fun RankingErrorContent(
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val ink = MaterialTheme.colorScheme.appInk
+    Column(
+        modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text("순위를 불러오지 못했어요", color = ink, fontSize = 14.sp)
+        Button(
+            onClick = onRetry,
+            shape = RoundedCornerShape(50.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = ink, contentColor = Color.White),
+        ) {
+            Text("다시시도", fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
 @Preview(name = "이벤트 순위", widthDp = 360, heightDp = 800)
 @Composable
 private fun PressEventRankingPreview() {
@@ -186,4 +215,10 @@ private fun PressEventRankingPreview() {
 @Composable
 private fun PressEventEmptyRankingPreview() {
     AppTheme { PressEventRankingScreen(PressEventViewState(), {}, {}, {}, {}) }
+}
+
+@Preview(name = "이벤트 순위 불러오기 실패", widthDp = 360, heightDp = 800)
+@Composable
+private fun PressEventRankingErrorPreview() {
+    AppTheme { PressEventRankingScreen(PressEventViewState(configured = true, rankingError = true), {}, {}, {}, {}) }
 }
