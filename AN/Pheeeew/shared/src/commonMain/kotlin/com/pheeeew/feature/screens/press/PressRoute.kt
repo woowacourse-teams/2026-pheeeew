@@ -13,6 +13,7 @@ import dev.zacsweers.metrox.viewmodel.metroViewModel
 @Composable
 internal fun PressRoute(
     onOpenRanking: () -> Unit,
+    onOpenEvent: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: PressViewModel = metroViewModel()
@@ -30,6 +31,7 @@ internal fun PressRoute(
             accepted
         },
         onOpenRanking = onOpenRanking,
+        onOpenEvent = onOpenEvent,
         soundPlayer = soundPlayer,
         modifier = modifier.pressRaceDrawMeasurement(uiState.frameKey, viewModel::onFrameDrawn),
         nearbyRanking = uiState.nearbyRanking,

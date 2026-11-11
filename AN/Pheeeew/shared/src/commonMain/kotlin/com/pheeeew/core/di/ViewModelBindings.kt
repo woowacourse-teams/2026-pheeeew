@@ -6,6 +6,7 @@ import com.pheeeew.feature.screens.map.detail.EmotionDetailViewModel
 import com.pheeeew.feature.screens.map.nearby.NearbyEmotionViewModel
 import com.pheeeew.feature.screens.map.record.MapRecordViewModel
 import com.pheeeew.feature.screens.press.PressViewModel
+import com.pheeeew.feature.screens.pressevent.PressEventViewModel
 import com.pheeeew.feature.screens.ranking.press.DailyPressRankingViewModel
 import com.pheeeew.feature.screens.ranking.press.PressRankingViewModel
 import com.pheeeew.feature.screens.settings.AppEntryViewModel
@@ -26,6 +27,7 @@ internal interface ViewModelBindings {
         pressRanking: () -> PressRankingViewModel,
         collection: () -> CollectionViewModel,
         dailyPressRanking: () -> DailyPressRankingViewModel.Factory,
+        pressEvent: () -> PressEventViewModel.Factory,
         mapFactory: () -> MapViewModel.Factory,
     ): MetroViewModelFactory =
         AppViewModelFactory(
@@ -43,6 +45,7 @@ internal interface ViewModelBindings {
             mapOf(
                 MapViewModel.Factory::class to mapFactory,
                 DailyPressRankingViewModel.Factory::class to dailyPressRanking,
+                PressEventViewModel.Factory::class to pressEvent,
             ),
         )
 }

@@ -61,6 +61,7 @@ import com.pheeeew.core.navigation.FlowBackHandler
 import com.pheeeew.core.navigation.MapRootDestination
 import com.pheeeew.core.navigation.NotificationClickRouter
 import com.pheeeew.core.navigation.NotificationDestination
+import com.pheeeew.core.navigation.PressEventDestination
 import com.pheeeew.core.navigation.PressRootDestination
 import com.pheeeew.core.navigation.RankingRootDestination
 import com.pheeeew.core.notification.InitialNotificationPermissionRequest
@@ -112,6 +113,7 @@ import com.pheeeew.feature.screens.map.symbolImageKey
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
 import com.pheeeew.feature.screens.press.PressRaceLifecycleEffect
 import com.pheeeew.feature.screens.press.PressRoute
+import com.pheeeew.feature.screens.pressevent.PressEventRoute
 import com.pheeeew.feature.screens.ranking.press.DailyPressRankingRoute
 import com.pheeeew.feature.screens.ranking.press.PressRankingRoute
 import com.pheeeew.feature.screens.report.ReportRoute
@@ -1012,6 +1014,16 @@ private fun AppContent(
                     if (!mainFeaturesReady) return@composable
                     CompositionLocalProvider(LocalFeatureGuideAnchorReporter provides guideAnchorReporter) {
                         PressRoute(
+                            onOpenEvent = {
+                                if (navController.currentDestination?.hasRoute<PressRootDestination>() == true) {
+                                    navController.navigate(
+                                        PressEventDestination(eventId = "a5c3cffd-4ccf-4480-8cfe-d3a6605fef57"),
+                                    ) {
+                                        launchSingleTop =
+                                            true
+                                    }
+                                }
+                            },
                             onOpenRanking = {
                                 if (navController.currentDestination?.hasRoute<PressRootDestination>() == true) {
                                     navController.navigate(RankingRootDestination) { launchSingleTop = true }
@@ -1020,6 +1032,17 @@ private fun AppContent(
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
+                }
+
+                composable<PressEventDestination> { entry ->
+                    if (!mainFeaturesReady) return@composable
+                    PressEventRoute(
+                        eventId = entry.toRoute<PressEventDestination>().eventId,
+                        sessionGeneration = sessionGeneration,
+                        onBack = {
+                            if (navController.currentBackStackEntry == entry) navController.popBackStack()
+                        },
+                    )
                 }
 
                 composable<CollectionRootDestination> {
