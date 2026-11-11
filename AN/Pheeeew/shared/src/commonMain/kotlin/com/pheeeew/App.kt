@@ -280,6 +280,7 @@ private fun AppContent(
     var mapVisible by remember { mutableStateOf(false) }
     var mapMounted by remember { mutableStateOf(false) }
     var mapEntryPresent by remember { mutableStateOf(false) }
+    var pressEventEntryPresent by remember { mutableStateOf(false) }
     var savedMapCamera by remember { mutableStateOf<MapCameraSnapshotUiModel?>(null) }
     val splashAnimationDuration = AppStartupViewModel.MINIMUM_SPLASH_MILLIS.toFloat()
     val splashProgress =
@@ -1035,6 +1036,11 @@ private fun AppContent(
                 }
 
                 composable<PressEventDestination> { entry ->
+                    // Stays composed during the exit fade; keeps the bottom bar hidden until it is gone.
+                    DisposableEffect(Unit) {
+                        pressEventEntryPresent = true
+                        onDispose { pressEventEntryPresent = false }
+                    }
                     if (!mainFeaturesReady) return@composable
                     PressEventRoute(
                         eventId = entry.toRoute<PressEventDestination>().eventId,
@@ -1162,7 +1168,7 @@ private fun AppContent(
                 )
             }
 
-            if (selectedDestination != null && reportTarget == null && !isSettingsVisible &&
+            if (selectedDestination != null && !pressEventEntryPresent && reportTarget == null && !isSettingsVisible &&
                 !nearbyState.visible && !isEmotionRecordFlowActive
             ) {
                 AppBottomNavigationBar(
