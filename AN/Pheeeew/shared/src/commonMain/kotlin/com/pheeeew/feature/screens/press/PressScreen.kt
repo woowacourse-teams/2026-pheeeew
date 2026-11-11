@@ -10,8 +10,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -46,8 +48,10 @@ import com.pheeeew.feature.screens.press.component.PressNearbyRankingCard
 import com.pheeeew.feature.screens.press.component.PressRankingEntry
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.ic_arrow_forward
 import pheeeew.shared.generated.resources.press_count_unavailable
 import pheeeew.shared.generated.resources.press_race_input_recovery_required
 import pheeeew.shared.generated.resources.press_screen_subtitle
@@ -107,9 +111,23 @@ internal fun PressScreen(
                         modifier = Modifier.weight(1f),
                     )
                     TextButton(onClick = onOpenEvent) {
-                        Text("🎉", fontSize = 16.sp)
-                        Spacer(Modifier.width(6.dp))
-                        Text("이벤트", fontFamily = font, fontWeight = FontWeight.Bold)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("🎉", fontSize = 16.sp)
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                "이벤트",
+                                color = MaterialTheme.colorScheme.appTextPrimary,
+                                fontFamily = font,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Icon(
+                                painter = painterResource(Res.drawable.ic_arrow_forward),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.appTextPrimary,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
                     }
                 }
                 Spacer(Modifier.height(AppSpacing.xs.dp))

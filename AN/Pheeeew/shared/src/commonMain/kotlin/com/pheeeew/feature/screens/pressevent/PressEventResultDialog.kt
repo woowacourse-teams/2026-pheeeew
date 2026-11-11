@@ -78,7 +78,7 @@ private fun PressEventResultContent(
             )
             val message =
                 when (status) {
-                    EventSubmissionStatus.Submitted -> "순위 ${result?.rank ?: "—"}위"
+                    EventSubmissionStatus.Submitted -> "현재 순위 ${result?.rank ?: "—"}위"
                     EventSubmissionStatus.Failed -> "결과를 제출하지 못했어요"
                     EventSubmissionStatus.TimedOut -> "응답이 늦어지고 있어요"
                     EventSubmissionStatus.Conflict -> "이미 다른 횟수로 제출된 도전이에요"
