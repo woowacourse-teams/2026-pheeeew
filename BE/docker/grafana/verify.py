@@ -1,4 +1,4 @@
-"""실제 대시보드 지연·표본 수 쿼리의 무호출 처리와 집계 의미를 promtool로 검증한다."""
+"""실제 대시보드 쿼리와 개발 지도 캐시 알림 식의 무호출 처리와 집계 의미를 promtool로 검증한다."""
 
 import json
 from pathlib import Path
@@ -68,7 +68,8 @@ def map_request_tests(panels, environment):
             expected_counts[key] = expected_counts.get(key, 0) + step * 5
         expressions = [{"expr": count_target["expr"].replace("$__range", "5m"), "eval_time": "10m",
                         "exp_samples": [{"labels": key, "value": value} for key, value in expected_counts.items()]}]
-        for target in panels[162]["targets"]:
+        # 162는 운영 JSON에만 남아 있다(개발은 #1181에서 삭제).
+        for target in panels[162]["targets"] if 162 in panels else ():
             expected = []
             for instance in sorted({tags["instance"] for tags, _ in selected}):
                 valid = [(tags, step) for tags, step in selected
@@ -219,12 +220,22 @@ def fixture(prefix, dimensions, environment, outcome, instance, count, total, lo
     return series
 
 
-def sample_count_tests(panel, environment):
-    assert panel["type"] == "stat"
-    assert panel["fieldConfig"]["defaults"]["noValue"] == "데이터 없음"
-    assert panel["options"]["reduceOptions"]["calcs"] == ["last"]
+def sample_count_tests(panels, environment):
+    """운영은 한 stat 패널(130)의 B·C, 개발은 Region(130)·개인 Press(131) 막대 패널의 단일 쿼리다."""
+    if environment == "prod":
+        panel_ids = (130,)
+        assert panels[130]["type"] == "stat"
+        assert panels[130]["options"]["reduceOptions"]["calcs"] == ["last"]
+        pairs = list(zip(panels[130]["targets"], ("B", "C"), strict=True))
+    else:
+        panel_ids = (130, 131)
+        assert panels[130]["type"] == panels[131]["type"] == "barchart"
+        assert all(len(panels[panel_id]["targets"]) == 1 for panel_id in panel_ids)
+        pairs = [(panels[130]["targets"][0], "B"), (panels[131]["targets"][0], "C")]
+        assert all(target["format"] == "table" for target, _ in pairs)
+    assert all(panels[panel_id]["fieldConfig"]["defaults"]["noValue"] == "데이터 없음" for panel_id in panel_ids)
     tests = []
-    for target, ref in zip(panel["targets"], ("B", "C"), strict=True):
+    for target, ref in pairs:
         assert target["instant"] and not target["range"]
         assert target["interval"] == "1m"
         prefix, dimensions = FAMILIES[ref]
@@ -354,8 +365,180 @@ def connection_timeout_tests(panel, environment):
     return tests
 
 
+MAP_CACHE_INSTANCES = ("pheeeew-dev-blue", "pheeeew-dev-green")
+
+
+def map_cache_series(metric, values, step_of, others=(dict(environment="prod"), dict(job="other"),
+                                                     dict(instance="pheeeew-dev")), **extra):
+    """개발 blue·green 값과, 선택되면 안 되는 다른 환경·job·인스턴스 시계열을 만든다."""
+    series = []
+    for instance in MAP_CACHE_INSTANCES:
+        for tags, step in values(instance):
+            series.append({"series": metric + labels(dict(job="pheeeew-api", environment="dev",
+                                                          instance=instance) | tags | extra),
+                           "values": step_of(step)})
+    for other in others:
+        for tags, _ in values(MAP_CACHE_INSTANCES[0]):
+            series.append({"series": metric + labels(dict(job="pheeeew-api", environment="dev",
+                                                          instance=MAP_CACHE_INSTANCES[0]) | tags | extra | other),
+                           "values": step_of(100000)})
+    return series
+
+
+def map_cache_panel_tests(panels):
+    """07 지도 캐시: 핀 후보 수(202), 재집계 시간(205). 미수집은 빈 값, 미호출 평균은 빈 값이다."""
+    assert panels[202]["fieldConfig"]["defaults"]["unit"] == "short"
+    assert panels[205]["fieldConfig"]["defaults"]["unit"] == "s"
+    gauge = lambda step: f"{step}+0x10"
+    counter = lambda step: f"0+{step}x10"
+    tests = []
+    for scenario in ("absent", "idle", "observed"):
+        def value(observed):
+            return 0 if scenario == "idle" else observed
+        candidates = {"pheeeew-dev-blue": 120, "pheeeew-dev-green": 10000}
+        scanned = {"pheeeew-dev-blue": (1, 10, 12), "pheeeew-dev-green": (3, 90, 9000)}
+        rebuild = {("pheeeew-dev-blue", "pins"): (1, 2, 2.5), ("pheeeew-dev-green", "pins"): (1, 4, 4.5),
+                   ("pheeeew-dev-blue", "regions"): (2, 1, 0.75)}
+        series = []
+        if scenario != "absent":
+            series += map_cache_series("pheeeew_map_cache_candidates",
+                                       lambda instance: [({"cache": "pins"}, value(candidates[instance]))], gauge)
+            for suffix, index, shape in (("count", 0, counter), ("sum", 1, counter), ("max", 2, gauge)):
+                series += map_cache_series(f"pheeeew_map_cache_pin_scanned_{suffix}",
+                                           lambda instance: [({}, value(scanned[instance][index]))], shape)
+                series += map_cache_series(
+                    f"pheeeew_map_cache_rebuild_seconds_{suffix}",
+                    lambda instance: [({"cache": cache}, value(numbers[index]))
+                                      for (owner, cache), numbers in rebuild.items() if owner == instance], shape)
+
+        def raw(metric, rows):
+            if scenario == "absent":
+                return []
+            return [{"labels": labels(dict(__name__=metric, job="pheeeew-api", environment="dev",
+                                           instance=instance) | tags), "value": value(number)}
+                    for instance, tags, number in rows]
+
+        observed = scenario == "observed"
+        expected = {
+            (202, "A"): raw("pheeeew_map_cache_candidates",
+                            [(instance, {"cache": "pins"}, number) for instance, number in candidates.items()]),
+            # 인스턴스를 합친 조회당 평균: (10 + 90) / (1 + 3)
+            (202, "B"): [{"labels": "{}", "value": 25}] if observed else [],
+            (202, "C"): raw("pheeeew_map_cache_pin_scanned_max",
+                            [(instance, {}, numbers[2]) for instance, numbers in scanned.items()]),
+            # cache별 평균: pins (2 + 4) / 2, regions 1 / 2
+            (205, "A"): [{"labels": labels({"cache": "pins"}), "value": 3},
+                         {"labels": labels({"cache": "regions"}), "value": 0.5}] if observed else [],
+            (205, "B"): raw("pheeeew_map_cache_rebuild_seconds_max",
+                            [(instance, {"cache": cache}, numbers[2])
+                             for (instance, cache), numbers in rebuild.items()]),
+        }
+        for (panel_id, ref), samples in expected.items():
+            target, = [target for target in panels[panel_id]["targets"] if target["refId"] == ref]
+            assert target["range"] and not target["instant"]
+            tests.append({"name": f"dev/map-cache/{panel_id}/{ref}/{scenario}", "interval": "1m",
+                          "input_series": series, "promql_expr_test": [{
+                              "expr": target["expr"].replace("$__rate_interval", "5m"),
+                              "eval_time": "10m", "exp_samples": samples}]})
+    return tests
+
+
+MAP_CACHE_ALERTS = {
+    # uid: (임계값, 대기 시간)
+    "eg3yackgk9q0wc": (0, "0s"),  # 지도 캐시 갱신 실패
+    "eg3yacktlqn0ge": (3, "1m"),  # 지도 캐시 등록 반영 지연
+    "ag3yacl9z2olcc": (1, "0s"),  # 지도 쓰기 잠금 대기
+}
+
+
+def map_cache_alert_rules():
+    """저장소에 기록한 Cloud 알림을 Prometheus 규칙으로 옮긴다. Grafana의 Last > 임계값과 같은 판정이다."""
+    group, = json.loads((DIRECTORY / "pheeeew-dev-map-cache-alerts.json").read_text())["groups"]
+    assert (group["name"], group["folder"], group["interval"]) == ("pheeeew-discord", "Pheeeew", "1m")
+    rules = {}
+    for rule in group["rules"]:
+        query, condition = rule["data"]
+        assert rule["condition"] == condition["refId"] == "C" and query["refId"] == "A"
+        assert query["datasourceUid"] == "${DS_PROMETHEUS}" and query["model"]["instant"]
+        model = condition["model"]
+        assert model["type"] == "threshold" and model["expression"] == "A"
+        evaluator, = [item["evaluator"] for item in model["conditions"]]
+        threshold, wait = MAP_CACHE_ALERTS[rule["uid"]]
+        assert evaluator == {"params": [threshold], "type": "gt"} and rule["for"] == wait
+        assert (rule["noDataState"], rule["execErrState"]) == ("OK", "Error")
+        assert rule["labels"] == {"environment": "dev", "service": "pheeeew", "severity": "warning"}
+        assert rule["notification_settings"] == {"receiver": "pheeeew-dev-alerts"} and not rule["isPaused"]
+        rules[rule["uid"]] = {"alert": rule["uid"], "expr": f"({query['model']['expr']}) > {threshold}",
+                              "for": wait}
+    assert rules.keys() == MAP_CACHE_ALERTS.keys()
+    return {"groups": [{"name": "pheeeew-dev-map-cache", "interval": "1m", "rules": list(rules.values())}]}
+
+
+def map_cache_alert_tests(rules):
+    """알림 식은 인스턴스를 거르지 않으므로 다른 환경·job만 제외 대상이다."""
+    def alert_series(metric, values, step_of):
+        return map_cache_series(metric, values, step_of, (dict(environment="prod"), dict(job="other")))
+    expressions = {rule["alert"]: rule["expr"].rsplit(" > ", 1)[0] for rule in rules["groups"][0]["rules"]}
+    blue, green = MAP_CACHE_INSTANCES
+    gauge = lambda step: f"{step}+0x20"
+    flat = lambda step: "0+0x20"
+    once = lambda step: f"0x5 {step}+0x15"  # 5분에 한 번 증가
+    late = lambda step: f"0x7 {step}+0x12"  # 8분부터 임계값 초과
+    cases = {
+        "eg3yackgk9q0wc": {
+            "idle": (alert_series("pheeeew_map_cache_failures_total", lambda i: [({"cache": "pins"}, 0)], flat)
+                     + alert_series("pheeeew_map_cache_maintenance_seconds_count",
+                                        lambda i: [({"result": "success"}, 0), ({"result": "failed"}, 0)], flat),
+                     0, ()),
+            # 성공·건너뜀 보정과 다른 환경의 실패는 세지 않는다.
+            "maintenance_success_only": (alert_series("pheeeew_map_cache_maintenance_seconds_count",
+                                                          lambda i: [({"result": "success"}, 1),
+                                                                     ({"result": "busy"}, 1)], once)
+                                         + alert_series("pheeeew_map_cache_failures_total",
+                                                            lambda i: [({"cache": "pins"}, 0)], flat), 0, ()),
+            # blue 재생성 실패 1회 + green 보정 실패 1회. 10분 창이 지나면 해소된다.
+            "failed": (alert_series("pheeeew_map_cache_failures_total",
+                                        lambda i: [({"cache": "regions"}, 1 if i == blue else 0)], once)
+                       + alert_series("pheeeew_map_cache_maintenance_seconds_count",
+                                          lambda i: [({"result": "failed"}, 1 if i == green else 0)], once),
+                       2, ("8m", "9m", "10m")),
+        },
+        "eg3yacktlqn0ge": {
+            "idle": (alert_series("pheeeew_map_cache_pending_age_seconds",
+                                      lambda i: [({"cache": "pins"}, 0), ({"cache": "regions"}, 0)], gauge), 0, ()),
+            "at_threshold": (alert_series("pheeeew_map_cache_pending_age_seconds",
+                                              lambda i: [({"cache": "pins"}, 3)], gauge), 3, ()),
+            # green만 5초. 8분부터 넘으면 8분은 대기 중, 9분부터 알림이다.
+            "delayed": (alert_series("pheeeew_map_cache_pending_age_seconds",
+                                         lambda i: [({"cache": "pins"}, 5 if i == green else 0.5)], late),
+                        5, ("9m", "10m", "20m")),
+        },
+        "ag3yacl9z2olcc": {
+            "idle": (alert_series("pheeeew_map_cache_lock_wait_seconds_max", lambda i: [({}, 0.2)], gauge),
+                     0.2, ()),
+            "at_threshold": (alert_series("pheeeew_map_cache_lock_wait_seconds_max", lambda i: [({}, 1)],
+                                              gauge), 1, ()),
+            "waiting": (alert_series("pheeeew_map_cache_lock_wait_seconds_max",
+                                         lambda i: [({}, 1.5 if i == blue else 0.2)], gauge), 1.5, ("8m", "9m", "10m", "20m")),
+        },
+    }
+    tests = []
+    for uid, scenarios in cases.items():
+        scenarios = {"absent": ([], 0, ())} | scenarios
+        for scenario, (series, value, firing) in scenarios.items():
+            tests.append({
+                "name": f"dev/map-cache-alert/{uid}/{scenario}", "interval": "1m", "input_series": series,
+                "promql_expr_test": [{"expr": expressions[uid], "eval_time": "10m",
+                                      "exp_samples": [{"labels": "{}", "value": value}]}],
+                "alert_rule_test": [{"eval_time": time, "alertname": uid,
+                                     "exp_alerts": [{}] if time in firing else []}
+                                    for time in ("8m", "9m", "10m", "20m")]})
+    return tests
+
+
 def verify():
     tests = []
+    alert_rules = map_cache_alert_rules()
     for environment in ("prod", "dev"):
         dashboard = json.loads((DIRECTORY / f"pheeeew-{environment}-v2.json").read_text())
         panels = {panel["id"]: panel for panel in dashboard["panels"]}
@@ -365,14 +548,19 @@ def verify():
         assert not ({18, 19, 123} & panels.keys())
         assert "pheeeew_app_version_checks" not in json.dumps(dashboard, ensure_ascii=False)
         assert panels[161]["type"] == "table"
-        assert all(target["instant"] and not target["range"] for target in panels[162]["targets"])
-        assert panels[162]["fieldConfig"]["defaults"]["unit"] == "percent"
         if environment == "dev":
+            # Cloud 버전 23에서 지운 패널: 기본 한 달·캐시 우회 비중(162), 기간 결과 캐시 적중률(168)
+            assert not ({162, 168} & panels.keys())
+            assert [panels[panel_id]["type"] for panel_id in (217, 202, 205)] == ["row", "timeseries", "timeseries"]
+            tests.extend(map_cache_panel_tests(panels))
+            tests.extend(map_cache_alert_tests(alert_rules))
             assert panels[167]["type"] == "logs"
             assert panels[167]["targets"][0]["expr"] == (
                 '{job="pheeeew-api",environment="dev",event="map_read_sample"}'
                 ' | json | apiVersion = "v4" | verification != "true"')
         else:
+            assert all(target["instant"] and not target["range"] for target in panels[162]["targets"])
+            assert panels[162]["fieldConfig"]["defaults"]["unit"] == "percent"
             assert 167 not in panels
         tests.extend(map_request_tests(panels, environment))
         tests.extend(map_filter_rate_tests(panels[169], environment))
@@ -380,7 +568,7 @@ def verify():
         tests.extend(map_diagnostic_tests(panels[166], environment))
         tests.extend(connection_time_tests(panels[141], environment))
         tests.extend(connection_timeout_tests(panels[142], environment))
-        tests.extend(sample_count_tests(panels[130], environment))
+        tests.extend(sample_count_tests(panels, environment))
         for panel_id in (117, 118, 119):
             panel = panels[panel_id]
             assert panel["fieldConfig"]["defaults"]["unit"] == "s"
@@ -411,6 +599,9 @@ def verify():
                         for item in wrong_job:
                             item["series"] = item["series"].replace('job="pheeeew-api"', 'job="other"')
                         series += wrong_job
+                    if ref == "A" and "clamp_min(" in expression and scenario in ("idle", "errors_only"):
+                        # 개발 Cloud 117은 분모를 clamp_min으로 바꿔 성공 호출이 없으면 빈 값 대신 0을 표시한다.
+                        expected = [{"labels": "{" + labels + "}", "value": 0}]
                     if scenario == "weighted":
                         series += fixture(*args, success, "a", 1, 1, 1)
                         series += fixture(*args, success, "b", 3, 9, 0)
@@ -431,12 +622,17 @@ def verify():
                                                         "exp_samples": expected}]})
     with tempfile.TemporaryDirectory(prefix="pheeeew-grafana-") as temporary:
         path = Path(temporary) / "latency-tests.json"
+        (Path(temporary) / "map-cache-alerts.json").write_text(json.dumps(alert_rules))
         # promtool 공식 fuzzy_compare: 가수부 마지막 비트 차이만 허용한다.
-        path.write_text(json.dumps({"evaluation_interval": "1m", "fuzzy_compare": True, "tests": tests}))
+        path.write_text(json.dumps({"rule_files": ["map-cache-alerts.json"], "evaluation_interval": "1m",
+                                    "fuzzy_compare": True, "tests": tests}))
         subprocess.run(["docker", "run", "--rm", "--network", "none", "--entrypoint", "/bin/promtool",
                         "-v", f"{temporary}:/fixtures:ro", IMAGE, "test", "rules",
                         "/fixtures/latency-tests.json"], check=True, timeout=60)
-    print(f"대시보드 지연·표본 수 쿼리 검증 통과: {len(tests)}개 사례")
+        subprocess.run(["docker", "run", "--rm", "--network", "none", "--entrypoint", "/bin/promtool",
+                        "-v", f"{temporary}:/fixtures:ro", IMAGE, "check", "rules",
+                        "/fixtures/map-cache-alerts.json"], check=True, timeout=60)
+    print(f"대시보드 쿼리·지도 캐시 알림 검증 통과: {len(tests)}개 사례")
 
 
 if __name__ == "__main__":
