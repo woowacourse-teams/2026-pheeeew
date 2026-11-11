@@ -32,6 +32,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.ActiveProfiles;
 import tools.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 
 @Import({SharedPostgisTestConfiguration.class, SharedJwtTestConfiguration.class})
@@ -124,8 +125,7 @@ class RegionMapCompressionIntegrationTest {
     void 캐시가_적중한_뒤에도_인증과_지역_준비_검증을_우회하지_않는다() throws Exception {
         // given
         var first = send(REGIONS, "GET", true, "identity");
-        var hits = meters.counter("pheeeew.map.cache.requests", "cache", "regions", "result", "hit");
-        double before = hits.count();
+        double before = regionCacheHits();
 
         // when
         var cached = send(REGIONS, "GET", true, "identity");
@@ -136,7 +136,7 @@ class RegionMapCompressionIntegrationTest {
         // then
         assertThat(cached.statusCode()).isEqualTo(200);
         assertThat(cached.body()).isEqualTo(first.body());
-        assertThat(hits.count() - before).isEqualTo(1);
+        assertThat(regionCacheHits() - before).isEqualTo(1);
         assertThat(unavailable.statusCode()).isEqualTo(503);
         assertThat(mapper.readTree(unavailable.body()).get("code").asString()).isEqualTo("EMOTION-013");
         assertThat(unauthenticated.statusCode()).isEqualTo(401);
@@ -282,5 +282,10 @@ class RegionMapCompressionIntegrationTest {
         try (var stream = new GZIPInputStream(new ByteArrayInputStream(body))) {
             return stream.readAllBytes();
         }
+    }
+
+    private double regionCacheHits() {
+        return meters.find("pheeeew.map.read.requests").tags("route", "regions", "decision", "cache_hit").counters()
+                .stream().mapToDouble(Counter::count).sum();
     }
 }

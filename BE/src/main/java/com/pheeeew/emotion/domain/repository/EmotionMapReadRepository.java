@@ -23,7 +23,7 @@ public class EmotionMapReadRepository {
     public List<EmotionMapPin> findPins(Instant at, int maximum) {
         return jdbc.sql("""
                 SELECT id, device_id, created_at, ST_X(location) AS longitude, ST_Y(location) AS latitude,
-                       state, rotation_degrees, group_stamp_id
+                       state, rotation_degrees, group_stamp_id, audio_object_key IS NOT NULL AS audio, region_code
                 FROM emotions
                 WHERE deleted_at IS NULL AND (memo IS NOT NULL OR audio_object_key IS NOT NULL)
                   AND created_at <= :at
@@ -33,7 +33,8 @@ public class EmotionMapReadRepository {
                 .query((row, index) -> EmotionMapPin.of(row.getLong("id"), row.getObject("device_id", Long.class),
                         row.getTimestamp("created_at").toInstant(), row.getDouble("longitude"), row.getDouble("latitude"),
                         row.getString("state") == null ? null : EmotionState.valueOf(row.getString("state")),
-                        row.getDouble("rotation_degrees"), row.getObject("group_stamp_id", Long.class))).list();
+                        row.getDouble("rotation_degrees"), row.getObject("group_stamp_id", Long.class),
+                        row.getBoolean("audio"), row.getString("region_code"))).list();
     }
 
     public Instant findNextPinActivation(Instant at) {
@@ -50,15 +51,17 @@ public class EmotionMapReadRepository {
     public List<RegionEmotionStateCount> findRegionStateCounts(Instant snapshotAt) {
         return jdbc.sql("""
                 SELECT left(region_code, 5) AS code, (created_at AT TIME ZONE 'Asia/Seoul')::date AS day, state,
+                    audio_object_key IS NOT NULL AS audio,
                     COUNT(*) FILTER (WHERE created_at <= :at) AS amount,
                     MIN(created_at) FILTER (WHERE created_at > :at) AS next_activation
                 FROM emotions
                 WHERE deleted_at IS NULL AND (memo IS NOT NULL OR audio_object_key IS NOT NULL)
-                GROUP BY left(region_code, 5), (created_at AT TIME ZONE 'Asia/Seoul')::date, state
+                GROUP BY left(region_code, 5), (created_at AT TIME ZONE 'Asia/Seoul')::date, state,
+                    audio_object_key IS NOT NULL
                 """).param("at", Timestamp.from(snapshotAt)).query((row, index) -> RegionEmotionStateCount.of(
                         row.getString("code"), row.getObject("day", LocalDate.class),
                         row.getString("state") == null ? null : EmotionState.valueOf(row.getString("state")),
-                        row.getLong("amount"), row.getTimestamp("next_activation") == null ? null
+                        row.getBoolean("audio"), row.getLong("amount"), row.getTimestamp("next_activation") == null ? null
                                 : row.getTimestamp("next_activation").toInstant())).list();
     }
 

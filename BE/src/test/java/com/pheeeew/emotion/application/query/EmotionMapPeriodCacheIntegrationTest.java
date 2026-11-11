@@ -17,7 +17,6 @@ import com.pheeeew.emotion.domain.repository.query.EmotionSearchFilter;
 import com.pheeeew.region.domain.RegionLevel;
 import com.pheeeew.report.application.EmotionReportService;
 import com.pheeeew.support.PostgisDataJpaTest;
-import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.FunctionCounter;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.sql.Timestamp;
@@ -99,15 +98,13 @@ class EmotionMapPeriodCacheIntegrationTest {
 
     @Test
     void 기간_지역_조회는_KST_날짜_경계로_캐시에서_집계한다() {
-        // given
-        double cacheRequests = cacheRequests("regions");
-
         // when
-        var result = queries.findRegionMap(BOUNDS, RegionLevel.SIDO, requester.getPublicId(), period());
+        var result = MapReadDecisions.regions(meters, () ->
+                queries.findRegionMap(BOUNDS, RegionLevel.SIDO, requester.getPublicId(), period()));
 
         // then
-        assertThat(result).singleElement().satisfies(item -> assertThat(item.summary().totalCount()).isEqualTo(2));
-        assertThat(cacheRequests("regions") - cacheRequests).isEqualTo(1);
+        assertThat(result.value()).singleElement().satisfies(item -> assertThat(item.summary().totalCount()).isEqualTo(2));
+        assertThat(result.cached()).isTrue();
     }
 
     @Test
@@ -188,35 +185,33 @@ class EmotionMapPeriodCacheIntegrationTest {
 
     @Test
     void 기간_핀_조회는_캐시_후보에서_기간_밖의_핀을_제외한다() {
-        // given
-        double cacheRequests = cacheRequests("pins");
-
         // when
-        var page = queries.findContentMapWithinBoundsV4(BOUNDS, requester.getPublicId(), start, end, null, null, null, 10);
+        var page = MapReadDecisions.pins(meters, () ->
+                queries.findContentMapWithinBoundsV4(BOUNDS, requester.getPublicId(), start, end, null, null, null, 10));
 
         // then
-        assertThat(page.items()).extracting(item -> item.id()).containsExactly(lastDay, firstDay);
-        assertThat(page.hasNext()).isFalse();
-        assertThat(cacheRequests("pins") - cacheRequests).isEqualTo(1);
+        assertThat(page.value().items()).extracting(item -> item.id()).containsExactly(lastDay, firstDay);
+        assertThat(page.value().hasNext()).isFalse();
+        assertThat(page.cached()).isTrue();
     }
 
     @Test
-    void 기본이_아닌_내용_필터의_기간_조회는_캐시를_사용하지_않는다() {
+    void 내용_필터의_기간_조회도_캐시에서_응답한다() {
         // given
-        double regions = cacheRequests("regions");
-        double pins = cacheRequests("pins");
         var memo = EmotionSearchFilter.of(start, end, EmotionContentFilter.MEMO, null, null);
 
         // when
-        var regionResult = queries.findRegionMap(BOUNDS, RegionLevel.SIDO, requester.getPublicId(), memo);
-        var pinResult = queries.findContentMapWithinBoundsV4(
-                BOUNDS, requester.getPublicId(), start, end, EmotionContentFilter.MEMO, null, null, 10);
+        var regionResult = MapReadDecisions.regions(meters, () ->
+                queries.findRegionMap(BOUNDS, RegionLevel.SIDO, requester.getPublicId(), memo));
+        var pinResult = MapReadDecisions.pins(meters, () -> queries.findContentMapWithinBoundsV4(
+                BOUNDS, requester.getPublicId(), start, end, EmotionContentFilter.MEMO, null, null, 10));
 
         // then
-        assertThat(regionResult).singleElement().satisfies(item -> assertThat(item.summary().totalCount()).isEqualTo(2));
-        assertThat(pinResult.items()).extracting(item -> item.id()).containsExactly(lastDay, firstDay);
-        assertThat(cacheRequests("regions")).isEqualTo(regions);
-        assertThat(cacheRequests("pins")).isEqualTo(pins);
+        assertThat(regionResult.value()).singleElement()
+                .satisfies(item -> assertThat(item.summary().totalCount()).isEqualTo(2));
+        assertThat(pinResult.value().items()).extracting(item -> item.id()).containsExactly(lastDay, firstDay);
+        assertThat(regionResult.cached()).isTrue();
+        assertThat(pinResult.cached()).isTrue();
     }
 
     private EmotionSearchFilter period() {
@@ -228,11 +223,6 @@ class EmotionMapPeriodCacheIntegrationTest {
         jdbc.sql("UPDATE emotions SET created_at = ? WHERE id = ?").params(Timestamp.from(createdAt), id).update();
 
         return id;
-    }
-
-    private double cacheRequests(String cache) {
-        return meters.find("pheeeew.map.cache.requests").tag("cache", cache).counters().stream()
-                .mapToDouble(Counter::count).sum();
     }
 
     private double periodResultHits() {

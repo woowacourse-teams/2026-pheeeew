@@ -94,7 +94,7 @@ public class MapCacheMaintenance implements AutoCloseable {
 
         if (work.future == null) {
             pending = null;
-            metrics.failed();
+            metrics.rejected();
         }
     }
 
@@ -127,16 +127,11 @@ public class MapCacheMaintenance implements AutoCloseable {
         } catch (RuntimeException failure) {
             // 원본 쓰기는 이미 완료됐다. 복구 실패는 SQL 응답과 제한된 재시도로 처리한다.
         } finally {
-            metrics.recordRun(began);
+            metrics.recordRun(began, result);
         }
 
         synchronized (state) {
             if (!Boolean.TRUE.equals(result)) {
-                if (result == null) {
-                    metrics.busy();
-                } else {
-                    metrics.failed();
-                }
                 if (!closed && pending == null && work.attempt < RETRY_DELAYS.size()) {
                     schedule(work.attempt + 1, RETRY_DELAYS.get(work.attempt));
                 }

@@ -150,10 +150,10 @@ class EmotionMapCacheHandoffIntegrationTest {
                     assertThat(writesStarted.await(5, TimeUnit.SECONDS)).isTrue();
 
                     // then: DB 기준선이 막혀 있어도 이미 게시한 집계 조회는 진행한다.
-                    double regionHits = hits("regions");
-                    var warm = CompletableFuture.supplyAsync(this::regions, workers).get(5, TimeUnit.SECONDS);
-                    assertThat(warm.getFirst().summary().totalCount()).isEqualTo(1);
-                    assertThat(hits("regions") - regionHits).isEqualTo(1);
+                    var warm = CompletableFuture.supplyAsync(() -> MapReadDecisions.regions(meters, this::regions), workers)
+                            .get(5, TimeUnit.SECONDS);
+                    assertThat(warm.value().getFirst().summary().totalCount()).isEqualTo(1);
+                    assertThat(warm.decision()).isEqualTo("cache_hit");
                     assertThat(rebuilding).isNotDone();
                     assertThat(deleting).isNotDone();
                     assertThat(registering).isNotDone();
@@ -166,16 +166,16 @@ class EmotionMapCacheHandoffIntegrationTest {
             Emotion added = registering.get(5, TimeUnit.SECONDS);
             clock.advance(Duration.ofSeconds(1));
             tasks.runDueTasks();
-            double regionHits = hits("regions");
-            double pinHits = hits("pins");
+            var regionRead = MapReadDecisions.regions(meters, this::regions);
+            var pinRead = MapReadDecisions.pins(meters, this::pins);
 
-            assertThat(regions()).singleElement().satisfies(region -> {
+            assertThat(regionRead.value()).singleElement().satisfies(region -> {
                 assertThat(region.summary().totalCount()).isEqualTo(1);
                 assertThat(region.summary().representativeState()).isEqualTo(EmotionState.DISCOURAGED);
             });
-            assertThat(pins().items()).singleElement().satisfies(pin -> assertThat(pin.id()).isEqualTo(added.getId()));
-            assertThat(hits("regions") - regionHits).isEqualTo(1);
-            assertThat(hits("pins") - pinHits).isEqualTo(1);
+            assertThat(pinRead.value().items()).singleElement().satisfies(pin -> assertThat(pin.id()).isEqualTo(added.getId()));
+            assertThat(regionRead.decision()).isEqualTo("cache_hit");
+            assertThat(pinRead.decision()).isEqualTo("cache_hit");
         } finally {
             workers.shutdownNow();
             assertThat(workers.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
@@ -195,14 +195,14 @@ class EmotionMapCacheHandoffIntegrationTest {
             maintenance.requestRebuild();
             tasks.runDueTasks();
         }
-        double before = hits("pins");
 
         // when: 첫 페이지와 다음 페이지의 조회 원천을 바꾼다.
-        var first = cacheFirst
+        var firstRead = MapReadDecisions.pins(meters, () -> cacheFirst
                 ? queries.findContentMapWithinBoundsV4(BOUNDS, requester.getPublicId(), null, null, null, null, null, pageSize)
                 : new TransactionTemplate(transactions).execute(status ->
-                        queries.findContentMapWithinBoundsV4(BOUNDS, requester.getPublicId(), null, null, null, null, null, pageSize));
-        assertThat(hits("pins") - before).isEqualTo(cacheFirst ? 1 : 0);
+                        queries.findContentMapWithinBoundsV4(BOUNDS, requester.getPublicId(), null, null, null, null, null, pageSize)));
+        var first = firstRead.value();
+        assertThat(firstRead.decision()).isEqualTo(cacheFirst ? "cache_hit" : "bypass_transaction");
         emotionBlocks.save(EmotionBlock.builder().blockerDeviceId(requester.getId()).emotionId(originalId).build());
         if (cacheFirst) {
             tasks.shutdown();
@@ -210,13 +210,12 @@ class EmotionMapCacheHandoffIntegrationTest {
             maintenance.requestRebuild();
             tasks.runDueTasks();
         }
-        before = hits("pins");
-        double fallbackBefore = pinFallbacks();
-        var next = queries.findContentMapWithinBoundsV4(null, requester.getPublicId(), null, null, null, null, first.nextCursor(), 1);
+        var nextRead = MapReadDecisions.pins(meters, () -> queries.findContentMapWithinBoundsV4(
+                null, requester.getPublicId(), null, null, null, null, first.nextCursor(), 1));
+        var next = nextRead.value();
 
         // then: 오래된 originalId는 새 차단으로 제외하고 나머지는 누락·중복 없이 이어진다.
-        assertThat(hits("pins") - before).isEqualTo(cacheFirst ? 0 : 1);
-        assertThat(pinFallbacks() - fallbackBefore).isEqualTo(cacheFirst ? 1 : 0);
+        assertThat(nextRead.decision()).isEqualTo(cacheFirst ? "cache_fallback" : "cache_hit");
         assertThat(first.items()).hasSize(pageSize);
         assertThat(first.hasNext()).isTrue();
         assertThat(next.items()).hasSize(1);
@@ -287,16 +286,6 @@ class EmotionMapCacheHandoffIntegrationTest {
             Thread.sleep(10);
         }
         throw new AssertionError("5초 안에 기준선 SELECT의 실제 PostgreSQL 테이블 잠금 대기를 확인하지 못했습니다.");
-    }
-
-    private double pinFallbacks() {
-        var counter = meters.find("pheeeew.map.cache.requests").tags("cache", "pins", "result", "fallback").counter();
-        return counter == null ? 0 : counter.count();
-    }
-
-    private double hits(String cache) {
-        var counter = meters.find("pheeeew.map.cache.requests").tags("cache", cache, "result", "hit").counter();
-        return counter == null ? 0 : counter.count();
     }
 
     private List<EmotionRegionMapItemView> regions() {
