@@ -2,6 +2,7 @@ package com.pheeeew.core.di
 
 import com.pheeeew.core.audio.AudioFactories
 import com.pheeeew.core.permission.AppSettingsLauncher
+import com.pheeeew.data.repository.PressEventConfigRepository
 import com.pheeeew.domain.repository.AppVersionRepository
 import com.pheeeew.domain.repository.EmotionAudioRepository
 import com.pheeeew.domain.repository.OnboardingStore
@@ -14,6 +15,7 @@ interface AppGraph {
     val appSettingsLauncher: AppSettingsLauncher
     val audioFactories: AudioFactories
     val versionRepository: AppVersionRepository
+    val pressEventConfig: PressEventConfigRepository
 
     @AppVersion val appVersion: String
 }

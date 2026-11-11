@@ -6,6 +6,7 @@ import com.pheeeew.feature.screens.map.detail.EmotionDetailViewModel
 import com.pheeeew.feature.screens.map.nearby.NearbyEmotionViewModel
 import com.pheeeew.feature.screens.map.record.MapRecordViewModel
 import com.pheeeew.feature.screens.press.PressViewModel
+import com.pheeeew.feature.screens.pressevent.PressEventEntryViewModel
 import com.pheeeew.feature.screens.pressevent.PressEventViewModel
 import com.pheeeew.feature.screens.ranking.press.DailyPressRankingViewModel
 import com.pheeeew.feature.screens.ranking.press.PressRankingViewModel
@@ -24,6 +25,7 @@ internal interface ViewModelBindings {
         detail: () -> EmotionDetailViewModel,
         settings: () -> SettingsViewModel,
         press: () -> PressViewModel,
+        pressEventEntry: () -> PressEventEntryViewModel,
         pressRanking: () -> PressRankingViewModel,
         collection: () -> CollectionViewModel,
         dailyPressRanking: () -> DailyPressRankingViewModel.Factory,
@@ -39,6 +41,7 @@ internal interface ViewModelBindings {
                 EmotionDetailViewModel::class to detail,
                 SettingsViewModel::class to settings,
                 PressViewModel::class to press,
+                PressEventEntryViewModel::class to pressEventEntry,
                 PressRankingViewModel::class to pressRanking,
                 CollectionViewModel::class to collection,
             ),

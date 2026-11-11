@@ -67,6 +67,7 @@ dependencies {
     implementation(libs.play.app.update.ktx)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
+    implementation(libs.firebase.config)
     implementation(libs.androidx.work.runtime)
     debugImplementation(project(":developerTools"))
     debugImplementation(libs.compose.foundation)

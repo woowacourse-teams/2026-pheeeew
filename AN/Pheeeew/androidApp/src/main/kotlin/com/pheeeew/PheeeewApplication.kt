@@ -22,6 +22,7 @@ class PheeeewApplication :
     val monitoring get() = owner.runtime
     internal lateinit var notificationRuntime: AndroidNotificationRuntime
         private set
+    private val pressEventConfigSource = AndroidPressEventConfigSource()
 
     suspend fun compatibilityMonitoring() = owner.compatibility()
 
@@ -66,6 +67,7 @@ class PheeeewApplication :
     }
 
     override fun onStart(owner: LifecycleOwner) {
+        appGraph.pressEventConfig.onForeground(pressEventConfigSource)
         this.owner.foreground()
         notificationRuntime.foreground()
     }

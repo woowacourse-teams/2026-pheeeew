@@ -1015,6 +1015,7 @@ private fun AppContent(
                     if (!mainFeaturesReady) return@composable
                     CompositionLocalProvider(LocalFeatureGuideAnchorReporter provides guideAnchorReporter) {
                         PressRoute(
+                            eventButtonEnabled = appGraph.pressEventConfig.eventButtonEnabled,
                             onOpenEvent = {
                                 if (navController.currentDestination?.hasRoute<PressRootDestination>() == true) {
                                     navController.navigate(

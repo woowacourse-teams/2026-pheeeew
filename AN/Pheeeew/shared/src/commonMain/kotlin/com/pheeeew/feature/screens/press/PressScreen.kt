@@ -71,6 +71,7 @@ internal fun PressScreen(
     soundPlayer: PressSoundPlayer = PreviewPressSoundPlayer,
     modifier: Modifier = Modifier,
     onOpenEvent: () -> Unit = {},
+    isEventButtonVisible: Boolean = false,
     nearbyRanking: PressNearbyRankingUiState = PressNearbyRankingUiState(status = PressNearbyRankingStatus.Unavailable),
     activity: PressActivityUiState? = null,
     faceVisuals: Map<EmotionKind, EmotionFaceVisual> = emptyMap(),
@@ -110,23 +111,25 @@ internal fun PressScreen(
                         fontWeight = FontWeight.Black,
                         modifier = Modifier.weight(1f),
                     )
-                    TextButton(onClick = onOpenEvent) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("🎉", fontSize = 16.sp)
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                "이벤트",
-                                color = MaterialTheme.colorScheme.appTextPrimary,
-                                fontFamily = font,
-                                fontWeight = FontWeight.Bold,
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Icon(
-                                painter = painterResource(Res.drawable.ic_arrow_forward),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.appTextPrimary,
-                                modifier = Modifier.size(16.dp),
-                            )
+                    if (isEventButtonVisible) {
+                        TextButton(onClick = onOpenEvent) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("🎉", fontSize = 16.sp)
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    "이벤트",
+                                    color = MaterialTheme.colorScheme.appTextPrimary,
+                                    fontFamily = font,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Icon(
+                                    painter = painterResource(Res.drawable.ic_arrow_forward),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.appTextPrimary,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            }
                         }
                     }
                 }
@@ -202,9 +205,8 @@ internal fun PressScreen(
     }
 }
 
-@Preview(name = "프레스", widthDp = 360, heightDp = 800)
 @Composable
-private fun PressScreenPreview() {
+private fun PressScreenSample(isEventButtonVisible: Boolean) {
     AppTheme {
         PressScreen(
             uiState =
@@ -229,6 +231,19 @@ private fun PressScreenPreview() {
             onEmotionTap = { true },
             onOpenRanking = {},
             soundPlayer = PreviewPressSoundPlayer,
+            isEventButtonVisible = isEventButtonVisible,
         )
     }
+}
+
+@Preview(name = "프레스 · 이벤트 숨김", widthDp = 360, heightDp = 800)
+@Composable
+private fun PressScreenPreview() {
+    PressScreenSample(isEventButtonVisible = false)
+}
+
+@Preview(name = "프레스 · 이벤트 표시", widthDp = 360, heightDp = 800)
+@Composable
+private fun PressScreenEventPreview() {
+    PressScreenSample(isEventButtonVisible = true)
 }

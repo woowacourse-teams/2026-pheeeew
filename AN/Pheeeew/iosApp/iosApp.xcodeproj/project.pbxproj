@@ -11,6 +11,7 @@
 		A10101010101010101010101 /* MapLibre in Frameworks */ = {isa = PBXBuildFile; productRef = A30303030303030303030303 /* MapLibre */; };
 		B10101010101010101010101 /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = B30303030303030303030303 /* Sentry */; };
 		F10101010101010101010101 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = F30303030303030303030303 /* FirebaseMessaging */; };
+		E10101010101010101010101 /* FirebaseRemoteConfig in Frameworks */ = {isa = PBXBuildFile; productRef = E30303030303030303030303 /* FirebaseRemoteConfig */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -51,6 +52,7 @@
 				A10101010101010101010101 /* MapLibre in Frameworks */,
 				B10101010101010101010101 /* Sentry in Frameworks */,
 				F10101010101010101010101 /* FirebaseMessaging in Frameworks */,
+				E10101010101010101010101 /* FirebaseRemoteConfig in Frameworks */,
 				64E63F4A3CF10CB4773C55F8 /* KotlinMultiplatformLinkedPackage in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -99,6 +101,7 @@
 				A30303030303030303030303 /* MapLibre */,
 				B30303030303030303030303 /* Sentry */,
 				F30303030303030303030303 /* FirebaseMessaging */,
+				E30303030303030303030303 /* FirebaseRemoteConfig */,
 				42CE4090DE15678DF75AB3F4 /* KotlinMultiplatformLinkedPackage */,
 			);
 			productName = iosApp;
@@ -459,6 +462,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = F20202020202020202020202 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseMessaging;
+		};
+		E30303030303030303030303 /* FirebaseRemoteConfig */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F20202020202020202020202 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseRemoteConfig;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
