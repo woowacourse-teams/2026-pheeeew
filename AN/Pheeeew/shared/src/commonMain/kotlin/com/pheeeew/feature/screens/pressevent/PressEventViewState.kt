@@ -18,8 +18,6 @@ internal data class PressEventViewState(
     val nextPageError: Boolean = false,
     val submission: EventSubmissionStatus = EventSubmissionStatus.None,
     val result: PressEventAttemptResult? = null,
-    val previousResult: PressEventMyRank? = null,
-    val previousResultKnown: Boolean = false,
 ) {
     val canStart: Boolean get() =
         configured && submission != EventSubmissionStatus.Submitting && !submission.canRetrySubmission

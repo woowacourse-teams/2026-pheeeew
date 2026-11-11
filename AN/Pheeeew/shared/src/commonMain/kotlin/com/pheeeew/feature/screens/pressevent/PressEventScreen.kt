@@ -53,7 +53,6 @@ import com.pheeeew.core.designsystem.theme.AppThemeColors
 import com.pheeeew.core.designsystem.theme.appColors
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.domain.model.pressevent.PressEventAttemptResult
-import com.pheeeew.domain.model.pressevent.PressEventMyRank
 import com.pheeeew.feature.emotion.component.EventPressPad
 import com.pheeeew.feature.emotion.component.formatCount
 import com.pheeeew.feature.emotion.component.rememberTapReducedMotion
@@ -108,8 +107,6 @@ internal fun PressEventScreen(
     onPress: (EmotionKind) -> Boolean,
     submission: EventSubmissionStatus = EventSubmissionStatus.None,
     result: PressEventAttemptResult? = null,
-    previousResult: PressEventMyRank? = null,
-    previousResultKnown: Boolean = false,
     onRetrySubmission: () -> Unit = {},
     faceVisuals: Map<EmotionKind, EmotionFaceVisual> = emptyMap(),
     timer: @Composable () -> Unit = { EventTimer(20_000L, EventPressColors.Ink) },
@@ -271,8 +268,6 @@ internal fun PressEventScreen(
             total = state.total,
             status = submission,
             result = result,
-            previousResult = previousResult,
-            previousResultKnown = previousResultKnown,
             onRetrySubmission = onRetrySubmission,
             onRetry = onStart,
             onReturn = onBack,

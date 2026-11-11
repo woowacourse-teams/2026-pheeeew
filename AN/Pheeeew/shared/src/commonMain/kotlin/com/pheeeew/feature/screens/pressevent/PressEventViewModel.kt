@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.pheeeew.domain.model.pressevent.PressEventAttempt
 import com.pheeeew.domain.model.pressevent.PressEventGame
 import com.pheeeew.domain.model.pressevent.PressEventGamePhase
-import com.pheeeew.domain.model.pressevent.PressEventMyRank
 import com.pheeeew.domain.repository.PressEventFailure
 import com.pheeeew.domain.repository.PressEventRepository
 import com.pheeeew.domain.repository.PressEventResult
@@ -80,18 +79,10 @@ internal class PressEventViewModel(
 
     fun start() {
         if (!mutableUiState.value.canStart || !game.start()) return
-        val before = mutableUiState.value
-        val previous = before.result?.let { PressEventMyRank(it.bestScore, it.rank) } ?: before.me
         timerJob?.cancel()
         completedAttempt = null
         requestId = Uuid.random().toString()
-        mutableUiState.value =
-            mutableUiState.value.copy(
-                submission = EventSubmissionStatus.None,
-                result = null,
-                previousResult = previous,
-                previousResultKnown = before.result != null || before.rankedAt != null,
-            )
+        mutableUiState.value = mutableUiState.value.copy(submission = EventSubmissionStatus.None, result = null)
         publishGame()
         timerJob =
             viewModelScope.launch {

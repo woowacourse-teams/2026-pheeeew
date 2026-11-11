@@ -54,8 +54,6 @@ internal fun PressEventRoute(
             state = state.game,
             submission = state.submission,
             result = state.result,
-            previousResult = state.previousResult,
-            previousResultKnown = state.previousResultKnown,
             onRetrySubmission = viewModel::retrySubmission,
             onStart = viewModel::start,
             onBack = viewModel::returnToRanking,

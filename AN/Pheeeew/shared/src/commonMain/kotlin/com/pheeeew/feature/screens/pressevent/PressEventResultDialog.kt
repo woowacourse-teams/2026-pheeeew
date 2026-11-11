@@ -29,55 +29,20 @@ import com.pheeeew.core.designsystem.theme.appInk
 import com.pheeeew.core.designsystem.theme.appPrimary
 import com.pheeeew.core.designsystem.theme.appSurface
 import com.pheeeew.domain.model.pressevent.PressEventAttemptResult
-import com.pheeeew.domain.model.pressevent.PressEventMyRank
 import com.pheeeew.feature.emotion.component.formatCount
-
-internal fun eventResultTitle(
-    total: Long,
-    previous: PressEventMyRank?,
-    known: Boolean,
-): String =
-    when {
-        !known || previous == null -> "도전 완료!"
-        total > previous.bestScore -> "기록 갱신 성공!"
-        else -> "기록 갱신 실패!"
-    }
-
-internal fun eventResultRank(
-    total: Long,
-    previous: PressEventMyRank?,
-    known: Boolean,
-    rank: Long?,
-): String =
-    if (known && previous != null && total > previous.bestScore && rank != null) {
-        "현재 순위 ${previous.rank}위 -> ${rank}위"
-    } else {
-        "현재 순위 ${rank ?: "—"}위"
-    }
 
 @Composable
 internal fun PressEventResultDialog(
     total: Long,
     status: EventSubmissionStatus,
     result: PressEventAttemptResult?,
-    previousResult: PressEventMyRank?,
-    previousResultKnown: Boolean,
     onRetrySubmission: () -> Unit,
     onRetry: () -> Unit,
     onReturn: () -> Unit,
 ) {
     Dialog(onDismissRequest = onReturn) {
         AppFontScale {
-            PressEventResultContent(
-                total,
-                status,
-                result,
-                onRetrySubmission,
-                onRetry,
-                onReturn,
-                previousResult,
-                previousResultKnown,
-            )
+            PressEventResultContent(total, status, result, onRetrySubmission, onRetry, onReturn)
         }
     }
 }
@@ -90,8 +55,6 @@ private fun PressEventResultContent(
     onRetrySubmission: () -> Unit,
     onRetry: () -> Unit,
     onReturn: () -> Unit,
-    previousResult: PressEventMyRank? = null,
-    previousResultKnown: Boolean = false,
 ) {
     Surface(
         shape = AppShapes.DetailDialog,
@@ -104,10 +67,7 @@ private fun PressEventResultContent(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
-                when {
-                    status != EventSubmissionStatus.Submitted -> "도전 완료!"
-                    else -> eventResultTitle(total, previousResult, previousResultKnown)
-                },
+                "도전 완료!",
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Black,
                 color = EventPressColors.Ink,
@@ -120,35 +80,16 @@ private fun PressEventResultContent(
             )
             val message =
                 when (status) {
-                    EventSubmissionStatus.Submitted -> {
-                        eventResultRank(
-                            total,
-                            previousResult,
-                            previousResultKnown,
-                            result?.rank,
-                        )
-                    }
-
-                    EventSubmissionStatus.Failed -> {
-                        "결과를 제출하지 못했어요"
-                    }
-
-                    EventSubmissionStatus.Conflict -> {
-                        "이미 다른 횟수로 제출된 도전이에요"
-                    }
-
-                    EventSubmissionStatus.Rejected -> {
-                        "결과 제출이 거절됐어요"
-                    }
-
-                    EventSubmissionStatus.Submitting, EventSubmissionStatus.None -> {
-                        null
-                    }
+                    EventSubmissionStatus.Submitted -> "현재 순위 ${result?.rank ?: "—"}위"
+                    EventSubmissionStatus.Failed -> "결과를 제출하지 못했어요"
+                    EventSubmissionStatus.Conflict -> "이미 다른 횟수로 제출된 도전이에요"
+                    EventSubmissionStatus.Rejected -> "결과 제출이 거절됐어요"
+                    EventSubmissionStatus.Submitting, EventSubmissionStatus.None -> null
                 }
             if (message != null) {
                 Text(
                     message,
-                    fontSize = if (status == EventSubmissionStatus.Submitted) 16.sp else 20.sp,
+                    fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = EventPressColors.Ink,
                 )
