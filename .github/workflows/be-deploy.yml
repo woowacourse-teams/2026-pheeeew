@@ -13,6 +13,10 @@ on:
         description: '이미지만 빌드 (운영 배포는 사용자가 적은 시간에 false로 수동 실행)'
         type: boolean
         default: true
+      image_tag:
+        description: '되돌릴 이미지 태그 (예: prod-0e3c40ec...). 비우면 현재 커밋을 빌드합니다'
+        required: false
+        type: string
 
 concurrency:
   group: deploy-prod
@@ -24,6 +28,7 @@ permissions:
 jobs:
   build:
     name: 이미지 빌드 및 푸시
+    if: github.event.inputs.image_tag == ''
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 20
     steps:
@@ -54,12 +59,23 @@ jobs:
   deploy:
     name: 운영 서버 배포
     needs: build
-    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && !inputs.build_only }}
+    if: ${{ always() && needs.build.result != 'failure' && needs.build.result != 'cancelled' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && !inputs.build_only }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: production
     steps:
       - uses: actions/checkout@v4
+
+      - name: 되돌릴 이미지 태그 확인
+        if: github.event.inputs.image_tag != ''
+        env:
+          IMAGE_TAG: ${{ github.event.inputs.image_tag }}
+        run: |
+          set -eu
+          if [[ ! "$IMAGE_TAG" =~ ^prod-[0-9a-f]{40}$ ]]; then
+            echo "::error::운영 이미지 태그는 prod-<40자리 커밋 SHA> 형식이어야 합니다."
+            exit 1
+          fi
 
       - name: S3 Secrets 확인
         env:
@@ -222,7 +238,7 @@ jobs:
 
       - name: .env 갱신
         env:
-          APP_IMAGE: ${{ secrets.DOCKERHUB_IMAGE }}:prod-${{ github.sha }}
+          APP_IMAGE: ${{ secrets.DOCKERHUB_IMAGE }}:${{ github.event.inputs.image_tag || format('prod-{0}', github.sha) }}
           DB_URL: ${{ secrets.DB_URL }}
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
@@ -299,7 +315,7 @@ jobs:
 
       - name: 배포
         env:
-          IMAGE: ${{ secrets.DOCKERHUB_IMAGE }}:prod-${{ github.sha }}
+          IMAGE: ${{ secrets.DOCKERHUB_IMAGE }}:${{ github.event.inputs.image_tag || format('prod-{0}', github.sha) }}
         run: |
           set -eu
           ssh -F ~/.ssh/config target "APP_IMAGE='$IMAGE' bash -s" <<'REMOTE'
