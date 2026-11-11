@@ -22,9 +22,10 @@ public record EmotionPressRequest(
         Map<EmotionState, Integer> counts,
 
         @Schema(
-                description = "같은 묶음을 다시 보낼 때 재사용하는 요청 식별자. 선택 값입니다. "
-                        + "값이 있으면 같은 기기의 같은 requestId 는 10분 안에 한 번만 반영하고, 다시 보내면 반영 없이 오늘 집계를 돌려줍니다. "
-                        + "같은 requestId 에 다른 counts 를 보내면 거절합니다. 값이 없으면 보낼 때마다 반영합니다.",
+                description = "응답을 받지 못한 묶음을 다시 보낼 때 재사용하는 요청 식별자. 선택 값입니다. "
+                        + "지금은 서버에 따라 이 값을 무시할 수 있어 중복 반영 방지를 보장하지 않습니다. "
+                        + "같은 requestId 는 같은 counts 로만 다시 보냅니다. 상한을 적용한 뒤 반영되는 횟수가 같으면 같은 요청으로 봅니다. "
+                        + "409 를 받으면 그 requestId 로 다시 보내지 말고 새 requestId 로 새 묶음을 보냅니다.",
                 example = "6f1c2b8e-3a4d-4c5e-9f60-7a8b9c0d1e2f"
         )
         UUID requestId

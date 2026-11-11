@@ -19,6 +19,7 @@ import com.pheeeew.emotion.application.dto.EmotionPressResult;
 import com.pheeeew.emotion.application.dto.EmotionPressTotalResult;
 import com.pheeeew.emotion.application.query.EmotionPressQueryService;
 import com.pheeeew.emotion.domain.EmotionState;
+import com.pheeeew.pressrace.exception.PressRaceException;
 import java.time.LocalDate;
 import java.util.EnumMap;
 import java.util.Map;
@@ -185,6 +186,21 @@ class EmotionPressControllerTest {
 
         // then
         응답.expectStatus().isUnauthorized().expectBody().jsonPath("$.code").isEqualTo("DEVICE-004");
+    }
+
+    @Test
+    void 같은_요청_식별자에_다른_횟수를_보내면_재시도_안내_없이_409를_준다() {
+        // given
+        when(emotionPressService.press(any(), any(), any()))
+                .thenThrow(new PressRaceException("INPUT_CONFLICT"));
+
+        // when
+        RestTestClient.ResponseSpec 응답 = 누른다(정상_본문, "access-token");
+
+        // then
+        응답.expectStatus().isEqualTo(409)
+                .expectHeader().doesNotExist(HttpHeaders.RETRY_AFTER)
+                .expectBody().jsonPath("$.code").isEqualTo("INPUT_CONFLICT");
     }
 
     @Test

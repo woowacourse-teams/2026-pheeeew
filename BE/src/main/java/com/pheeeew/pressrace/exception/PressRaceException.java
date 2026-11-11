@@ -8,6 +8,8 @@ import org.springframework.http.HttpStatus;
 
 public class PressRaceException extends PheeeewException {
 
+    private static final String INPUT_CONFLICT = "INPUT_CONFLICT";
+
     private final String code;
     private final UUID requestId;
 
@@ -24,7 +26,7 @@ public class PressRaceException extends PheeeewException {
     }
 
     private PressRaceException(String code, long retryAfterSeconds, UUID requestId) {
-        super(new RaceError(code), null, Duration.ofSeconds(retryAfterSeconds));
+        super(new RaceError(code), null, INPUT_CONFLICT.equals(code) ? null : Duration.ofSeconds(retryAfterSeconds));
         this.code = code;
         this.requestId = requestId;
     }
@@ -38,7 +40,7 @@ public class PressRaceException extends PheeeewException {
     }
 
     public long retryAfterSeconds() {
-        return getRetryAfter().toSeconds();
+        return getRetryAfter() == null ? 0 : getRetryAfter().toSeconds();
     }
 
     private record RaceError(String code) implements ErrorCode {
@@ -54,7 +56,11 @@ public class PressRaceException extends PheeeewException {
 
         @Override
         public HttpStatus getStatus() {
-            return "RATE_LIMITED".equals(code) ? HttpStatus.TOO_MANY_REQUESTS : HttpStatus.SERVICE_UNAVAILABLE;
+            return switch (code) {
+                case "RATE_LIMITED" -> HttpStatus.TOO_MANY_REQUESTS;
+                case INPUT_CONFLICT -> HttpStatus.CONFLICT;
+                default -> HttpStatus.SERVICE_UNAVAILABLE;
+            };
         }
     }
 }
