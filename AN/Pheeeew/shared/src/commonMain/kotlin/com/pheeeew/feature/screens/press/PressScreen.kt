@@ -3,16 +3,20 @@ package com.pheeeew.feature.screens.press
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.withFrameNanos
@@ -44,8 +48,10 @@ import com.pheeeew.feature.screens.press.component.PressNearbyRankingCard
 import com.pheeeew.feature.screens.press.component.PressRankingEntry
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.ic_arrow_forward
 import pheeeew.shared.generated.resources.press_count_unavailable
 import pheeeew.shared.generated.resources.press_race_input_recovery_required
 import pheeeew.shared.generated.resources.press_screen_subtitle
@@ -64,6 +70,7 @@ internal fun PressScreen(
     onOpenRanking: () -> Unit,
     soundPlayer: PressSoundPlayer = PreviewPressSoundPlayer,
     modifier: Modifier = Modifier,
+    onOpenEvent: () -> Unit = {},
     nearbyRanking: PressNearbyRankingUiState = PressNearbyRankingUiState(status = PressNearbyRankingStatus.Unavailable),
     activity: PressActivityUiState? = null,
     faceVisuals: Map<EmotionKind, EmotionFaceVisual> = emptyMap(),
@@ -94,13 +101,35 @@ internal fun PressScreen(
         Column(Modifier.fillMaxWidth()) {
             Spacer(Modifier.height(AppSpacing.xxl.copy(value = 28.dp).dp))
             Column(modifier = Modifier.fillMaxWidth().padding(horizontal = AppSpacing.screen.dp)) {
-                Text(
-                    text = stringResource(Res.string.press_screen_title),
-                    color = MaterialTheme.colorScheme.appTextPrimary,
-                    fontSize = 24.sp,
-                    fontFamily = font,
-                    fontWeight = FontWeight.Black,
-                )
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = stringResource(Res.string.press_screen_title),
+                        color = MaterialTheme.colorScheme.appTextPrimary,
+                        fontSize = 24.sp,
+                        fontFamily = font,
+                        fontWeight = FontWeight.Black,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = onOpenEvent) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("🎉", fontSize = 16.sp)
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                "이벤트",
+                                color = MaterialTheme.colorScheme.appTextPrimary,
+                                fontFamily = font,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Icon(
+                                painter = painterResource(Res.drawable.ic_arrow_forward),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.appTextPrimary,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
+                    }
+                }
                 Spacer(Modifier.height(AppSpacing.xs.dp))
                 Text(
                     text = stringResource(Res.string.press_screen_subtitle),

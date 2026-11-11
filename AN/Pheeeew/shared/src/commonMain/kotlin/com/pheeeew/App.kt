@@ -61,6 +61,7 @@ import com.pheeeew.core.navigation.FlowBackHandler
 import com.pheeeew.core.navigation.MapRootDestination
 import com.pheeeew.core.navigation.NotificationClickRouter
 import com.pheeeew.core.navigation.NotificationDestination
+import com.pheeeew.core.navigation.PressEventDestination
 import com.pheeeew.core.navigation.PressRootDestination
 import com.pheeeew.core.navigation.RankingRootDestination
 import com.pheeeew.core.notification.InitialNotificationPermissionRequest
@@ -112,6 +113,7 @@ import com.pheeeew.feature.screens.map.symbolImageKey
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
 import com.pheeeew.feature.screens.press.PressRaceLifecycleEffect
 import com.pheeeew.feature.screens.press.PressRoute
+import com.pheeeew.feature.screens.pressevent.PressEventRoute
 import com.pheeeew.feature.screens.ranking.press.DailyPressRankingRoute
 import com.pheeeew.feature.screens.ranking.press.PressRankingRoute
 import com.pheeeew.feature.screens.report.ReportRoute
@@ -278,6 +280,7 @@ private fun AppContent(
     var mapVisible by remember { mutableStateOf(false) }
     var mapMounted by remember { mutableStateOf(false) }
     var mapEntryPresent by remember { mutableStateOf(false) }
+    var pressEventEntryPresent by remember { mutableStateOf(false) }
     var savedMapCamera by remember { mutableStateOf<MapCameraSnapshotUiModel?>(null) }
     val splashAnimationDuration = AppStartupViewModel.MINIMUM_SPLASH_MILLIS.toFloat()
     val splashProgress =
@@ -1012,6 +1015,16 @@ private fun AppContent(
                     if (!mainFeaturesReady) return@composable
                     CompositionLocalProvider(LocalFeatureGuideAnchorReporter provides guideAnchorReporter) {
                         PressRoute(
+                            onOpenEvent = {
+                                if (navController.currentDestination?.hasRoute<PressRootDestination>() == true) {
+                                    navController.navigate(
+                                        PressEventDestination(eventId = "a5c3cffd-4ccf-4480-8cfe-d3a6605fef57"),
+                                    ) {
+                                        launchSingleTop =
+                                            true
+                                    }
+                                }
+                            },
                             onOpenRanking = {
                                 if (navController.currentDestination?.hasRoute<PressRootDestination>() == true) {
                                     navController.navigate(RankingRootDestination) { launchSingleTop = true }
@@ -1020,6 +1033,22 @@ private fun AppContent(
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
+                }
+
+                composable<PressEventDestination> { entry ->
+                    // Stays composed during the exit fade; keeps the bottom bar hidden until it is gone.
+                    DisposableEffect(Unit) {
+                        pressEventEntryPresent = true
+                        onDispose { pressEventEntryPresent = false }
+                    }
+                    if (!mainFeaturesReady) return@composable
+                    PressEventRoute(
+                        eventId = entry.toRoute<PressEventDestination>().eventId,
+                        sessionGeneration = sessionGeneration,
+                        onBack = {
+                            if (navController.currentBackStackEntry == entry) navController.popBackStack()
+                        },
+                    )
                 }
 
                 composable<CollectionRootDestination> {
@@ -1139,7 +1168,7 @@ private fun AppContent(
                 )
             }
 
-            if (selectedDestination != null && reportTarget == null && !isSettingsVisible &&
+            if (selectedDestination != null && !pressEventEntryPresent && reportTarget == null && !isSettingsVisible &&
                 !nearbyState.visible && !isEmotionRecordFlowActive
             ) {
                 AppBottomNavigationBar(

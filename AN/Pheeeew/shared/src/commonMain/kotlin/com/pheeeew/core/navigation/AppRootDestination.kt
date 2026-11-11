@@ -6,6 +6,11 @@ import kotlinx.serialization.Serializable
 data object MapRootDestination
 
 @Serializable
+data class PressEventDestination(
+    val eventId: String? = null,
+)
+
+@Serializable
 data object PressRootDestination
 
 @Serializable

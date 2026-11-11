@@ -62,8 +62,8 @@ class PressRankingViewModelTest {
             }
         }
         assertEquals(10, resources.size)
-        assertNull(runningRaceResource(null, false))
-        assertNull(runningRaceResource(null, true))
+        assertEquals(runningRaceResource(EmotionKind.Defeated, false), runningRaceResource(null, false))
+        assertEquals(runningRaceResource(EmotionKind.Defeated, true), runningRaceResource(null, true))
     }
 
     @Test
