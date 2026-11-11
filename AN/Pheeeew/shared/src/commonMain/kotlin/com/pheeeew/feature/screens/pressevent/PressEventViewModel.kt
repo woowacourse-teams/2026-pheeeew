@@ -119,6 +119,8 @@ internal class PressEventViewModel(
         timerJob?.cancel()
         rankingJob?.cancel()
         rankingRequest++
+        game.tick()
+        handleAttemptFinished()
         game.cancelActiveAttempt()
         publishGame()
         mutableUiState.value = mutableUiState.value.copy(rankingLoading = false, loadingMore = false)
@@ -156,18 +158,7 @@ internal class PressEventViewModel(
         submissionJob?.cancel()
         submissionJob =
             viewModelScope.launch {
-                val timeout =
-                    launch {
-                        delay(SUBMISSION_TIMEOUT_MILLIS)
-                        if (currentRevision == revision && completedAttempt === attempt &&
-                            mutableUiState.value.submission == EventSubmissionStatus.Submitting
-                        ) {
-                            mutableUiState.value =
-                                mutableUiState.value.copy(submission = EventSubmissionStatus.TimedOut)
-                        }
-                    }
                 val result = repository.submit(id, attempt, generation)
-                timeout.cancel()
                 if (currentRevision != revision || completedAttempt !== attempt) return@launch
                 when (result) {
                     is PressEventResult.Success -> {
@@ -291,7 +282,6 @@ internal class PressEventViewModel(
     private fun configured(): Boolean = !eventId.isNullOrBlank() && sessionGeneration != null
 
     private companion object {
-        const val SUBMISSION_TIMEOUT_MILLIS = 5_000L
         const val LOADING_INDICATOR_DELAY_MILLIS = 300L
         const val LOADING_INDICATOR_MINIMUM_MILLIS = 500L
     }

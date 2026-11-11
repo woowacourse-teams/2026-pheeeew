@@ -15,6 +15,7 @@ import com.pheeeew.domain.repository.PressEventResult
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.toByteArray
+import io.ktor.client.plugins.HttpRequestTimeoutException
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
@@ -31,6 +32,33 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class PressEventApiTest {
+    @Test
+    fun networkTimeoutAllowsRetryWithSamePayload() =
+        runTest {
+            val bodies = mutableListOf<String>()
+            val client =
+                client(
+                    MockEngine { request ->
+                        bodies += request.body.toByteArray().decodeToString()
+                        if (bodies.size == 1) throw HttpRequestTimeoutException(request.url.toString(), 1_000)
+                        respond(ATTEMPT, headers = headers)
+                    },
+                )
+            try {
+                val repository = PressEventRepositoryImpl(PressEventApi(client.requests))
+                val attempt = PressEventAttempt(ID, mapOf(EmotionState.FRUSTRATED to 5))
+                assertEquals(
+                    PressEventFailure.Retryable,
+                    assertIs<PressEventResult.Failure>(repository.submit("1", attempt, 1)).reason,
+                )
+                assertIs<PressEventResult.Success<*>>(repository.submit("1", attempt, 1))
+                assertEquals(2, bodies.size)
+                assertEquals(bodies[0], bodies[1])
+            } finally {
+                client.close()
+            }
+        }
+
     @Test
     fun retriesWithSameFrozenFiveEmotionPayloadAndBearerAndMapsReplayedResult() =
         runTest {

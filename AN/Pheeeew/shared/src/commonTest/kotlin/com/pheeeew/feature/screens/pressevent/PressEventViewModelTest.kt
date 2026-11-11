@@ -130,7 +130,7 @@ class PressEventViewModelTest {
         }
 
     @Test
-    fun timesOutPendingSubmissionAfterFiveSecondsAndRetriesWithSameAttempt() =
+    fun pendingSubmissionWaitsForNetworkFailureBeforeRetryingSameAttempt() =
         runTest {
             fixture { vm, repo ->
                 val pending = CompletableDeferred<PressEventResult<PressEventAttemptResult>>()
@@ -139,19 +139,65 @@ class PressEventViewModelTest {
                 advanceTimeBy(23_000)
                 runCurrent()
                 assertEquals(EventSubmissionStatus.Submitting, vm.uiState.value.submission)
-                advanceTimeBy(4_900)
-                assertEquals(EventSubmissionStatus.Submitting, vm.uiState.value.submission)
-                advanceTimeBy(200)
+                advanceTimeBy(10_000)
                 runCurrent()
-                assertEquals(EventSubmissionStatus.TimedOut, vm.uiState.value.submission)
+                try {
+                    assertEquals(EventSubmissionStatus.Submitting, vm.uiState.value.submission)
+                    assertFalse(vm.uiState.value.submission.canRetrySubmission)
+                    vm.retrySubmission()
+                    runCurrent()
+                    assertEquals(1, repo.attempts.size)
+                } finally {
+                    pending.complete(PressEventResult.Failure(PressEventFailure.Retryable))
+                }
+                runCurrent()
+                assertEquals(EventSubmissionStatus.Failed, vm.uiState.value.submission)
                 assertTrue(vm.uiState.value.submission.canRetrySubmission)
-                repo.delayedSubmit = null
+                val retry = CompletableDeferred<PressEventResult<PressEventAttemptResult>>()
+                repo.delayedSubmit = retry
+                vm.retrySubmission()
                 vm.retrySubmission()
                 runCurrent()
-                assertEquals(EventSubmissionStatus.Submitted, vm.uiState.value.submission)
+                assertEquals(EventSubmissionStatus.Submitting, vm.uiState.value.submission)
+                assertFalse(vm.uiState.value.submission.canRetrySubmission)
                 assertEquals(2, repo.attempts.size)
-                assertEquals(repo.attempts[0].requestId, repo.attempts[1].requestId)
-                pending.complete(PressEventResult.Failure(PressEventFailure.Retryable))
+                assertSame(repo.attempts[0], repo.attempts[1])
+                retry.complete(PressEventResult.Success(result(repo.attempts.last())))
+                runCurrent()
+                assertEquals(EventSubmissionStatus.Submitted, vm.uiState.value.submission)
+            }
+        }
+
+    @Test
+    fun hidingAtDeadlineBeforeTimerResumesSubmitsOnce() =
+        runTest {
+            fixture { vm, repo ->
+                vm.start()
+                advanceTimeBy(3_000)
+                runCurrent()
+                assertTrue(vm.press(EmotionKind.Angry))
+                advanceTimeBy(20_000)
+                assertEquals(PressEventPhase.Playing, vm.uiState.value.game.phase)
+                vm.onScreenHidden()
+                vm.onScreenHidden()
+                runCurrent()
+                assertEquals(PressEventPhase.Finished, vm.uiState.value.game.phase)
+                assertEquals(1L, repo.attempts.single().total)
+                assertEquals(EventSubmissionStatus.Submitted, vm.uiState.value.submission)
+            }
+        }
+
+    @Test
+    fun hidingJustBeforeDeadlineCancelsWithoutSubmission() =
+        runTest {
+            fixture { vm, repo ->
+                vm.start()
+                advanceTimeBy(22_999)
+                vm.onScreenHidden()
+                advanceTimeBy(1_000)
+                runCurrent()
+                assertEquals(PressEventPhase.Ready, vm.uiState.value.game.phase)
+                assertTrue(repo.attempts.isEmpty())
             }
         }
 

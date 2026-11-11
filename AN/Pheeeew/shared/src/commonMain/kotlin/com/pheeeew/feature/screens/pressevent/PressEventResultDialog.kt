@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -80,7 +82,6 @@ private fun PressEventResultContent(
                 when (status) {
                     EventSubmissionStatus.Submitted -> "현재 순위 ${result?.rank ?: "—"}위"
                     EventSubmissionStatus.Failed -> "결과를 제출하지 못했어요"
-                    EventSubmissionStatus.TimedOut -> "응답이 늦어지고 있어요"
                     EventSubmissionStatus.Conflict -> "이미 다른 횟수로 제출된 도전이에요"
                     EventSubmissionStatus.Rejected -> "결과 제출이 거절됐어요"
                     EventSubmissionStatus.Submitting, EventSubmissionStatus.None -> null
@@ -114,15 +115,20 @@ private fun PressEventResultContent(
                             status == EventSubmissionStatus.Conflict,
                     modifier = Modifier.weight(1f).height(52.dp),
                 ) {
-                    Text(
-                        when {
-                            status.canRetrySubmission -> "다시 시도"
-                            else -> "재도전"
-                        },
-                        Modifier.align(Alignment.Center),
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.appInk,
-                    )
+                    if (status == EventSubmissionStatus.Submitting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.align(Alignment.Center).size(24.dp),
+                            color = MaterialTheme.colorScheme.appInk,
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
+                        Text(
+                            if (status.canRetrySubmission) "다시 시도" else "재도전",
+                            Modifier.align(Alignment.Center),
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.appInk,
+                        )
+                    }
                 }
             }
         }
@@ -157,5 +163,13 @@ private fun PressEventSubmissionFailurePreview() {
 private fun PressEventSubmissionRejectedPreview() {
     AppTheme {
         PressEventResultContent(123L, EventSubmissionStatus.Rejected, null, {}, {}, {})
+    }
+}
+
+@Preview(name = "이벤트 결과 제출 중", widthDp = 360)
+@Composable
+private fun PressEventSubmittingPreview() {
+    AppTheme {
+        PressEventResultContent(123L, EventSubmissionStatus.Submitting, null, {}, {}, {})
     }
 }
