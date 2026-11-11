@@ -142,5 +142,30 @@ class GenerationProbeTest(unittest.TestCase):
             self.probe('transport-failure')
 
 
+
+class DatabaseFailureTest(unittest.TestCase):
+
+    ENV = {'DB_URL': 'jdbc:postgresql://db:5432/pheeeew?sslmode=disable', 'DB_USERNAME': 'user',
+           'DB_PASSWORD': 'secret-password'}
+
+    def failed_query(self, stderr):
+        failure = subprocess.CompletedProcess(['psql'], 2, stdout='', stderr=stderr)
+        with patch.object(generation.subprocess, 'run', return_value=failure):
+            with self.assertRaises(ValueError) as raised:
+                generation.query(self.ENV, 'SELECT 1;')
+        return str(raised.exception)
+
+    def test_연결_한도_초과는_자격_증명_없이_분류해서_전달한다(self):
+        message = self.failed_query('psql: error: connection to server at "db" (user=user password=secret-password) '
+                                    'failed: FATAL:  sorry, too many clients already')
+
+        self.assertEqual(message, 'Database operation failed; its outcome must be rechecked (connection limit)')
+
+    def test_그_외_DB_오류는_원문을_전달하지_않는다(self):
+        message = self.failed_query('psql: error: password=secret-password authentication failed')
+
+        self.assertEqual(message, 'Database operation failed; its outcome must be rechecked')
+
+
 if __name__ == '__main__':
     unittest.main()
