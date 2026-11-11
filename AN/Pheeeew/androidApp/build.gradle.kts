@@ -159,8 +159,8 @@ android {
             buildConfigField("String", key, quotedConfig(monitoringValue(key)))
         }
         buildConfigField("boolean", "MONITORING_ENABLED", (monitoringValue("MONITORING_ENABLED") == "true").toString())
-        versionCode = 16
-        versionName = "2.7.1"
+        versionCode = 17
+        versionName = "2.8.0"
         manifestPlaceholders["appLabel"] = "@string/app_name"
     }
     packaging {
