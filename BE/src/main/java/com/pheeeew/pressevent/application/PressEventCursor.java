@@ -4,7 +4,6 @@ import static com.pheeeew.pressevent.exception.PressEventErrorCode.INVALID_CURSO
 
 import com.pheeeew.common.exception.PheeeewException;
 import com.pheeeew.pressevent.application.PressEventRankingResult.Standing;
-import com.pheeeew.pressevent.domain.PressEventCounts;
 import java.nio.charset.StandardCharsets;
 import java.time.DateTimeException;
 import java.time.Instant;
@@ -38,8 +37,7 @@ public record PressEventCursor(int score, Instant achievedAt, UUID publicId) {
             }
             int score = Integer.parseInt(fields[1]);
             Instant achievedAt = Instant.parse(fields[2]);
-            if (score < 0 || score > PressEventCounts.MAX_TOTAL
-                    || achievedAt.isBefore(Instant.EPOCH) || achievedAt.isAfter(MAX_ACHIEVED_AT)) {
+            if (score < 0 || achievedAt.isBefore(Instant.EPOCH) || achievedAt.isAfter(MAX_ACHIEVED_AT)) {
                 throw new IllegalArgumentException();
             }
             return new PressEventCursor(score, achievedAt, UUID.fromString(fields[3]));

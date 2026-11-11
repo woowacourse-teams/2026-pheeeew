@@ -68,20 +68,20 @@ class PressEventControllerTest {
     }
 
     @Test
-    void 인증된_기기의_도전_결과를_제출하고_게임_종료_화면의_응답을_받는다() {
+    void 인증된_기기는_400회를_넘는_도전_결과를_제출할_수_있다() {
         // given
         when(pressEventService.submit(eq(EVENT_ID), eq(DEVICE_ID), eq(REQUEST_ID), any()))
-                .thenReturn(PressEventAttemptResult.of(REQUEST_ID, 132, 156, 3, RANKED_AT, false));
+                .thenReturn(PressEventAttemptResult.of(REQUEST_ID, 532, 556, 3, RANKED_AT, false));
 
         // when
-        RestTestClient.ResponseSpec 응답 = 제출한다(COUNTS);
+        RestTestClient.ResponseSpec 응답 = 제출한다(COUNTS.replace("25", "425"));
 
         // then
         응답.expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.attemptId").isEqualTo(REQUEST_ID.toString())
-                .jsonPath("$.total").isEqualTo(132)
-                .jsonPath("$.bestScore").isEqualTo(156)
+                .jsonPath("$.total").isEqualTo(532)
+                .jsonPath("$.bestScore").isEqualTo(556)
                 .jsonPath("$.rank").isEqualTo(3)
                 .jsonPath("$.rankedAt").isEqualTo(RANKED_AT.toString())
                 .jsonPath("$.replayed").isEqualTo(false);
@@ -138,8 +138,6 @@ class PressEventControllerTest {
     private static Stream<Arguments> 잘못된_횟수() {
         return Stream.of(
                 Arguments.of(COUNTS.replace("25", "-1"), "PRESS-EVENT-004"),
-                Arguments.of(COUNTS.replace("25", "401"), "PRESS-EVENT-004"),
-                Arguments.of(COUNTS.replace("25", "400"), "PRESS-EVENT-004"),
                 Arguments.of(COUNTS.replace("25", "25.0"), "COMMON-001"),
                 Arguments.of(COUNTS.replace("25", "\"25\""), "COMMON-001"),
                 Arguments.of(COUNTS.replace("25", "null"), "COMMON-001"),

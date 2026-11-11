@@ -62,15 +62,6 @@ public class PressEventRepository {
                 .optional();
     }
 
-    public long findRecentPressCount(long deviceId, Instant since) {
-        return jdbc.sql("""
-                SELECT COALESCE(SUM(GREATEST(total, 1)), 0)
-                FROM press_event_attempts WHERE device_id = :device AND submitted_at > :since
-                """)
-                .param("device", deviceId).param("since", since.atOffset(ZoneOffset.UTC))
-                .query(Long.class).single();
-    }
-
     public void updateBest(UUID eventId, long deviceId, int score, Instant now) {
         jdbc.sql("""
                 INSERT INTO press_event_bests(event_id, device_id, public_id, score, achieved_at)

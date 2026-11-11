@@ -38,8 +38,6 @@ public interface PressEventControllerApi {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "409", description = "이벤트 제출 기간 외 요청 또는 기존 도전과 다른 횟수",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "429", description = "기기별 최근 20초 이벤트 프레스 한도 초과",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "503", description = "프레스 저장 일시 중단",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
