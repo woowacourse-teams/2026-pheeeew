@@ -20,7 +20,6 @@ internal fun PressEventRoute(
     val viewModel =
         assistedMetroViewModel<PressEventViewModel, PressEventViewModel.Factory> { create(eventId, sessionGeneration) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    DarkSystemBarsEffect()
     val sound = rememberPressSoundPlayer()
     LifecycleResumeEffect(viewModel, sound, eventId to sessionGeneration) {
         viewModel.onContextChanged(eventId, sessionGeneration)
@@ -33,6 +32,7 @@ internal fun PressEventRoute(
     }
     DisposableEffect(viewModel) { onDispose { viewModel.onScreenHidden() } }
     FlowBackHandler(enabled = state.game.phase != PressEventPhase.Ready, onBack = viewModel::returnToRanking)
+    if (state.game.phase != PressEventPhase.Ready) DarkSystemBarsEffect()
     if (state.game.phase == PressEventPhase.Ready) {
         PressEventRankingScreen(
             state = state,

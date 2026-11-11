@@ -38,6 +38,8 @@ import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.core.designsystem.theme.appInk
+import com.pheeeew.core.designsystem.theme.appMutedText
+import com.pheeeew.core.designsystem.theme.appPageBackground
 import com.pheeeew.core.designsystem.theme.appPrimary
 import com.pheeeew.core.designsystem.theme.appSurface
 import com.pheeeew.feature.emotion.component.rememberTapReducedMotion
@@ -65,18 +67,18 @@ internal fun PressEventRankingScreen(
     val pullState = rememberPullToRefreshState()
     ProvideRaceAnimationClock(reducedMotion, motionScale) { animationClock ->
         CompositionLocalProvider(
-            LocalContentColor provides EventPressColors.Ink,
+            LocalContentColor provides MaterialTheme.colorScheme.appInk,
         ) {
             Column(
                 modifier
                     .fillMaxSize()
-                    .background(EventPressColors.Background)
+                    .background(MaterialTheme.colorScheme.appPageBackground)
                     .statusBarsPadding()
                     .navigationBarsPadding()
                     .padding(horizontal = 20.dp),
             ) {
                 Box(Modifier.fillMaxWidth().height(64.dp), contentAlignment = Alignment.Center) {
-                    EventBackButton(onBack, EventPressColors.Ink, Modifier.align(Alignment.CenterStart))
+                    EventBackButton(onBack, MaterialTheme.colorScheme.appInk, Modifier.align(Alignment.CenterStart))
                     Text("이벤트", fontSize = 22.sp, fontWeight = FontWeight.Black)
                 }
                 PullToRefreshBox(
@@ -104,7 +106,7 @@ internal fun PressEventRankingScreen(
                         }
                         item {
                             when {
-                                !state.configured -> Text("이벤트 준비 중이에요", color = EventPressColors.MutedInk)
+                                !state.configured -> Text("이벤트 준비 중이에요", color = MaterialTheme.colorScheme.appMutedText)
                                 state.rankingLoading -> Text("순위를 불러오고 있어요")
                                 state.rankingError -> TextButton(onClick = onRefresh) { Text("순위를 불러오지 못했어요 · 다시 시도") }
                                 state.rankedAt != null && rows.isEmpty() -> Text("아직 참여 기록이 없어요. 첫 도전을 시작해 보세요!")
