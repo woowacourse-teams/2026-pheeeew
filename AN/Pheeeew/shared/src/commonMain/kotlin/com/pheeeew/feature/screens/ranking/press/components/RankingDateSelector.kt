@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -29,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -90,36 +90,39 @@ internal fun RankingDateSelector(
                 .height(IntrinsicSize.Min),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            DateArrow("‹", "이전 날짜", date > "0001-01-01", Modifier.width(controlHeight).fillMaxHeight()) {
+            DateArrow(
+                "‹",
+                "이전 날짜",
+                date > "0001-01-01",
+                Modifier.padding(end = 6.dp).size(40.dp),
+            ) {
                 onSelect(shiftRankingDate(date, -1))
             }
             Box(
                 Modifier
                     .weight(1f)
-                    .fillMaxHeight()
-                    .border(AppBorders.Thin, MaterialTheme.colorScheme.appInk, AppShapes.CompactControl)
-                    .clip(AppShapes.CompactControl)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        role = Role.Button,
-                    ) {
-                        showingCalendar =
-                            true
-                    }.semantics { contentDescription = "${rankingDateLabel(date)}, 날짜 선택" },
+                    .fillMaxHeight(),
                 contentAlignment = Alignment.Center,
             ) {
                 Row(
-                    Modifier.fillMaxWidth().padding(
-                        horizontal = AppSpacing.sm.copy(value = 10.dp).dp,
-                        vertical = AppSpacing.xs.copy(value = 6.dp).dp,
-                    ),
+                    Modifier
+                        .clip(AppShapes.CompactControl)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = ripple(),
+                            role = Role.Button,
+                        ) { showingCalendar = true }
+                        .semantics { contentDescription = "${rankingDateLabel(date)}, 날짜 선택" }
+                        .padding(
+                            horizontal = AppSpacing.sm.copy(value = 10.dp).dp,
+                            vertical = AppSpacing.xs.copy(value = 6.dp).dp,
+                        ),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
                 ) {
                     Text(
                         rankingDateLabel(date),
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f, fill = false),
                         textAlign = TextAlign.Center,
                         maxLines = 2,
                         fontSize = 13.sp,
@@ -145,7 +148,12 @@ internal fun RankingDateSelector(
                     }
                 }
             }
-            DateArrow("›", "다음 날짜", date < today, Modifier.width(controlHeight).fillMaxHeight()) {
+            DateArrow(
+                "›",
+                "다음 날짜",
+                date < today,
+                Modifier.padding(start = 6.dp).size(40.dp),
+            ) {
                 onSelect(shiftRankingDate(date, 1))
             }
             Box(
@@ -343,7 +351,7 @@ private fun DateArrow(
                     remember {
                         MutableInteractionSource()
                     },
-                indication = null,
+                indication = ripple(),
                 enabled = enabled,
                 role = Role.Button,
                 onClick = onClick,
