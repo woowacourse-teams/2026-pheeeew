@@ -33,8 +33,17 @@ internal class AndroidPressEventConfigSource : PressEventConfigSource {
 
     override fun activatedBoolean(parameterKey: String): Boolean = remoteConfig.getBoolean(parameterKey)
 
-    override fun fetchAndActivate(completion: (Boolean) -> Unit) {
+    override fun fetchAndActivate(
+        forceRefresh: Boolean,
+        completion: (Boolean) -> Unit,
+    ) {
         // Task.result is "changed", so use isSuccessful even when result is false.
-        remoteConfig.fetchAndActivate().addOnCompleteListener { completion(it.isSuccessful) }
+        val task =
+            if (forceRefresh) {
+                remoteConfig.fetch(0L).onSuccessTask { remoteConfig.activate() }
+            } else {
+                remoteConfig.fetchAndActivate()
+            }
+        task.addOnCompleteListener { completion(it.isSuccessful) }
     }
 }

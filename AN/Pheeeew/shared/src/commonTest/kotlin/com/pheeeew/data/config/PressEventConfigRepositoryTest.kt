@@ -1,6 +1,9 @@
 package com.pheeeew.data.config
 
 import com.pheeeew.data.repository.PressEventConfigRepository
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.async
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -109,6 +112,70 @@ class PressEventConfigRepositoryTest {
         assertTrue(repository.eventButtonEnabled.value)
     }
 
+    @Test
+    fun `진입 확인은 캐시 true 대신 강제 조회한 false를 반환한다`() =
+        runTest {
+            val source = FakeSource(activated = true)
+            val repository = PressEventConfigRepository("prod", false)
+            repository.onForeground(source)
+            source.finishInitialization()
+            source.finishFetch(succeeded = true)
+            val entry = async(start = CoroutineStart.UNDISPATCHED) { repository.fetchEventEnabledForEntry() }
+            assertFalse(entry.isCompleted)
+            source.activated = false
+            source.finishFetch(succeeded = true)
+            assertEquals(false, entry.await())
+            assertFalse(repository.eventButtonEnabled.value)
+            assertEquals(listOf(false, true), source.forcedFetches)
+        }
+
+    @Test
+    fun `전경 갱신 중 진입하면 완료를 기다린 뒤 별도로 강제 조회한다`() =
+        runTest {
+            val source = FakeSource(activated = true)
+            val repository = PressEventConfigRepository("prod", false)
+            repository.onForeground(source)
+            source.finishInitialization()
+            val entry = async(start = CoroutineStart.UNDISPATCHED) { repository.fetchEventEnabledForEntry() }
+            assertEquals(1, source.fetches)
+            source.finishFetch(succeeded = true)
+            assertEquals(2, source.fetches)
+            assertFalse(entry.isCompleted)
+            source.activated = false
+            source.finishFetch(succeeded = true)
+            assertEquals(false, entry.await())
+        }
+
+    @Test
+    fun `진입 확인 실패는 캐시를 보존하되 이전 true로 진입을 허용하지 않는다`() =
+        runTest {
+            val source = FakeSource(activated = true)
+            val repository = PressEventConfigRepository("dev", true)
+            repository.onForeground(source)
+            source.finishInitialization()
+            source.finishFetch(succeeded = true)
+            val entry = async(start = CoroutineStart.UNDISPATCHED) { repository.fetchEventEnabledForEntry() }
+            source.finishFetch(succeeded = false)
+            assertEquals(null, entry.await())
+            assertTrue(repository.eventButtonEnabled.value)
+        }
+
+    @Test
+    fun `진입 확인 대기자 취소는 공유 SDK 요청과 다른 대기자를 취소하지 않는다`() =
+        runTest {
+            val source = FakeSource(activated = true)
+            val repository = PressEventConfigRepository("dev", true)
+            repository.onForeground(source)
+            source.finishInitialization()
+            source.finishFetch(succeeded = true)
+            val first = async(start = CoroutineStart.UNDISPATCHED) { repository.fetchEventEnabledForEntry() }
+            val second = async(start = CoroutineStart.UNDISPATCHED) { repository.fetchEventEnabledForEntry() }
+            first.cancel()
+            source.finishFetch(succeeded = true)
+            assertEquals(true, second.await())
+            assertEquals(2, source.fetches)
+        }
+
     private class FakeSource(
         var activated: Boolean = false,
     ) : PressEventConfigSource {
@@ -117,6 +184,7 @@ class PressEventConfigRepositoryTest {
         var initializedKey: String? = null
         var fetchInterval: Long? = null
         val readKeys = mutableListOf<String>()
+        val forcedFetches = mutableListOf<Boolean>()
         private var initialization: ((Boolean) -> Unit)? = null
         private var fetch: ((Boolean) -> Unit)? = null
 
@@ -136,7 +204,11 @@ class PressEventConfigRepositoryTest {
             return activated
         }
 
-        override fun fetchAndActivate(completion: (Boolean) -> Unit) {
+        override fun fetchAndActivate(
+            forceRefresh: Boolean,
+            completion: (Boolean) -> Unit,
+        ) {
+            forcedFetches += forceRefresh
             fetches++
             fetch = completion
         }

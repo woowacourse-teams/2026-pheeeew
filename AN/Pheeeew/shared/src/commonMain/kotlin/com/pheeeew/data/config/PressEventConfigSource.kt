@@ -11,5 +11,8 @@ interface PressEventConfigSource {
     fun activatedBoolean(parameterKey: String): Boolean
 
     /** Success includes an unchanged cached value; it does not mean that activation changed a value. */
-    fun fetchAndActivate(completion: (Boolean) -> Unit)
+    fun fetchAndActivate(
+        forceRefresh: Boolean,
+        completion: (Boolean) -> Unit,
+    )
 }

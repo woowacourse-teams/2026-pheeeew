@@ -1,6 +1,7 @@
 package com.pheeeew.data.repository
 
 import com.pheeeew.data.config.PressEventConfigSource
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
@@ -20,9 +21,12 @@ class PressEventConfigRepository(
     val eventButtonEnabled = mutableEnabled.asStateFlow()
     private var initialized = false
     private var refreshing = false
+    private var source: PressEventConfigSource? = null
+    private var entryCheck: CompletableDeferred<Boolean?>? = null
 
     /** The platform owner supplies the same SDK adapter for the lifetime of this repository. */
     fun onForeground(source: PressEventConfigSource) {
+        this.source = source
         if (refreshing) return
         refreshing = true
         if (initialized) {
@@ -36,15 +40,49 @@ class PressEventConfigRepository(
                     fetch(source)
                 } else {
                     refreshing = false
+                    completeEntryCheck(null)
                 }
             }
         }
     }
 
     private fun fetch(source: PressEventConfigSource) {
-        source.fetchAndActivate { succeeded ->
+        source.fetchAndActivate(forceRefresh = false) { succeeded ->
             if (succeeded) mutableEnabled.value = source.activatedBoolean(parameterKey)
             refreshing = false
+            if (entryCheck != null) startEntryCheck()
         }
+    }
+
+    /** null means the latest value could not be fetched. UI cancellation never cancels the SDK task. */
+    suspend fun fetchEventEnabledForEntry(): Boolean? {
+        val existing = entryCheck
+        if (existing != null) return existing.await()
+        if (source == null) return null
+        val pending = CompletableDeferred<Boolean?>()
+        entryCheck = pending
+        if (!refreshing) startEntryCheck()
+        return pending.await()
+    }
+
+    private fun startEntryCheck() {
+        val adapter = source
+        if (!initialized || adapter == null) {
+            completeEntryCheck(null)
+            return
+        }
+        refreshing = true
+        adapter.fetchAndActivate(forceRefresh = true) { succeeded ->
+            val enabled = if (succeeded) adapter.activatedBoolean(parameterKey) else null
+            if (enabled != null) mutableEnabled.value = enabled
+            refreshing = false
+            completeEntryCheck(enabled)
+        }
+    }
+
+    private fun completeEntryCheck(enabled: Boolean?) {
+        val pending = entryCheck
+        entryCheck = null
+        pending?.complete(enabled)
     }
 }

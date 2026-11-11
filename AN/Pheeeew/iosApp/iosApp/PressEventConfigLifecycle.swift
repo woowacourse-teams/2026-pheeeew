@@ -24,7 +24,19 @@ private final class FirebasePressEventConfigSource: PressEventConfigSource {
         remoteConfig[parameterKey].boolValue
     }
 
-    func fetchAndActivate(completion: @escaping (KotlinBoolean) -> Void) {
+    func fetchAndActivate(forceRefresh: Bool, completion: @escaping (KotlinBoolean) -> Void) {
+        if forceRefresh {
+            remoteConfig.fetch(withExpirationDuration: 0) { [remoteConfig] status, error in
+                guard error == nil && status == .success else {
+                    DispatchQueue.main.async { completion(KotlinBoolean(bool: false)) }
+                    return
+                }
+                remoteConfig.activate { _, error in
+                    DispatchQueue.main.async { completion(KotlinBoolean(bool: error == nil)) }
+                }
+            }
+            return
+        }
         remoteConfig.fetchAndActivate { status, error in
             let succeeded = error == nil && status != .error
             DispatchQueue.main.async { completion(KotlinBoolean(bool: succeeded)) }

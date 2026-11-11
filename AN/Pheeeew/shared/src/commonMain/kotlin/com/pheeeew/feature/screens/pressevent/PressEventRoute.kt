@@ -9,6 +9,7 @@ import com.pheeeew.core.audio.rememberPressSoundPlayer
 import com.pheeeew.core.designsystem.component.DarkSystemBarsEffect
 import com.pheeeew.core.navigation.FlowBackHandler
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
+import dev.zacsweers.metrox.viewmodel.metroViewModel
 import kotlinx.coroutines.flow.StateFlow
 
 @Composable
@@ -17,6 +18,13 @@ internal fun PressEventRoute(
     sessionGeneration: Long?,
     onBack: () -> Unit,
 ) {
+    val entryViewModel: PressEventEntryViewModel = metroViewModel()
+    val entryStatus by entryViewModel.status.collectAsStateWithLifecycle()
+    if (entryStatus != PressEventEntryStatus.Available) {
+        FlowBackHandler(enabled = true, onBack = onBack)
+        PressEventEntryScreen(entryStatus, onBack)
+        return
+    }
     val viewModel =
         assistedMetroViewModel<PressEventViewModel, PressEventViewModel.Factory> { create(eventId, sessionGeneration) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()

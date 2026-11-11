@@ -45,6 +45,7 @@ internal fun EmotionListLoadError(
     onRetry: (() -> Unit)?,
     modifier: Modifier = Modifier,
     icon: DrawableResource? = if (hasItems) null else EmotionState.FRUSTRATED.face,
+    actionLabel: String? = null,
 ) {
     Surface(
         modifier = modifier,
@@ -80,14 +81,17 @@ internal fun EmotionListLoadError(
                 )
             }
             if (onRetry != null) {
-                EmotionListRetryButton(onRetry)
+                EmotionListRetryButton(onRetry, actionLabel)
             }
         }
     }
 }
 
 @Composable
-private fun EmotionListRetryButton(onClick: () -> Unit) {
+private fun EmotionListRetryButton(
+    onClick: () -> Unit,
+    label: String?,
+) {
     val interactionSource = remember { MutableInteractionSource() }
     Button(
         onClick = onClick,
@@ -103,7 +107,7 @@ private fun EmotionListRetryButton(onClick: () -> Unit) {
                 contentColor = MaterialTheme.appColors.feedback.errorInk,
             ),
     ) {
-        Text(stringResource(Res.string.emotion_list_retry), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        Text(label ?: stringResource(Res.string.emotion_list_retry), fontSize = 13.sp, fontWeight = FontWeight.Bold)
     }
 }
 
