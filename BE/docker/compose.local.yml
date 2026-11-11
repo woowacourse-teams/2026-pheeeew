@@ -14,6 +14,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/pheeeew
       SPRING_DATASOURCE_USERNAME: pheeeew
       SPRING_DATASOURCE_PASSWORD: pheeeew
+      REDIS_HOST: redis
       JWT_PRIVATE_KEY_BASE64: ${JWT_PRIVATE_KEY_BASE64:?}
       JWT_PUBLIC_KEY_BASE64: ${JWT_PUBLIC_KEY_BASE64:?}
       PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64: ${PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64:-}
@@ -30,6 +31,8 @@ services:
       - "127.0.0.1:8080:8080"
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/actuator/health"]
@@ -57,5 +60,20 @@ services:
       retries: 10
       start_period: 20s
 
+  redis:
+    container_name: pheeeew-be-redis
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
 volumes:
   postgres-data:
+  redis-data:

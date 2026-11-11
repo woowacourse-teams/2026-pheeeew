@@ -14,6 +14,12 @@ spring:
   sql:
     init:
       mode: never
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 1s
+      connect-timeout: 1s
   servlet:
     multipart:
       # multipart 를 받는 API 가 없다. 켜 두면 경계가 없거나 크기를 넘는 multipart 요청이 500 과 오류 로그가 된다.
@@ -95,3 +101,6 @@ management:
   endpoint:
     health:
       show-details: never
+  health:
+    redis:
+      enabled: false
