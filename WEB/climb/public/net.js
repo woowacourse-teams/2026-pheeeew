@@ -25,7 +25,7 @@ export function createNet({
       });
       let data = null;
       try { data = await res.json(); } catch {
-        // Pages의 SPA 대체 응답(HTML 200)은 API 성공이 아니다. 서버 없이 혼자 하기로 전환한다.
+        // Pages의 SPA 대체 응답(HTML 200)은 API 성공이 아니다. 연결 실패로 처리한다.
         if (res.status >= 200 && res.status < 300 && res.status !== 204) return { status: 0, body: null };
       }
       return { status: res.status, body: data };

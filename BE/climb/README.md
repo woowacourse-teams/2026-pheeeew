@@ -90,7 +90,7 @@
 | `MESSAGE_RATE_LIMITED` | 1008 | 초당 10개를 넘겼다. |
 | `HELLO_REQUIRED`, `UNSUPPORTED_VERSION`, `INVALID_MESSAGE` | 1008 | 메시지를 고친다. |
 
-서버는 15초마다 Ping 을 보낸다(브라우저가 자동으로 Pong 한다). 끊겨도 게임은 계속하고, 다시 연결하면 `hello` 부터 한다.
+서버는 15초마다 Ping 을 보낸다(브라우저가 자동으로 Pong 한다). 일반 플레이는 연결이 끊기면 일시정지하고, 다시 연결하면 `hello` 부터 시작해 이어 한다. 닉네임 등록과 실시간 연결이 필수이며 오프라인 혼자 하기는 제공하지 않는다.
 
 핸드셰이크에 유효한 `climb_admin` 쿠키가 있으면 관리자 연결이다(손님 쿠키도 필요하다). 등반을 만들지 않아서 `pos`·`zone`·`finish`·`restart` 는
 오류 없이 버리고(`welcome` 의 `run` 은 `null`), 기록·순위·`event` 에 넣지 않는다. `st` 는 받아 두지만 다른 사람에게 보내지 않는다.

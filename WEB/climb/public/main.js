@@ -12,6 +12,7 @@ import { nearestSign, signReader, signKey, splitSign, bubbleX, signLook, SIGN_AR
 import { sfx, unlock, toggleMute, isMuted, audioCtx } from './sfx.js';
 import { createBgm, CREDITS } from './bgm.js';
 import { createNet } from './net.js';
+import { entryState, canPlay } from './online.js';
 import { createGhosts } from './ghosts.js';
 import * as admin from './admin.js';
 
@@ -609,6 +610,7 @@ function makeRig() {
 }
 
 function begin(who, saved) {
+  if (!ADMIN && !guest) { enter(); return; }
   id = who;
   P = params(id);
   const sh = saved ? saved.h ?? (5080 - saved.y - P.h) / TILE : START[1]; // 예전 저장(y 픽셀, 맵 높이 128칸 기준)도 읽는다
@@ -621,6 +623,7 @@ function begin(who, saved) {
   sfx.start();
   if (guest) net.connect({ character: id, zone: Math.min(stats.cleared, ZONES.length - 1), finished: stats.cleared >= ZONES.length });
   showRanks();
+  syncConnection();
 }
 
 // ---- 화면 전환 ----
@@ -654,11 +657,11 @@ function showCredits() {
 function askRestart() {
   mode = 'confirm';
   keys.left = keys.right = keys.jump = false;
-  ui.confirm(() => { forget(); ui.closeConfirm(); showSelect(); }, () => { ui.closeConfirm(); mode = 'play'; });
+  ui.confirm(() => { forget(); ui.closeConfirm(); showSelect(); }, () => { ui.closeConfirm(); mode = 'play'; syncConnection(); });
 }
 
 // ---- 서버(순위) ----
-// 서버가 없으면 guest 가 null 인 채로 지금처럼 혼자 한다
+// 일반 플레이는 손님 등록과 실시간 연결을 마친 뒤에만 진행한다
 const net = createNet({ map: MAP_VERSION });
 if (ADMIN) for (const k of ['connect', 'reportPos', 'reportState', 'reportZone', 'reportFinish', 'restart', 'createGuest', 'rename']) net[k] = () => ({ status: 0 }); // 관리자 모드: 보고하지 않는다
 let guest = null; // { id, nickname, tag }
@@ -666,6 +669,7 @@ let rank = null; // 마지막으로 받은 rank 메시지
 const showRanks = () => ui.ranks(guest && { rank, status: net.status, tag: guest.tag });
 net.on('rank', (m) => { rank = m; showRanks(); });
 net.on('status', showRanks);
+net.on('status', syncConnection);
 net.on('welcome', (m) => { guest = m.me; });
 const ghosts = createGhosts();
 const ghostViews = new Map(); // n -> { c, rig, label, character }
@@ -720,17 +724,17 @@ const NICK_ERR = {
   GUEST_CREATE_LIMITED: '잠깐 사이에 너무 많이 만들었어요. 조금 뒤에 다시 해 주세요.',
   NICKNAME_CHANGE_LIMITED: '닉네임은 하루에 3번까지 바꿀 수 있어요.',
 };
-const nickError = (r) => (r.status === 400 || r.status === 429 ? NICK_ERR[r.body?.code] ?? r.body?.message ?? '닉네임을 다시 확인해 주세요.' : '서버에 닿지 않아요. 혼자 하기로 오를 수 있어요.');
-// 첫 접속: 닉네임을 정하거나 혼자 하기
+const nickError = (r) => (r.status === 400 || r.status === 429 ? NICK_ERR[r.body?.code] ?? r.body?.message ?? '닉네임을 다시 확인해 주세요.' : '서버에 닿지 않아요. 잠시 뒤 다시 시도해 주세요.');
+// 첫 접속: 닉네임 등록은 필수다
 function askNickname() {
   mode = 'nickname';
-  ui.nickname({ heading: '닉네임을 정해 주세요', ok: '정하기', alt: '혼자 하기' }, async (name) => {
+  ui.nickname({ heading: '닉네임을 정해 주세요', ok: '정하기' }, async (name) => {
     const r = await net.createGuest(name);
     if (r.status !== 201) { ui.nicknameError(nickError(r)); return; }
     guest = r.body;
     ui.closeNickname();
     showTitle();
-  }, () => { ui.closeNickname(); saved ? showTitle() : showSelect(); });
+  });
 }
 function rename() {
   mode = 'nickname';
@@ -744,7 +748,7 @@ function rename() {
 }
 
 addEventListener('keydown', (e) => {
-  if (e.repeat || mode === 'nickname') return; // 닉네임 입력 중에는 게임 키를 쓰지 않는다
+  if (e.repeat || mode === 'nickname' || mode === 'connection' || (mode === 'play' && !canPlay(ADMIN, guest, net.status))) return; // 닉네임 입력 중에는 게임 키를 쓰지 않는다
   const k = e.code;
   unlock(); // 브라우저는 첫 키 입력 뒤에야 소리를 낸다
   if (k === 'KeyM') { const off = toggleMute(); if (mode === 'play') { say(off ? '소리 끔' : '소리 켬'); quipT = 1.2; } return; }
@@ -767,7 +771,7 @@ addEventListener('keydown', (e) => {
   }
   if (mode === 'confirm') {
     if (k === 'Enter') { forget(); ui.closeConfirm(); showSelect(); }
-    if (k === 'Escape' || k === 'KeyN') { ui.closeConfirm(); mode = 'play'; }
+    if (k === 'Escape' || k === 'KeyN') { ui.closeConfirm(); mode = 'play'; syncConnection(); }
     return;
   }
   if (ADMIN && adminKey(k)) { e.preventDefault(); return; }
@@ -885,7 +889,7 @@ const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStar
 
 let acc = 0;
 function frame(dt) {
-  if (mode !== 'play') return;
+  if (mode !== 'play' || !canPlay(ADMIN, guest, net.status)) return;
   acc += dt;
   while (acc >= DT) { tick(); acc -= DT; }
 
@@ -984,18 +988,41 @@ app.ticker.add((tk) => {
 saved = JSON.parse(localStorage.getItem(SAVE_KEY) ?? 'null');
 if (saved && !IDS.includes(saved.id)) saved = null;
 if (saved && saved.h === undefined) saved.h = (5080 - saved.y - 48) / TILE; // 예전 저장(y 픽셀) 읽기
-const me = ADMIN ? { status: 0 } : await net.me(); // 관리자 모드: 닉네임 창 없이 혼자 하기
-if (me.status === 200) {
+function syncConnection() {
+  if (ADMIN || mode !== 'play') return;
+  if (canPlay(ADMIN, guest, net.status)) { ui.closeConnection(); return; }
+  keys.left = keys.right = keys.jump = false;
+  flail = 0;
+  sfx.charge(-1);
+  save();
+  const message = net.status === 'replaced'
+    ? '다른 창에서 접속했어요. 이 창에서 계속하려면 다시 연결해 주세요.'
+    : '서버에 다시 연결하고 있어요. 연결되면 이어서 올라요.';
+  ui.connection(message, () => location.reload());
+}
+
+async function enter() {
+  mode = 'connection';
+  ui.connection('서버에 연결하는 중…');
+  const me = await net.me();
+  const state = entryState(me);
+  if (state === 'unavailable') {
+    ui.connection('서버에 닿지 않아요. 잠시 뒤 다시 시도해 주세요.', enter);
+    return;
+  }
+  ui.closeConnection();
+  if (state === 'nickname') { askNickname(); return; }
   guest = me.body;
-  // 서버에 같은 맵의 이어 할 등반이 있으면 로컬 저장보다 그것을 쓴다(로컬 저장은 서버가 없을 때의 예비)
+  // 서버에 같은 맵의 이어 할 등반이 있으면 로컬 저장보다 그것을 쓴다.
   const r = me.body.run;
   if (r && r.map === MAP_VERSION && IDS.includes(r.character)) {
-    saved = { id: r.character, x: r.x > 0 ? r.x : START[0] * TILE, h: r.height + 0.4, falls: r.falls, time: r.time, best: r.best, cleared: ZONES.filter((z) => r.best >= z.to).length }; // 서버 높이는 정수라 살짝 위에서 내려놓는다
+    saved = { id: r.character, x: r.x > 0 ? r.x : START[0] * TILE, h: r.height + 0.4, falls: r.falls, time: r.time, best: r.best, cleared: ZONES.filter((z) => r.best >= z.to).length };
   }
+  showTitle();
 }
+
 ui.loaded();
-if (me.status === 401) askNickname();
-else if (saved || guest) showTitle();
-else showSelect();
+if (ADMIN) { if (saved) showTitle(); else showSelect(); }
+else await enter();
 
 if (DEBUG || ADMIN) window.game = { get p() { return p; }, admin: { teleport, key: adminKey, get back() { return back; } }, get rig() { return rig; }, app, render: () => app.render(), view, get camY() { return camY; }, P: () => P, yOf, keys, begin, frame, get stats() { return stats; }, bgm }; // 숨겨진 창에서도 frame(dt) 로 시간을 넘겨 시험한다

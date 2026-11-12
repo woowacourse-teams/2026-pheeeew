@@ -2,6 +2,7 @@
 // 사용: node tools/net_test.mjs
 import { createNet } from '../public/net.js';
 import { apiForHostname } from '../public/api-config.js';
+import { entryState, canPlay } from '../public/online.js';
 
 const tests = [];
 const test = (name, fn) => tests.push({ name, fn });
@@ -441,6 +442,44 @@ test('in·sts·out 을 구독자에게 넘긴다', () => {
   ws.serverSend({ t: 'sts', s: [[9, 612, 135.42, -180, 420, 1, 0]] });
   ws.serverSend({ t: 'out', n: [9] });
   eq(got, [['in', '히유'], ['sts', 9], ['out', [9]]], '받은 것');
+});
+
+test('인증된 손님만 입장하고 401만 닉네임 등록으로 보낸다', () => {
+  eq(entryState({ status: 200, body: { id: 'g1' } }), 'ready', '인증됨');
+  eq(entryState({ status: 401, body: null }), 'nickname', '등록 필요');
+  for (const response of [{ status: 0 }, { status: 502 }, { status: 403 }, { status: 200, body: null }, { status: 200, body: {} }]) {
+    eq(entryState(response), 'unavailable', '연결 실패가 혼자 하기로 이어지지 않는다');
+  }
+});
+
+test('실시간 welcome 전에는 멈추고 연결이 끊기면 재연결까지 멈춘다', () => {
+  const t = setup(), guest = { id: 'g1' };
+  const playable = () => canPlay(false, guest, t.net.status);
+  eq(playable(), false, '처음');
+  t.net.connect({ character: 'angry' });
+  const ws = t.sockets[0];
+  ws.serverOpen();
+  eq(playable(), false, 'TCP 연결만으로는 시작하지 않는다');
+  ws.serverSend(welcome());
+  eq(playable(), true, '서버가 입장을 확인');
+  ws.serverClose();
+  eq(playable(), false, '끊김');
+  t.clock.advance(1000);
+  const retry = t.sockets.at(-1);
+  retry.serverOpen();
+  eq(playable(), false, '재연결 중');
+  retry.serverSend(welcome());
+  eq(playable(), true, '재입장 완료');
+  retry.serverSend({ t: 'error', code: 'CONNECTION_REPLACED' });
+  retry.serverClose();
+  eq(playable(), false, '다른 창에 연결을 넘긴 경우도 정지');
+});
+
+test('손님 없는 일반 플레이는 차단하고 인증된 관리자 점검은 유지한다', () => {
+  eq(canPlay(false, null, 'online'), false, '일반 플레이');
+  for (const status of ['offline', 'connecting', 'online', 'replaced']) {
+    eq(canPlay(true, null, status), true, '관리자 점검');
+  }
 });
 
 let failed = 0;
