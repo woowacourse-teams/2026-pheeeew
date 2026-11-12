@@ -12,7 +12,7 @@ import { sfx, unlock, toggleMute, isMuted, audioCtx } from './sfx.js';
 import { createBgm, CREDITS } from './bgm.js';
 import { createNet } from './net.js';
 import { zoneFiles, charFiles, createLoader, loadTree, leaves, track, zoneOf as zoneAt, zonesAround } from './art.js';
-import { entryState, canPlay } from './online.js';
+import { entryState, canPlay, watchOnly } from './online.js';
 import { createGhosts } from './ghosts.js';
 import * as admin from './admin.js';
 
@@ -55,7 +55,7 @@ function fit() {
 app.renderer.on('resize', fit);
 fit();
 
-// 관리자 모드(/admin): 아무 곳으로나 옮겨 다니며 구간을 해 본다. 서버에는 아무것도 보고하지 않는다.
+// 관리자 모드(/admin): 아무 곳으로나 옮겨 다니며 구간을 해 본다. 다른 사람과 순위는 실시간으로 보지만 기록이 될 보고는 하지 않는다.
 // 서버가 키를 확인해 준 뒤에만 켠다. 관리자가 아니면 키 창만 보이고 게임을 시작하지 않는다(취소하면 / 로)
 const adminApi = admin.adminSession();
 const ADMIN = admin.isAdminPath(location.pathname) && await admin.enterAdmin(adminApi, (message, submit) => {
@@ -698,7 +698,7 @@ function showTitle() {
   mode = 'title';
   prefetch();
   ui.title(saved, go, () => { forget(); showSelect(); }, showCredits);
-  ui.guest(guest, rename);
+  ui.guest(ADMIN ? null : guest, rename);
   showBoards();
 }
 async function showBoards() {
@@ -718,7 +718,7 @@ function askRestart() {
 // ---- 서버(순위) ----
 // 일반 플레이는 손님 등록과 실시간 연결을 마친 뒤에만 진행한다
 const net = createNet({ map: MAP_VERSION });
-if (ADMIN) for (const k of ['connect', 'reportPos', 'reportState', 'reportZone', 'reportFinish', 'restart', 'createGuest', 'rename']) net[k] = () => ({ status: 0 }); // 관리자 모드: 보고하지 않는다
+if (ADMIN) watchOnly(net); // 관리자 모드: 보기만 한다(순위·다른 사람에게 나오지 않는다)
 let guest = null; // { id, nickname, tag }
 let rank = null; // 마지막으로 받은 rank 메시지
 const showRanks = () => ui.ranks(guest && { rank, status: net.status, tag: guest.tag });
@@ -950,7 +950,7 @@ function frame(dt) {
   rig.pose({ ground: p.ground, charging: p.charging, charge: Math.min(1, p.charge / P.chargeMax), splat: p.splat, vx: p.vx, vy: p.vy, facing: p.facing, walking }, dt);
   rig.root.position.set(p.x + P.w / 2, p.y + P.h);
   // 함께 오르기: [몸 가운데 x, 발 높이(칸), vx, vy, 자세 표시, 모은 정도]. 표시 1 땅 위, 2 모으는 중, 4 왼쪽을 봄, 8 엎어짐, 16 미끄러지는 중
-  if (!ADMIN) net.reportState([p.x + P.w / 2, Math.max(0, hOf(p.y + P.h)), p.vx, p.vy, (p.ground ? 1 : 0) | (p.charging ? 2 : 0) | (p.facing < 0 ? 4 : 0) | (p.splat ? 8 : 0) | (p.slide ? 16 : 0), Math.min(1, p.charge / P.chargeMax)]);
+  net.reportState([p.x + P.w / 2, Math.max(0, hOf(p.y + P.h)), p.vx, p.vy, (p.ground ? 1 : 0) | (p.charging ? 2 : 0) | (p.facing < 0 ? 4 : 0) | (p.splat ? 8 : 0) | (p.slide ? 16 : 0), Math.min(1, p.charge / P.chargeMax)]);
 
   sfx.charge(p.charging ? Math.min(1, p.charge / P.chargeMax) : -1);
   if (p.slide && Math.random() < dt * 14) fx.dust(p.x + P.w / 2, p.y + P.h, 0.15); // 미끄러지는 동안 먼지
@@ -1027,9 +1027,9 @@ function frame(dt) {
   updateSnow(dt, camH);
   updateWind(dt);
   drawGhosts(dt); // 카메라가 정해진 뒤
-  // 닉네임이 있는 손님만(관리자 모드는 없음). 바꾸면 다음 프레임에 반영. 충돌 상자 기준이라 몸이 눌리거나 늘어나도 흔들리지 않는다
+  // 닉네임이 있는 손님만(관리자 모드는 '관리자'). 바꾸면 다음 프레임에 반영. 충돌 상자 기준이라 몸이 눌리거나 늘어나도 흔들리지 않는다
   // 차지 게이지·말풍선·표지판 카드가 떠 있는 동안은 겹치지 않게 숨긴다
-  const nick = ADMIN ? '' : guest?.nickname ?? '';
+  const nick = ADMIN ? '관리자' : guest?.nickname ?? '';
   if (nameTag.text !== nick) nameTag.text = nick;
   nameTag.visible = nick !== '' && !p.charging && !quip.visible && !tip.visible;
   nameTag.position.set(p.x + P.w / 2, p.y + P.h - 84); // 다른 사람 이름표와 같은 높이(발에서 84px 위)
@@ -1037,7 +1037,7 @@ function frame(dt) {
   if (ADMIN) {
     const h = hOf(p.y + P.h);
     const z = Math.max(0, ZONES.findIndex((zz, i) => h < zz.to || i === ZONES.length - 1)); // HUD 와 같이: 경계 높이에 서면 다음 구간
-    ui.adminInfo(`높이 ${Math.round(h)}칸 · 화면 ${Math.floor(Math.max(0, h) / SCREEN) + 1} · ${z + 1}구간 ${ZONES[z].name} · 칸 (${Math.floor((p.x + P.w / 2) / TILE)}, ${Math.floor(h)})`);
+    ui.adminInfo(`높이 ${Math.round(h)}칸 · 화면 ${Math.floor(Math.max(0, h) / SCREEN) + 1} · ${z + 1}구간 ${ZONES[z].name} · 칸 (${Math.floor((p.x + P.w / 2) / TILE)}, ${Math.floor(h)})${guest ? '' : ' · 닉네임이 없어 다른 사람이 안 보여요(/ 에서 정하기)'}`);
   }
 }
 app.ticker.add((tk) => {
@@ -1083,7 +1083,11 @@ async function enter() {
 
 await backdrop;
 ui.loaded();
-if (ADMIN) { if (saved) showTitle(); else showSelect(); }
+if (ADMIN) {
+  const me = await net.me(); // 실시간 연결에는 손님 쿠키가 필요하다. 아직 닉네임이 없으면 예전처럼 혼자 점검한다
+  if (entryState(me) === 'ready') guest = me.body;
+  if (saved) showTitle(); else showSelect();
+}
 else await enter();
 
 if (DEBUG || ADMIN) window.game = { get p() { return p; }, admin: { teleport, key: adminKey, get back() { return back; } }, get rig() { return rig; }, app, arts, loader, loadZone, render: () => app.render(), view, get camY() { return camY; }, P: () => P, yOf, keys, begin, frame, get stats() { return stats; }, bgm }; // 숨겨진 창에서도 frame(dt) 로 시간을 넘겨 시험한다
