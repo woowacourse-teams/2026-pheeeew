@@ -90,7 +90,7 @@ export default function build({ rock, up, down, nod, hot, boost, wind }) {
 
 // 화살표 표지. c = 가로 중심(칸), h = 놓이는 윗면 높이, s = 배율, flip = 좌우 뒤집기(기본은 오른쪽 위를 가리킨다)
 export const decor = [
-  { img: 'arrow_sign', c: 21.5, h: 18, s: 0.28 }, // 노즐을 지난 갑판: 오른쪽 위 분사 선반으로(착지면이 화면 맨 위라 표지로 알린다)
+  { img: 'arrow_sign', c: 24.8, h: 18, s: 0.28 }, // 노즐을 지난 갑판: 오른쪽 위 분사 선반으로(착지면이 화면 맨 위라 표지로 알린다)
   { img: 'arrow_sign', c: 29.5, h: 35, s: 0.28, flip: true }, // 받이: 왼쪽 위 턱으로
   { img: 'arrow_sign', c: 19.3, h: 57, s: 0.26, flip: true }, // 통로 앞 턱: 왼쪽 승무원 통로로
   { img: 'arrow_sign', c: 23.5, h: 68, s: 0.26, flip: true }, // 받이 선반: 왼쪽으로 내려가 통로로
@@ -99,4 +99,10 @@ export const decor = [
   { img: 'arrow_sign', c: 28.6, h: 115, s: 0.26 }, // 구덩이: 오른쪽 벽에 튕겨 위 턱으로
   { img: 'arrow_sign', c: 30.4, h: 124, s: 0.22 }, // 안쪽 턱: 오른쪽 벽에 튕겨 받이 지붕으로
   { img: 'arrow_sign', c: 16.5, h: 129, s: 0.28, flip: true }, // 받이 지붕: 왼쪽 위 쉼터로
+];
+
+// 안내 표지판: 새 장치가 처음 나오는 자리에 하나. c = 가로 중심(칸), h = 놓이는 윗면 높이, text = "이름: 설명"(이게 무엇인지만), flip = 좌우 뒤집기
+export const signs = [
+  { c: 3.5, h: 0, text: '달궈진 판: 오래 서 있으면 튕겨 나요' }, // 화면 1: 시작 바닥, 판 1 왼쪽
+  { c: 21.2, h: 18, text: '분사 판: 여기서 뛰면 두 배 높이 올라요' }, // 화면 2: 분사 판 1 오른쪽 갑판
 ];

@@ -96,6 +96,8 @@ for (const z of ZONES) {
 // 장식 소품. c = 가로 중심(칸), h = 놓이는 윗면 높이(hang 은 매달리는 밑면 높이), s = 배율, flip = 좌우 뒤집기
 // 화살표 표지는 오른쪽 위를 가리킨다. 돌아가는 길에서 다음 발판 방향을 알려 준다.
 export const DECOR = ZONES.flatMap((z) => (z.mod.decor ?? []).map((d) => ({ ...d, h: d.h + z.shift })));
+// 안내 표지판(충돌 없음): 새 장치가 처음 나오는 자리에서 그것이 무엇인지 알려 준다. zone = 구간 번호(0부터)
+export const SIGNS = ZONES.flatMap((z, zone) => (z.mod.signs ?? []).map((s) => ({ ...s, h: s.h + z.shift, zone })));
 
 export const level = {
   rows: HEIGHT,
