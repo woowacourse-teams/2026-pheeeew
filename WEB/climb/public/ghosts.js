@@ -4,6 +4,7 @@ export const DELAY = 150; // ms
 export const STALE = 1000; // 이만큼 새 소식이 없으면 지우기 시작한다(가만히 있는 사람도 1초마다 보낸다)
 export const FADE = 500; // 다 지워지는 데 걸리는 시간
 
+const KEEP = 30; // 사람마다 남기는 상태 수(3초). 그리지 않는 화면(제목 등)에 있어도 쌓이지 않게
 const lerp = (a, b, k) => a + (b - a) * k;
 
 export function createGhosts({ max = 20 } = {}) {
@@ -24,7 +25,10 @@ export function createGhosts({ max = 20 } = {}) {
     // sts.s: [[n, x, h, vx, vy, flags, charge], ...], t = 받은 시각(ms)
     states(list, t) {
       for (const [n, x, h, vx, vy, flags, charge] of list) {
-        people.get(n)?.buf.push({ t, x, h, vx, vy, flags, charge });
+        const buf = people.get(n)?.buf;
+        if (!buf) continue;
+        buf.push({ t, x, h, vx, vy, flags, charge });
+        if (buf.length > KEEP) buf.shift();
       }
     },
     clear() {

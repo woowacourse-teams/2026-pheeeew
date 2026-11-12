@@ -84,6 +84,15 @@ test('동시에 최대 20명까지만 둔다', () => {
   eq(g.sample(0).length, 20, '20명');
 });
 
+test('그리지 않는 동안 받은 상태는 최근 것만 남긴다', () => {
+  const g = createGhosts();
+  g.enter([PIYU]);
+  for (let i = 0; i < 1000; i++) g.states([st(9, i, 10)], i * 100);
+  near(g.sample(50000 + DELAY)[0].x, 970, '오래된 상태는 버려 최근 3초(30개)의 처음에 멈춘다');
+  near(g.sample(999 * 100 - 2000 + DELAY)[0].x, 979, '최근 2초는 남아 있음');
+  near(g.sample(999 * 100 + DELAY)[0].x, 999, '마지막 상태');
+});
+
 let failed = 0;
 for (const { name, fn } of tests) {
   try { await fn(); console.log(`통과  ${name}`); } catch (e) { failed++; console.log(`실패  ${name}\n      ${e.message}`); }
