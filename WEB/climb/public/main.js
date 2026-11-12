@@ -449,6 +449,11 @@ const ghostLayer = new Container();
 world.addChild(ghostLayer);
 const actor = new Container();
 world.addChild(actor);
+// 내 이름표: 다른 사람 이름표(drawGhosts)와 같은 글꼴·테두리에, 내 감정이 색으로 조금 크게. G 키(ghostLayer)와 상관없다
+const nameTag = new Text({ text: '', style: { fontFamily: FONT, fontSize: 17, fill: 0xfff8ea, stroke: { color: INK, width: 5, join: 'round' } } });
+nameTag.anchor.set(0.5, 1);
+nameTag.visible = false;
+world.addChild(nameTag);
 const fx = createFx(); // 먼지, 별, 반짝이 (캐릭터 위에 그린다)
 world.addChild(fx.view);
 const hitbox = new Graphics();
@@ -661,6 +666,7 @@ async function begin(who, saved) {
   p = newPlayer(saved ? saved.x : START[0] * TILE, yOf(sh) - P.h);
   stats = saved ? { falls: saved.falls, time: saved.time, best: saved.best, cleared: Number(saved.cleared) || 0 } : { falls: 0, time: 0, best: 0, cleared: 0 };
   makeRig();
+  nameTag.style.fill = TINT[id];
   camY = Math.min(HEIGHT * TILE - H, p.y + P.h / 2 - H * 0.55); // 시작하자마자 제자리(바닥 아래를 비추지 않게)
   ui.play(id);
   mode = 'play';
@@ -1033,6 +1039,12 @@ function frame(dt) {
   updateSnow(dt, camH);
   updateWind(dt);
   drawGhosts(dt); // 카메라가 정해진 뒤
+  // 닉네임이 있는 손님만(관리자 모드는 없음). 바꾸면 다음 프레임에 반영. 충돌 상자 기준이라 몸이 눌리거나 늘어나도 흔들리지 않는다
+  // 차지 게이지·말풍선·표지판 카드가 떠 있는 동안은 겹치지 않게 숨긴다
+  const nick = ADMIN ? '' : guest?.nickname ?? '';
+  if (nameTag.text !== nick) nameTag.text = nick;
+  nameTag.visible = nick !== '' && !p.charging && !quip.visible && !tip.visible;
+  nameTag.position.set(p.x + P.w / 2, p.y + P.h - 84); // 다른 사람 이름표와 같은 높이(발에서 84px 위)
   ui.hud({ h: Math.max(0, Math.round(hOf(p.y + P.h))), best: stats.best, falls: stats.falls, time: stats.time, low: p.y + P.h - camY > H - 70 });
   if (ADMIN) {
     const h = hOf(p.y + P.h);
