@@ -172,7 +172,7 @@ class ClimbRunTest {
         assertThat(record.best()).isEqualTo(663);
         assertThat(record.height()).isEqualTo(663);
         assertThat(record.suspect()).isFalse();
-        assertThat(run.entry("a1b2", "피유").finished()).isTrue();
+        assertThat(run.entry("a1b2", "히유").finished()).isTrue();
     }
 
     @Test

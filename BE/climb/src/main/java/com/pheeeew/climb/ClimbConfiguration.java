@@ -2,6 +2,7 @@ package com.pheeeew.climb;
 
 import com.pheeeew.climb.application.ClimbGuestService;
 import com.pheeeew.climb.application.ClimbRankingService;
+import com.pheeeew.climb.domain.ClimbAdminSessions;
 import com.pheeeew.climb.domain.ClimbErrorCode;
 import com.pheeeew.climb.infra.ClimbGuestRepository;
 import com.pheeeew.climb.infra.ClimbRunRepository;
@@ -29,7 +30,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 /**
- * 피유 등반 모듈의 빈. pheeeew.climb.enabled 가 true 일 때만 올라온다.
+ * 감정이들의 점프 대모험 모듈의 빈. pheeeew.climb.enabled 가 true 일 때만 올라온다.
  * 본체를 참조하지 않고, 본체도 이 모듈을 직접 부르지 않는다.
  */
 @ConditionalOnProperty(prefix = "pheeeew.climb", name = "enabled", havingValue = "true")
@@ -63,9 +64,14 @@ public class ClimbConfiguration {
     }
 
     @Bean
+    ClimbAdminSessions climbAdminSessions(ClimbProperties properties) {
+        return new ClimbAdminSessions(properties.adminKey());
+    }
+
+    @Bean
     ClimbWebSocketHandler climbWebSocketHandler(ClimbRankingService ranking, ClimbRunRepository runs,
-            ClimbGuestService guests) {
-        return new ClimbWebSocketHandler(ranking, runs, guests);
+            ClimbGuestService guests, ClimbProperties properties) {
+        return new ClimbWebSocketHandler(ranking, runs, guests, properties.presence());
     }
 
     /** /api/v1/climb/** 전용 체인. 본체 체인보다 먼저 보고, JWT 대신 손님 쿠키로 확인한다. */
@@ -78,7 +84,7 @@ public class ClimbConfiguration {
         }
         CorsConfiguration cors = new CorsConfiguration();
         cors.setAllowedOrigins(List.of(properties.allowedOrigin()));
-        cors.setAllowedMethods(List.of("GET", "POST", "PATCH"));
+        cors.setAllowedMethods(List.of("GET", "POST", "PATCH", "DELETE"));
         cors.setAllowedHeaders(List.of("Content-Type"));
         cors.setAllowCredentials(true);
         cors.setMaxAge(Duration.ofHours(1));
@@ -104,6 +110,8 @@ public class ClimbConfiguration {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.POST, "/api/v1/climb/guests").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/climb/ranking").permitAll()
+                        // 관리자 세션은 손님 쿠키와 따로 컨트롤러가 관리자 쿠키로 확인한다
+                        .requestMatchers("/api/v1/climb/admin/session").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/climb/me", "/api/v1/climb/ws").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/climb/me").authenticated()
                         .anyRequest().denyAll());

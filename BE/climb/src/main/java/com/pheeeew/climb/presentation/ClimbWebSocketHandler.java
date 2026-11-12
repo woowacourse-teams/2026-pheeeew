@@ -1,10 +1,15 @@
 package com.pheeeew.climb.presentation;
 
+import com.pheeeew.climb.ClimbProperties;
 import com.pheeeew.climb.application.ClimbBoard;
 import com.pheeeew.climb.application.ClimbGuestService;
 import com.pheeeew.climb.application.ClimbRankingService;
 import com.pheeeew.climb.domain.ClimbGuest;
 import com.pheeeew.climb.domain.ClimbMap;
+import com.pheeeew.climb.domain.ClimbPose;
+import com.pheeeew.climb.domain.ClimbPresence;
+import com.pheeeew.climb.domain.ClimbPresenceView;
+import com.pheeeew.climb.domain.ClimbPresent;
 import com.pheeeew.climb.domain.ClimbRankEntry;
 import com.pheeeew.climb.domain.ClimbRanking;
 import com.pheeeew.climb.domain.ClimbRankView;
@@ -21,6 +26,7 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -29,6 +35,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,10 +54,13 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * /api/v1/climb/ws. 브라우저가 높이를 보고하고, 서버는 1초마다 바뀐 순위를 보낸다.
+ * 함께 오르기가 켜져 있으면 브라우저가 자세(st)를 보내고, 서버는 100ms마다 가까운 사람들의 새 자세를 묶어(sts) 보낸다.
  * 오류는 error { code } 를 보낸 뒤 닫는다. 검사에 걸린 보고는 오류 없이 버린다.
  */
 public class ClimbWebSocketHandler extends AbstractWebSocketHandler implements SmartLifecycle {
 
+    /** 핸드셰이크가 세션 속성에 남기는 관리자 표시(ClimbWebSocketConfiguration). */
+    static final String ADMIN = "climb.admin";
     private static final Logger log = LoggerFactory.getLogger(ClimbWebSocketHandler.class);
     private static final Set<String> CHARACTERS = Set.of("defeated", "tired", "frustrated", "annoyed", "angry");
     private static final int MAX_MESSAGE_BYTES = 16 * 1024;
@@ -62,6 +72,8 @@ public class ClimbWebSocketHandler extends AbstractWebSocketHandler implements S
     private final ClimbRankingService ranking;
     private final ClimbRunRepository runs;
     private final ClimbGuestService guests;
+    private final ClimbProperties.Presence presence;
+    private final AtomicInteger nextN = new AtomicInteger();
     private final JsonMapper json = JsonMapper.builder().build();
     private final Map<String, ClimbConnection> connections = new ConcurrentHashMap<>();
     private final Map<UUID, ClimbConnection> current = new ConcurrentHashMap<>();
@@ -71,10 +83,12 @@ public class ClimbWebSocketHandler extends AbstractWebSocketHandler implements S
             Thread.ofPlatform().name("climb-ticker").daemon().factory());
     private volatile boolean running;
 
-    public ClimbWebSocketHandler(ClimbRankingService ranking, ClimbRunRepository runs, ClimbGuestService guests) {
+    public ClimbWebSocketHandler(ClimbRankingService ranking, ClimbRunRepository runs, ClimbGuestService guests,
+            ClimbProperties.Presence presence) {
         this.ranking = ranking;
         this.runs = runs;
         this.guests = guests;
+        this.presence = presence;
         for (int index = 0; index < guestLocks.length; index++) {
             guestLocks[index] = new Object();
         }
@@ -84,6 +98,9 @@ public class ClimbWebSocketHandler extends AbstractWebSocketHandler implements S
     public void start() {
         running = true;
         ticker.scheduleWithFixedDelay(() -> safely(this::tick), 1, 1, TimeUnit.SECONDS);
+        if (presence.enabled()) {
+            ticker.scheduleWithFixedDelay(() -> safely(this::presenceTick), 100, 100, TimeUnit.MILLISECONDS);
+        }
         ticker.scheduleWithFixedDelay(() -> safely(guests::deleteInactive), 1, 24 * 60, TimeUnit.MINUTES);
     }
 
@@ -125,7 +142,7 @@ public class ClimbWebSocketHandler extends AbstractWebSocketHandler implements S
             properties.put("org.apache.tomcat.websocket.BLOCKING_SEND_TIMEOUT", 2000L);
             properties.put("org.apache.tomcat.websocket.SESSION_CLOSE_TIMEOUT", 2000L);
         }
-        ClimbConnection connection = new ClimbConnection(session, guest, senders);
+        ClimbConnection connection = new ClimbConnection(session, guest, nextN.incrementAndGet(), senders);
         if (!running) {
             fail(connection, "SERVER_DRAINING", CloseStatus.SERVICE_RESTARTED);
             return;
@@ -148,12 +165,23 @@ public class ClimbWebSocketHandler extends AbstractWebSocketHandler implements S
         }
         long now = System.nanoTime();
         connection.received(now);
-        if (!connection.allowMessage(now)) {
-            fail(connection, "MESSAGE_RATE_LIMITED", CloseStatus.POLICY_VIOLATION);
-            return;
-        }
         try {
             JsonNode root = json.readTree(message.getPayload());
+            JsonNode type = root == null ? null : root.get("t");
+            if (type != null && type.isString() && "st".equals(type.stringValue())) {
+                // 자세는 초당 10번 오므로 다른 메시지와 따로 센다
+                ClimbConnection.StateAllowance allowance = connection.allowState(now);
+                if (allowance == ClimbConnection.StateAllowance.CLOSE) {
+                    fail(connection, "MESSAGE_RATE_LIMITED", CloseStatus.POLICY_VIOLATION);
+                    return;
+                }
+                if (allowance == ClimbConnection.StateAllowance.DROP) {
+                    return;
+                }
+            } else if (!connection.allowMessage(now)) {
+                fail(connection, "MESSAGE_RATE_LIMITED", CloseStatus.POLICY_VIOLATION);
+                return;
+            }
             synchronized (lock(connection.guest().id())) {
                 if (current.get(connection.guest().id()) != connection) {
                     return;
@@ -210,6 +238,16 @@ public class ClimbWebSocketHandler extends AbstractWebSocketHandler implements S
                     }
                 }
             }
+            case "st" -> {
+                // 위치는 저장하지 않고 순위에 쓰지 않는다. 서버가 모르는 맵은 함께 오르기도 하지 않는다.
+                // 관리자는 등반이 없지만 자세는 받아 둔다. 그래야 가까운 사람이 보인다(남에게는 보이지 않는다).
+                ClimbMap map = run != null ? run.map()
+                        : connection.admin() ? ranking.map(connection.mapVersion()).orElse(null) : null;
+                ClimbPose pose = presence.enabled() && map != null ? pose(root) : null;
+                if (pose != null && pose.within(map)) {
+                    connection.pose(pose);
+                }
+            }
             case "restart" -> {
                 if (run != null) {
                     runs.save(run.record());
@@ -242,8 +280,8 @@ public class ClimbWebSocketHandler extends AbstractWebSocketHandler implements S
         Optional<ClimbMap> map = ranking.map(mapVersion);
         ClimbRun run = null;
         RunResponse resumed = null;
-        // 서버가 모르는 맵 버전은 연결은 두되 순위에 넣지 않는다.
-        if (map.isPresent()) {
+        // 서버가 모르는 맵 버전과 관리자 연결은 연결은 두되 등반을 만들지 않는다(순위·기록에 넣지 않는다).
+        if (map.isPresent() && !connection.admin()) {
             Optional<ClimbRunRecord> saved = runs.findLatestUnfinished(guest.id(), mapVersion);
             if (saved.isPresent()) {
                 run = ClimbRun.restore(saved.get(), map.get());
@@ -255,7 +293,7 @@ public class ClimbWebSocketHandler extends AbstractWebSocketHandler implements S
             }
             run.attach(now);
         }
-        connection.hello(mapVersion, run);
+        connection.hello(mapVersion, character, run);
         if (run != null) {
             publish(connection, run);
         }
@@ -332,6 +370,75 @@ public class ClimbWebSocketHandler extends AbstractWebSocketHandler implements S
                 connection.offerRank(json.writeValueAsString(rank));
             });
         });
+    }
+
+    /** 같은 맵 접속자마다 내 높이 위아래 range 칸 안의 가까운 limit 명을 골라 들어옴·나감·새 자세만 보낸다. */
+    void presenceTick() {
+        Map<String, List<ClimbConnection>> byMap = current.values().stream()
+                .filter(ClimbConnection::helloed)
+                .collect(Collectors.groupingBy(ClimbConnection::mapVersion));
+        byMap.forEach((mapVersion, members) -> {
+            ClimbPresence everyone = new ClimbPresence(members.stream().filter(member -> !member.admin())
+                    .map(ClimbConnection::present).filter(Objects::nonNull).toList());
+            Map<Integer, ClimbConnection> byN = members.stream()
+                    .collect(Collectors.toMap(ClimbConnection::n, member -> member));
+            members.forEach(receiver -> {
+                ClimbPresent mine = receiver.present();
+                List<ClimbPresent> visible = mine == null ? List.of()
+                        : everyone.visibleTo(receiver.n(), mine.pose().h(), presence.range(), presence.limit());
+                ClimbPresenceView.Delta delta = receiver.presenceView().next(visible);
+                if (!delta.left().isEmpty()) {
+                    Map<String, Object> out = message("out");
+                    out.put("n", delta.left());
+                    receiver.offer(new TextMessage(json.writeValueAsString(out)));
+                }
+                if (!delta.entered().isEmpty()) {
+                    Map<String, Object> in = message("in");
+                    in.put("p", delta.entered().stream().map(n -> person(byN.get(n))).toList());
+                    receiver.offer(new TextMessage(json.writeValueAsString(in)));
+                }
+                if (!delta.changed().isEmpty()) {
+                    Map<String, Object> states = message("sts");
+                    states.put("s", delta.changed().stream().map(ClimbWebSocketHandler::state).toList());
+                    receiver.offer(new TextMessage(json.writeValueAsString(states)));
+                }
+            });
+        });
+    }
+
+    private static Map<String, Object> person(ClimbConnection connection) {
+        Map<String, Object> person = new LinkedHashMap<>();
+        person.put("n", connection.n());
+        person.put("nickname", connection.guest().nickname());
+        person.put("tag", connection.guest().tag());
+        person.put("character", connection.character());
+        return person;
+    }
+
+    private static List<Number> state(ClimbPresent present) {
+        ClimbPose pose = present.pose();
+        return List.of(present.n(), pose.x(), pose.h(), pose.vx(), pose.vy(), pose.flags(), pose.charge());
+    }
+
+    /** st 의 s = [x, h, vx, vy, flags, charge]. h 만 소수(둘째 자리까지), 나머지는 정수. 모양이 틀리면 null(버린다). */
+    private static ClimbPose pose(JsonNode root) {
+        JsonNode s = root.get("s");
+        if (s == null || !s.isArray() || s.size() != 6 || !s.get(1).isNumber()) {
+            return null;
+        }
+        int[] values = new int[6];
+        for (int index : new int[] {0, 2, 3, 4, 5}) {
+            JsonNode value = s.get(index);
+            if (!value.isIntegralNumber() || !value.canConvertToInt()) {
+                return null;
+            }
+            values[index] = value.intValue();
+        }
+        double h = s.get(1).doubleValue();
+        if (!Double.isFinite(h)) {
+            return null;
+        }
+        return new ClimbPose(values[0], Math.round(h * 100) / 100.0, values[2], values[3], values[4], values[5]);
     }
 
     private void publish(ClimbConnection connection, ClimbRun run) {

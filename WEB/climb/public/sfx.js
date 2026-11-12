@@ -4,6 +4,7 @@ let ctx = null;
 let master = null;
 let muted = localStorage.getItem('pheeeew-climb-mute') === '1';
 let hum = null; // 힘을 모으는 동안 이어지는 소리
+const VOLUME = 0.4; // 효과음 전체 음량(음소거를 풀면 이 값으로 돌아간다)
 
 export function unlock() {
   if (!ctx) {
@@ -11,17 +12,18 @@ export function unlock() {
     if (!AC) return;
     ctx = new AC();
     master = ctx.createGain();
-    master.gain.value = muted ? 0 : 0.5;
+    master.gain.value = muted ? 0 : VOLUME;
     master.connect(ctx.destination);
   }
   if (ctx.state === 'suspended') ctx.resume();
 }
 
 export const isMuted = () => muted;
+export const audioCtx = () => ctx; // 배경음악(bgm.js)도 같은 AudioContext 를 쓴다
 export function toggleMute() {
   muted = !muted;
   localStorage.setItem('pheeeew-climb-mute', muted ? '1' : '0');
-  if (master) master.gain.value = muted ? 0 : 0.5;
+  if (master) master.gain.value = muted ? 0 : VOLUME;
   return muted;
 }
 
@@ -65,6 +67,12 @@ export const sfx = {
   jump(c) { tone(240 + c * 160, 520 + c * 620, 0.17, { type: 'triangle', vol: 0.3 }); },
   // v = 떨어진 세기 0~1
   land(v) { noise(0.07 + v * 0.06, 260 + v * 300, 0.18 + v * 0.3); tone(130, 70, 0.09, { vol: 0.12 + v * 0.2 }); },
+  // 분사 판에서 뛸 때: 보통 점프보다 길게 치솟는 소리와 푸슉. c = 모은 정도 0~1
+  boost(c) {
+    tone(200 + c * 120, 1300 + c * 700, 0.45, { type: 'triangle', vol: 0.28 });
+    tone(400, 2400, 0.38, { type: 'sine', vol: 0.08, delay: 0.04 });
+    noise(0.32, 2600, 0.2);
+  },
   bounce() { tone(330, 170, 0.1, { type: 'square', vol: 0.12 }); },
   bump() { tone(210, 110, 0.09, { type: 'square', vol: 0.12 }); },
   splat() { noise(0.28, 700, 0.5); tone(170, 45, 0.32, { type: 'triangle', vol: 0.35 }); },

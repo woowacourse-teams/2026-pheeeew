@@ -119,6 +119,6 @@ class ClimbRankingTest {
     }
 
     private static ClimbRankEntry entry(UUID guestId, int best, Instant bestAt, Integer finishSeconds) {
-        return ClimbRankEntry.of(UUID.randomUUID(), guestId, "a1b2", "피유", "angry", best, bestAt, finishSeconds);
+        return ClimbRankEntry.of(UUID.randomUUID(), guestId, "a1b2", "히유", "angry", best, bestAt, finishSeconds);
     }
 }

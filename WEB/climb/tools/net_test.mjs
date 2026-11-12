@@ -63,7 +63,7 @@ function fakeFetch(routes) {
 }
 
 const API = 'http://127.0.0.1:4320/api/v1/climb';
-const welcome = (run = null) => ({ t: 'welcome', me: { id: 'g1', nickname: '피유', tag: '4f2a' }, run, online: 1, serverTime: 0 });
+const welcome = (run = null) => ({ t: 'welcome', me: { id: 'g1', nickname: '히유', tag: '4f2a' }, run, online: 1, serverTime: 0 });
 
 function setup({ routes = {}, fetch } = {}) {
   const c = clock();
@@ -86,16 +86,16 @@ function online(t, opts = { character: 'angry' }, run = null) {
 test('첫 접속: me 가 401 이면 손님을 만들고, 그 뒤 me 는 200', async () => {
   let made = false;
   const t = setup({ routes: (key) => {
-    if (key === `GET ${API}/me`) return made ? { status: 200, body: { id: 'g1', nickname: '피유', tag: '4f2a', run: null } } : { status: 401, body: { code: 'UNAUTHORIZED' } };
-    if (key === `POST ${API}/guests`) { made = true; return { status: 201, body: { id: 'g1', nickname: '피유', tag: '4f2a' } }; }
+    if (key === `GET ${API}/me`) return made ? { status: 200, body: { id: 'g1', nickname: '히유', tag: '4f2a', run: null } } : { status: 401, body: { code: 'UNAUTHORIZED' } };
+    if (key === `POST ${API}/guests`) { made = true; return { status: 201, body: { id: 'g1', nickname: '히유', tag: '4f2a' } }; }
   } });
   eq((await t.net.me()).status, 401, '처음 me');
-  const created = await t.net.createGuest('피유');
+  const created = await t.net.createGuest('히유');
   eq([created.status, created.body.tag], [201, '4f2a'], '손님 만들기');
   const post = t.calls[1];
-  eq([post.method, post.credentials, post.body], ['POST', 'include', { nickname: '피유' }], '손님 만들기 요청');
+  eq([post.method, post.credentials, post.body], ['POST', 'include', { nickname: '히유' }], '손님 만들기 요청');
   eq(post.headers['Content-Type'], 'application/json', '본문 형식');
-  eq((await t.net.me()).body.nickname, '피유', '다시 me');
+  eq((await t.net.me()).body.nickname, '히유', '다시 me');
   eq(t.calls.every((x) => x.credentials === 'include'), true, '모든 요청에 쿠키');
 });
 
@@ -103,7 +103,7 @@ test('닉네임 규칙 위반은 400 과 사유 코드를 그대로 돌려준다
   const t = setup({ routes: { [`POST ${API}/guests`]: { status: 400, body: { code: 'NICKNAME_LENGTH', message: '…' } }, [`PATCH ${API}/me`]: { status: 429, body: { code: 'NICKNAME_CHANGE_LIMITED' } } } });
   const r = await t.net.createGuest('피');
   eq([r.status, r.body.code], [400, 'NICKNAME_LENGTH'], '400');
-  const p = await t.net.rename('피유유');
+  const p = await t.net.rename('히유유');
   eq([p.status, p.body.code, t.calls[1].method], [429, 'NICKNAME_CHANGE_LIMITED', 'PATCH'], '이름 바꾸기');
 });
 
@@ -134,7 +134,7 @@ test('rank·event 를 구독자에게 넘긴다', () => {
   t.net.on('event', (m) => got.push(m.kind));
   const ws = online(t);
   ws.serverSend({ t: 'rank', top: [], me: { rank: 4, best: 131 }, near: [], online: 3 });
-  ws.serverSend({ t: 'event', kind: 'zone', nickname: '피유', tag: '4f2a', zone: 1 });
+  ws.serverSend({ t: 'event', kind: 'zone', nickname: '히유', tag: '4f2a', zone: 1 });
   eq(got, [4, 'zone'], '받은 것');
 });
 
@@ -189,7 +189,7 @@ test('닫힘 사유만 CONNECTION_REPLACED 여도 다시 연결하지 않는다'
 test('서버가 없어도 예외 없이 offline', async () => {
   const t = setup({ fetch: async () => { throw new TypeError('Failed to fetch'); } });
   eq(await t.net.me(), { status: 0, body: null }, 'me');
-  eq((await t.net.createGuest('피유')).status, 0, '손님 만들기');
+  eq((await t.net.createGuest('히유')).status, 0, '손님 만들기');
   eq((await t.net.ranking('all')).status, 0, '순위');
   t.net.connect({ character: 'angry' });
   t.sockets[0].serverClose(1006); // 연결 거절
@@ -351,6 +351,57 @@ test('다른 감정이로 connect 하면 지금 연결을 닫고 새 hello 를 �
   eq(t.sockets.length, 2, '닫은 소켓 때문에 다시 연결하지 않음');
   t.sockets[1].serverOpen();
   eq(t.sockets[1].sent[0].character, 'tired', 'hello');
+});
+
+test('st 는 움직이는 동안 100ms마다, 그대로면 1초마다 보내고 값을 줄여 보낸다', () => {
+  const t = setup();
+  const ws = online(t);
+  const sts = () => ws.sent.filter((m) => m.t === 'st').map((m) => m.s);
+  t.net.reportState([612.4, 135.4237, -180.6, 420.2, 1, 0.42]);
+  eq(sts(), [[612, 135.42, -181, 420, 1, 42]], '바로 보냄, x·속도 정수, h 소수 둘째 자리, 모은 정도 0~100');
+  t.clock.advance(50);
+  t.net.reportState([620, 136, 0, 0, 1, 0]);
+  eq(sts().length, 1, '100ms 안에는 보내지 않음');
+  t.clock.advance(50);
+  t.net.reportState([620, 136, 0, 0, 1, 0]);
+  eq(sts().at(-1), [620, 136, 0, 0, 1, 0], '100ms 지나면 바뀐 값');
+  t.clock.advance(100);
+  t.net.reportState([620, 136, 0, 0, 1, 0]);
+  t.clock.advance(899);
+  t.net.reportState([620, 136, 0, 0, 1, 0]);
+  eq(sts().length, 2, '그대로면 1초 동안 보내지 않음');
+  t.clock.advance(1);
+  t.net.reportState([620, 136, 0, 0, 1, 0]);
+  eq(sts().length, 3, '그대로여도 1초마다');
+});
+
+test('st 는 welcome 전이나 끊긴 동안 보내지 않는다', () => {
+  const t = setup();
+  t.net.reportState([1, 1, 0, 0, 1, 0]);
+  t.net.connect({ character: 'angry' });
+  const ws = t.sockets[0];
+  ws.serverOpen();
+  t.net.reportState([1, 1, 0, 0, 1, 0]);
+  eq(kinds(ws), ['hello'], 'welcome 전');
+  ws.serverSend(welcome());
+  t.net.reportState([1, 1, 0, 0, 1, 0]);
+  eq(kinds(ws), ['hello', 'st'], 'welcome 뒤');
+  ws.serverClose(1006);
+  t.net.reportState([2, 2, 0, 0, 1, 0]);
+  eq(kinds(ws), ['hello', 'st'], '끊긴 동안');
+});
+
+test('in·sts·out 을 구독자에게 넘긴다', () => {
+  const t = setup();
+  const got = [];
+  t.net.on('in', (m) => got.push(['in', m.p[0].nickname]));
+  t.net.on('sts', (m) => got.push(['sts', m.s[0][0]]));
+  t.net.on('out', (m) => got.push(['out', m.n]));
+  const ws = online(t);
+  ws.serverSend({ t: 'in', p: [{ n: 9, nickname: '히유', tag: '4f2a', character: 'angry' }] });
+  ws.serverSend({ t: 'sts', s: [[9, 612, 135.42, -180, 420, 1, 0]] });
+  ws.serverSend({ t: 'out', n: [9] });
+  eq(got, [['in', '히유'], ['sts', 9], ['out', [9]]], '받은 것');
 });
 
 let failed = 0;

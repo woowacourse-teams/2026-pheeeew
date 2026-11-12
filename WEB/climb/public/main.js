@@ -1,18 +1,23 @@
 import { Application, Assets, Container, Graphics, Sprite, Text, TilingSprite } from '/vendor/pixi.mjs';
 import { TILE, COLS, DT, IDS, params, newPlayer, step } from './physics.js';
-import { level, DECOR, HEIGHT, START, SCREEN, ZONES, GOAL, MAP_VERSION, nods, winds, updateNods, NOD_STAND, HOT_STAND, yOf, hOf } from './level.js';
+import { level, DECOR, SIGNS, HEIGHT, START, SCREEN, ZONES, GOAL, MAP_VERSION, nods, winds, updateNods, NOD_STAND, HOT_STAND, yOf, hOf } from './level.js';
 import { Rig, PARTS, JUMPS } from './rig.js';
 import { JellyRig } from './jelly.js';
 import { traceTerrain, sketch } from './terrain.js';
 import { createUI, TINT } from './ui.js';
 import { createFx } from './fx.js';
-import { sfx, unlock, toggleMute } from './sfx.js';
+import { boostLook, RISE_LIFE } from './boost.js';
+import { flagSpots } from './flags.js';
+import { nearestSign, signReader, signKey, splitSign, bubbleX, signLook, SIGN_ART, besideSign, signScale, signTop, signHalf, SIGN_SINK } from './signs.js';
+import { sfx, unlock, toggleMute, isMuted, audioCtx } from './sfx.js';
+import { createBgm, CREDITS } from './bgm.js';
 import { createNet } from './net.js';
+import { createGhosts } from './ghosts.js';
+import * as admin from './admin.js';
 
 const W = COLS * TILE; // 1280
 const H = 720;
 const DEBUG = new URLSearchParams(location.search).has('debug');
-const SAVE_KEY = DEBUG ? 'pheeeew-climb-debug' : 'pheeeew-climb-v1'; // 시험 화면은 실제 저장을 건드리지 않는다
 
 const INFO = {
   defeated: { name: '좌절이', ability: '쉽게 풀이 죽어요', fall: '역시 난 안 돼…' },
@@ -22,7 +27,8 @@ const INFO = {
   angry: { name: '분노', ability: '금방 화르르 타올라요', fall: '으아아악!!' },
 };
 const FONT = 'Jua, "Apple SD Gothic Neo", sans-serif';
-const ui = createUI({ ids: IDS, info: INFO, zones: ZONES, goal: ZONES.at(-1).to });
+const ui = createUI({ ids: IDS, info: INFO, zones: ZONES, goal: ZONES.at(-1).to, credits: CREDITS });
+const bgm = createBgm({ getCtx: audioCtx, muted: isMuted, zones: ZONES }); // 첫 키 입력·클릭(unlock) 뒤에 시작
 await document.fonts.load('20px Jua'); // 캔버스 글자(말풍선)도 같은 글꼴로 그리려면 먼저 불러와야 한다
 const INK = 0x2a2420;
 const app = new Application();
@@ -40,6 +46,19 @@ function fit() {
 }
 app.renderer.on('resize', fit);
 fit();
+
+// 관리자 모드(/admin): 아무 곳으로나 옮겨 다니며 구간을 해 본다. 서버에는 아무것도 보고하지 않는다.
+// 서버가 키를 확인해 준 뒤에만 켠다. 관리자가 아니면 키 창만 보이고 게임을 시작하지 않는다(취소하면 / 로)
+const adminApi = admin.adminSession();
+const ADMIN = admin.isAdminPath(location.pathname) && await admin.enterAdmin(adminApi, (message, submit) => {
+  ui.nickname({ heading: '관리자 키', hint: '서버에 정해 둔 관리자 키를 넣어 주세요', ok: '들어가기', alt: '취소', secret: true }, async (key) => {
+    const err = await submit(key);
+    if (err) ui.nicknameError(err);
+    else ui.closeNickname();
+  }, () => location.assign('/'));
+  if (message) ui.nicknameError(message);
+});
+const SAVE_KEY = ADMIN ? 'pheeeew-climb-admin' : DEBUG ? 'pheeeew-climb-debug' : 'pheeeew-climb-v1'; // 시험 화면은 실제 저장을 건드리지 않는다
 
 const tex = {};
 for (const id of IDS) {
@@ -226,7 +245,13 @@ for (let r = 1; r < HEIGHT; r++) for (let c = 0; c < COLS; c++) {
     const x = c * TILE;
     const y = r * TILE;
     // 윗면: 양옆도 윗면인 칸에만(끝에 걸치지 않게), 세 칸에 하나꼴
-    if (empty(c, r - 1) && solid(c - 1, r) && empty(c - 1, r - 1) && solid(c + 1, r) && empty(c + 1, r - 1) && rnd() < 0.3) put(any(kit.top), x + TILE / 2 + (rnd() - 0.5) * 16, y, 128, 200, rnd() < 0.5);
+    if (empty(c, r - 1) && solid(c - 1, r) && empty(c - 1, r - 1) && solid(c + 1, r) && empty(c + 1, r - 1) && rnd() < 0.3) {
+      // 난수는 늘 같은 순서로 뽑는다(다른 곳 장식 자리가 그대로). 표지판 옆이면 뽑기만 하고 그리지 않는다
+      const t = any(kit.top);
+      const dx = (rnd() - 0.5) * 16;
+      const flip = rnd() < 0.5;
+      if (!besideSign(SIGNS, c + 0.5 + dx / TILE, HEIGHT - 1 - r)) put(t, x + TILE / 2 + dx, y, 128, 200, flip);
+    }
     if (empty(c, r + 1) && solid(c - 1, r) && empty(c - 1, r + 1) && solid(c + 1, r) && empty(c + 1, r + 1) && rnd() < 0.3) put(any(kit.hang), x + TILE / 2 + (rnd() - 0.5) * 16, y + TILE, 128, 56, rnd() < 0.5);
     if (empty(c + 1, r) && solid(c, r - 1) && empty(c + 1, r - 1) && solid(c, r + 1) && empty(c + 1, r + 1) && rnd() < 0.16) put(any(kit.side), x + TILE, y + TILE / 2, 56, 128, false);
     if (empty(c - 1, r) && solid(c, r - 1) && empty(c - 1, r - 1) && solid(c, r + 1) && empty(c - 1, r + 1) && rnd() < 0.16) put(any(kit.side), x, y + TILE / 2, 56, 128, true);
@@ -237,12 +262,26 @@ const nodViews = nods.map((n) => {
   const w = (n.c1 - n.c0 + 1) * TILE;
   const tex2 = arts[zoneOf(n.h)][n.kind];
   const v = new Container();
+  if (n.kind === 'boost') { // 분사 판: 위로 번지는 빛 기둥. 밝기는 boostLook 이 정한다
+    v.halo = new Graphics();
+    for (let i = 0; i < 10; i++) v.halo.rect(-w / 2 + 3, -8 * (i + 1), w - 6, 8).fill({ color: 0x8ff5e0, alpha: 0.3 * (1 - i / 10) ** 1.6 }); // 위로 갈수록 옅어진다
+    v.halo.blendMode = 'add';
+    v.addChild(v.halo);
+  }
   if (tex2) {
     const sp = new Sprite(tex2);
-    sp.anchor.set(0.5, 0.1); // 그림의 y=20 줄이 윗면
+    sp.anchor.set(0.5, 20 / 160); // 그림(512×160)의 y=20 줄이 윗면. 분사 불꽃은 그 아래로 판 밑까지 내려온다
     sp.width = w + 12;
     sp.height = TILE * 1.25;
     v.addChild(sp);
+    if (n.kind === 'boost') { // 같은 그림을 더해 그려 판 자체를 밝힌다
+      v.shine = new Sprite(tex2);
+      v.shine.anchor.copyFrom(sp.anchor);
+      v.shine.width = sp.width;
+      v.shine.height = sp.height;
+      v.shine.blendMode = 'add';
+      v.addChild(v.shine);
+    }
   } else {
     v.addChild(new Graphics().roundRect(-w / 2, 0, w, TILE, 16).fill({ nod: 0xf3ecd8, hot: 0xff8a5c, boost: 0x7fd0ff }[n.kind]).stroke({ width: 3.5, color: INK })); // 그림이 오기 전의 임시 모양
   }
@@ -259,6 +298,75 @@ for (const d of DECOR) {
   sp.position.set(d.c * TILE, yOf(d.h) + (d.hang ? -4 : 5)); // 살짝 묻혀서 지형에 박힌 것처럼
   if (!d.hang) world.addChild(new Graphics().ellipse(d.c * TILE, yOf(d.h) + 2, (d.w ?? 130) * d.s, 7).fill({ color: 0x241c22, alpha: 0.18 }));
   world.addChild(sp);
+}
+
+// 안내 표지판: 충돌 없음. 그 구간의 info_sign 그림(없으면 화살표 표지). 크기·높이 계산은 signs.js
+// 안 읽은 표지판은 뒤에 빛 무리를 깔고, 머리 위에 느낌표 꼬리표를 띄워 배경과 떼어 낸다
+const GLOW = { nyc: [0xffe08a, 'add', 0.5], space: [0xffe08a, 'add', 0.5], xmas: [0xffe066, 'normal', 0.75], balloon: [0xffe066, 'normal', 0.75] }; // 색, 섞는 방법, 세기. 어두운 구간은 더해서 빛나게, 밝은 구간은 진한 노랑으로
+const ART_H = 52; // 카드 속 장치 그림 높이(px)
+const signViews = [];
+for (const s of SIGNS) {
+  const dir = arts[s.zone].dir;
+  const own = await has(`/assets/${dir}/info_sign.png`);
+  const k = signScale(s);
+  const x = s.c * TILE;
+  const y = yOf(s.h);
+  const [color, blendMode, alpha] = GLOW[dir] ?? GLOW.xmas;
+  const glow = new Graphics(); // 겹친 원으로 만든 부드러운 빛 무리. 판 가운데쯤이 가장 밝다
+  const R = signHalf(s) * 2;
+  for (let n = 10; n > 0; n--) glow.circle(0, 0, (R * n) / 10).fill({ color, alpha: 0.13 });
+  glow.blendMode = blendMode;
+  glow.position.set(x, y - 260 * k); // 판 가운데(그림 y≈190)
+  glow.alpha = 0;
+  glow.peak = alpha;
+  world.addChild(glow);
+  const sp = new Sprite(await Assets.load(`/assets/${dir}/${own ? 'info_sign' : 'arrow_sign'}.png`));
+  sp.pivot.set(256, 450);
+  sp.scale.set(s.flip ? -k : k, k);
+  sp.position.set(x, y + SIGN_SINK);
+  world.addChild(new Graphics().ellipse(x, y + 2, signHalf(s) * 0.7, 6).fill({ color: 0x241c22, alpha: 0.18 }));
+  world.addChild(sp);
+  const tag = new Container(); // 머리 위 꼬리표: 크림색 동그라미에 강조색 느낌표, 꼬리는 표지판을 가리킨다
+  tag.addChild(new Graphics()
+    .circle(0, 3, 14).fill(INK).poly([-6, 14, 6, 14, 0, 24]).fill(INK)
+    .poly([-6, 10, 6, 10, 0, 19]).fill(0xfff8ea).stroke({ width: 3, color: INK, join: 'round' })
+    .circle(0, 0, 14).fill(0xfff8ea).stroke({ width: 3, color: INK }));
+  const mark = new Text({ text: '!', style: { fontFamily: FONT, fontSize: 22, fill: 0xffd35a, stroke: { color: INK, width: 5, join: 'round' } } });
+  mark.anchor.set(0.5);
+  tag.addChild(mark);
+  tag.position.set(x, y - signTop(s, dir) - 21);
+  tag.baseY = tag.y;
+  tag.alpha = 0;
+  world.addChild(tag);
+  signViews.push({ s, sp, glow, tag, key: signKey(s), y, art: cardArt(s) });
+}
+// 카드에 넣을 장치 그림(높이 ART_H 안팎, 비율 그대로). 게임이 그 장치에 쓰는 그림을 그대로 쓴다
+function cardArt(s) {
+  const a = arts[s.zone];
+  const tex2 = a[SIGN_ART[s.kind]];
+  const box = new Container();
+  if (!tex2) return box;
+  if (s.kind === 'slope') { // 게임의 경사처럼 오른쪽으로 오르는 삼각형을 경사 재질로 채우고 지형 선을 두른다
+    const tri = [0, ART_H, ART_H * 1.3, 0, ART_H * 1.3, ART_H];
+    const mask = new Graphics().poly(tri).fill(0xffffff);
+    const skin = new TilingSprite({ texture: tex2, width: ART_H * 1.3, height: ART_H });
+    skin.tileScale.set(0.5);
+    skin.mask = mask;
+    box.addChild(mask, skin, new Graphics().poly(tri).stroke({ width: 3, color: LINE, alpha: 0.8, join: 'round' }));
+  } else if (s.kind === 'wind') { // 깃발과, 게임의 바람 줄무늬 모양(둥근 끝 선) 세 줄. 크림색 위라 잉크색으로 옅게
+    const flag = new Sprite(tex2);
+    flag.scale.set(ART_H / tex2.height);
+    const g = new Graphics();
+    for (const [dy, len] of [[0.25, 26], [0.5, 36], [0.75, 22]]) g.moveTo(ART_H + 6, ART_H * dy).lineTo(ART_H + 6 + len, ART_H * dy).stroke({ width: 3, color: INK, alpha: 0.35, cap: 'round' });
+    box.addChild(flag, g);
+    const w = winds.find((w2) => zoneOf(w2.h0 + 1) === s.zone);
+    if (w && w.ax < 0) { box.pivot.x = box.width; box.scale.x = -1; } // 바람이 왼쪽으로 불면 뒤집는다
+  } else {
+    const sp = new Sprite(tex2);
+    sp.scale.set(Math.min(150 / tex2.width, ART_H / tex2.height));
+    box.addChild(sp);
+  }
+  return box;
 }
 
 // 물방울: 지형 밑면 여기저기에 맺혔다가 제각각 떨어진다
@@ -302,6 +410,9 @@ function updateDrops(dt) {
   }
 }
 
+// 함께 오르기: 다른 사람의 감정이. 내 감정이보다 뒤에 반투명하게 그리고, 충돌 계산에는 넣지 않는다.
+const ghostLayer = new Container();
+world.addChild(ghostLayer);
 const actor = new Container();
 world.addChild(actor);
 const fx = createFx(); // 먼지, 별, 반짝이 (캐릭터 위에 그린다)
@@ -310,6 +421,95 @@ const hitbox = new Graphics();
 world.addChild(hitbox);
 const gauge = new Graphics();
 world.addChild(gauge);
+// 표지판 카드: 가까운 표지판 하나에만. 왼쪽에 장치 그림, 오른쪽에 이름(굵게)과 설명. 캐릭터 한마디(quip)보다 아래에 그린다
+// 보통은 표지판 위에, card: 'left' 인 표지판(위가 좁은 자리)은 표지판 왼쪽에 띄운다
+const tip = new Container();
+const tipBox = new Graphics();
+const tipArt = new Container();
+const tipName = new Text({ text: '', style: { fontFamily: FONT, fontSize: 21, fontWeight: '700', fill: INK } });
+const tipDesc = new Text({ text: '', style: { fontFamily: FONT, fontSize: 17, fill: INK } });
+tip.addChild(tipBox, tipArt, tipName, tipDesc);
+tip.alpha = 0;
+tip.visible = false;
+tip.tipY = tip.tipH = 0;
+world.addChild(tip);
+let tipFor = -1; // 지금 카드에 쓴 표지판 번호
+const SIGNS_KEY = `${SAVE_KEY}-signs`; // 읽은 표지판 목록
+let signRead = signReader();
+try { signRead = signReader(JSON.parse(localStorage.getItem(SIGNS_KEY) ?? '[]')); } catch {}
+function drawTip(i) {
+  const v = signViews[i];
+  const [name, desc = ''] = splitSign(v.s.text);
+  tipName.text = name;
+  tipDesc.text = desc;
+  tipArt.removeChildren();
+  tipArt.addChild(v.art);
+  const aw = v.art.width;
+  const ah = v.art.height;
+  const PAD = 14;
+  const GAP = aw ? 14 : 0;
+  const th = desc ? 50 : 26; // 글 두 줄 높이
+  const w = PAD + aw + GAP + Math.max(tipName.width, tipDesc.width) + PAD + 4;
+  const h = Math.max(ah, th) + PAD * 2;
+  const sx = v.s.c * TILE;
+  let x0;
+  let y0;
+  tipBox.clear();
+  if (v.s.card === 'left') { // 꼬리가 오른쪽 표지판을 가리킨다. 원점 = 꼬리 끝
+    x0 = -w - 14;
+    y0 = -h / 2;
+    tipBox.roundRect(x0, y0 + 4, w, h, 16).fill(INK).poly([-16, -9, -16, 13, 2, 4]).fill(INK)
+      .roundRect(x0, y0, w, h, 16).fill(0xfff8ea).stroke({ width: 3, color: INK })
+      .poly([-16, -8, -16, 8, -2, 0]).fill(0xfff8ea);
+    tip.x = sx - signHalf(v.s) + 4;
+    tip.tipY = v.y - 260 * signScale(v.s); // 판 가운데 높이
+    tip.tipH = h / 2;
+  } else { // 꼬리가 아래 표지판을 가리킨다
+    const bx = bubbleX(sx, w, W); // 화면 가장자리 근처면 안쪽으로 당긴다
+    const tail = Math.max(-w / 2 + 18, Math.min(w / 2 - 18, sx - bx));
+    x0 = -w / 2;
+    y0 = -h;
+    tipBox.roundRect(x0, y0 + 4, w, h, 16).fill(INK) // 아래로 떨어진 그림자
+      .poly([tail - 9, 3, tail + 9, 3, tail, 17]).fill(INK)
+      .roundRect(x0, y0, w, h, 16).fill(0xfff8ea).stroke({ width: 3, color: INK })
+      .poly([tail - 8, -1, tail + 8, -1, tail, 12]).fill(0xfff8ea);
+    tip.x = bx;
+    tip.tipY = v.y - signTop(v.s, arts[v.s.zone].dir) - 16; // 꼬리 끝이 표지판 꼭대기 바로 위
+    tip.tipH = h;
+  }
+  tipArt.position.set(x0 + PAD, y0 + (h - ah) / 2);
+  tipName.position.set(x0 + PAD + aw + GAP, y0 + (h - th) / 2 - 1);
+  tipDesc.position.set(tipName.x, tipName.y + 27);
+  tipFor = i;
+}
+function updateSigns(dt) {
+  const i = nearestSign(SIGNS, (p.x + P.w / 2) / TILE, hOf(p.y + P.h));
+  if (signRead.update(i < 0 ? null : signViews[i].key, dt)) {
+    try { localStorage.setItem(SIGNS_KEY, JSON.stringify(signRead.keys())); } catch {}
+  }
+  const ease = 1 - Math.exp(-dt * 8);
+  signViews.forEach((v, j) => {
+    if (Math.abs(v.y - (camY + H / 2)) > H) return; // 화면 밖
+    const look = signLook(signRead.isRead(v.key), j === i);
+    // 안 읽은 표지판은 멀리 있을 때 가끔 까딱거린다
+    const ph = (clockT + j * 0.7) % 2.4;
+    const k = look.tag && ph < 0.6 ? Math.sin((ph / 0.6) * Math.PI * 4) * (1 - ph / 0.6) : 0;
+    v.sp.rotation = k * 0.08;
+    v.tag.alpha += ((look.tag ? 1 : 0) - v.tag.alpha) * ease;
+    v.tag.visible = v.tag.alpha > 0.02;
+    v.tag.y = v.tag.baseY - (1 + Math.sin(clockT * 3 + j)) * 2.5; // 통통 뜬다
+    v.glow.alpha += ((look.glow ? v.glow.peak * (0.8 + 0.2 * Math.sin(clockT * 2 + j)) : 0) - v.glow.alpha) * ease; // 숨 쉬듯
+    v.glow.visible = v.glow.alpha > 0.01;
+  });
+  if (i >= 0 && i !== tipFor) drawTip(i);
+  const want = i >= 0 && quipT <= 0 ? 1 : 0; // 캐릭터가 한마디 하는 동안은 비켜 준다
+  tip.alpha += (want - tip.alpha) * (1 - Math.exp(-dt * 10));
+  tip.visible = tip.alpha > 0.02;
+  if (!tip.visible && i < 0) tipFor = -1;
+  // 화면 위 HUD 줄(약 70px) 밑으로 내려 잘리지 않게 하고, 뜰 때 살짝 떠오른다
+  tip.y = Math.max(camY + 74 + tip.tipH, tip.tipY) + (1 - tip.alpha) * 8;
+}
+
 // 떨어졌을 때 한마디: 말풍선
 const quip = new Container();
 const quipBox = new Graphics();
@@ -358,11 +558,11 @@ const streaks = winds.flatMap((w) => {
 for (const w of winds) {
   const flag = arts[zoneOf(w.h0 + 1)].flag;
   if (!flag) continue;
-  for (const cx of [w.c0 + 0.3, w.c1 + 0.7]) { // 구역 양 끝 아래에 깃발
+  for (const f of flagSpots(w, (c, h) => level.raw(c, HEIGHT - 2 - h), [...SIGNS, ...DECOR.filter((d) => !d.hang)])) { // 구역 안 넓은 발판 위에만
     const sp = new Sprite(flag);
     sp.anchor.set(40 / 256, 240 / 256);
     sp.scale.set((w.ax < 0 ? -1 : 1) * 0.3, 0.3);
-    sp.position.set(cx * TILE, yOf(w.h0));
+    sp.position.set(f.c * TILE, yOf(f.h));
     world.addChild(sp);
   }
 }
@@ -378,7 +578,7 @@ function updateWind(dt) {
     const y = yOf(w.h1) + s.y * (w.h1 - w.h0) * TILE;
     if (y < camY - 40 || y > camY + H + 40) continue;
     const fade = Math.sin(Math.PI * s.x); // 구역 끝에서 옅어진다
-    gusts.moveTo(x, y).lineTo(x - Math.sign(w.ax) * s.len, y).stroke({ width: 3, color: 0xffffff, alpha: 0.5 * fade, cap: 'round' });
+    gusts.moveTo(x, y).lineTo(Math.max(w.c0 * TILE, Math.min(w.c0 * TILE + wide, x - Math.sign(w.ax) * s.len)), y).stroke({ width: 3, color: 0xffffff, alpha: 0.5 * fade, cap: 'round' }); // 꼬리가 구역 밖(바람 없는 곳)으로 나가지 않게 자른다
   }
 }
 
@@ -393,6 +593,7 @@ let camY = HEIGHT * TILE - H;
 let quipT = 0;
 const keys = { left: false, right: false, jump: false };
 let flail = 0;
+let clockT = 0; // 놀이 시간(초). 멈춘 채 game.frame(dt) 로 넘겨도 효과가 따라간다
 
 function save() {
   localStorage.setItem(SAVE_KEY, JSON.stringify({ id, x: p.x, h: hOf(p.y + P.h), ...stats })); // 맵이 위로 늘어나도 위치가 유지되게 높이로 저장
@@ -438,13 +639,17 @@ function showSelect() {
 const go = () => (saved ? begin(saved.id, saved) : showSelect());
 function showTitle() {
   mode = 'title';
-  ui.title(saved, go, () => { forget(); showSelect(); });
+  ui.title(saved, go, () => { forget(); showSelect(); }, showCredits);
   ui.guest(guest, rename);
   showBoards();
 }
 async function showBoards() {
   const [today, all] = await Promise.all([net.ranking('today'), net.ranking('all')]);
   if (mode === 'title') ui.boards(today.status === 200 ? today.body.top : null, all.status === 200 ? all.body.top : null, guest?.tag);
+}
+function showCredits() {
+  mode = 'credits';
+  ui.credits(() => { ui.closeCredits(); mode = 'title'; });
 }
 function askRestart() {
   mode = 'confirm';
@@ -455,12 +660,56 @@ function askRestart() {
 // ---- 서버(순위) ----
 // 서버가 없으면 guest 가 null 인 채로 지금처럼 혼자 한다
 const net = createNet({ map: MAP_VERSION });
+if (ADMIN) for (const k of ['connect', 'reportPos', 'reportState', 'reportZone', 'reportFinish', 'restart', 'createGuest', 'rename']) net[k] = () => ({ status: 0 }); // 관리자 모드: 보고하지 않는다
 let guest = null; // { id, nickname, tag }
 let rank = null; // 마지막으로 받은 rank 메시지
 const showRanks = () => ui.ranks(guest && { rank, status: net.status, tag: guest.tag });
 net.on('rank', (m) => { rank = m; showRanks(); });
 net.on('status', showRanks);
 net.on('welcome', (m) => { guest = m.me; });
+const ghosts = createGhosts();
+const ghostViews = new Map(); // n -> { c, rig, label, character }
+let showGhosts = localStorage.getItem('pheeeew-climb-ghosts') !== 'off';
+ghostLayer.visible = showGhosts;
+net.on('in', (m) => ghosts.enter(m.p));
+net.on('sts', (m) => ghosts.states(m.s, performance.now()));
+net.on('out', (m) => ghosts.leave(m.n));
+net.on('status', (s) => { if (s !== 'online') ghosts.clear(); }); // 다시 연결되면 서버가 in 부터 다시 보낸다
+function dropGhost(n) {
+  ghostViews.get(n)?.c.destroy({ children: true }); // 그림(텍스처)은 내 감정이와 같이 쓰므로 지우지 않는다
+  ghostViews.delete(n);
+}
+function drawGhosts(dt) {
+  const list = ghosts.sample(performance.now());
+  if (!showGhosts) { for (const n of [...ghostViews.keys()]) dropGhost(n); return; }
+  const seen = new Set();
+  for (const g of list) {
+    seen.add(g.n);
+    let v = ghostViews.get(g.n);
+    if (v && v.character !== g.character) { dropGhost(g.n); v = null; }
+    if (!v) {
+      const c = new Container();
+      const rig = new JellyRig(tex[g.character]);
+      const label = new Text({ text: g.nickname, style: { fontFamily: FONT, fontSize: 15, fill: 0xfff8ea, stroke: { color: INK, width: 4 } } }); // 어두운 배경에서도 읽히게
+      label.anchor.set(0.5, 1);
+      c.addChild(rig.root, label);
+      ghostLayer.addChild(c);
+      v = { c, rig, label, character: g.character };
+      ghostViews.set(g.n, v);
+    }
+    const feet = yOf(g.h);
+    v.c.visible = feet > camY - 160 && feet < camY + H + 160; // 화면 밖 사람은 그리지 않는다
+    if (!v.c.visible) continue;
+    v.c.alpha = 0.45 * g.alpha;
+    const ground = (g.flags & 1) > 0;
+    const charging = (g.flags & 2) > 0;
+    const splat = (g.flags & 8) > 0;
+    v.rig.pose({ ground, charging, charge: g.charge / 100, splat, vx: g.vx, vy: g.vy, facing: g.flags & 4 ? -1 : 1, walking: ground && !charging && !splat && Math.abs(g.vx) > 20 }, dt);
+    v.rig.root.position.set(g.x, feet);
+    v.label.position.set(g.x, feet - 84);
+  }
+  for (const n of [...ghostViews.keys()]) if (!seen.has(n)) dropGhost(n);
+}
 net.on('event', (m) => {
   if (m.tag === guest?.tag) return; // 내 구간 완료는 배너로 이미 보인다
   ui.toast(m.kind === 'finish' ? `${m.nickname} 님이 꼭대기까지 올랐어요!` : `${m.nickname} 님이 ${m.zone}구간(${ZONES[m.zone - 1]?.name ?? ''}) 통과!`);
@@ -499,7 +748,12 @@ addEventListener('keydown', (e) => {
   const k = e.code;
   unlock(); // 브라우저는 첫 키 입력 뒤에야 소리를 낸다
   if (k === 'KeyM') { const off = toggleMute(); if (mode === 'play') { say(off ? '소리 끔' : '소리 켬'); quipT = 1.2; } return; }
+  if (k === 'KeyB') { const off = bgm.toggle(); if (mode === 'play') { say(off ? '음악 끔' : '음악 켬'); quipT = 1.2; } return; }
   if (['Space', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(k)) e.preventDefault();
+  if (mode === 'credits') {
+    if (k === 'Escape' || k === 'Enter') { ui.closeCredits(); mode = 'title'; }
+    return;
+  }
   if (mode === 'title') {
     if (k === 'Enter' || k === 'Space') go();
     if (k === 'KeyN' && saved) { forget(); showSelect(); }
@@ -516,11 +770,13 @@ addEventListener('keydown', (e) => {
     if (k === 'Escape' || k === 'KeyN') { ui.closeConfirm(); mode = 'play'; }
     return;
   }
+  if (ADMIN && adminKey(k)) { e.preventDefault(); return; }
   if (k === 'ArrowLeft' || k === 'KeyA') { keys.left = true; flail = -1; }
   if (k === 'ArrowRight' || k === 'KeyD') { keys.right = true; flail = 1; }
   if (k === 'Space') keys.jump = true;
   if (k === 'KeyN') askRestart();
   if (k === 'Tab') { e.preventDefault(); ui.foldRanks(); }
+  if (k === 'KeyG') { showGhosts = !showGhosts; ghostLayer.visible = showGhosts; localStorage.setItem('pheeeew-climb-ghosts', showGhosts ? 'on' : 'off'); say(showGhosts ? '다른 사람 보이기' : '다른 사람 숨기기'); quipT = 1.2; }
   if (k === 'KeyJ') { jelly = !jelly; localStorage.setItem('pheeeew-climb-rig', jelly ? 'jelly' : 'old'); makeRig(); say(jelly ? '젤리 움직임' : '예전 움직임'); quipT = 1.2; }
 });
 addEventListener('keyup', (e) => {
@@ -529,15 +785,54 @@ addEventListener('keyup', (e) => {
   if (k === 'ArrowRight' || k === 'KeyD') keys.right = false;
   if (k === 'Space') keys.jump = false;
 });
+// ---- 관리자 모드 ----
+let back = admin.newTrack(); // 되돌리기 자리
+// 캐릭터를 상자 자리(box)로 옮긴다. 가만히 선 채로 놓고, 공중이면 그대로 떨어진다.
+function teleport(box) {
+  if (!box) return; // 관리자 모드: 되돌릴 자리가 아직 없거나 없는 구간
+  const facing = p.facing;
+  p = newPlayer(box.x, box.y);
+  p.facing = facing;
+  acc = 0;
+  back = admin.newTrack();
+  camY = Math.min(HEIGHT * TILE - H, p.y + P.h / 2 - H * 0.55); // 멀리 옮기면 카메라도 바로
+  rig.root.position.set(p.x + P.w / 2, p.y + P.h);
+  save();
+}
+function adminKey(k) {
+  if (k === 'KeyV') { ui.adminMap(!mini.hidden ? null : drawMini); return true; }
+  if (k === 'PageUp' || k === 'BracketRight') { teleport(admin.screenJump(level, P, p, 1)); return true; }
+  if (k === 'PageDown' || k === 'BracketLeft') { teleport(admin.screenJump(level, P, p, -1)); return true; }
+  if (/^Digit[1-9]$/.test(k)) { teleport(admin.zoneStart(P, Number(k.slice(5)))); return true; }
+  if (k === 'Backspace' || k === 'KeyR') { const b = back.back; teleport(b); return true; } // 옮긴 뒤 가만히 서 있으면 그 자리를 다시 기억해 몇 번이고 되풀이한다
+  return false;
+}
+const mini = ADMIN ? ui.adminPanel(admin.MINI, async () => { await adminApi.close(); location.assign('/'); }, (mx, my) => {
+  const at = admin.fromMini(mx, my);
+  if (!at) return;
+  teleport(admin.placeAt(level, P, at.x, at.y));
+  ui.adminMap(null);
+}) : { hidden: true };
+function drawMini(ctx) { admin.drawMini(ctx, level, ZONES, p.x + P.w / 2, p.y + P.h); }
+if (ADMIN) app.canvas.addEventListener('pointerdown', (e) => { // UI 버튼 위를 누르면 버튼이 받으므로 여기 오지 않는다
+  if (mode !== 'play' || !mini.hidden) return;
+  const at = admin.toMap(e.clientX, e.clientY, { x: view.x, y: view.y, s: view.scale.x }, camY);
+  if (at) teleport(admin.placeAt(level, P, at.x, at.y));
+});
+
+addEventListener('pointerdown', unlock); // 버튼을 눌러 시작해도 소리가 나게
+document.addEventListener('visibilitychange', () => bgm.hidden(document.hidden));
 addEventListener('blur', () => { keys.left = keys.right = keys.jump = false; });
 
 function tick() {
   const fallV = p.vy; // 닿기 직전의 속도와 모은 정도(step 이 지운다)
   const charged = Math.min(1, p.charge / P.chargeMax);
   const dirV = Math.sign(p.vx);
+  const pad = p.ground ? level.padUnder(p.x, p.y, P) : null; // 뛰기 직전 발밑(물리도 같은 자리를 본다)
   step(p, { ...keys, flail }, level, P);
   updateNods(p, P, DT);
-  feel(fallV, charged, dirV);
+  if (ADMIN) admin.track(back, p);
+  feel(fallV, charged, dirV, pad);
   flail = 0;
   stats.time += DT;
   if (p.ev === 'bounce') rig.wallT = 0.16;
@@ -557,7 +852,7 @@ function tick() {
       stats.cleared = done;
       net.reportZone({ zone: Math.min(done, ZONES.length - 1), time: stats.time }); // 마지막 구간을 넘는 것 = 완주
       if (done === ZONES.length) net.reportFinish({ time: stats.time, falls: stats.falls });
-      ui.banner(`${done}구간 ${ZONES[done - 1].name} 완료! 피유~`, `떨어진 횟수 ${stats.falls} · ${clock(stats.time)}`);
+      ui.banner(`${done}구간 ${ZONES[done - 1].name} 완료! 히유~`, `떨어진 횟수 ${stats.falls} · ${clock(stats.time)}`);
       sfx.clear();
       fx.confetti(p.x + P.w / 2, p.y, Object.values(TINT).map((c) => parseInt(c.slice(1), 16)));
     }
@@ -566,11 +861,17 @@ function tick() {
 }
 
 // 손맛: 물리에서 일어난 일(p.ev)에 먼지·별·흔들림·소리를 붙인다
-function feel(fallV, charged, dirV) {
+function feel(fallV, charged, dirV, pad) {
   const cx = p.x + P.w / 2;
   const feet = p.y + P.h;
   const tint = parseInt(TINT[id].slice(1), 16);
-  if (p.ev === 'jump') { sfx.jump(charged); fx.dust(cx, feet, 0.25 + charged * 0.5); }
+  if (p.ev === 'jump' && pad?.kind === 'boost') { // 분사 판: 판 밑으로 불꽃, 길게 치솟는 소리, 살짝 흔들림
+    const w = (pad.c1 - pad.c0 + 1) * TILE;
+    sfx.boost(charged);
+    fx.boost(pad.c0 * TILE + w / 2, yOf(pad.h), w);
+    fx.dust(cx, feet, 0.3 + charged * 0.4);
+    fx.shake(3.5);
+  } else if (p.ev === 'jump') { sfx.jump(charged); fx.dust(cx, feet, 0.25 + charged * 0.5); }
   else if (p.ev === 'land') { const v = Math.min(1, Math.max(0, fallV) / 1200); sfx.land(v); fx.dust(cx, feet, 0.2 + v * 0.8); if (v > 0.75) fx.shake(2.5 * v); }
   else if (p.ev === 'splat') { sfx.splat(); fx.dust(cx, feet, 1); fx.stars(cx, feet - 14, 5); fx.shake(9); }
   else if (p.ev === 'bounce') { sfx.bounce(); fx.stars(cx + dirV * P.w / 2, p.y + P.h / 2, 3, tint); fx.shake(1.5); }
@@ -591,6 +892,8 @@ function frame(dt) {
   const walking = p.ground && !p.charging && p.lock <= 0 && keys.left !== keys.right;
   rig.pose({ ground: p.ground, charging: p.charging, charge: Math.min(1, p.charge / P.chargeMax), splat: p.splat, vx: p.vx, vy: p.vy, facing: p.facing, walking }, dt);
   rig.root.position.set(p.x + P.w / 2, p.y + P.h);
+  // 함께 오르기: [몸 가운데 x, 발 높이(칸), vx, vy, 자세 표시, 모은 정도]. 표시 1 땅 위, 2 모으는 중, 4 왼쪽을 봄, 8 엎어짐, 16 미끄러지는 중
+  if (!ADMIN) net.reportState([p.x + P.w / 2, Math.max(0, hOf(p.y + P.h)), p.vx, p.vy, (p.ground ? 1 : 0) | (p.charging ? 2 : 0) | (p.facing < 0 ? 4 : 0) | (p.splat ? 8 : 0) | (p.slide ? 16 : 0), Math.min(1, p.charge / P.chargeMax)]);
 
   sfx.charge(p.charging ? Math.min(1, p.charge / P.chargeMax) : -1);
   if (p.slide && Math.random() < dt * 14) fx.dust(p.x + P.w / 2, p.y + P.h, 0.15); // 미끄러지는 동안 먼지
@@ -622,9 +925,31 @@ function frame(dt) {
     b.tilePosition.y = -camY * 0.35 + bgShift[i];
     b.alpha = i === 0 ? 1 : Math.max(0, Math.min(1, (camH - (ZONES[i].from - 6)) / 12)); // 구간 경계에서 배경이 서서히 바뀐다
   });
+  clockT += dt;
+  const under = p.ground ? level.padUnder(p.x, p.y, P) : null;
+  const charge = p.charging ? Math.min(1, p.charge / P.chargeMax) : 0;
   nods.forEach((n, i) => {
     const v = nodViews[i];
-    if (n.kind === 'boost') { v.scale.set(1, 1 + Math.sin(performance.now() / 90) * 0.03); return; } // 분사 판: 늘 부르르 떤다
+    if (n.kind === 'boost') { // 분사 판: 숨 쉬듯 빛나고 위로 화살표가 솟는다. 화면 밖이면 건너뛴다
+      v.visible = Math.abs(yOf(n.h) - (camY + H / 2)) < H * 0.75;
+      if (!v.visible) return;
+      const on = under === n;
+      const look = boostLook(clockT, on, charge);
+      v.halo.alpha = look.glow;
+      if (v.shine) v.shine.alpha = look.glow * 0.5;
+      v.scale.set(1, on && charge > 0 ? 1 + Math.sin(clockT * 70) * 0.03 * charge : 1); // 모으는 동안 부르르 떤다
+      const x0 = n.c0 * TILE;
+      const w = (n.c1 - n.c0 + 1) * TILE;
+      n.rise = (n.rise ?? []).filter((t) => clockT - t < RISE_LIFE);
+      n.riseAcc = Math.min(look.every, (n.riseAcc ?? Math.random() * look.every) + dt);
+      if (n.riseAcc >= look.every && n.rise.length < look.max) {
+        n.riseAcc = 0;
+        n.rise.push(clockT);
+        const spread = on ? 40 : 0; // 서 있으면 캐릭터 양옆으로도 솟아 가려지지 않는다
+        fx.rise(x0 + 8 - spread + Math.random() * (w - 16 + 2 * spread), yOf(n.h) - 6);
+      }
+      return;
+    }
     if (n.kind === 'hot') { // 달궈진 판: 서 있을수록 붉어지고 떨린다
       const k = Math.min(1, n.t / HOT_STAND);
       v.tint = 0xffffff - (Math.round(k * 110) << 8) - Math.round(k * 140);
@@ -639,17 +964,27 @@ function frame(dt) {
     v.y = yOf(n.h) + (n.away > 0 ? 10 : 0);
     v.rotation = sag > 0 ? Math.sin(performance.now() / 40) * 0.02 * sag : 0;
   });
+  updateSigns(dt);
   updateDrops(dt);
   updateSnow(dt, camH);
   updateWind(dt);
-  ui.hud({ h: Math.max(0, Math.round(hOf(p.y + P.h))), best: stats.best, falls: stats.falls, time: stats.time });
+  drawGhosts(dt); // 카메라가 정해진 뒤
+  ui.hud({ h: Math.max(0, Math.round(hOf(p.y + P.h))), best: stats.best, falls: stats.falls, time: stats.time, low: p.y + P.h - camY > H - 70 });
+  if (ADMIN) {
+    const h = hOf(p.y + P.h);
+    const z = Math.max(0, ZONES.findIndex((zz, i) => h < zz.to || i === ZONES.length - 1)); // HUD 와 같이: 경계 높이에 서면 다음 구간
+    ui.adminInfo(`높이 ${Math.round(h)}칸 · 화면 ${Math.floor(Math.max(0, h) / SCREEN) + 1} · ${z + 1}구간 ${ZONES[z].name} · 칸 (${Math.floor((p.x + P.w / 2) / TILE)}, ${Math.floor(h)})`);
+  }
 }
-app.ticker.add((tk) => { if (!window.paused) frame(Math.min(0.1, tk.deltaMS / 1000)); }); // paused: 시험할 때 시간을 멈춘다
+app.ticker.add((tk) => {
+  if (!window.paused) frame(Math.min(0.1, tk.deltaMS / 1000)); // paused: 시험할 때 시간을 멈춘다
+  bgm.update({ screen: mode, h: hOf(p.y + P.h) });
+});
 
 saved = JSON.parse(localStorage.getItem(SAVE_KEY) ?? 'null');
 if (saved && !IDS.includes(saved.id)) saved = null;
 if (saved && saved.h === undefined) saved.h = (5080 - saved.y - 48) / TILE; // 예전 저장(y 픽셀) 읽기
-const me = await net.me();
+const me = ADMIN ? { status: 0 } : await net.me(); // 관리자 모드: 닉네임 창 없이 혼자 하기
 if (me.status === 200) {
   guest = me.body;
   // 서버에 같은 맵의 이어 할 등반이 있으면 로컬 저장보다 그것을 쓴다(로컬 저장은 서버가 없을 때의 예비)
@@ -663,4 +998,4 @@ if (me.status === 401) askNickname();
 else if (saved || guest) showTitle();
 else showSelect();
 
-if (DEBUG) window.game = { get p() { return p; }, get rig() { return rig; }, app, render: () => app.render(), view, get camY() { return camY; }, P: () => P, yOf, keys, begin, frame, get stats() { return stats; } }; // 숨겨진 창에서도 frame(dt) 로 시간을 넘겨 시험한다
+if (DEBUG || ADMIN) window.game = { get p() { return p; }, admin: { teleport, key: adminKey, get back() { return back; } }, get rig() { return rig; }, app, render: () => app.render(), view, get camY() { return camY; }, P: () => P, yOf, keys, begin, frame, get stats() { return stats; }, bgm }; // 숨겨진 창에서도 frame(dt) 로 시간을 넘겨 시험한다

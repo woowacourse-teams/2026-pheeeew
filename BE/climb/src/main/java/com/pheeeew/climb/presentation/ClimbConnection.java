@@ -1,6 +1,9 @@
 package com.pheeeew.climb.presentation;
 
 import com.pheeeew.climb.domain.ClimbGuest;
+import com.pheeeew.climb.domain.ClimbPose;
+import com.pheeeew.climb.domain.ClimbPresenceView;
+import com.pheeeew.climb.domain.ClimbPresent;
 import com.pheeeew.climb.domain.ClimbRun;
 import java.time.Duration;
 import java.time.Instant;
@@ -23,9 +26,12 @@ final class ClimbConnection {
 
     private static final int MAX_QUEUED = 32;
     private static final int MESSAGES_PER_SECOND = 10;
+    private static final int STATES_PER_SECOND = 12;
 
     private final WebSocketSession session;
     private final ClimbGuest guest;
+    private final int n;
+    private final ClimbPresenceView presenceView = new ClimbPresenceView();
     private final Executor executor;
     private final Queue<WebSocketMessage<?>> queue = new ConcurrentLinkedQueue<>();
     private final AtomicInteger queued = new AtomicInteger();
@@ -34,22 +40,54 @@ final class ClimbConnection {
     private volatile CloseStatus closeAfterSend;
     private volatile boolean helloed;
     private volatile String mapVersion;
+    private volatile String character;
+    private volatile ClimbPresent present;
     private volatile ClimbRun run;
     private volatile String lastRank;
     private volatile long lastReceived = System.nanoTime();
     private volatile long lastPing = lastReceived;
     private Instant lastSavedAt = Instant.EPOCH;
-    private double tokens = MESSAGES_PER_SECOND;
-    private long tokensAt = lastReceived;
+    private final Bucket messages = new Bucket(MESSAGES_PER_SECOND, lastReceived);
+    private final Bucket states = new Bucket(STATES_PER_SECOND, lastReceived);
+    private final Bucket dropped = new Bucket(STATES_PER_SECOND, lastReceived);
 
-    ClimbConnection(WebSocketSession session, ClimbGuest guest, Executor executor) {
+    ClimbConnection(WebSocketSession session, ClimbGuest guest, int n, Executor executor) {
         this.session = session;
         this.guest = guest;
+        this.n = n;
         this.executor = executor;
     }
 
     ClimbGuest guest() {
         return guest;
+    }
+
+    /** 핸드셰이크에 유효한 관리자 쿠키가 있었다. 보고를 받되 순위·기록·위치 공유에 넣지 않는다. */
+    boolean admin() {
+        return Boolean.TRUE.equals(session.getAttributes().get(ClimbWebSocketHandler.ADMIN));
+    }
+
+    /** 다른 사람에게 보이는 이 접속의 번호. 서버가 켜져 있는 동안 접속마다 새로 준다. */
+    int n() {
+        return n;
+    }
+
+    String character() {
+        return character;
+    }
+
+    ClimbPresent present() {
+        return present;
+    }
+
+    void pose(ClimbPose pose) {
+        ClimbPresent previous = present;
+        present = new ClimbPresent(n, previous == null ? 1 : previous.seq() + 1, pose);
+    }
+
+    /** 위치 공유 송신 틱(스레드 하나)에서만 쓴다. */
+    ClimbPresenceView presenceView() {
+        return presenceView;
     }
 
     boolean helloed() {
@@ -64,8 +102,9 @@ final class ClimbConnection {
         return run;
     }
 
-    void hello(String mapVersion, ClimbRun run) {
+    void hello(String mapVersion, String character, ClimbRun run) {
         this.mapVersion = mapVersion;
+        this.character = character;
         this.run = run;
         this.helloed = true;
     }
@@ -103,15 +142,45 @@ final class ClimbConnection {
         return true;
     }
 
-    /** 손님당 초당 10개. 연결이 손님마다 하나라 연결 단위로 센다. */
+    /** 손님당 초당 10개(st 제외). 연결이 손님마다 하나라 연결 단위로 센다. */
     synchronized boolean allowMessage(long now) {
-        tokens = Math.min(MESSAGES_PER_SECOND, tokens + (now - tokensAt) / 1_000_000_000.0 * MESSAGES_PER_SECOND);
-        tokensAt = now;
-        if (tokens < 1) {
-            return false;
+        return messages.take(now);
+    }
+
+    /**
+     * st 는 따로 손님당 초당 12개. 넘친 것은 버리고, 버린 것도 초당 12개를 넘으면(초당 24개 넘게 보내면) CLOSE.
+     */
+    synchronized StateAllowance allowState(long now) {
+        if (states.take(now)) {
+            return StateAllowance.ACCEPT;
         }
-        tokens--;
-        return true;
+        return dropped.take(now) ? StateAllowance.DROP : StateAllowance.CLOSE;
+    }
+
+    enum StateAllowance { ACCEPT, DROP, CLOSE }
+
+    /** 초당 rate 개, 최대 rate 개까지 모아 두는 토큰 통. */
+    private static final class Bucket {
+
+        private final int rate;
+        private double tokens;
+        private long at;
+
+        private Bucket(int rate, long now) {
+            this.rate = rate;
+            this.tokens = rate;
+            this.at = now;
+        }
+
+        private boolean take(long now) {
+            tokens = Math.min(rate, tokens + (now - at) / 1_000_000_000.0 * rate);
+            at = now;
+            if (tokens < 1) {
+                return false;
+            }
+            tokens--;
+            return true;
+        }
     }
 
     void offerRank(String text) {

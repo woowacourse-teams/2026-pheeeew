@@ -1,4 +1,4 @@
-/* 피유 등반 UI 규칙: 글꼴 하나(Jua), 진한 자두색 테두리 3px + 아래로 떨어진 단단한 그림자, 크림색 면, 강조색은 고른 감정이의 색 */
+/* 감정이들의 점프 대모험 UI 규칙: 글꼴 하나(Jua), 진한 자두색 테두리 3px + 아래로 떨어진 단단한 그림자, 크림색 면, 강조색은 고른 감정이의 색 */
 @font-face { font-family: 'Jua'; src: url('/assets/fonts/Jua-Regular.ttf') format('truetype'); font-display: block; }
 :root { --ink: #2b2433; --paper: #fff8ea; --shade: #efe4cf; --accent: #ffd35a; --dim: #7d7388; }
 html, body { margin: 0; height: 100%; background: #1c1a22; overflow: hidden; }
@@ -52,7 +52,9 @@ canvas { display: block; }
 .avatar { width: 44px; height: 34px; margin: 0 -2px 0 -8px; overflow: visible; }
 .avatar img { display: block; position: relative; top: -10px; left: -3px; width: 50px; }
 #hud .who { background: var(--tint); }
-#hud .keys { position: absolute; left: 54px; bottom: 16px; display: flex; gap: 14px; align-items: center; font-size: 17px; color: var(--paper); text-shadow: 0 2px 0 var(--ink); transition: opacity .8s; }
+/* 조작 안내: 늘 떠 있다. 배경이 밤하늘이든 밝은 하늘이든 읽히게 크림색 반투명 알약 띠 위에 잉크색 글자. 길면 두 줄로 */
+#hud .keys { position: absolute; left: 54px; bottom: 12px; max-width: 1130px; box-sizing: border-box; display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; padding: 4px 14px 7px 8px; font-size: 17px; color: var(--ink); background: rgba(255, 248, 234, .82); border: 2.5px solid var(--ink); border-radius: 24px; box-shadow: 0 3px 0 var(--ink); transition: opacity .3s; }
+#hud .keys.low { opacity: .3; }
 /* 탑 진행 막대: 오른쪽 벽 위에 놓여서 놀이 공간을 가리지 않는다 */
 #tower { position: absolute; right: 9px; top: 150px; width: 16px; height: 420px; background: var(--paper); border: 3px solid var(--ink); border-radius: 11px; box-shadow: 0 4px 0 var(--ink); overflow: visible; }
 #tower .fill { position: absolute; left: 0; right: 0; bottom: 0; background: var(--tint); border-radius: 0 0 7px 7px; }
@@ -109,3 +111,22 @@ input.nick:focus { box-shadow: 0 0 0 4px var(--accent); }
 /* 사건 알림: 위 HUD 줄 아래, 구간 완료 배너 위 */
 #toast { position: absolute; left: 50%; top: 66px; transform: translateX(-50%); font-size: 18px; animation: drop .3s ease-out; }
 @keyframes drop { from { transform: translate(-50%, -10px); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }
+
+/* 관리자 모드(/admin): 오른쪽 아래 작은 정보 카드와 전체 지도 */
+#admin { position: absolute; right: 54px; bottom: 76px; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; padding: 8px 12px; font-size: 15px; border-radius: 14px; box-shadow: 0 4px 0 var(--ink); }
+#admin b { font-weight: 400; color: #d6453a; }
+#admin .btn { height: 28px; padding: 0 12px; font-size: 14px; border-width: 2px; border-radius: 10px; box-shadow: 0 3px 0 var(--ink); }
+#admin .keys { position: static; gap: 8px; padding: 0; font-size: 13px; color: var(--ink); background: none; border: 0; box-shadow: none; }
+#admin .key { min-width: 0; height: 22px; padding: 0 5px; font-size: 12px; border-width: 2px; border-radius: 6px; box-shadow: 0 2px 0 var(--ink); }
+.adminmap { padding: 10px 14px 14px; }
+.adminmap .head { display: flex; align-items: center; justify-content: space-between; font-size: 16px; color: var(--dim); margin-bottom: 8px; }
+.adminmap canvas { display: block; pointer-events: auto; cursor: crosshair; }
+
+/* 음악 출처 창. 제목 화면 왼쪽 위 작은 버튼으로 연다 */
+.music { position: absolute; left: 24px; top: 20px; }
+.credits { width: 720px; max-height: 640px; display: flex; flex-direction: column; }
+.credits .list { flex: 1; min-height: 0; overflow-y: auto; pointer-events: auto; text-align: left; font-size: 15px; line-height: 1.45; margin: 12px 0 18px; padding-right: 6px; }
+.credits .song { padding: 8px 0; border-top: 2px dashed var(--shade); }
+.credits .t { font-size: 19px; }
+.credits small, .credits .ch { color: var(--dim); }
+.credits a { color: var(--ink); pointer-events: auto; word-break: break-all; }

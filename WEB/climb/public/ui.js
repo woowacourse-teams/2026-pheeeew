@@ -17,7 +17,7 @@ const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(
 const row = (it, mine) => `<div class="r${it.tag === mine ? ' me' : ''}"><b>${it.rank}</b>${TINT[it.character] ? face(it.character, 'avatar mini') : '<div class="avatar mini"></div>'}<span class="n">${esc(it.nickname)}<small>#${esc(it.tag)}</small></span><span class="v">${it.finished ? `완주${it.time != null ? ` ${clock(it.time)}` : ''}` : `${it.best}칸`}</span></div>`;
 const STATUS = { connecting: '연결하는 중…', offline: '연결 끊김 · 혼자 오르는 중', replaced: '다른 창에서 오르는 중' };
 
-export function createUI({ ids, info, zones, goal }) {
+export function createUI({ ids, info, zones, goal, credits = [] }) {
   const root = document.getElementById('ui');
   const loading = document.getElementById('loading');
 
@@ -25,7 +25,7 @@ export function createUI({ ids, info, zones, goal }) {
   const title = el('div', 'screen veil');
   title.hidden = true;
   title.innerHTML = `
-    <div class="logo">피유 등반</div>
+    <div class="logo">감정이들의 점프 대모험</div>
     <div class="sub">길게 모아서, 한 번에 뛰어요</div>
     <div class="card resume" data-resume></div>
     <div class="row">
@@ -33,6 +33,7 @@ export function createUI({ ids, info, zones, goal }) {
       <button class="btn ghost" data-new><span class="key">N</span>처음부터</button>
     </div>
     <div class="boards" data-boards hidden>${['오늘', '역대'].map((n) => `<div class="card board"><div class="head">${n} 순위</div><div class="list"></div></div>`).join('')}</div>
+    <button class="btn ghost small music" data-credits>♪ 음악</button>
     <div class="guest" data-guest hidden><span data-guest-name></span><button class="btn ghost small" data-rename>닉네임 바꾸기</button></div>`;
 
   // ---- 감정이 고르기 ----
@@ -64,9 +65,9 @@ export function createUI({ ids, info, zones, goal }) {
     <div id="ranks" class="card" hidden><div class="head"><span data-ranks-head></span><span class="key">Tab</span></div><div class="list" data-ranks-list></div></div>
     <div id="toast" class="pill" hidden></div>
     <div id="tower"><div class="fill"></div>${zones.slice(0, -1).map((z) => `<div class="tick" style="bottom:${(z.to / goal) * 100}%"></div>`).join('')}<div class="others"></div><div class="best"></div><div class="me"></div></div>
-    <div class="keys"><span><span class="key">◀</span> <span class="key">▶</span> 걷기</span><span><span class="key">Space</span> 길게 눌러 모으고, 놓으면 점프</span><span><span class="key">N</span> 처음부터</span><span><span class="key">J</span> 움직임 비교</span><span><span class="key">M</span> 소리</span></div>`;
+    <div class="keys"><span><span class="key">◀</span> <span class="key">▶</span> 걷기</span><span><span class="key">Space</span> 길게 눌러 모으고, 놓으면 점프</span><span><span class="key">N</span> 처음부터</span><span><span class="key">J</span> 움직임 비교</span><span><span class="key">G</span> 다른 사람</span><span><span class="key">M</span> 소리</span><span><span class="key">B</span> 음악</span></div>`;
   const q = (sel) => hud.querySelector(sel);
-  const parts = { face: q('[data-face]'), name: q('[data-name]'), h: q('[data-h]'), falls: q('[data-falls]'), time: q('[data-time]'), zoneNo: q('[data-zone-no]'), zone: q('[data-zone]'), fill: q('#tower .fill'), best: q('#tower .best'), me: q('#tower .me'), others: q('#tower .others'), keys: q('.keys'), ranks: q('#ranks'), ranksHead: q('[data-ranks-head]'), ranksList: q('[data-ranks-list]'), toast: q('#toast') };
+  const parts = { face: q('[data-face]'), name: q('[data-name]'), h: q('[data-h]'), falls: q('[data-falls]'), time: q('[data-time]'), zoneNo: q('[data-zone-no]'), zone: q('[data-zone]'), fill: q('#tower .fill'), best: q('#tower .best'), me: q('#tower .me'), others: q('#tower .others'), ranks: q('#ranks'), ranksHead: q('[data-ranks-head]'), ranksList: q('[data-ranks-list]'), toast: q('#toast'), keys: q('.keys') };
   const shown = {}; // 바뀐 값만 다시 쓴다
   const put = (k, v) => { if (shown[k] !== v) { shown[k] = v; parts[k].textContent = v; } };
 
@@ -84,19 +85,32 @@ export function createUI({ ids, info, zones, goal }) {
   // ---- 닉네임 창 ----
   const nick = el('div', 'screen veil');
   nick.hidden = true;
-  nick.innerHTML = `<div class="card modal"><div class="big" data-title></div><div class="small">순위표에 나오는 이름이에요. 2~10자, 한글·영문·숫자</div>
-    <input class="nick" data-input maxlength="10" autocomplete="off" spellcheck="false"><div class="err" data-err></div>
+  nick.innerHTML = `<div class="card modal"><div class="big" data-title></div><div class="small" data-hint></div>
+    <input class="nick" data-input autocomplete="off" spellcheck="false"><div class="err" data-err></div>
     <div class="row" style="justify-content:center"><button class="btn" data-ok><span class="key">Enter</span><span data-ok-label></span></button><button class="btn ghost" data-alt><span class="key">Esc</span><span data-alt-label></span></button></div></div>`;
   const nickInput = nick.querySelector('[data-input]');
 
-  root.append(hud, banner, select, title, modal, nick);
+  // ---- 음악 출처(CC BY 4.0) ----
+  const link = (url, text) => `<a href="${url}" target="_blank" rel="noopener">${esc(text ?? url)}</a>`;
+  const music = el('div', 'screen veil');
+  music.hidden = true;
+  music.innerHTML = `<div class="card modal credits"><div class="big">음악</div><div class="list">${credits.map((c) => `
+    <div class="song"><div class="t">“${esc(c.title)}” <small>${esc(c.where)}</small></div>
+    <div>${c.credit ? esc(c.credit) : `by ${esc(c.by)}`}${c.byUrl ? ` (${link(c.byUrl)})` : ''}</div>
+    ${c.from ? `<div>From “${esc(c.from)}”</div>` : ''}<div>${link(c.src)}</div>
+    <div>${link(c.license.url, `Licensed under ${c.license.name}`)}</div>
+    <div class="ch">변경: ${esc(c.changes)}</div></div>`).join('')}</div>
+    <div class="row" style="justify-content:center"><button class="btn" data-close><span class="key">Esc</span>닫기</button></div></div>`;
+
+  root.append(hud, banner, select, title, modal, nick, music);
 
   const api = {
     // 게임 화면과 같은 자리·배율로 맞춘다
     fit(x, y, s) { root.style.transform = `translate(${x}px, ${y}px) scale(${s})`; },
     loaded() { loading.hidden = true; },
     // saved 가 없으면(첫 등반) 이어하기 카드 없이 "오르기 시작"만
-    title(saved, onContinue, onNew) {
+    title(saved, onContinue, onNew, onCredits) {
+      title.querySelector('[data-credits]').onclick = onCredits;
       const resume = title.querySelector('[data-resume]');
       resume.hidden = title.querySelector('[data-new]').hidden = !saved;
       title.querySelector('[data-continue-label]').textContent = saved ? '이어서 오르기' : '오르기 시작';
@@ -123,11 +137,10 @@ export function createUI({ ids, info, zones, goal }) {
       put('name', info[id].name);
       title.hidden = select.hidden = modal.hidden = true;
       hud.hidden = false;
-      parts.keys.style.opacity = 1;
-      clearTimeout(api.keysTimer);
-      api.keysTimer = setTimeout(() => { parts.keys.style.opacity = 0; }, 12000); // 조작 안내는 잠깐만
     },
-    hud({ h, best, falls, time }) {
+    // low = 캐릭터 발이 안내 줄 높이에 있다(맨 아래 바닥): 그동안 안내 줄을 옅게 해 캐릭터를 가리지 않는다
+    hud({ h, best, falls, time, low }) {
+      parts.keys.classList.toggle('low', !!low);
       put('h', String(h));
       put('falls', String(falls));
       put('time', clock(time));
@@ -153,6 +166,8 @@ export function createUI({ ids, info, zones, goal }) {
       modal.hidden = false;
     },
     closeConfirm() { modal.hidden = true; },
+    credits(onClose) { music.querySelector('[data-close]').onclick = onClose; music.hidden = false; },
+    closeCredits() { music.hidden = true; },
     // 제목 화면: 내 닉네임(없으면 숨김)과 오늘·역대 순위(못 불러오면 숨김)
     guest(g, onRename) {
       title.querySelector('[data-guest]').hidden = !g;
@@ -167,14 +182,17 @@ export function createUI({ ids, info, zones, goal }) {
         box.children[i].querySelector('.list').innerHTML = !top ? '<div class="none">불러오지 못했어요</div>' : top.length ? top.slice(0, 5).map((it) => row(it, mine)).join('') : '<div class="none">아직 아무도 없어요</div>';
       });
     },
-    // 닉네임 창. onOk(이름), onAlt() 는 main 이 정한다
-    nickname({ heading, value = '', ok, alt }, onOk, onAlt) {
+    // 닉네임 창. onOk(이름), onAlt() 는 main 이 정한다. secret 이면 비밀번호 입력란(관리자 키 창)
+    nickname({ heading, value = '', ok, alt, hint = '순위표에 나오는 이름이에요. 2~10자, 한글·영문·숫자', secret = false }, onOk, onAlt) {
       nick.querySelector('[data-title]').textContent = heading;
+      nick.querySelector('[data-hint]').textContent = hint;
+      nickInput.type = secret ? 'password' : 'text';
+      nickInput.maxLength = secret ? 200 : 10;
       nick.querySelector('[data-ok-label]').textContent = ok;
       nick.querySelector('[data-alt-label]').textContent = alt;
       nick.querySelector('[data-err]').textContent = '';
       nickInput.value = value;
-      const submit = () => onOk(nickInput.value.trim());
+      const submit = () => onOk(secret ? nickInput.value : nickInput.value.trim());
       nick.querySelector('[data-ok]').onclick = submit;
       nick.querySelector('[data-alt]').onclick = onAlt;
       nickInput.onkeydown = (e) => {
@@ -209,6 +227,31 @@ export function createUI({ ids, info, zones, goal }) {
     },
     foldRanks() { parts.ranks.classList.toggle('folded'); },
     // 다른 사람의 구간 통과·완주: 화면 위에 잠깐 한 줄
+    // 관리자 모드(/admin): 오른쪽 아래 정보 표시와 키 안내, 나가기, V 전체 지도. onLeave(), onPick(지도 위 x, y) 는 main 이 정한다
+    adminPanel(mini, onLeave, onPick) {
+      const info = el('div', 'card', '<b>관리자 모드</b><span data-admin-info></span><button class="btn ghost small" data-leave>나가기</button><div class="keys"><span><span class="key">클릭</span> 그 자리로</span><span><span class="key">PgUp</span><span class="key">PgDn</span> 한 화면</span><span><span class="key">1</span>~<span class="key">6</span> 구간</span><span><span class="key">⌫</span> 되돌리기</span><span><span class="key">V</span> 지도</span></div>');
+      info.id = 'admin';
+      info.querySelector('[data-leave]').onclick = onLeave;
+      hud.append(info);
+      api.adminText = info.querySelector('[data-admin-info]');
+      const map = el('div', 'screen veil', `<div class="card adminmap"><div class="head">전체 지도 · 누르면 그 자리로 <span class="key">V</span></div><canvas width="${mini.w}" height="${mini.h}"></canvas></div>`);
+      map.hidden = true;
+      root.append(map);
+      const canvas = map.querySelector('canvas');
+      canvas.onpointerdown = (e) => {
+        const r = canvas.getBoundingClientRect(); // 화면 배율이 걸려 있어 그 비율로 되돌린다
+        onPick(((e.clientX - r.left) / r.width) * mini.w, ((e.clientY - r.top) / r.height) * mini.h);
+      };
+      api.adminMapEl = map;
+      return map;
+    },
+    // draw(ctx) 를 주면 지도를 그려 열고, null 이면 닫는다
+    adminMap(draw) {
+      const map = api.adminMapEl;
+      if (draw) draw(map.querySelector('canvas').getContext('2d'));
+      map.hidden = !draw;
+    },
+    adminInfo(text) { if (api.adminText.textContent !== text) api.adminText.textContent = text; },
     toast(text) {
       parts.toast.textContent = text;
       parts.toast.hidden = true;

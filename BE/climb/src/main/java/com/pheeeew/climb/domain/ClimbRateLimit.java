@@ -35,6 +35,12 @@ public class ClimbRateLimit {
         return true;
     }
 
+    /** 세지 않고 지금 창의 한도를 다 썼는지만 본다. */
+    public synchronized boolean exhausted(String key, Instant now) {
+        Window current = windows.get(key);
+        return current != null && now.isBefore(current.startedAt.plus(window)) && current.count >= limit;
+    }
+
     private static final class Window {
 
         private final Instant startedAt;
