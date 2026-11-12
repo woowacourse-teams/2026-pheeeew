@@ -8,10 +8,12 @@ import { createUI, TINT } from './ui.js';
 import { createFx } from './fx.js';
 import { sfx, unlock, toggleMute } from './sfx.js';
 import { createNet } from './net.js';
+import { createGhosts } from './ghosts.js';
 
 const W = COLS * TILE; // 1280
 const H = 720;
 const DEBUG = new URLSearchParams(location.search).has('debug');
+const ADMIN = new URLSearchParams(location.search).has('admin'); // 관리자 모드: 내 자세를 다른 사람에게 보내지 않는다
 const SAVE_KEY = DEBUG ? 'pheeeew-climb-debug' : 'pheeeew-climb-v1'; // 시험 화면은 실제 저장을 건드리지 않는다
 
 const INFO = {
@@ -302,6 +304,9 @@ function updateDrops(dt) {
   }
 }
 
+// 함께 오르기: 다른 사람의 감정이. 내 감정이보다 뒤에 반투명하게 그리고, 충돌 계산에는 넣지 않는다.
+const ghostLayer = new Container();
+world.addChild(ghostLayer);
 const actor = new Container();
 world.addChild(actor);
 const fx = createFx(); // 먼지, 별, 반짝이 (캐릭터 위에 그린다)
@@ -461,6 +466,49 @@ const showRanks = () => ui.ranks(guest && { rank, status: net.status, tag: guest
 net.on('rank', (m) => { rank = m; showRanks(); });
 net.on('status', showRanks);
 net.on('welcome', (m) => { guest = m.me; });
+const ghosts = createGhosts();
+const ghostViews = new Map(); // n -> { c, rig, label, character }
+let showGhosts = localStorage.getItem('pheeeew-climb-ghosts') !== 'off';
+ghostLayer.visible = showGhosts;
+net.on('in', (m) => ghosts.enter(m.p));
+net.on('sts', (m) => ghosts.states(m.s, performance.now()));
+net.on('out', (m) => ghosts.leave(m.n));
+net.on('status', (s) => { if (s !== 'online') ghosts.clear(); }); // 다시 연결되면 서버가 in 부터 다시 보낸다
+function dropGhost(n) {
+  ghostViews.get(n)?.c.destroy({ children: true }); // 그림(텍스처)은 내 감정이와 같이 쓰므로 지우지 않는다
+  ghostViews.delete(n);
+}
+function drawGhosts(dt) {
+  const list = ghosts.sample(performance.now());
+  if (!showGhosts) { for (const n of [...ghostViews.keys()]) dropGhost(n); return; }
+  const seen = new Set();
+  for (const g of list) {
+    seen.add(g.n);
+    let v = ghostViews.get(g.n);
+    if (v && v.character !== g.character) { dropGhost(g.n); v = null; }
+    if (!v) {
+      const c = new Container();
+      const rig = new JellyRig(tex[g.character]);
+      const label = new Text({ text: g.nickname, style: { fontFamily: FONT, fontSize: 15, fill: 0xfff8ea, stroke: { color: INK, width: 4 } } }); // 어두운 배경에서도 읽히게
+      label.anchor.set(0.5, 1);
+      c.addChild(rig.root, label);
+      ghostLayer.addChild(c);
+      v = { c, rig, label, character: g.character };
+      ghostViews.set(g.n, v);
+    }
+    const feet = yOf(g.h);
+    v.c.visible = feet > camY - 160 && feet < camY + H + 160; // 화면 밖 사람은 그리지 않는다
+    if (!v.c.visible) continue;
+    v.c.alpha = 0.45 * g.alpha;
+    const ground = (g.flags & 1) > 0;
+    const charging = (g.flags & 2) > 0;
+    const splat = (g.flags & 8) > 0;
+    v.rig.pose({ ground, charging, charge: g.charge / 100, splat, vx: g.vx, vy: g.vy, facing: g.flags & 4 ? -1 : 1, walking: ground && !charging && !splat && Math.abs(g.vx) > 20 }, dt);
+    v.rig.root.position.set(g.x, feet);
+    v.label.position.set(g.x, feet - 84);
+  }
+  for (const n of [...ghostViews.keys()]) if (!seen.has(n)) dropGhost(n);
+}
 net.on('event', (m) => {
   if (m.tag === guest?.tag) return; // 내 구간 완료는 배너로 이미 보인다
   ui.toast(m.kind === 'finish' ? `${m.nickname} 님이 꼭대기까지 올랐어요!` : `${m.nickname} 님이 ${m.zone}구간(${ZONES[m.zone - 1]?.name ?? ''}) 통과!`);
@@ -521,6 +569,7 @@ addEventListener('keydown', (e) => {
   if (k === 'Space') keys.jump = true;
   if (k === 'KeyN') askRestart();
   if (k === 'Tab') { e.preventDefault(); ui.foldRanks(); }
+  if (k === 'KeyG') { showGhosts = !showGhosts; ghostLayer.visible = showGhosts; localStorage.setItem('pheeeew-climb-ghosts', showGhosts ? 'on' : 'off'); say(showGhosts ? '다른 사람 보이기' : '다른 사람 숨기기'); quipT = 1.2; }
   if (k === 'KeyJ') { jelly = !jelly; localStorage.setItem('pheeeew-climb-rig', jelly ? 'jelly' : 'old'); makeRig(); say(jelly ? '젤리 움직임' : '예전 움직임'); quipT = 1.2; }
 });
 addEventListener('keyup', (e) => {
@@ -591,6 +640,8 @@ function frame(dt) {
   const walking = p.ground && !p.charging && p.lock <= 0 && keys.left !== keys.right;
   rig.pose({ ground: p.ground, charging: p.charging, charge: Math.min(1, p.charge / P.chargeMax), splat: p.splat, vx: p.vx, vy: p.vy, facing: p.facing, walking }, dt);
   rig.root.position.set(p.x + P.w / 2, p.y + P.h);
+  // 함께 오르기: [몸 가운데 x, 발 높이(칸), vx, vy, 자세 표시, 모은 정도]. 표시 1 땅 위, 2 모으는 중, 4 왼쪽을 봄, 8 엎어짐, 16 미끄러지는 중
+  if (!ADMIN) net.reportState([p.x + P.w / 2, Math.max(0, hOf(p.y + P.h)), p.vx, p.vy, (p.ground ? 1 : 0) | (p.charging ? 2 : 0) | (p.facing < 0 ? 4 : 0) | (p.splat ? 8 : 0) | (p.slide ? 16 : 0), Math.min(1, p.charge / P.chargeMax)]);
 
   sfx.charge(p.charging ? Math.min(1, p.charge / P.chargeMax) : -1);
   if (p.slide && Math.random() < dt * 14) fx.dust(p.x + P.w / 2, p.y + P.h, 0.15); // 미끄러지는 동안 먼지
@@ -642,6 +693,7 @@ function frame(dt) {
   updateDrops(dt);
   updateSnow(dt, camH);
   updateWind(dt);
+  drawGhosts(dt); // 카메라가 정해진 뒤
   ui.hud({ h: Math.max(0, Math.round(hOf(p.y + P.h))), best: stats.best, falls: stats.falls, time: stats.time });
 }
 app.ticker.add((tk) => { if (!window.paused) frame(Math.min(0.1, tk.deltaMS / 1000)); }); // paused: 시험할 때 시간을 멈춘다
