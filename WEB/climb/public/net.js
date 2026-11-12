@@ -32,7 +32,7 @@ export function createNet({
   }
 
   // ---- 구독 ----
-  const subs = { rank: [], event: [], welcome: [], status: [] };
+  const subs = { rank: [], event: [], welcome: [], status: [], in: [], sts: [], out: [] };
   const emit = (type, data) => {
     for (const fn of subs[type]) {
       try { fn(data); } catch (e) { console.error(e); } // 화면 쪽 실수가 연결을 끊지 않게
@@ -97,6 +97,10 @@ export function createNet({
     posAt = now();
   }
 
+  // ---- 함께 오르기: 내 자세(st) ----
+  let stLast = ''; // 마지막으로 보낸 s(문자열)
+  let stAt = -Infinity;
+
   function open() {
     let sock;
     retryTimer = null;
@@ -121,7 +125,7 @@ export function createNet({
         setStatus('online');
         flush();
         emit('welcome', m);
-      } else if (m.t === 'rank' || m.t === 'event') emit(m.t, m);
+      } else if (['rank', 'event', 'in', 'sts', 'out'].includes(m.t)) emit(m.t, m);
       else if (m.t === 'error' && m.code === 'CONNECTION_REPLACED') replaced = true;
     };
     sock.onerror = () => {}; // 뒤따르는 close 에서 처리한다
@@ -159,6 +163,18 @@ export function createNet({
       last = pos = { t: 'pos', h: int(h), best: Math.max(int(best), int(h)), falls: int(falls), time: int(time), x: Math.round(Number(x) || 0) };
       lastSent = false;
       sendPos();
+    },
+    // s = [x(px), h(칸), vx, vy, flags, charge(0~1)]. 매 프레임 불러도 된다: 바뀌면 100ms마다, 그대로면 1초마다 보낸다.
+    reportState([x, h, vx, vy, flags, charge]) {
+      if (!live) return;
+      const r = Math.round;
+      const s = [r(x), r(h * 100) / 100, r(vx), r(vy), flags | 0, r(Math.min(1, Math.max(0, charge)) * 100)];
+      const key = s.join();
+      const wait = key === stLast ? 1000 : 100;
+      if (now() - stAt < wait) return;
+      raw({ t: 'st', s });
+      stLast = key;
+      stAt = now();
     },
     reportZone({ zone, time }) {
       if (run.done) return;

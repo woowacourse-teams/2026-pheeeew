@@ -353,6 +353,57 @@ test('다른 감정이로 connect 하면 지금 연결을 닫고 새 hello 를 �
   eq(t.sockets[1].sent[0].character, 'tired', 'hello');
 });
 
+test('st 는 움직이는 동안 100ms마다, 그대로면 1초마다 보내고 값을 줄여 보낸다', () => {
+  const t = setup();
+  const ws = online(t);
+  const sts = () => ws.sent.filter((m) => m.t === 'st').map((m) => m.s);
+  t.net.reportState([612.4, 135.4237, -180.6, 420.2, 1, 0.42]);
+  eq(sts(), [[612, 135.42, -181, 420, 1, 42]], '바로 보냄, x·속도 정수, h 소수 둘째 자리, 모은 정도 0~100');
+  t.clock.advance(50);
+  t.net.reportState([620, 136, 0, 0, 1, 0]);
+  eq(sts().length, 1, '100ms 안에는 보내지 않음');
+  t.clock.advance(50);
+  t.net.reportState([620, 136, 0, 0, 1, 0]);
+  eq(sts().at(-1), [620, 136, 0, 0, 1, 0], '100ms 지나면 바뀐 값');
+  t.clock.advance(100);
+  t.net.reportState([620, 136, 0, 0, 1, 0]);
+  t.clock.advance(899);
+  t.net.reportState([620, 136, 0, 0, 1, 0]);
+  eq(sts().length, 2, '그대로면 1초 동안 보내지 않음');
+  t.clock.advance(1);
+  t.net.reportState([620, 136, 0, 0, 1, 0]);
+  eq(sts().length, 3, '그대로여도 1초마다');
+});
+
+test('st 는 welcome 전이나 끊긴 동안 보내지 않는다', () => {
+  const t = setup();
+  t.net.reportState([1, 1, 0, 0, 1, 0]);
+  t.net.connect({ character: 'angry' });
+  const ws = t.sockets[0];
+  ws.serverOpen();
+  t.net.reportState([1, 1, 0, 0, 1, 0]);
+  eq(kinds(ws), ['hello'], 'welcome 전');
+  ws.serverSend(welcome());
+  t.net.reportState([1, 1, 0, 0, 1, 0]);
+  eq(kinds(ws), ['hello', 'st'], 'welcome 뒤');
+  ws.serverClose(1006);
+  t.net.reportState([2, 2, 0, 0, 1, 0]);
+  eq(kinds(ws), ['hello', 'st'], '끊긴 동안');
+});
+
+test('in·sts·out 을 구독자에게 넘긴다', () => {
+  const t = setup();
+  const got = [];
+  t.net.on('in', (m) => got.push(['in', m.p[0].nickname]));
+  t.net.on('sts', (m) => got.push(['sts', m.s[0][0]]));
+  t.net.on('out', (m) => got.push(['out', m.n]));
+  const ws = online(t);
+  ws.serverSend({ t: 'in', p: [{ n: 9, nickname: '피유', tag: '4f2a', character: 'angry' }] });
+  ws.serverSend({ t: 'sts', s: [[9, 612, 135.42, -180, 420, 1, 0]] });
+  ws.serverSend({ t: 'out', n: [9] });
+  eq(got, [['in', '피유'], ['sts', 9], ['out', [9]]], '받은 것');
+});
+
 let failed = 0;
 for (const { name, fn } of tests) {
   try { await fn(); console.log(`통과  ${name}`); } catch (e) { failed++; console.log(`실패  ${name}\n      ${e.message}`); }
