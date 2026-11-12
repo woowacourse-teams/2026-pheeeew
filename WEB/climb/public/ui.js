@@ -67,7 +67,7 @@ export function createUI({ ids, info, zones, goal, credits = [] }) {
     <div id="tower"><div class="fill"></div>${zones.slice(0, -1).map((z) => `<div class="tick" style="bottom:${(z.to / goal) * 100}%"></div>`).join('')}<div class="others"></div><div class="best"></div><div class="me"></div></div>
     <div class="keys"><span><span class="key">◀</span> <span class="key">▶</span> 걷기</span><span><span class="key">Space</span> 길게 눌러 모으고, 놓으면 점프</span><span><span class="key">N</span> 처음부터</span><span><span class="key">J</span> 움직임 비교</span><span><span class="key">G</span> 다른 사람</span><span><span class="key">M</span> 소리</span><span><span class="key">B</span> 음악</span></div>`;
   const q = (sel) => hud.querySelector(sel);
-  const parts = { face: q('[data-face]'), name: q('[data-name]'), h: q('[data-h]'), falls: q('[data-falls]'), time: q('[data-time]'), zoneNo: q('[data-zone-no]'), zone: q('[data-zone]'), fill: q('#tower .fill'), best: q('#tower .best'), me: q('#tower .me'), others: q('#tower .others'), keys: q('.keys'), ranks: q('#ranks'), ranksHead: q('[data-ranks-head]'), ranksList: q('[data-ranks-list]'), toast: q('#toast') };
+  const parts = { face: q('[data-face]'), name: q('[data-name]'), h: q('[data-h]'), falls: q('[data-falls]'), time: q('[data-time]'), zoneNo: q('[data-zone-no]'), zone: q('[data-zone]'), fill: q('#tower .fill'), best: q('#tower .best'), me: q('#tower .me'), others: q('#tower .others'), ranks: q('#ranks'), ranksHead: q('[data-ranks-head]'), ranksList: q('[data-ranks-list]'), toast: q('#toast'), keys: q('.keys') };
   const shown = {}; // 바뀐 값만 다시 쓴다
   const put = (k, v) => { if (shown[k] !== v) { shown[k] = v; parts[k].textContent = v; } };
 
@@ -137,11 +137,10 @@ export function createUI({ ids, info, zones, goal, credits = [] }) {
       put('name', info[id].name);
       title.hidden = select.hidden = modal.hidden = true;
       hud.hidden = false;
-      parts.keys.style.opacity = 1;
-      clearTimeout(api.keysTimer);
-      api.keysTimer = setTimeout(() => { parts.keys.style.opacity = 0; }, 12000); // 조작 안내는 잠깐만
     },
-    hud({ h, best, falls, time }) {
+    // low = 캐릭터 발이 안내 줄 높이에 있다(맨 아래 바닥): 그동안 안내 줄을 옅게 해 캐릭터를 가리지 않는다
+    hud({ h, best, falls, time, low }) {
+      parts.keys.classList.toggle('low', !!low);
       put('h', String(h));
       put('falls', String(falls));
       put('time', clock(time));

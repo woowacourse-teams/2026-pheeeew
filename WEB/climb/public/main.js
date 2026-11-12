@@ -877,7 +877,7 @@ function frame(dt) {
   updateSnow(dt, camH);
   updateWind(dt);
   drawGhosts(dt); // 카메라가 정해진 뒤
-  ui.hud({ h: Math.max(0, Math.round(hOf(p.y + P.h))), best: stats.best, falls: stats.falls, time: stats.time });
+  ui.hud({ h: Math.max(0, Math.round(hOf(p.y + P.h))), best: stats.best, falls: stats.falls, time: stats.time, low: p.y + P.h - camY > H - 70 });
   if (ADMIN) {
     const h = hOf(p.y + P.h);
     const z = Math.max(0, ZONES.findIndex((zz, i) => h < zz.to || i === ZONES.length - 1)); // HUD 와 같이: 경계 높이에 서면 다음 구간
