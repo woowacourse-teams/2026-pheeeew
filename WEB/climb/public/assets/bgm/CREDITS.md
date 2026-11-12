@@ -9,7 +9,7 @@ https://creativecommons.org/licenses/by/4.0/
 |---|---|---|
 | `title.mp3` | 제목·고르기 화면 | MP3 320kbps (원본 그대로) |
 | `nyc.m4a` | 구간 1 뉴욕 빌딩 숲 | AAC 192kbps, 48kHz (WAV에서 변환) |
-| (없음) | 구간 2 크리스마스 마을 | 곡을 고르는 중. 효과음만 |
+| `xmas.mp3` | 구간 2 크리스마스 마을 | MP3 320kbps (원본 그대로) |
 | `castle.mp3` | 구간 3 구름 위 성 | MP3 320kbps (원본 그대로) |
 | `balloon.m4a` | 구간 4 열기구 축제 하늘 | AAC 192kbps, 44.1kHz (WAV에서 변환) |
 | `space.mp3` | 구간 5 로켓 발사대와 우주 | MP3 320kbps (원본 그대로) |
@@ -43,6 +43,14 @@ Source: OER Tracks — https://www.orca.nrw/oer/oer-erstellen/oer-tracks/
 Licensed under CC BY 4.0 — https://creativecommons.org/licenses/by/4.0/
 Changes: converted from WAV to AAC (192 kbps) for the web. In game: volume adjusted;
 the last 3 seconds crossfade into the start when it repeats.
+
+"Magic Lights (CALM CLASSICAL)" — Music by Keys of Moon (Serjo De Lua)
+SoundCloud: https://soundcloud.com/keysofmoon
+YouTube: https://www.youtube.com/c/keysofmoonmusic
+Source: https://soundcloud.com/keysofmoon/magic-lights
+Licensed under CC BY 4.0 — https://creativecommons.org/licenses/by/4.0/
+Changes: file unchanged (original MP3). In game: volume adjusted; leading/trailing
+silence skipped; the last 3 seconds crossfade into the start when it repeats.
 ```
 
-플레이 영상을 올릴 때는 영상 설명란에도 위 문구를 넣는다.
+플레이 영상을 올릴 때는 영상 설명란에도 위 문구를 넣는다. Keys of Moon은 작곡가로 이름을 밝히고 YouTube 채널이나 SoundCloud 페이지 링크를 설명란에 넣어 달라고 요청한다(곡 페이지 설명).

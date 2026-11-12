@@ -8,13 +8,14 @@
 export const TRACKS = {
   title: { src: '/assets/bgm/title.mp3', vol: 0.48, loop: 'trim' },
   nyc: { src: '/assets/bgm/nyc.m4a', vol: 0.45, loop: 'trim' },
+  xmas: { src: '/assets/bgm/xmas.mp3', vol: 0.42, loop: 'cross', cross: 3 },
   castle: { src: '/assets/bgm/castle.mp3', vol: 1.58, loop: 'trim' },
   balloon: { src: '/assets/bgm/balloon.m4a', vol: 1.6, loop: 'cross', cross: 3 },
   space: { src: '/assets/bgm/space.mp3', vol: 0.48, loop: 'cross', cross: 3 },
   moon: { src: '/assets/bgm/moon.mp3', vol: 1.0, loop: 'cross', cross: 3 },
 };
-// 구간 순서대로. null = 아직 곡이 없음(효과음만). 구간 2 크리스마스 곡이 정해지면 TRACKS 에 넣고 여기 이름을 쓴다.
-export const ZONE_TRACKS = ['nyc', null, 'castle', 'balloon', 'space', 'moon'];
+// 구간 순서대로. 목록에 없는(null) 구간은 효과음만 난다.
+export const ZONE_TRACKS = ['nyc', 'xmas', 'castle', 'balloon', 'space', 'moon'];
 export const VOLUME = 0.55; // 배경음악 전체 음량. 효과음 전체 음량은 sfx.js 의 VOLUME
 const FADE = 2; // 곡이 바뀔 때 넘기는 시간(초)
 const LAG = 3; // 경계에서 이만큼(칸) 넘어가야 곡을 바꾼다
@@ -26,6 +27,7 @@ const BY = { name: 'CC BY 4.0', url: 'https://creativecommons.org/licenses/by/4.
 export const CREDITS = [
   { where: '제목·고르기 화면', title: 'Clear Blue Sky', by: 'Alexander Nakarada', byUrl: 'https://creatorchords.com', src: 'https://creatorchords.com/music/clear-blue-sky/', license: BY, changes: '파일은 원본 그대로. 게임에서 음량을 맞추고, 앞뒤 무음을 건너뛰어 반복 재생' },
   { where: '구간 1 뉴욕 빌딩 숲', title: 'Bending Air 78 BPM Loop', by: 'Josh Lim', credit: 'Music by Josh Lim', byUrl: 'https://www.joshjameslim.com', from: 'cozy cats - lofi beat loops to game to', src: 'https://joshjameslim.itch.io/cozy-cats-lofi-beat-loops-to-game-to', license: BY, changes: '웹용 AAC(192kbps)로 변환. 게임에서 음량을 맞추고, 앞뒤 무음을 건너뛰어 반복 재생' },
+  { where: '구간 2 크리스마스 마을', title: 'Magic Lights (CALM CLASSICAL)', by: 'Keys of Moon (Serjo De Lua)', credit: 'Music by Keys of Moon (Serjo De Lua)', byUrl: 'https://soundcloud.com/keysofmoon', src: 'https://soundcloud.com/keysofmoon/magic-lights', license: BY, changes: '파일은 원본 그대로. 게임에서 음량을 맞추고, 앞뒤 무음을 건너뛰고 끝 3초를 처음과 겹쳐 반복 재생' },
   { where: '구간 3 구름 위 성', title: 'Tranquil Fields (Peaceful - Loop Ready)', by: 'Alexander Nakarada', byUrl: 'https://creatorchords.com', src: 'https://creatorchords.com/music/tranquil-fields-peaceful-loop-ready/', license: BY, changes: '파일은 원본 그대로. 게임에서 음량을 맞추고, 앞뒤 무음을 건너뛰어 반복 재생' },
   { where: '구간 4 열기구 축제 하늘', title: 'With Me', by: 'Sabine Bloch x Fachhochschule Dortmund', from: 'OER Tracks', src: 'https://www.orca.nrw/oer/oer-erstellen/oer-tracks/', license: BY, changes: '웹용 AAC(192kbps)로 변환. 게임에서 음량을 맞추고, 끝 3초를 처음과 겹쳐 반복 재생' },
   { where: '구간 5 로켓 발사대와 우주', title: 'Space Ambience', by: 'Alexander Nakarada', byUrl: 'https://creatorchords.com', src: 'https://creatorchords.com/music/space-ambience/', license: BY, changes: '파일은 원본 그대로. 게임에서 음량을 맞추고, 앞뒤 무음을 건너뛰고 끝 3초를 처음과 겹쳐 반복 재생' },

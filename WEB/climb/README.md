@@ -51,7 +51,7 @@ node tools/ghosts_test.mjs
 
 ## 배경음악
 
-`public/bgm.js`. 효과음과 같은 AudioContext를 쓰고 첫 키 입력이나 클릭 뒤에 시작한다. 제목·고르기 화면 곡과 구간별 곡이 있고(구간 2는 아직 없음), 구간 경계를 3칸 넘어가면 2초에 걸쳐 넘어간다. 필요한 곡만 그때 받고, 다음 구간 경계 6칸 앞에서 다음 곡을 미리 받는다. 탭이 숨겨지면 멈춘다.
+`public/bgm.js`. 효과음과 같은 AudioContext를 쓰고 첫 키 입력이나 클릭 뒤에 시작한다. 제목·고르기 화면 곡과 6구간 각각의 곡이 있고, 구간 경계를 3칸 넘어가면 2초에 걸쳐 넘어간다. 필요한 곡만 그때 받고, 다음 구간 경계 6칸 앞에서 다음 곡을 미리 받는다. 탭이 숨겨지면 멈춘다.
 
 ## 크레딧
 
@@ -60,5 +60,6 @@ node tools/ghosts_test.mjs
 - "Clear Blue Sky", "Tranquil Fields (Peaceful - Loop Ready)", "Space Ambience", "Moon" by Alexander Nakarada (https://creatorchords.com)
 - "Bending Air 78 BPM Loop" — Music by Josh Lim (https://www.joshjameslim.com), from "cozy cats - lofi beat loops to game to" (https://joshjameslim.itch.io/cozy-cats-lofi-beat-loops-to-game-to)
 - "With Me" by Sabine Bloch x Fachhochschule Dortmund, OER Tracks (https://www.orca.nrw/oer/oer-erstellen/oer-tracks/)
+- "Magic Lights (CALM CLASSICAL)" — Music by Keys of Moon (Serjo De Lua) (https://soundcloud.com/keysofmoon, https://www.youtube.com/c/keysofmoonmusic), source: https://soundcloud.com/keysofmoon/magic-lights
 
-변경 사항: WAV 2곡("Bending Air", "With Me")은 웹용 AAC 192kbps로 변환했다. MP3 4곡은 파일을 바꾸지 않았다. 게임에서 곡마다 음량을 맞추고, 반복할 때 앞뒤 무음을 건너뛰거나 끝 3초를 처음과 겹친다.
+변경 사항: WAV 2곡("Bending Air", "With Me")은 웹용 AAC 192kbps로 변환했다. MP3 5곡은 파일을 바꾸지 않았다. 게임에서 곡마다 음량을 맞추고, 반복할 때 앞뒤 무음을 건너뛰거나 끝 3초를 처음과 겹친다.

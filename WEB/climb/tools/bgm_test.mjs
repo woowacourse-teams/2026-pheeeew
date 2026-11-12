@@ -22,16 +22,17 @@ test('높이로 구간을 고르되, 경계에서 3칸 안쪽으로 왔다 갔�
   eq(zoneWithLag(9999, ZONES, null), 2, '꼭대기 위는 마지막 구간');
 });
 
-test('화면 상태와 구간으로 곡을 고른다. 곡이 없는 구간은 null(효과음만)', () => {
+test('화면 상태와 구간으로 곡을 고른다. 목록에 곡이 없는 구간은 null(효과음만)', () => {
   eq(pickTrack('title', 0), 'title', '제목');
   eq(pickTrack('select', 3), 'title', '고르기');
   eq(pickTrack('nickname', 3), 'title', '닉네임 창');
   eq(pickTrack('play', 0), 'nyc', '구간 1');
   eq(pickTrack('confirm', 0), 'nyc', '다시 시작 확인 창도 게임 중');
-  eq(pickTrack('play', 1), null, '구간 2: 아직 곡 없음');
+  eq(pickTrack('play', 1), 'xmas', '구간 2 크리스마스 마을');
+  eq(pickTrack('play', 6), null, '목록 밖 구간: 곡 없음');
   eq(pickTrack('play', 5), 'moon', '달');
   eq(ZONE_TRACKS.length, 6, '구간 6개');
-  for (const k of ZONE_TRACKS) if (k) eq(typeof TRACKS[k].src, 'string', `${k} 파일`);
+  for (const k of ZONE_TRACKS) eq(typeof TRACKS[k]?.src, 'string', `${k} 파일`); // 6구간 모두 곡이 있다
 });
 
 test('반복 구간: 앞뒤 무음(모든 채널이 문턱 아래)을 잘라 낸 [시작, 끝)', () => {
@@ -100,12 +101,14 @@ test('구간이 바뀌면 이전 곡은 0으로 줄이고 새 곡은 제 음량�
 
 test('곡이 없는 구간으로 가면 이전 곡만 줄이고 아무것도 틀지 않는다', async () => {
   const ctx = fakeCtx();
-  const bgm = createBgm({ getCtx: () => ctx, load: okLoad, muted: () => false, zones: ZONES });
+  // 6구간 모두 곡이 있으므로, 목록(ZONE_TRACKS) 밖인 7번째 구간으로 시험한다
+  const Z = [...ZONE_TRACKS.map((_, i) => ({ from: i * 100, to: (i + 1) * 100 })), { from: 600, to: 700 }];
+  const bgm = createBgm({ getCtx: () => ctx, load: okLoad, muted: () => false, zones: Z });
   bgm.update({ screen: 'play', h: 10 });
   await flush();
   bgm.update({ screen: 'play', h: 10 });
   const nyc = bgm.debug().playing;
-  bgm.update({ screen: 'play', h: 200 });
+  bgm.update({ screen: 'play', h: 650 });
   await flush();
   eq(bgm.debug().playing, null, '없음');
   eq(nyc.gain.gain.target, 0, '이전 곡 줄어듦');
