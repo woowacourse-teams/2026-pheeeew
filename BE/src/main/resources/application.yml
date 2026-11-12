@@ -34,7 +34,7 @@ pheeeew:
     # 맵 버전별 꼭대기 높이(칸), 구간 경계, 완주 최소 시간(초). 여기 없는 맵 버전은 순위에 넣지 않는다.
     maps:
       v1:
-        top: 662
+        top: 663
         zones: [135, 261, 397, 523, 653]
         min-finish-seconds: 300
   emotion-map:

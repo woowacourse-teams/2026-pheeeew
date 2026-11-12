@@ -9,6 +9,8 @@ import * as zone5 from './zones/zone5.js';
 import * as zone6 from './zones/zone6.js';
 
 export const SCREEN = 18;
+// 맵 버전: 지형이나 구간 경계가 바뀌면 올린다. 서버는 버전마다 순위를 따로 두고, 꼭대기·경계를 설정(pheeeew.climb.maps)에서 읽는다.
+export const MAP_VERSION = 'v1';
 // 구간 목록. 구간 파일이 자기 꼭대기 높이(top)를 정하고, 아래 구간이 길어지면 위 구간은 통째로 올라간다.
 // base = 그 파일이 "내 시작 바닥은 이 높이"라고 보고 쓴 높이(구간 2만 117, 나머지는 0).
 // art = 그림 폴더, old = 그 그림이 아직 없을 때 쓰는 폴더
