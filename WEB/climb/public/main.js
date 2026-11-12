@@ -50,6 +50,7 @@ function fit() {
   view.scale.set(s);
   view.position.set((app.screen.width - W * s) / 2, (app.screen.height - H * s) / 2);
   ui.fit(view.x, view.y, s);
+  window.CLIMB_FITTED = true; // index.html 의 임시 맞춤을 끈다
 }
 app.renderer.on('resize', fit);
 fit();

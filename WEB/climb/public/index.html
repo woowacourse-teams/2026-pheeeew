@@ -19,6 +19,19 @@
 <div id="ui">
   <div id="loading" class="screen"><b>감정이들이 신발 끈 묶는 중…</b><span>탑을 쌓고 있어요</span><div class="dots"><i></i><i></i><i></i></div><div class="bar"><i></i></div></div>
 </div>
+<script>
+// main.js 가 받아지기 전에도 로딩 화면이 창에 맞게 보이도록 같은 계산을 먼저 한다 (main.js 의 fit 과 같다)
+(() => {
+  const ui = document.getElementById('ui');
+  const fit = () => {
+    if (window.CLIMB_FITTED) return removeEventListener('resize', fit); // 이후는 main.js 가 맡는다
+    const s = Math.min(innerWidth / 1280, innerHeight / 720);
+    ui.style.transform = `translate(${(innerWidth - 1280 * s) / 2}px, ${(innerHeight - 720 * s) / 2}px) scale(${s})`;
+  };
+  addEventListener('resize', fit);
+  fit();
+})();
+</script>
 <script type="module">
 import { apiForHostname } from '/api-config.js';
 const api = apiForHostname(location.hostname);
