@@ -1,3 +1,4 @@
 rootProject.name = 'pheeeew'
 
 include 'observability'
+include 'climb'
