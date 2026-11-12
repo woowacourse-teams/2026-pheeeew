@@ -12,13 +12,13 @@ import { sfx, unlock, toggleMute, isMuted, audioCtx } from './sfx.js';
 import { createBgm, CREDITS } from './bgm.js';
 import { createNet } from './net.js';
 import { zoneFiles, charFiles, createLoader, loadTree, leaves, track, zoneOf as zoneAt, zonesAround } from './art.js';
-import { entryState, canPlay } from './online.js';
+import { entryState, canPlay, watchOnly } from './online.js';
 import { createGhosts } from './ghosts.js';
 import * as admin from './admin.js';
 
 const W = COLS * TILE; // 1280
 const H = 720;
-const DEBUG = new URLSearchParams(location.search).has('debug');
+const DEBUG = ['localhost', '127.0.0.1'].includes(location.hostname) && new URLSearchParams(location.search).has('debug'); // 시험 화면은 내 컴퓨터에서만. 운영 주소에서는 켜지지 않는다
 
 const INFO = {
   defeated: { name: '좌절이', ability: '쉽게 풀이 죽어요', fall: '역시 난 안 돼…' },
@@ -55,10 +55,11 @@ function fit() {
 app.renderer.on('resize', fit);
 fit();
 
-// 관리자 모드(/admin): 아무 곳으로나 옮겨 다니며 구간을 해 본다. 서버에는 아무것도 보고하지 않는다.
+// 관리자 모드(/admin): 아무 곳으로나 옮겨 다니며 구간을 해 본다. 다른 사람과 순위는 실시간으로 보지만 기록이 될 보고는 하지 않는다.
 // 서버가 키를 확인해 준 뒤에만 켠다. 관리자가 아니면 키 창만 보이고 게임을 시작하지 않는다(취소하면 / 로)
 const adminApi = admin.adminSession();
 const ADMIN = admin.isAdminPath(location.pathname) && await admin.enterAdmin(adminApi, (message, submit) => {
+  ui.loaded(); // 로딩 화면이 키 창을 가리지 않게 한다. 그림을 더 받으면 막대가 다시 뜬다
   ui.nickname({ heading: '관리자 키', hint: '서버에 정해 둔 관리자 키를 넣어 주세요', ok: '들어가기', alt: '취소', secret: true }, async (key) => {
     const err = await submit(key);
     if (err) ui.nicknameError(err);
@@ -697,12 +698,17 @@ function showTitle() {
   mode = 'title';
   prefetch();
   ui.title(saved, go, () => { forget(); showSelect(); }, showCredits);
-  ui.guest(guest, rename);
+  ui.guest(ADMIN ? null : guest, rename);
   showBoards();
 }
 async function showBoards() {
-  const [today, all] = await Promise.all([net.ranking('today'), net.ranking('all')]);
+  const [today, all] = await Promise.all([net.ranking('today'), net.ranking('all'), showHall()]);
   if (mode === 'title') ui.boards(today.status === 200 ? today.body.top : null, all.status === 200 ? all.body.top : null, guest?.tag);
+}
+// 명예의 전당: 제목 화면을 열 때, 누가 완주했을 때, 게임 중 H 로 펼 때 다시 받는다
+async function showHall() {
+  const r = await net.hall();
+  ui.hall(r.status === 200 && Array.isArray(r.body?.hall) ? r.body.hall : null, guest?.tag);
 }
 function showCredits() {
   mode = 'credits';
@@ -717,7 +723,7 @@ function askRestart() {
 // ---- 서버(순위) ----
 // 일반 플레이는 손님 등록과 실시간 연결을 마친 뒤에만 진행한다
 const net = createNet({ map: MAP_VERSION });
-if (ADMIN) for (const k of ['connect', 'reportPos', 'reportState', 'reportZone', 'reportFinish', 'restart', 'createGuest', 'rename']) net[k] = () => ({ status: 0 }); // 관리자 모드: 보고하지 않는다
+if (ADMIN) watchOnly(net); // 관리자 모드: 보기만 한다(순위·다른 사람에게 나오지 않는다)
 let guest = null; // { id, nickname, tag }
 let rank = null; // 마지막으로 받은 rank 메시지
 const showRanks = () => ui.ranks(guest && { rank, status: net.status, tag: guest.tag });
@@ -770,6 +776,7 @@ function drawGhosts(dt) {
   for (const n of [...ghostViews.keys()]) if (!seen.has(n)) dropGhost(n);
 }
 net.on('event', (m) => {
+  if (m.kind === 'finish') showHall();
   if (m.tag === guest?.tag) return; // 내 구간 완료는 배너로 이미 보인다
   ui.toast(m.kind === 'finish' ? `${m.nickname} 님이 꼭대기까지 올랐어요!` : `${m.nickname} 님이 ${m.zone}구간(${ZONES[m.zone - 1]?.name ?? ''}) 통과!`);
 });
@@ -835,6 +842,7 @@ addEventListener('keydown', (e) => {
   if (k === 'Space') keys.jump = true;
   if (k === 'KeyN') askRestart();
   if (k === 'Tab') { e.preventDefault(); ui.foldRanks(); }
+  if (k === 'KeyH' && ui.toggleHall()) showHall();
   if (k === 'KeyG') { showGhosts = !showGhosts; ghostLayer.visible = showGhosts; localStorage.setItem('pheeeew-climb-ghosts', showGhosts ? 'on' : 'off'); say(showGhosts ? '다른 사람 보이기' : '다른 사람 숨기기'); quipT = 1.2; }
 });
 addEventListener('keyup', (e) => {
@@ -949,7 +957,7 @@ function frame(dt) {
   rig.pose({ ground: p.ground, charging: p.charging, charge: Math.min(1, p.charge / P.chargeMax), splat: p.splat, vx: p.vx, vy: p.vy, facing: p.facing, walking }, dt);
   rig.root.position.set(p.x + P.w / 2, p.y + P.h);
   // 함께 오르기: [몸 가운데 x, 발 높이(칸), vx, vy, 자세 표시, 모은 정도]. 표시 1 땅 위, 2 모으는 중, 4 왼쪽을 봄, 8 엎어짐, 16 미끄러지는 중
-  if (!ADMIN) net.reportState([p.x + P.w / 2, Math.max(0, hOf(p.y + P.h)), p.vx, p.vy, (p.ground ? 1 : 0) | (p.charging ? 2 : 0) | (p.facing < 0 ? 4 : 0) | (p.splat ? 8 : 0) | (p.slide ? 16 : 0), Math.min(1, p.charge / P.chargeMax)]);
+  net.reportState([p.x + P.w / 2, Math.max(0, hOf(p.y + P.h)), p.vx, p.vy, (p.ground ? 1 : 0) | (p.charging ? 2 : 0) | (p.facing < 0 ? 4 : 0) | (p.splat ? 8 : 0) | (p.slide ? 16 : 0), Math.min(1, p.charge / P.chargeMax)]);
 
   sfx.charge(p.charging ? Math.min(1, p.charge / P.chargeMax) : -1);
   if (p.slide && Math.random() < dt * 14) fx.dust(p.x + P.w / 2, p.y + P.h, 0.15); // 미끄러지는 동안 먼지
@@ -1026,9 +1034,9 @@ function frame(dt) {
   updateSnow(dt, camH);
   updateWind(dt);
   drawGhosts(dt); // 카메라가 정해진 뒤
-  // 닉네임이 있는 손님만(관리자 모드는 없음). 바꾸면 다음 프레임에 반영. 충돌 상자 기준이라 몸이 눌리거나 늘어나도 흔들리지 않는다
+  // 닉네임이 있는 손님만(관리자 모드는 '관리자'). 바꾸면 다음 프레임에 반영. 충돌 상자 기준이라 몸이 눌리거나 늘어나도 흔들리지 않는다
   // 차지 게이지·말풍선·표지판 카드가 떠 있는 동안은 겹치지 않게 숨긴다
-  const nick = ADMIN ? '' : guest?.nickname ?? '';
+  const nick = ADMIN ? '관리자' : guest?.nickname ?? '';
   if (nameTag.text !== nick) nameTag.text = nick;
   nameTag.visible = nick !== '' && !p.charging && !quip.visible && !tip.visible;
   nameTag.position.set(p.x + P.w / 2, p.y + P.h - 84); // 다른 사람 이름표와 같은 높이(발에서 84px 위)
@@ -1036,7 +1044,7 @@ function frame(dt) {
   if (ADMIN) {
     const h = hOf(p.y + P.h);
     const z = Math.max(0, ZONES.findIndex((zz, i) => h < zz.to || i === ZONES.length - 1)); // HUD 와 같이: 경계 높이에 서면 다음 구간
-    ui.adminInfo(`높이 ${Math.round(h)}칸 · 화면 ${Math.floor(Math.max(0, h) / SCREEN) + 1} · ${z + 1}구간 ${ZONES[z].name} · 칸 (${Math.floor((p.x + P.w / 2) / TILE)}, ${Math.floor(h)})`);
+    ui.adminInfo(`높이 ${Math.round(h)}칸 · 화면 ${Math.floor(Math.max(0, h) / SCREEN) + 1} · ${z + 1}구간 ${ZONES[z].name} · 칸 (${Math.floor((p.x + P.w / 2) / TILE)}, ${Math.floor(h)})${guest ? '' : ' · 닉네임이 없어 다른 사람이 안 보여요(/ 에서 정하기)'}`);
   }
 }
 app.ticker.add((tk) => {
@@ -1082,7 +1090,11 @@ async function enter() {
 
 await backdrop;
 ui.loaded();
-if (ADMIN) { if (saved) showTitle(); else showSelect(); }
+if (ADMIN) {
+  const me = await net.me(); // 실시간 연결에는 손님 쿠키가 필요하다. 아직 닉네임이 없으면 예전처럼 혼자 점검한다
+  if (entryState(me) === 'ready') guest = me.body;
+  if (saved) showTitle(); else showSelect();
+}
 else await enter();
 
 if (DEBUG || ADMIN) window.game = { get p() { return p; }, admin: { teleport, key: adminKey, get back() { return back; } }, get rig() { return rig; }, app, arts, loader, loadZone, render: () => app.render(), view, get camY() { return camY; }, P: () => P, yOf, keys, begin, frame, get stats() { return stats; }, bgm }; // 숨겨진 창에서도 frame(dt) 로 시간을 넘겨 시험한다

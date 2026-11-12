@@ -95,7 +95,12 @@ input.nick:focus { box-shadow: 0 0 0 4px var(--accent); }
 .boards { display: flex; gap: 16px; }
 .board { width: 280px; padding: 10px 12px 12px; }
 .board .head, #ranks .head { display: flex; align-items: center; justify-content: space-between; font-size: 16px; color: var(--dim); margin: 0 4px 6px; }
-.board .none { font-size: 16px; color: var(--dim); padding: 6px 4px; }
+.board .none, #ranks .none { font-size: 16px; color: var(--dim); padding: 6px 4px; }
+/* 명예의 전당: 먼저 꼭대기에 온 순서. 줄마다 완주 시간과 도착한 때. 길면 목록만 굴린다(6줄) */
+.board.hall { width: 330px; }
+#ranks.hall { width: 300px; }
+.hall .list { max-height: 172px; overflow-y: auto; pointer-events: auto; }
+.r .v small { margin-left: 6px; }
 .guest { position: absolute; right: 24px; top: 20px; display: flex; align-items: center; gap: 12px; font-size: 22px; color: var(--paper); text-shadow: 0 2px 0 var(--ink); }
 
 /* 게임 중 순위 패널: 오른쪽 위 구간 표시 아래에 작게. Tab 으로 접는다 */

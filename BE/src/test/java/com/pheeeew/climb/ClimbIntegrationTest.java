@@ -251,6 +251,30 @@ class ClimbIntegrationTest {
     }
 
     @Test
+    void 빌드가_없거나_낮은_hello는_CONNECTION_REPLACED로_닫고_흔적을_남기지_않는다() throws Exception {
+        // given
+        HttpResponse<String> legacyGuest = post("/api/v1/climb/guests", "{\"nickname\":\"옛탭\"}", null);
+        Socket legacy = connect(cookie(legacyGuest));
+        Socket outdated = connect(cookie(post("/api/v1/climb/guests", "{\"nickname\":\"낮은탭\"}", null)));
+
+        // when
+        legacy.send("{\"t\":\"hello\",\"v\":1,\"map\":\"v1\",\"character\":\"angry\"}");
+        outdated.send("{\"t\":\"hello\",\"v\":1,\"build\":0,\"map\":\"v1\",\"character\":\"angry\"}");
+
+        // then
+        assertThat(legacy.await("error", error -> true).path("code").stringValue()).isEqualTo("CONNECTION_REPLACED");
+        assertThat(legacy.closedReason()).isEqualTo("1008 CONNECTION_REPLACED");
+        assertThat(outdated.await("error", error -> true).path("code").stringValue()).isEqualTo("CONNECTION_REPLACED");
+        assertThat(outdated.closedReason()).isEqualTo("1008 CONNECTION_REPLACED");
+        JsonNode online = json.readTree(get("/api/v1/climb/ranking?board=online&map=v1", null).body());
+        assertThat(online.path("online").intValue()).isZero();
+        assertThat(online.path("top")).isEmpty();
+        String legacyId = json.readTree(legacyGuest.body()).path("id").stringValue();
+        assertThat(jdbc.sql("SELECT count(*) FROM climb_run WHERE guest_id = :id")
+                .param("id", java.util.UUID.fromString(legacyId)).query(Long.class).single()).isZero();
+    }
+
+    @Test
     void 불가능한_높이_보고는_순위에_반영되지_않는다() throws Exception {
         // given
         String cookie = cookie(post("/api/v1/climb/guests", "{\"nickname\":\"히유\"}", null));
@@ -331,6 +355,57 @@ class ClimbIntegrationTest {
         assertThat(all.path("me").path("best").intValue()).isEqualTo(20);
         assertThat(today.path("me").path("best").intValue()).isEqualTo(20);
         assertThat(json.readTree(get("/api/v1/climb/me", cookie).body()).path("run").path("best").intValue()).isZero();
+    }
+
+    @Test
+    void 완주하면_명예의_전당에_먼저_도착한_순서로_한_줄씩_남고_같은_손님의_다음_완주는_더하지_않는다() throws Exception {
+        // given
+        HttpResponse<String> first = post("/api/v1/climb/guests", "{\"nickname\":\"일등\"}", null);
+        HttpResponse<String> second = post("/api/v1/climb/guests", "{\"nickname\":\"이등\"}", null);
+        String firstTag = json.readTree(first.body()).path("tag").stringValue();
+        String secondTag = json.readTree(second.body()).path("tag").stringValue();
+
+        // when
+        finish(first, 400, 3);
+        finish(second, 350, 1);
+        finish(first, 320, 0);
+        JsonNode hall = json.readTree(get("/api/v1/climb/hall?map=v1", null).body()).path("hall");
+
+        // then
+        List<JsonNode> mine = new ArrayList<>();
+        hall.forEach(item -> {
+            if (firstTag.equals(item.path("tag").stringValue()) || secondTag.equals(item.path("tag").stringValue())) {
+                mine.add(item);
+            }
+        });
+        assertThat(mine).hasSize(2);
+        assertThat(mine.get(0).path("nickname").stringValue()).isEqualTo("일등");
+        assertThat(mine.get(0).path("time").intValue()).isEqualTo(400);
+        assertThat(mine.get(0).path("falls").intValue()).isEqualTo(3);
+        assertThat(mine.get(0).path("character").stringValue()).isEqualTo("angry");
+        assertThat(mine.get(1).path("nickname").stringValue()).isEqualTo("이등");
+        assertThat(mine.get(0).path("order").intValue()).isLessThan(mine.get(1).path("order").intValue());
+        assertThat(java.time.Instant.parse(mine.get(0).path("finishedAt").stringValue()))
+                .isBefore(java.time.Instant.parse(mine.get(1).path("finishedAt").stringValue()));
+        assertThat(jdbc.sql("SELECT count(*) FROM climb_hall WHERE tag = :tag").param("tag", firstTag)
+                .query(Long.class).single()).isEqualTo(1);
+    }
+
+    /** 꼭대기에 오른 등반을 넣고 이어 해서 완주한다. 2초에 20칸 상한 때문에 처음부터 오르면 오래 걸린다. */
+    private void finish(HttpResponse<String> created, int time, int falls) throws Exception {
+        jdbc.sql("""
+                INSERT INTO climb_run (id, guest_id, map_version, character, best_height, best_at, height, x, falls,
+                    play_seconds, started_at, updated_at)
+                VALUES (:id, :guest, 'v1', 'angry', 663, now(), 663, 0, 0, 0, now(), now())
+                """)
+                .param("id", java.util.UUID.randomUUID())
+                .param("guest", java.util.UUID.fromString(json.readTree(created.body()).path("id").stringValue()))
+                .update();
+        Socket socket = connect(cookie(created));
+        hello(socket);
+        socket.send("{\"t\":\"finish\",\"time\":" + time + ",\"falls\":" + falls + "}");
+        socket.await("event", event -> "finish".equals(event.path("kind").stringValue()));
+        socket.close();
     }
 
     @Test
@@ -794,7 +869,7 @@ class ClimbIntegrationTest {
     }
 
     private JsonNode hello(Socket socket) throws Exception {
-        socket.send("{\"t\":\"hello\",\"v\":1,\"map\":\"v1\",\"character\":\"angry\"}");
+        socket.send("{\"t\":\"hello\",\"v\":1,\"build\":2,\"map\":\"v1\",\"character\":\"angry\"}");
         return socket.await("welcome", message -> true);
     }
 
