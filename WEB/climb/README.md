@@ -10,6 +10,7 @@
 npm start            # http://127.0.0.1:4320
 npm run check        # 맵 검증기: 다섯 감정이 모두 꼭대기까지 오를 수 있는지
 node tools/admin_test.mjs
+node tools/debug_test.mjs
 node tools/bgm_test.mjs
 node tools/net_test.mjs
 node tools/ghosts_test.mjs
@@ -31,7 +32,7 @@ node tools/manifest_test.mjs  # 그림 목록표와 실제 폴더가 같은지
 | M | 소리 전체 끄기·켜기 |
 | B | 배경음악만 끄기·켜기 |
 
-주소 옵션: `?debug` 시험 화면(충돌 상자, 화면 경계, `window.game`). 관리자 모드는 `/admin` 경로다.
+주소 옵션: `?debug` 시험 화면(충돌 상자, 화면 경계, `window.game`)은 `localhost`, `127.0.0.1`, `[::1]`에서만 켜진다. 운영·개발 배포 주소와 Pages 미리 보기에서는 쿼리를 붙여도 일반 모드로 진행한다. 관리자 모드는 `/admin` 경로에서 서버 인증 후 켜진다. `window.paused`는 로컬 시험 화면과 인증된 관리자 모드에서만 적용된다.
 
 ## 관리자 모드 (`/admin`)
 
