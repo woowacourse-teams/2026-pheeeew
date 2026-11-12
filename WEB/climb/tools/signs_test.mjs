@@ -135,7 +135,7 @@ test('표지판은 방향 표지보다 크다(기본 배율), 좁은 자리만 �
 test('표지판은 지형 윗면 위에 서 있고, 표지판과 머리 위 꼬리표 자리가 비어 있다', () => {
   for (const s of SIGNS) {
     eq(level.raw(Math.floor(s.c), row(s.h - 1)), 1, `${s.text}: 바로 아래 칸이 지형`);
-    const rows = Math.ceil(signTall(s) / TILE);
+    const rows = Math.ceil(signTall(s, ZONES[s.zone].art) / TILE);
     for (let c = Math.floor(s.c - signHalf(s) / TILE); c <= Math.floor(s.c + signHalf(s) / TILE); c++) {
       for (let h = s.h; h < s.h + rows; h++) eq(level.raw(c, row(h)), 0, `${s.text}: 칸 ${c}, 높이 ${h} 가 빈 칸`);
     }

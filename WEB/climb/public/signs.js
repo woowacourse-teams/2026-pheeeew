@@ -61,11 +61,12 @@ export const CLEAR_X = 1.5;
 // 가로 x 칸, 윗면 높이 h 에 놓일 윗면 장식이 표지판 옆인지(그러면 그리지 않는다)
 export const besideSign = (signs, x, h) => signs.some((s) => s.h === h && Math.abs(x - s.c) < CLEAR_X);
 
-// 표지판 크기. info_sign 그림(512×512)은 바닥 기준 줄 y=450 에서 판 꼭대기 y≈62 까지 388px, 판 반 폭 약 110px
+// 표지판 크기. info_sign 그림(512×512)은 바닥 기준 줄 y=450 에서 꼭대기까지 테마마다 다르다(SIGN_TOPS, 그림 px), 판 반 폭은 약 110px
 export const SIGN_S = 0.38; // 기본 배율. 방향 표지(화살표, 0.22~0.36)보다 크고 캐릭터 키의 약 1.5배
 export const SIGN_SINK = 5; // 지형에 살짝 묻힌다(px)
 export const TAG_H = 40; // 판 꼭대기 위로 느낌표 꼬리표가 차지하는 높이(간격·통통 튀는 폭 포함, px)
+export const SIGN_TOPS = { nyc: 387, xmas: 440, balloon: 429, space: 407 }; // 지팡이 손잡이·풍선처럼 판 위로 솟은 것까지
 export const signScale = (s) => s.s ?? SIGN_S; // 위가 좁은 자리는 구간 파일에서 s 로 줄인다
-export const signTop = (s) => 388 * signScale(s) - SIGN_SINK; // 바닥에서 판 꼭대기까지(px)
-export const signTall = (s) => signTop(s) + TAG_H; // 꼬리표까지
+export const signTop = (s, art) => (SIGN_TOPS[art] ?? 388) * signScale(s) - SIGN_SINK; // 바닥에서 표지판 꼭대기까지(px). art = 그 구간 그림 폴더
+export const signTall = (s, art) => signTop(s, art) + TAG_H; // 꼬리표까지
 export const signHalf = (s) => 110 * signScale(s); // 판 반 폭(px)
