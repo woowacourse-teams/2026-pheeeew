@@ -11,7 +11,7 @@ const eq = (a, b, what) => {
 };
 const near = (a, b, what) => { if (Math.abs(a - b) > 1e-9) throw new Error(`${what}: ${a} !== ${b}`); };
 
-const PIYU = { n: 9, nickname: '피유', tag: '4f2a', character: 'angry' };
+const PIYU = { n: 9, nickname: '히유', tag: '4f2a', character: 'angry' };
 // sts 항목 [n, x, h, vx, vy, flags, charge]
 const st = (n, x, h, extra = [0, 0, 1, 0]) => [n, x, h, ...extra];
 
@@ -21,7 +21,7 @@ test('받은 상태를 150ms 늦춰 두 상태 사이를 잇는다', () => {
   g.states([st(9, 100, 10, [100, -40, 1, 0])], 1000);
   g.states([st(9, 200, 12, [300, 40, 3, 50])], 1100);
   const [p] = g.sample(1100 + DELAY - 50); // 보이는 시각 = 1050, 두 상태의 가운데
-  eq([p.n, p.nickname, p.tag, p.character], [9, '피유', '4f2a', 'angry'], '이름표');
+  eq([p.n, p.nickname, p.tag, p.character], [9, '히유', '4f2a', 'angry'], '이름표');
   near(p.x, 150, 'x');
   near(p.h, 11, 'h');
   near(p.vx, 200, 'vx');

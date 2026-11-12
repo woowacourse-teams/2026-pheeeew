@@ -96,7 +96,7 @@ class ClimbIntegrationTest {
     @Test
     void 닉네임으로_손님을_만들면_쿠키를_내려_주고_그_쿠키로_내_정보를_읽는다() throws Exception {
         // when
-        HttpResponse<String> created = post("/api/v1/climb/guests", "{\"nickname\":\"피유\"}", null);
+        HttpResponse<String> created = post("/api/v1/climb/guests", "{\"nickname\":\"히유\"}", null);
 
         // then
         assertThat(created.statusCode()).isEqualTo(201);
@@ -104,7 +104,7 @@ class ClimbIntegrationTest {
         assertThat(setCookie).startsWith("climb_guest=").contains("Path=/api/v1/climb", "Max-Age=15552000",
                 "Secure", "HttpOnly", "SameSite=Lax");
         JsonNode guest = json.readTree(created.body());
-        assertThat(guest.path("nickname").stringValue()).isEqualTo("피유");
+        assertThat(guest.path("nickname").stringValue()).isEqualTo("히유");
         assertThat(guest.path("tag").stringValue()).hasSize(4);
 
         HttpResponse<String> me = get("/api/v1/climb/me", cookie(created));
@@ -119,18 +119,18 @@ class ClimbIntegrationTest {
     @Test
     void 같은_닉네임도_만들_수_있고_꼬리표로_구분한다() throws Exception {
         // when
-        JsonNode first = json.readTree(post("/api/v1/climb/guests", "{\"nickname\":\"피유\"}", null).body());
-        JsonNode second = json.readTree(post("/api/v1/climb/guests", "{\"nickname\":\"피유\"}", null).body());
+        JsonNode first = json.readTree(post("/api/v1/climb/guests", "{\"nickname\":\"히유\"}", null).body());
+        JsonNode second = json.readTree(post("/api/v1/climb/guests", "{\"nickname\":\"히유\"}", null).body());
 
         // then
         assertThat(first.path("id").stringValue()).isNotEqualTo(second.path("id").stringValue());
-        assertThat(second.path("nickname").stringValue()).isEqualTo("피유");
+        assertThat(second.path("nickname").stringValue()).isEqualTo("히유");
     }
 
     @Test
     void 규칙에_맞지_않는_닉네임은_거절_사유와_함께_400을_돌려준다() throws Exception {
         // when
-        HttpResponse<String> response = post("/api/v1/climb/guests", "{\"nickname\":\"피유!\"}", null);
+        HttpResponse<String> response = post("/api/v1/climb/guests", "{\"nickname\":\"히유!\"}", null);
 
         // then
         assertThat(response.statusCode()).isEqualTo(400);
@@ -152,7 +152,7 @@ class ClimbIntegrationTest {
     @Test
     void 닉네임을_바꾸면_내_정보에_반영되고_하루_세_번을_넘으면_429다() throws Exception {
         // given
-        String cookie = cookie(post("/api/v1/climb/guests", "{\"nickname\":\"피유\"}", null));
+        String cookie = cookie(post("/api/v1/climb/guests", "{\"nickname\":\"히유\"}", null));
 
         // when
         List<Integer> statuses = new ArrayList<>();
@@ -222,7 +222,7 @@ class ClimbIntegrationTest {
     @Test
     void 허용되지_않은_출처의_웹소켓_연결은_거절한다() throws Exception {
         // given
-        String cookie = cookie(post("/api/v1/climb/guests", "{\"nickname\":\"피유\"}", null));
+        String cookie = cookie(post("/api/v1/climb/guests", "{\"nickname\":\"히유\"}", null));
 
         // when
         Throwable failure = catchThrowable(() -> connect(cookie, "https://foreign.example"));
@@ -234,7 +234,7 @@ class ClimbIntegrationTest {
     @Test
     void 같은_손님이_다시_연결하면_이전_연결을_닫는다() throws Exception {
         // given
-        String cookie = cookie(post("/api/v1/climb/guests", "{\"nickname\":\"피유\"}", null));
+        String cookie = cookie(post("/api/v1/climb/guests", "{\"nickname\":\"히유\"}", null));
         Socket previous = connect(cookie);
         hello(previous);
 
@@ -253,7 +253,7 @@ class ClimbIntegrationTest {
     @Test
     void 불가능한_높이_보고는_순위에_반영되지_않는다() throws Exception {
         // given
-        String cookie = cookie(post("/api/v1/climb/guests", "{\"nickname\":\"피유\"}", null));
+        String cookie = cookie(post("/api/v1/climb/guests", "{\"nickname\":\"히유\"}", null));
         Socket me = connect(cookie);
         hello(me);
 
@@ -270,7 +270,7 @@ class ClimbIntegrationTest {
     @Test
     void 구간을_넘으면_접속자에게_알리고_연결을_끊었다_다시_오면_이어서_한다() throws Exception {
         // given
-        HttpResponse<String> created = post("/api/v1/climb/guests", "{\"nickname\":\"피유\"}", null);
+        HttpResponse<String> created = post("/api/v1/climb/guests", "{\"nickname\":\"히유\"}", null);
         String cookie = cookie(created);
         String watcherCookie = cookie(post("/api/v1/climb/guests", "{\"nickname\":\"구경\"}", null));
         // 1구간 경계(135칸) 바로 아래까지 오른 등반. 2초에 20칸 상한 때문에 처음부터 오르면 오래 걸린다.
@@ -299,7 +299,7 @@ class ClimbIntegrationTest {
 
         // then
         assertThat(event.path("kind").stringValue()).isEqualTo("zone");
-        assertThat(event.path("nickname").stringValue()).isEqualTo("피유");
+        assertThat(event.path("nickname").stringValue()).isEqualTo("히유");
         assertThat(event.path("zone").intValue()).isEqualTo(1);
         assertThat(event.path("tag").stringValue()).isEqualTo(welcome.path("me").path("tag").stringValue());
         assertThat(resumed.path("height").intValue()).isEqualTo(148);
@@ -314,7 +314,7 @@ class ClimbIntegrationTest {
     @Test
     void 처음부터_다시_하면_새_등반이_되고_이전_최고_기록은_역대_순위에_남는다() throws Exception {
         // given
-        String cookie = cookie(post("/api/v1/climb/guests", "{\"nickname\":\"피유\"}", null));
+        String cookie = cookie(post("/api/v1/climb/guests", "{\"nickname\":\"히유\"}", null));
         Socket me = connect(cookie);
         hello(me);
         me.send("{\"t\":\"pos\",\"h\":20,\"best\":20,\"falls\":0,\"time\":3,\"x\":0}");
@@ -336,7 +336,7 @@ class ClimbIntegrationTest {
     @Test
     void 잘못된_메시지는_오류를_보내고_연결을_닫는다() throws Exception {
         // given
-        String cookie = cookie(post("/api/v1/climb/guests", "{\"nickname\":\"피유\"}", null));
+        String cookie = cookie(post("/api/v1/climb/guests", "{\"nickname\":\"히유\"}", null));
         Socket me = connect(cookie);
 
         // when
@@ -391,7 +391,7 @@ class ClimbIntegrationTest {
             HttpResponse<String> withoutJwt = client.send(HttpRequest.newBuilder(uri("/api/v3/devices/me/notification-settings"))
                     .GET().build(), HttpResponse.BodyHandlers.ofString());
             HttpResponse<String> climbCookieOnDeviceApi = client.send(HttpRequest.newBuilder(uri("/api/v3/devices/me/notification-settings"))
-                    .header("Cookie", cookie(post("/api/v1/climb/guests", "{\"nickname\":\"피유\"}", null)))
+                    .header("Cookie", cookie(post("/api/v1/climb/guests", "{\"nickname\":\"히유\"}", null)))
                     .GET().build(), HttpResponse.BodyHandlers.ofString());
             Socket pressRace = new Socket();
             WebSocket socket = client.newWebSocketBuilder().header("Authorization", "Bearer " + token)

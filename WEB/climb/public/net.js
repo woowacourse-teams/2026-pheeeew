@@ -1,4 +1,4 @@
-// 피유 등반 서버 연결(BE/climb/README.md 규약). 화면을 모른다.
+// 감정이들의 점프 대모험 서버 연결(BE/climb/README.md 규약). 화면을 모른다.
 // 서버가 없거나 끊겨도 예외를 던지지 않는다. REST 는 { status, body } 를 돌려주고(닿지 않으면 status 0), 웹소켓은 상태만 바꾼다.
 // 브라우저 전역(fetch, WebSocket, 타이머)은 시험에서 가짜로 바꿔 넣는다(tools/net_test.mjs).
 

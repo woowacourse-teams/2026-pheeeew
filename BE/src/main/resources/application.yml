@@ -26,7 +26,7 @@ spring:
 
 pheeeew:
   climb:
-    # 피유 등반(climb 모듈) 전체 스위치. 꺼져 있으면 climb 의 빈이 하나도 올라오지 않는다.
+    # 감정이들의 점프 대모험(climb 모듈) 전체 스위치. 꺼져 있으면 climb 의 빈이 하나도 올라오지 않는다.
     enabled: false
     # 게임 주소 하나. 켤 때 반드시 정한다.
     allowed-origin:

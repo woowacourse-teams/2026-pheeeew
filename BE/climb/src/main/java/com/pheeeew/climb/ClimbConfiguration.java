@@ -30,7 +30,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 /**
- * 피유 등반 모듈의 빈. pheeeew.climb.enabled 가 true 일 때만 올라온다.
+ * 감정이들의 점프 대모험 모듈의 빈. pheeeew.climb.enabled 가 true 일 때만 올라온다.
  * 본체를 참조하지 않고, 본체도 이 모듈을 직접 부르지 않는다.
  */
 @ConditionalOnProperty(prefix = "pheeeew.climb", name = "enabled", havingValue = "true")

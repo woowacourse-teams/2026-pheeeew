@@ -1,4 +1,4 @@
-/* 피유 등반 UI 규칙: 글꼴 하나(Jua), 진한 자두색 테두리 3px + 아래로 떨어진 단단한 그림자, 크림색 면, 강조색은 고른 감정이의 색 */
+/* 감정이들의 점프 대모험 UI 규칙: 글꼴 하나(Jua), 진한 자두색 테두리 3px + 아래로 떨어진 단단한 그림자, 크림색 면, 강조색은 고른 감정이의 색 */
 @font-face { font-family: 'Jua'; src: url('/assets/fonts/Jua-Regular.ttf') format('truetype'); font-display: block; }
 :root { --ink: #2b2433; --paper: #fff8ea; --shade: #efe4cf; --accent: #ffd35a; --dim: #7d7388; }
 html, body { margin: 0; height: 100%; background: #1c1a22; overflow: hidden; }

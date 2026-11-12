@@ -10,7 +10,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 class ClimbNicknameTest {
 
     @ParameterizedTest
-    @ValueSource(strings = {"피유", "climber01", "등반왕Pheeeew", "  감정이  "})
+    @ValueSource(strings = {"히유", "climber01", "등반왕Pheeeew", "  감정이  "})
     void 두_자에서_열_자의_한글_영문_숫자는_앞뒤_공백을_지우고_받는다(String raw) {
         // when
         String nickname = ClimbNickname.validate(raw);
@@ -29,7 +29,7 @@ class ClimbNicknameTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"피 유", "피유!", "ㅋㅋㅋ", "climb_er", "😀😀"})
+    @ValueSource(strings = {"히 유", "히유!", "ㅋㅋㅋ", "climb_er", "😀😀"})
     void 한글_영문_숫자_밖의_문자는_문자_사유로_거절한다(String raw) {
         assertThatThrownBy(() -> ClimbNickname.validate(raw))
                 .isInstanceOfSatisfying(ClimbException.class,

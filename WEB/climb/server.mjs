@@ -1,4 +1,4 @@
-// 피유 등반 정적 서버. public/ 폴더만 127.0.0.1 에서 내보낸다.
+// 감정이들의 점프 대모험 정적 서버. public/ 폴더만 127.0.0.1 에서 내보낸다.
 // 개발용: /api/v1/climb(웹소켓 포함)은 백엔드(CLIMB_BACKEND, 기본 http://127.0.0.1:8080)로 넘겨 같은 출처로 만든다.
 // 손님 쿠키가 Path=/api/v1/climb 이라 같은 출처여야 로컬에서 그대로 붙는다.
 import http from 'node:http';
@@ -51,4 +51,4 @@ server.on('upgrade', (req, sock, head) => {
   up.on('error', () => sock.destroy());
   sock.on('error', () => up.destroy());
 });
-server.listen(PORT, '127.0.0.1', () => console.log(`피유 등반: http://127.0.0.1:${PORT}`));
+server.listen(PORT, '127.0.0.1', () => console.log(`감정이들의 점프 대모험: http://127.0.0.1:${PORT}`));

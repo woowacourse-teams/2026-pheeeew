@@ -1,6 +1,6 @@
 # climb
 
-피유 등반(웹 게임) 전용 모듈이다. 손님 쿠키, 닉네임, 높이 보고, 실시간 순위, 함께 오르기(다른 사람 위치 공유)를 맡는다.
+감정이들의 점프 대모험(웹 게임) 전용 모듈이다. 손님 쿠키, 닉네임, 높이 보고, 실시간 순위, 함께 오르기(다른 사람 위치 공유)를 맡는다.
 본체 패키지(`device`, `emotion`, `pressrace`, `auth`, `common` 등)를 참조하지 않는다.
 
 ## 켜고 끄기
@@ -37,7 +37,7 @@
 
 | 요청 | 응답 |
 |---|---|
-| `POST /api/v1/climb/guests` `{ "nickname": "피유" }` | `201` + 쿠키, `{ "id", "nickname", "tag" }`. `400 NICKNAME_LENGTH`(2~10자), `400 NICKNAME_CHARACTERS`(한글·영문·숫자), `429 GUEST_CREATE_LIMITED` |
+| `POST /api/v1/climb/guests` `{ "nickname": "히유" }` | `201` + 쿠키, `{ "id", "nickname", "tag" }`. `400 NICKNAME_LENGTH`(2~10자), `400 NICKNAME_CHARACTERS`(한글·영문·숫자), `429 GUEST_CREATE_LIMITED` |
 | `GET /api/v1/climb/me` | `{ "id", "nickname", "tag", "run" }`. `run` 은 가장 최근의 완주하지 않은 등반 `{ map, character, height, best, x, falls, time }` 또는 `null`. 쿠키 없음·무효 `401 UNAUTHORIZED` |
 | `PATCH /api/v1/climb/me` `{ "nickname" }` | `{ "id", "nickname", "tag" }`. 하루(한국 시간) 3번, 넘으면 `429 NICKNAME_CHANGE_LIMITED` |
 | `GET /api/v1/climb/ranking?board=online\|today\|all&map=v1` | `{ "top": [순위 항목], "me": { "rank", "best" } \| null, "online" }`. 쿠키가 없으면 `me` 는 `null`. 잘못된 `board` 는 `400 INVALID_BOARD` |
@@ -72,9 +72,9 @@
 서버 → 브라우저
 
 ```json
-{ "t": "welcome", "me": { "id": "…", "nickname": "피유", "tag": "4f2a" }, "run": null, "online": 3, "serverTime": 1794452375553 }
+{ "t": "welcome", "me": { "id": "…", "nickname": "히유", "tag": "4f2a" }, "run": null, "online": 3, "serverTime": 1794452375553 }
 { "t": "rank", "top": [ … ], "me": { "rank": 4, "best": 131 }, "near": [ 3등, 4등(나), 5등 ], "online": 3 }
-{ "t": "event", "kind": "zone", "nickname": "피유", "tag": "4f2a", "zone": 1 }
+{ "t": "event", "kind": "zone", "nickname": "히유", "tag": "4f2a", "zone": 1 }
 { "t": "error", "code": "CONNECTION_REPLACED" }
 ```
 
@@ -117,7 +117,7 @@
 
 ```json
 { "t": "out", "n": [7] }
-{ "t": "in", "p": [{ "n": 9, "nickname": "피유", "tag": "4f2a", "character": "angry" }] }
+{ "t": "in", "p": [{ "n": 9, "nickname": "히유", "tag": "4f2a", "character": "angry" }] }
 { "t": "sts", "s": [[9, 612, 135.42, -180, 420, 1, 0]] }
 ```
 

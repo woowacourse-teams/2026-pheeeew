@@ -852,7 +852,7 @@ function tick() {
       stats.cleared = done;
       net.reportZone({ zone: Math.min(done, ZONES.length - 1), time: stats.time }); // 마지막 구간을 넘는 것 = 완주
       if (done === ZONES.length) net.reportFinish({ time: stats.time, falls: stats.falls });
-      ui.banner(`${done}구간 ${ZONES[done - 1].name} 완료! 피유~`, `떨어진 횟수 ${stats.falls} · ${clock(stats.time)}`);
+      ui.banner(`${done}구간 ${ZONES[done - 1].name} 완료! 히유~`, `떨어진 횟수 ${stats.falls} · ${clock(stats.time)}`);
       sfx.clear();
       fx.confetti(p.x + P.w / 2, p.y, Object.values(TINT).map((c) => parseInt(c.slice(1), 16)));
     }

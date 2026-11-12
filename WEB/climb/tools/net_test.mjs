@@ -63,7 +63,7 @@ function fakeFetch(routes) {
 }
 
 const API = 'http://127.0.0.1:4320/api/v1/climb';
-const welcome = (run = null) => ({ t: 'welcome', me: { id: 'g1', nickname: '피유', tag: '4f2a' }, run, online: 1, serverTime: 0 });
+const welcome = (run = null) => ({ t: 'welcome', me: { id: 'g1', nickname: '히유', tag: '4f2a' }, run, online: 1, serverTime: 0 });
 
 function setup({ routes = {}, fetch } = {}) {
   const c = clock();
@@ -86,16 +86,16 @@ function online(t, opts = { character: 'angry' }, run = null) {
 test('첫 접속: me 가 401 이면 손님을 만들고, 그 뒤 me 는 200', async () => {
   let made = false;
   const t = setup({ routes: (key) => {
-    if (key === `GET ${API}/me`) return made ? { status: 200, body: { id: 'g1', nickname: '피유', tag: '4f2a', run: null } } : { status: 401, body: { code: 'UNAUTHORIZED' } };
-    if (key === `POST ${API}/guests`) { made = true; return { status: 201, body: { id: 'g1', nickname: '피유', tag: '4f2a' } }; }
+    if (key === `GET ${API}/me`) return made ? { status: 200, body: { id: 'g1', nickname: '히유', tag: '4f2a', run: null } } : { status: 401, body: { code: 'UNAUTHORIZED' } };
+    if (key === `POST ${API}/guests`) { made = true; return { status: 201, body: { id: 'g1', nickname: '히유', tag: '4f2a' } }; }
   } });
   eq((await t.net.me()).status, 401, '처음 me');
-  const created = await t.net.createGuest('피유');
+  const created = await t.net.createGuest('히유');
   eq([created.status, created.body.tag], [201, '4f2a'], '손님 만들기');
   const post = t.calls[1];
-  eq([post.method, post.credentials, post.body], ['POST', 'include', { nickname: '피유' }], '손님 만들기 요청');
+  eq([post.method, post.credentials, post.body], ['POST', 'include', { nickname: '히유' }], '손님 만들기 요청');
   eq(post.headers['Content-Type'], 'application/json', '본문 형식');
-  eq((await t.net.me()).body.nickname, '피유', '다시 me');
+  eq((await t.net.me()).body.nickname, '히유', '다시 me');
   eq(t.calls.every((x) => x.credentials === 'include'), true, '모든 요청에 쿠키');
 });
 
@@ -103,7 +103,7 @@ test('닉네임 규칙 위반은 400 과 사유 코드를 그대로 돌려준다
   const t = setup({ routes: { [`POST ${API}/guests`]: { status: 400, body: { code: 'NICKNAME_LENGTH', message: '…' } }, [`PATCH ${API}/me`]: { status: 429, body: { code: 'NICKNAME_CHANGE_LIMITED' } } } });
   const r = await t.net.createGuest('피');
   eq([r.status, r.body.code], [400, 'NICKNAME_LENGTH'], '400');
-  const p = await t.net.rename('피유유');
+  const p = await t.net.rename('히유유');
   eq([p.status, p.body.code, t.calls[1].method], [429, 'NICKNAME_CHANGE_LIMITED', 'PATCH'], '이름 바꾸기');
 });
 
@@ -134,7 +134,7 @@ test('rank·event 를 구독자에게 넘긴다', () => {
   t.net.on('event', (m) => got.push(m.kind));
   const ws = online(t);
   ws.serverSend({ t: 'rank', top: [], me: { rank: 4, best: 131 }, near: [], online: 3 });
-  ws.serverSend({ t: 'event', kind: 'zone', nickname: '피유', tag: '4f2a', zone: 1 });
+  ws.serverSend({ t: 'event', kind: 'zone', nickname: '히유', tag: '4f2a', zone: 1 });
   eq(got, [4, 'zone'], '받은 것');
 });
 
@@ -189,7 +189,7 @@ test('닫힘 사유만 CONNECTION_REPLACED 여도 다시 연결하지 않는다'
 test('서버가 없어도 예외 없이 offline', async () => {
   const t = setup({ fetch: async () => { throw new TypeError('Failed to fetch'); } });
   eq(await t.net.me(), { status: 0, body: null }, 'me');
-  eq((await t.net.createGuest('피유')).status, 0, '손님 만들기');
+  eq((await t.net.createGuest('히유')).status, 0, '손님 만들기');
   eq((await t.net.ranking('all')).status, 0, '순위');
   t.net.connect({ character: 'angry' });
   t.sockets[0].serverClose(1006); // 연결 거절
@@ -398,10 +398,10 @@ test('in·sts·out 을 구독자에게 넘긴다', () => {
   t.net.on('sts', (m) => got.push(['sts', m.s[0][0]]));
   t.net.on('out', (m) => got.push(['out', m.n]));
   const ws = online(t);
-  ws.serverSend({ t: 'in', p: [{ n: 9, nickname: '피유', tag: '4f2a', character: 'angry' }] });
+  ws.serverSend({ t: 'in', p: [{ n: 9, nickname: '히유', tag: '4f2a', character: 'angry' }] });
   ws.serverSend({ t: 'sts', s: [[9, 612, 135.42, -180, 420, 1, 0]] });
   ws.serverSend({ t: 'out', n: [9] });
-  eq(got, [['in', '피유'], ['sts', 9], ['out', [9]]], '받은 것');
+  eq(got, [['in', '히유'], ['sts', 9], ['out', [9]]], '받은 것');
 });
 
 let failed = 0;
