@@ -7,7 +7,7 @@ import { traceTerrain, sketch } from './terrain.js';
 import { createUI, TINT } from './ui.js';
 import { createFx } from './fx.js';
 import { boostLook, RISE_LIFE } from './boost.js';
-import { nearestSign, signReader, signKey, splitSign, bubbleX } from './signs.js';
+import { nearestSign, signReader, signKey, splitSign, bubbleX, signLook, SIGN_ART, besideSign, signScale, signTop, signHalf, SIGN_SINK } from './signs.js';
 import { sfx, unlock, toggleMute, isMuted, audioCtx } from './sfx.js';
 import { createBgm, CREDITS } from './bgm.js';
 import { createNet } from './net.js';
@@ -244,7 +244,13 @@ for (let r = 1; r < HEIGHT; r++) for (let c = 0; c < COLS; c++) {
     const x = c * TILE;
     const y = r * TILE;
     // 윗면: 양옆도 윗면인 칸에만(끝에 걸치지 않게), 세 칸에 하나꼴
-    if (empty(c, r - 1) && solid(c - 1, r) && empty(c - 1, r - 1) && solid(c + 1, r) && empty(c + 1, r - 1) && rnd() < 0.3) put(any(kit.top), x + TILE / 2 + (rnd() - 0.5) * 16, y, 128, 200, rnd() < 0.5);
+    if (empty(c, r - 1) && solid(c - 1, r) && empty(c - 1, r - 1) && solid(c + 1, r) && empty(c + 1, r - 1) && rnd() < 0.3) {
+      // 난수는 늘 같은 순서로 뽑는다(다른 곳 장식 자리가 그대로). 표지판 옆이면 뽑기만 하고 그리지 않는다
+      const t = any(kit.top);
+      const dx = (rnd() - 0.5) * 16;
+      const flip = rnd() < 0.5;
+      if (!besideSign(SIGNS, c + 0.5 + dx / TILE, HEIGHT - 1 - r)) put(t, x + TILE / 2 + dx, y, 128, 200, flip);
+    }
     if (empty(c, r + 1) && solid(c - 1, r) && empty(c - 1, r + 1) && solid(c + 1, r) && empty(c + 1, r + 1) && rnd() < 0.3) put(any(kit.hang), x + TILE / 2 + (rnd() - 0.5) * 16, y + TILE, 128, 56, rnd() < 0.5);
     if (empty(c + 1, r) && solid(c, r - 1) && empty(c + 1, r - 1) && solid(c, r + 1) && empty(c + 1, r + 1) && rnd() < 0.16) put(any(kit.side), x + TILE, y + TILE / 2, 56, 128, false);
     if (empty(c - 1, r) && solid(c, r - 1) && empty(c - 1, r - 1) && solid(c, r + 1) && empty(c - 1, r + 1) && rnd() < 0.16) put(any(kit.side), x, y + TILE / 2, 56, 128, true);
@@ -293,30 +299,73 @@ for (const d of DECOR) {
   world.addChild(sp);
 }
 
-// 안내 표지판: 충돌 없음. 그 구간의 info_sign 그림을 쓰고, 없으면 화살표 표지 위에 코드로 그린 느낌표 배지를 단다
-const SIGN_S = 0.24;
-const SIGN_TOP = 400 * SIGN_S; // 바닥에서 표지판 꼭대기까지(대략). 말풍선은 그 위에 뜬다
+// 안내 표지판: 충돌 없음. 그 구간의 info_sign 그림(없으면 화살표 표지). 크기·높이 계산은 signs.js
+// 안 읽은 표지판은 뒤에 빛 무리를 깔고, 머리 위에 느낌표 꼬리표를 띄워 배경과 떼어 낸다
+const GLOW = { nyc: [0xffe08a, 'add', 0.5], space: [0xffe08a, 'add', 0.5], xmas: [0xffe066, 'normal', 0.75], balloon: [0xffe066, 'normal', 0.75] }; // 색, 섞는 방법, 세기. 어두운 구간은 더해서 빛나게, 밝은 구간은 진한 노랑으로
+const ART_H = 52; // 카드 속 장치 그림 높이(px)
 const signViews = [];
 for (const s of SIGNS) {
   const dir = arts[s.zone].dir;
   const own = await has(`/assets/${dir}/info_sign.png`);
+  const k = signScale(s);
+  const x = s.c * TILE;
+  const y = yOf(s.h);
+  const [color, blendMode, alpha] = GLOW[dir] ?? GLOW.xmas;
+  const glow = new Graphics(); // 겹친 원으로 만든 부드러운 빛 무리. 판 가운데쯤이 가장 밝다
+  const R = signHalf(s) * 2;
+  for (let n = 10; n > 0; n--) glow.circle(0, 0, (R * n) / 10).fill({ color, alpha: 0.13 });
+  glow.blendMode = blendMode;
+  glow.position.set(x, y - 260 * k); // 판 가운데(그림 y≈190)
+  glow.alpha = 0;
+  glow.peak = alpha;
+  world.addChild(glow);
   const sp = new Sprite(await Assets.load(`/assets/${dir}/${own ? 'info_sign' : 'arrow_sign'}.png`));
   sp.pivot.set(256, 450);
-  sp.scale.set(s.flip ? -SIGN_S : SIGN_S, SIGN_S);
-  sp.position.set(s.c * TILE, yOf(s.h) + 5);
-  world.addChild(new Graphics().ellipse(s.c * TILE, yOf(s.h) + 2, 26, 6).fill({ color: 0x241c22, alpha: 0.18 }));
+  sp.scale.set(s.flip ? -k : k, k);
+  sp.position.set(x, y + SIGN_SINK);
+  world.addChild(new Graphics().ellipse(x, y + 2, signHalf(s) * 0.7, 6).fill({ color: 0x241c22, alpha: 0.18 }));
   world.addChild(sp);
-  let badge = null;
-  if (!own) { // 그림이 없을 때만: 동그란 느낌표 배지
-    badge = new Container();
-    badge.addChild(new Graphics().circle(0, 3, 13).fill(INK).circle(0, 0, 13).fill(0xffd35a).stroke({ width: 3, color: INK }));
-    const mark = new Text({ text: '!', style: { fontFamily: FONT, fontSize: 20, fill: INK } });
-    mark.anchor.set(0.5);
-    badge.addChild(mark);
-    badge.position.set(s.c * TILE, yOf(s.h) - SIGN_TOP - 8);
-    world.addChild(badge);
+  const tag = new Container(); // 머리 위 꼬리표: 크림색 동그라미에 강조색 느낌표, 꼬리는 표지판을 가리킨다
+  tag.addChild(new Graphics()
+    .circle(0, 3, 14).fill(INK).poly([-6, 14, 6, 14, 0, 24]).fill(INK)
+    .poly([-6, 10, 6, 10, 0, 19]).fill(0xfff8ea).stroke({ width: 3, color: INK, join: 'round' })
+    .circle(0, 0, 14).fill(0xfff8ea).stroke({ width: 3, color: INK }));
+  const mark = new Text({ text: '!', style: { fontFamily: FONT, fontSize: 22, fill: 0xffd35a, stroke: { color: INK, width: 5, join: 'round' } } });
+  mark.anchor.set(0.5);
+  tag.addChild(mark);
+  tag.position.set(x, y - signTop(s, dir) - 21);
+  tag.baseY = tag.y;
+  tag.alpha = 0;
+  world.addChild(tag);
+  signViews.push({ s, sp, glow, tag, key: signKey(s), y, art: cardArt(s) });
+}
+// 카드에 넣을 장치 그림(높이 ART_H 안팎, 비율 그대로). 게임이 그 장치에 쓰는 그림을 그대로 쓴다
+function cardArt(s) {
+  const a = arts[s.zone];
+  const tex2 = a[SIGN_ART[s.kind]];
+  const box = new Container();
+  if (!tex2) return box;
+  if (s.kind === 'slope') { // 게임의 경사처럼 오른쪽으로 오르는 삼각형을 경사 재질로 채우고 지형 선을 두른다
+    const tri = [0, ART_H, ART_H * 1.3, 0, ART_H * 1.3, ART_H];
+    const mask = new Graphics().poly(tri).fill(0xffffff);
+    const skin = new TilingSprite({ texture: tex2, width: ART_H * 1.3, height: ART_H });
+    skin.tileScale.set(0.5);
+    skin.mask = mask;
+    box.addChild(mask, skin, new Graphics().poly(tri).stroke({ width: 3, color: LINE, alpha: 0.8, join: 'round' }));
+  } else if (s.kind === 'wind') { // 깃발과, 게임의 바람 줄무늬 모양(둥근 끝 선) 세 줄. 크림색 위라 잉크색으로 옅게
+    const flag = new Sprite(tex2);
+    flag.scale.set(ART_H / tex2.height);
+    const g = new Graphics();
+    for (const [dy, len] of [[0.25, 26], [0.5, 36], [0.75, 22]]) g.moveTo(ART_H + 6, ART_H * dy).lineTo(ART_H + 6 + len, ART_H * dy).stroke({ width: 3, color: INK, alpha: 0.35, cap: 'round' });
+    box.addChild(flag, g);
+    const w = winds.find((w2) => zoneOf(w2.h0 + 1) === s.zone);
+    if (w && w.ax < 0) { box.pivot.x = box.width; box.scale.x = -1; } // 바람이 왼쪽으로 불면 뒤집는다
+  } else {
+    const sp = new Sprite(tex2);
+    sp.scale.set(Math.min(150 / tex2.width, ART_H / tex2.height));
+    box.addChild(sp);
   }
-  signViews.push({ s, sp, badge, key: signKey(s), y: yOf(s.h) });
+  return box;
 }
 
 // 물방울: 지형 밑면 여기저기에 맺혔다가 제각각 떨어진다
@@ -371,57 +420,88 @@ const hitbox = new Graphics();
 world.addChild(hitbox);
 const gauge = new Graphics();
 world.addChild(gauge);
-// 표지판 말풍선: 가까운 표지판 하나에만. 캐릭터 한마디(quip)보다 아래에 그린다
+// 표지판 카드: 가까운 표지판 하나에만. 왼쪽에 장치 그림, 오른쪽에 이름(굵게)과 설명. 캐릭터 한마디(quip)보다 아래에 그린다
+// 보통은 표지판 위에, card: 'left' 인 표지판(위가 좁은 자리)은 표지판 왼쪽에 띄운다
 const tip = new Container();
 const tipBox = new Graphics();
-const tipLines = [0, 1].map((i) => new Text({ text: '', style: { fontFamily: FONT, fontSize: i ? 17 : 20, fill: INK } }));
-for (const t of tipLines) t.anchor.set(0.5, 0);
-tip.addChild(tipBox, ...tipLines);
+const tipArt = new Container();
+const tipName = new Text({ text: '', style: { fontFamily: FONT, fontSize: 21, fontWeight: '700', fill: INK } });
+const tipDesc = new Text({ text: '', style: { fontFamily: FONT, fontSize: 17, fill: INK } });
+tip.addChild(tipBox, tipArt, tipName, tipDesc);
 tip.alpha = 0;
 tip.visible = false;
 tip.tipY = tip.tipH = 0;
 world.addChild(tip);
-let tipFor = -1; // 지금 말풍선에 쓴 표지판 번호
-let tipRead = false; // 그 표지판을 이미 읽은 채로 열었는지(옅게 띄운다)
+let tipFor = -1; // 지금 카드에 쓴 표지판 번호
 const SIGNS_KEY = `${SAVE_KEY}-signs`; // 읽은 표지판 목록
 let signRead = signReader();
 try { signRead = signReader(JSON.parse(localStorage.getItem(SIGNS_KEY) ?? '[]')); } catch {}
 function drawTip(i) {
   const v = signViews[i];
-  const lines = splitSign(v.s.text);
-  tipLines.forEach((t, j) => { t.text = lines[j] ?? ''; t.visible = j < lines.length; });
-  const w = Math.max(...tipLines.filter((t) => t.visible).map((t) => t.width)) + 34;
-  const h = lines.length * 25 + 16;
+  const [name, desc = ''] = splitSign(v.s.text);
+  tipName.text = name;
+  tipDesc.text = desc;
+  tipArt.removeChildren();
+  tipArt.addChild(v.art);
+  const aw = v.art.width;
+  const ah = v.art.height;
+  const PAD = 14;
+  const GAP = aw ? 14 : 0;
+  const th = desc ? 50 : 26; // 글 두 줄 높이
+  const w = PAD + aw + GAP + Math.max(tipName.width, tipDesc.width) + PAD + 4;
+  const h = Math.max(ah, th) + PAD * 2;
   const sx = v.s.c * TILE;
-  const bx = bubbleX(sx, w, W); // 화면 가장자리 근처면 안쪽으로 당긴다
-  const tail = Math.max(-w / 2 + 18, Math.min(w / 2 - 18, sx - bx)); // 꼬리는 표지판을 가리킨다
-  tipBox.clear()
-    .roundRect(-w / 2, -h + 4, w, h, 16).fill(INK) // 아래로 떨어진 그림자
-    .poly([tail - 9, 3, tail + 9, 3, tail, 17]).fill(INK)
-    .roundRect(-w / 2, -h, w, h, 16).fill(0xfff8ea).stroke({ width: 3, color: INK })
-    .poly([tail - 8, -1, tail + 8, -1, tail, 12]).fill(0xfff8ea);
-  tipLines[0].y = -h + 8;
-  tipLines[1].y = -h + 8 + 26;
-  tip.x = bx;
-  tip.tipY = v.y - SIGN_TOP - 16; // 꼬리 끝이 표지판 꼭대기 바로 위
-  tip.tipH = h;
+  let x0;
+  let y0;
+  tipBox.clear();
+  if (v.s.card === 'left') { // 꼬리가 오른쪽 표지판을 가리킨다. 원점 = 꼬리 끝
+    x0 = -w - 14;
+    y0 = -h / 2;
+    tipBox.roundRect(x0, y0 + 4, w, h, 16).fill(INK).poly([-16, -9, -16, 13, 2, 4]).fill(INK)
+      .roundRect(x0, y0, w, h, 16).fill(0xfff8ea).stroke({ width: 3, color: INK })
+      .poly([-16, -8, -16, 8, -2, 0]).fill(0xfff8ea);
+    tip.x = sx - signHalf(v.s) + 4;
+    tip.tipY = v.y - 260 * signScale(v.s); // 판 가운데 높이
+    tip.tipH = h / 2;
+  } else { // 꼬리가 아래 표지판을 가리킨다
+    const bx = bubbleX(sx, w, W); // 화면 가장자리 근처면 안쪽으로 당긴다
+    const tail = Math.max(-w / 2 + 18, Math.min(w / 2 - 18, sx - bx));
+    x0 = -w / 2;
+    y0 = -h;
+    tipBox.roundRect(x0, y0 + 4, w, h, 16).fill(INK) // 아래로 떨어진 그림자
+      .poly([tail - 9, 3, tail + 9, 3, tail, 17]).fill(INK)
+      .roundRect(x0, y0, w, h, 16).fill(0xfff8ea).stroke({ width: 3, color: INK })
+      .poly([tail - 8, -1, tail + 8, -1, tail, 12]).fill(0xfff8ea);
+    tip.x = bx;
+    tip.tipY = v.y - signTop(v.s, arts[v.s.zone].dir) - 16; // 꼬리 끝이 표지판 꼭대기 바로 위
+    tip.tipH = h;
+  }
+  tipArt.position.set(x0 + PAD, y0 + (h - ah) / 2);
+  tipName.position.set(x0 + PAD + aw + GAP, y0 + (h - th) / 2 - 1);
+  tipDesc.position.set(tipName.x, tipName.y + 27);
   tipFor = i;
-  tipRead = signRead.isRead(v.key);
 }
 function updateSigns(dt) {
   const i = nearestSign(SIGNS, (p.x + P.w / 2) / TILE, hOf(p.y + P.h));
   if (signRead.update(i < 0 ? null : signViews[i].key, dt)) {
     try { localStorage.setItem(SIGNS_KEY, JSON.stringify(signRead.keys())); } catch {}
   }
-  signViews.forEach((v, j) => { // 안 읽은 표지판은 멀리 있을 때 가끔 까딱거린다
+  const ease = 1 - Math.exp(-dt * 8);
+  signViews.forEach((v, j) => {
     if (Math.abs(v.y - (camY + H / 2)) > H) return; // 화면 밖
+    const look = signLook(signRead.isRead(v.key), j === i);
+    // 안 읽은 표지판은 멀리 있을 때 가끔 까딱거린다
     const ph = (clockT + j * 0.7) % 2.4;
-    const k = j !== i && !signRead.isRead(v.key) && ph < 0.6 ? Math.sin((ph / 0.6) * Math.PI * 4) * (1 - ph / 0.6) : 0;
+    const k = look.tag && ph < 0.6 ? Math.sin((ph / 0.6) * Math.PI * 4) * (1 - ph / 0.6) : 0;
     v.sp.rotation = k * 0.08;
-    if (v.badge) v.badge.y = v.y - SIGN_TOP - 8 - Math.abs(k) * 6;
+    v.tag.alpha += ((look.tag ? 1 : 0) - v.tag.alpha) * ease;
+    v.tag.visible = v.tag.alpha > 0.02;
+    v.tag.y = v.tag.baseY - (1 + Math.sin(clockT * 3 + j)) * 2.5; // 통통 뜬다
+    v.glow.alpha += ((look.glow ? v.glow.peak * (0.8 + 0.2 * Math.sin(clockT * 2 + j)) : 0) - v.glow.alpha) * ease; // 숨 쉬듯
+    v.glow.visible = v.glow.alpha > 0.01;
   });
   if (i >= 0 && i !== tipFor) drawTip(i);
-  const want = i >= 0 && quipT <= 0 ? (tipRead ? 0.72 : 1) : 0; // 캐릭터가 한마디 하는 동안은 비켜 준다
+  const want = i >= 0 && quipT <= 0 ? 1 : 0; // 캐릭터가 한마디 하는 동안은 비켜 준다
   tip.alpha += (want - tip.alpha) * (1 - Math.exp(-dt * 10));
   tip.visible = tip.alpha > 0.02;
   if (!tip.visible && i < 0) tipFor = -1;
