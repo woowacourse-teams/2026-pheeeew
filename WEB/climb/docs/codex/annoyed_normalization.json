@@ -1,0 +1,72 @@
+{
+  "jump_charge": {
+    "source": "~/.codex/generated_images/01a1c9b1-111b-7561-9d38-c1be509ba77b/exec-026013b0-b7d5-44df-a409-fa9c6d31504a.png",
+    "body_band": [
+      0,
+      700,
+      1254,
+      825
+    ],
+    "target_body_width": 824
+  },
+  "jump_rise": {
+    "source": "~/.codex/generated_images/01a1c9b1-111b-7561-9d38-c1be509ba77b/exec-35b4aa7b-f4ff-47f1-acd3-4d82c62304d3.png",
+    "body_band": [
+      0,
+      500,
+      1020,
+      615
+    ],
+    "target_body_width": 780
+  },
+  "jump_apex": {
+    "source": "~/.codex/generated_images/01a1c9b1-111b-7561-9d38-c1be509ba77b/exec-e6406643-ab90-4c80-a784-6489fae5add4.png",
+    "body_band": [
+      0,
+      550,
+      1254,
+      710
+    ],
+    "target_body_width": 794
+  },
+  "jump_fall": {
+    "source": "~/.codex/generated_images/01a1c9b1-111b-7561-9d38-c1be509ba77b/exec-973fd032-41a5-4344-ada9-76799256f4e6.png",
+    "body_band": [
+      0,
+      600,
+      1254,
+      800
+    ],
+    "target_body_width": 770
+  },
+  "jump_land": {
+    "source": "~/.codex/generated_images/01a1c9b1-111b-7561-9d38-c1be509ba77b/exec-933da1d5-748d-4fa9-9d28-4d9114c0f19b.png",
+    "body_band": [
+      0,
+      650,
+      1254,
+      730
+    ],
+    "target_body_width": 810
+  },
+  "jump_wall": {
+    "source": "~/.codex/generated_images/01a1c9b1-111b-7561-9d38-c1be509ba77b/exec-bcc929f3-c7f7-4801-a1ee-bd02375f4cbe.png",
+    "body_band": [
+      0,
+      480,
+      1254,
+      537
+    ],
+    "target_body_width": 770
+  },
+  "jump_splat": {
+    "source": "~/.codex/generated_images/01a1c9b1-111b-7561-9d38-c1be509ba77b/exec-a258d33e-ce5d-469b-a156-1d0506a289a5.png",
+    "body_band": [
+      0,
+      700,
+      1254,
+      770
+    ],
+    "target_body_width": 820
+  }
+}

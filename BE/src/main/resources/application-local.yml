@@ -11,3 +11,7 @@ pheeeew:
     bucket: ${S3_BUCKET:pheeeew-local}
     key-prefix: ${S3_KEY_PREFIX:local/}
     region: ${S3_REGION:ap-northeast-2}
+  climb:
+    enabled: true
+    # 게임 개발 서버(pheeeew-climb server.mjs) 기본 주소.
+    allowed-origin: http://127.0.0.1:4320

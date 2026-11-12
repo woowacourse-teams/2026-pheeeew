@@ -1,0 +1,1 @@
+{"name":"pheeeew-climb","private":true,"type":"module","scripts":{"start":"node server.mjs","check":"node tools/validate.mjs"}}

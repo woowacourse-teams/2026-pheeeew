@@ -1,0 +1,209 @@
+{
+  "coffee_cup": {
+    "size": [
+      512,
+      512
+    ],
+    "mode": "RGBA",
+    "mean_rgb": [
+      17.01,
+      13.8,
+      16.62
+    ],
+    "alpha_extrema": [
+      0,
+      255
+    ],
+    "alpha_bbox": [
+      156,
+      286,
+      356,
+      451
+    ]
+  },
+  "alarm_clock": {
+    "size": [
+      512,
+      512
+    ],
+    "mode": "RGBA",
+    "mean_rgb": [
+      28.31,
+      23.65,
+      24.7
+    ],
+    "alpha_extrema": [
+      0,
+      255
+    ],
+    "alpha_bbox": [
+      156,
+      177,
+      356,
+      451
+    ]
+  },
+  "rock": {
+    "size": [
+      512,
+      512
+    ],
+    "mode": "RGB",
+    "mean_rgb": [
+      142.6,
+      131.75,
+      169.36
+    ],
+    "x_edge_max_difference": 0,
+    "y_edge_max_difference": 0
+  },
+  "trim": {
+    "size": [
+      512,
+      128
+    ],
+    "mode": "RGBA",
+    "mean_rgb": [
+      112.91,
+      102.93,
+      109.81
+    ],
+    "alpha_extrema": [
+      0,
+      255
+    ],
+    "alpha_bbox": [
+      0,
+      20,
+      512,
+      92
+    ],
+    "x_edge_max_difference": 0
+  },
+  "fabric": {
+    "size": [
+      512,
+      512
+    ],
+    "mode": "RGB",
+    "mean_rgb": [
+      227.46,
+      193.32,
+      177.82
+    ],
+    "x_edge_max_difference": 0,
+    "y_edge_max_difference": 0
+  },
+  "moon_mobile": {
+    "size": [
+      512,
+      512
+    ],
+    "mode": "RGBA",
+    "mean_rgb": [
+      10.35,
+      8.58,
+      7.5
+    ],
+    "alpha_extrema": [
+      0,
+      255
+    ],
+    "alpha_bbox": [
+      143,
+      60,
+      372,
+      430
+    ]
+  },
+  "arrow_sign": {
+    "size": [
+      512,
+      512
+    ],
+    "mode": "RGBA",
+    "mean_rgb": [
+      34.42,
+      28.42,
+      22.01
+    ],
+    "alpha_extrema": [
+      0,
+      255
+    ],
+    "alpha_bbox": [
+      146,
+      245,
+      366,
+      451
+    ]
+  },
+  "nod": {
+    "size": [
+      480,
+      200
+    ],
+    "mode": "RGBA",
+    "mean_rgb": [
+      139.83,
+      121.17,
+      117.81
+    ],
+    "alpha_extrema": [
+      0,
+      255
+    ],
+    "alpha_bbox": [
+      0,
+      20,
+      480,
+      154
+    ],
+    "standing_surface_y_range": [
+      20,
+      20
+    ]
+  },
+  "book_stack": {
+    "size": [
+      512,
+      512
+    ],
+    "mode": "RGBA",
+    "mean_rgb": [
+      21.79,
+      17.91,
+      20.03
+    ],
+    "alpha_extrema": [
+      0,
+      255
+    ],
+    "alpha_bbox": [
+      126,
+      247,
+      386,
+      451
+    ]
+  },
+  "bg": {
+    "size": [
+      1024,
+      1536
+    ],
+    "mode": "RGB",
+    "mean_rgb": [
+      230.66,
+      216.43,
+      243.58
+    ],
+    "y_edge_max_difference": 0
+  },
+  "existing_png_unchanged": 129,
+  "existing_files_unchanged": 131,
+  "external_changes_observed": [
+    "public/level.js",
+    "public/main.js"
+  ],
+  "game_js_written_by_this_task": false
+}

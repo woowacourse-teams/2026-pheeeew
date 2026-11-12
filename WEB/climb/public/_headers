@@ -1,0 +1,27 @@
+/assets/*
+  Cache-Control: public, max-age=604800
+
+/*.js
+  Cache-Control: private, no-cache
+
+/*.mjs
+  Cache-Control: private, no-cache
+
+/*.css
+  Cache-Control: private, no-cache
+
+/index.html
+  Cache-Control: private, no-cache
+
+/
+  Cache-Control: private, no-cache
+
+/admin
+  Cache-Control: private, no-cache
+
+/admin/
+  Cache-Control: private, no-cache
+
+/assets/manifest.json
+  ! Cache-Control
+  Cache-Control: public, max-age=60

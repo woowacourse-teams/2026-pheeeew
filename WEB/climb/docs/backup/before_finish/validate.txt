@@ -1,0 +1,15 @@
+# before_finish 기준 (2026-11-12). 결과 줄만
+## node tools/validate.mjs
+== defeated: 통과 — 가장 좁은 점프 창 7 (0.058초), 갇히는 곳 0
+## ZONE=1 node tools/validate.mjs
+== defeated: 통과 — 가장 좁은 점프 창 8 (0.067초), 갇히는 곳 0
+## ZONE=2 node tools/validate.mjs
+== defeated: 통과 — 가장 좁은 점프 창 8 (0.067초), 갇히는 곳 0
+## ZONE=3 node tools/validate.mjs
+== defeated: 통과 — 가장 좁은 점프 창 7 (0.058초), 갇히는 곳 0
+## ZONE=4 node tools/validate.mjs
+== defeated: 통과 — 가장 좁은 점프 창 7 (0.058초), 갇히는 곳 0
+## ZONE=5 node tools/validate.mjs
+== defeated: 통과 — 가장 좁은 점프 창 8 (0.067초), 갇히는 곳 0
+## ZONE=6 node tools/validate.mjs
+== defeated: 통과 — 가장 좁은 점프 창 27 (0.225초), 갇히는 곳 0
