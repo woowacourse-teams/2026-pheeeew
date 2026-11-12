@@ -1,6 +1,6 @@
 // public/art.js 시험: 높이별로 받을 구간, 목록표 조회, 감정이 그림 배율, 받기 관리.
 // 사용: node tools/art_test.mjs
-import { zoneOf, zonesAround, AHEAD, zoneFiles, charFiles, LOGICAL, createLoader, loadTree, leaves } from '../public/art.js';
+import { zoneOf, zonesAround, AHEAD, zoneFiles, charFiles, LOGICAL, createLoader, loadTree, leaves, track } from '../public/art.js';
 
 const tests = [];
 const test = (name, fn) => tests.push({ name, fn });
@@ -65,10 +65,11 @@ test('받기 관리: 같은 주소는 한 번만, 실패하면 null(예외 없�
   const [a, a2, bad] = await Promise.all([loader.get('/a.png'), loader.get('/a.png'), loader.get('/bad.png')]);
   eq([a, a2, bad], ['tex:/a.png', 'tex:/a.png', null], '결과');
   eq(calls, ['/a.png', '/bad.png'], '한 번씩만 받는다');
-  eq(loader.progress(), { done: 2, total: 2 }, '진행률');
   eq(await loader.get({ src: '/c.png', data: { resolution: 0.375 } }), 'tex:/c.png', '옵션이 있는 그림');
   eq(loader.has('/c.png'), true, '받은 것');
   eq(loader.has('/d.png'), false, '아직 안 받은 것');
+  eq(await loader.get('/bad.png'), null, '실패한 것은 다음에 부르면 다시 받는다');
+  eq(calls.filter((c) => c === '/bad.png').length, 2, '다시 받은 횟수');
 });
 
 test('주소 나무(구간 그림)를 같은 모양의 텍스처 나무로 함께 받는다', async () => {
@@ -79,6 +80,18 @@ test('주소 나무(구간 그림)를 같은 모양의 텍스처 나무로 함�
   eq(order.length, 4, '모두 한꺼번에 요청(직렬로 기다리지 않는다)');
   eq(leaves(zoneFiles(MAN, 'nyc')).length, 4, '잎(받을 그림 수)');
   eq(leaves(charFiles(MAN, 'angry', ['front_body'])), [{ src: '/assets/characters/angry/front_body.webp?v=5', data: { resolution: 0.375 } }], 'asset 잎');
+});
+
+test('진행률: 받을 수와 끝난 수를 차례로 알린다(실패해도 끝난 것으로 센다)', async () => {
+  const seen = [];
+  let open;
+  const slow = new Promise((r) => { open = r; });
+  const done = track([Promise.resolve(1), slow, Promise.reject(new Error('x'))], (d, t) => seen.push([d, t]));
+  await new Promise((r) => setTimeout(r, 5));
+  eq(seen, [[0, 3], [1, 3], [2, 3]], '느린 한 장을 기다리는 중');
+  open();
+  await done;
+  eq(seen.at(-1), [3, 3], '모두 끝');
 });
 
 let fail = 0;

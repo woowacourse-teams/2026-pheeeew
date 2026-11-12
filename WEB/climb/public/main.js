@@ -12,7 +12,7 @@ import { nearestSign, signReader, signKey, splitSign, bubbleX, signLook, SIGN_AR
 import { sfx, unlock, toggleMute, isMuted, audioCtx } from './sfx.js';
 import { createBgm, CREDITS } from './bgm.js';
 import { createNet } from './net.js';
-import { zoneFiles, charFiles, createLoader, loadTree, leaves, zoneOf as zoneAt, zonesAround } from './art.js';
+import { zoneFiles, charFiles, createLoader, loadTree, leaves, track, zoneOf as zoneAt, zonesAround } from './art.js';
 import { entryState, canPlay } from './online.js';
 import { createGhosts } from './ghosts.js';
 import * as admin from './admin.js';
@@ -33,16 +33,11 @@ const ui = createUI({ ids: IDS, info: INFO, zones: ZONES, goal: ZONES.at(-1).to,
 const bgm = createBgm({ getCtx: audioCtx, muted: isMuted, zones: ZONES }); // 첫 키 입력·클릭(unlock) 뒤에 시작
 // 첫 단계: 글꼴, 그림 목록표(tools/build_manifest.mjs), 고르기 화면의 얼굴 5장. 나머지 그림은 필요할 때 받는다
 // 그림이 있는지 서버에 묻지 않고 목록표대로 받는다
+const bar = (jobs) => track(jobs, ui.progress); // 받는 동안 로딩 화면에 받은 수/받을 수 막대
 const manifest = fetch('/assets/manifest.json', { cache: 'no-cache' }).then((r) => r.json());
 const faces = IDS.map((id) => new Promise((done) => { const img = new Image(); img.onload = img.onerror = done; img.src = FACE(id); })); // decode() 는 숨은 탭에서 끝나지 않을 수 있다
 await bar([document.fonts.load('20px Jua'), manifest, ...faces]); // 캔버스 글자(말풍선)도 같은 글꼴로 그리려면 먼저 불러와야 한다
 const MAN = await manifest;
-// 받는 동안 로딩 화면에 받은 수/받을 수 막대를 보인다
-async function bar(jobs) {
-  let done = 0;
-  ui.progress(0, jobs.length);
-  await Promise.all(jobs.map((j) => j.finally(() => ui.progress(++done, jobs.length))));
-}
 const INK = 0x2a2420;
 const app = new Application();
 await app.init({ resizeTo: window, background: 0x1c1a22, antialias: true, autoDensity: true, resolution: Math.min(2, window.devicePixelRatio || 1) });
@@ -657,6 +652,7 @@ async function begin(who, saved) {
   const assets = [...charAssets(who, names), ...zoneAssets(sh)];
   if (assets.some((a) => !loader.has(a.src ?? a))) await bar(assets.map(loader.get)); // 다 받아 두었으면 막대 없이 바로
   await Promise.all([loadChar(who, names), needZones(sh)]);
+  for (; !charReady(who); await loadChar(who, names)) await new Promise((r) => setTimeout(r, 1000)); // 부위 그림이 없으면 그릴 수 없다: 1초마다 다시 받는다
   ui.loaded();
   id = who;
   P = params(id);

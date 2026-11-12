@@ -32,20 +32,26 @@ export function charFiles(manifest, id, names) {
   return Object.fromEntries(names.filter((n) => files[n]).map((n) => [n, { src: url(files[n]), data: { resolution: files[n].w / LOGICAL } }]));
 }
 
-// 받기 관리. load(asset) = 텍스처(Pixi 의 Assets.load). 같은 주소는 한 번만 받고, 실패하면 null 로 끝난다
+// 받기 관리. load(asset) = 텍스처(Pixi 의 Assets.load). 같은 주소는 한 번만 받고, 실패하면 null 로 끝난다(다음에 부르면 다시 받는다)
 // (깨진 캐시 응답 한 장 때문에 나머지 그림이나 게임 시작이 멈추지 않게).
 export function createLoader(load, { warn = console.warn } = {}) {
   const jobs = new Map();
   const ok = new Set();
-  let done = 0;
   const get = (asset) => {
     const key = asset.src ?? asset;
     if (!jobs.has(key)) {
-      jobs.set(key, Promise.resolve().then(() => load(asset)).then((t) => { ok.add(key); return t; }, (e) => { warn(`그림을 받지 못했다: ${key}`, e); return null; }).finally(() => { done++; }));
+      jobs.set(key, Promise.resolve().then(() => load(asset)).then((t) => { ok.add(key); return t; }, (e) => { warn(`그림을 받지 못했다: ${key}`, e); jobs.delete(key); return null; }));
     }
     return jobs.get(key);
   };
-  return { get, has: (key) => ok.has(key), progress: () => ({ done, total: jobs.size }) };
+  return { get, has: (key) => ok.has(key) };
+}
+
+// 진행률: report(끝난 수, 받을 수)를 처음 한 번과 하나 끝날 때마다 부른다. 실패한 것도 끝난 것으로 센다
+export async function track(jobs, report) {
+  let done = 0;
+  report(0, jobs.length);
+  await Promise.all(jobs.map((j) => Promise.resolve(j).catch(() => {}).then(() => report(++done, jobs.length))));
 }
 
 // 나무의 잎(주소 또는 asset)만 한 줄로
