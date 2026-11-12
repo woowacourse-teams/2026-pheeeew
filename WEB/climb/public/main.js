@@ -59,6 +59,7 @@ fit();
 // 서버가 키를 확인해 준 뒤에만 켠다. 관리자가 아니면 키 창만 보이고 게임을 시작하지 않는다(취소하면 / 로)
 const adminApi = admin.adminSession();
 const ADMIN = admin.isAdminPath(location.pathname) && await admin.enterAdmin(adminApi, (message, submit) => {
+  ui.loaded(); // 로딩 화면이 키 창을 가리지 않게 한다. 그림을 더 받으면 막대가 다시 뜬다
   ui.nickname({ heading: '관리자 키', hint: '서버에 정해 둔 관리자 키를 넣어 주세요', ok: '들어가기', alt: '취소', secret: true }, async (key) => {
     const err = await submit(key);
     if (err) ui.nicknameError(err);
