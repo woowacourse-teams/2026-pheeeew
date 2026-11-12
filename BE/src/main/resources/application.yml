@@ -25,6 +25,18 @@ spring:
         enabled: false
 
 pheeeew:
+  climb:
+    # 피유 등반(climb 모듈) 전체 스위치. 꺼져 있으면 climb 의 빈이 하나도 올라오지 않는다.
+    enabled: false
+    # 게임 주소 하나. 켤 때 반드시 정한다.
+    allowed-origin:
+    guest-creates-per-hour: 10
+    # 맵 버전별 꼭대기 높이(칸), 구간 경계, 완주 최소 시간(초). 여기 없는 맵 버전은 순위에 넣지 않는다.
+    maps:
+      v1:
+        top: 663
+        zones: [135, 261, 397, 523, 653]
+        min-finish-seconds: 300
   emotion-map:
     max-page-size: 200
   rate-limit:

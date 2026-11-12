@@ -1,0 +1,247 @@
+[
+  {
+    "file": "jump_charge.png",
+    "size": [
+      1024,
+      1024
+    ],
+    "mode": "RGBA",
+    "bottom_y": 900,
+    "center_x": 511.5,
+    "body_width": 825,
+    "reference_body_width": 794,
+    "body_difference_percent": 3.9,
+    "alpha_bbox": [
+      74,
+      471,
+      950,
+      901
+    ],
+    "corner_alpha": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "source_torso_band_y": [
+      650,
+      705
+    ],
+    "source_body_width": 1253,
+    "scale": 0.6584197924980048,
+    "final_torso_band_y": [
+      745,
+      781
+    ]
+  },
+  {
+    "file": "jump_rise.png",
+    "size": [
+      1024,
+      1024
+    ],
+    "mode": "RGBA",
+    "bottom_y": 900,
+    "center_x": 512.0,
+    "body_width": 775,
+    "reference_body_width": 794,
+    "body_difference_percent": -2.39,
+    "alpha_bbox": [
+      114,
+      148,
+      911,
+      901
+    ],
+    "corner_alpha": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "source_torso_band_y": [
+      460,
+      650
+    ],
+    "source_body_width": 896,
+    "scale": 0.8649553571428571,
+    "final_torso_band_y": [
+      405,
+      569
+    ]
+  },
+  {
+    "file": "jump_apex.png",
+    "size": [
+      1024,
+      1024
+    ],
+    "mode": "RGBA",
+    "bottom_y": 900,
+    "center_x": 512.0,
+    "body_width": 795,
+    "reference_body_width": 794,
+    "body_difference_percent": 0.13,
+    "alpha_bbox": [
+      45,
+      180,
+      980,
+      901
+    ],
+    "corner_alpha": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "source_torso_band_y": [
+      500,
+      640
+    ],
+    "source_body_width": 866,
+    "scale": 0.918013856812933,
+    "final_torso_band_y": [
+      465,
+      594
+    ]
+  },
+  {
+    "file": "jump_fall.png",
+    "size": [
+      1024,
+      1024
+    ],
+    "mode": "RGBA",
+    "bottom_y": 900,
+    "center_x": 512.0,
+    "body_width": 774,
+    "reference_body_width": 794,
+    "body_difference_percent": -2.52,
+    "alpha_bbox": [
+      87,
+      176,
+      938,
+      901
+    ],
+    "corner_alpha": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "source_torso_band_y": [
+      540,
+      740
+    ],
+    "source_body_width": 876,
+    "scale": 0.884703196347032,
+    "final_torso_band_y": [
+      483,
+      660
+    ]
+  },
+  {
+    "file": "jump_land.png",
+    "size": [
+      1024,
+      1024
+    ],
+    "mode": "RGBA",
+    "bottom_y": 900,
+    "center_x": 512.5,
+    "body_width": 800,
+    "reference_body_width": 794,
+    "body_difference_percent": 0.76,
+    "alpha_bbox": [
+      18,
+      256,
+      1008,
+      901
+    ],
+    "corner_alpha": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "source_torso_band_y": [
+      620,
+      711
+    ],
+    "source_body_width": 934,
+    "scale": 0.8565310492505354,
+    "final_torso_band_y": [
+      499,
+      577
+    ]
+  },
+  {
+    "file": "jump_wall.png",
+    "size": [
+      1024,
+      1024
+    ],
+    "mode": "RGBA",
+    "bottom_y": 900,
+    "center_x": 512.0,
+    "body_width": 780,
+    "reference_body_width": 794,
+    "body_difference_percent": -1.76,
+    "alpha_bbox": [
+      58,
+      177,
+      967,
+      901
+    ],
+    "corner_alpha": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "source_torso_band_y": [
+      610,
+      645
+    ],
+    "source_body_width": 815,
+    "scale": 0.9570552147239264,
+    "final_torso_band_y": [
+      539,
+      572
+    ]
+  },
+  {
+    "file": "jump_splat.png",
+    "size": [
+      1024,
+      1024
+    ],
+    "mode": "RGBA",
+    "bottom_y": 900,
+    "center_x": 512.5,
+    "body_width": 826,
+    "reference_body_width": 794,
+    "body_difference_percent": 4.03,
+    "alpha_bbox": [
+      100,
+      557,
+      926,
+      901
+    ],
+    "corner_alpha": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "source_torso_band_y": [
+      600,
+      720
+    ],
+    "source_body_width": 1038,
+    "scale": 0.7947976878612717,
+    "final_torso_band_y": [
+      692,
+      787
+    ]
+  }
+]
