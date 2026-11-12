@@ -162,8 +162,11 @@ export function createUI({ ids, info, zones, goal, credits = [] }) {
       hud.hidden = false;
     },
     // low = 캐릭터 발이 안내 줄 높이에 있다(맨 아래 바닥): 그동안 안내 줄을 옅게 해 캐릭터를 가리지 않는다
-    hud({ h, best, falls, time, low }) {
+    // me = 캐릭터가 화면에서 차지하는 자리 { x, top, bottom }(1280×720 좌표). 순위 패널과 겹치면 패널을 옅게 한다
+    hud({ h, best, falls, time, low, me }) {
       parts.keys.classList.toggle('low', !!low);
+      const r = parts.ranks;
+      r.classList.toggle('behind', !r.hidden && !!me && me.x + 40 > r.offsetLeft && me.x - 40 < r.offsetLeft + r.offsetWidth && me.bottom > r.offsetTop && me.top < r.offsetTop + r.offsetHeight);
       put('h', String(h));
       put('falls', String(falls));
       put('time', clock(time));

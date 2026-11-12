@@ -1031,7 +1031,7 @@ function frame(dt) {
   if (nameTag.text !== nick) nameTag.text = nick;
   nameTag.visible = nick !== '' && !p.charging && !quip.visible && !tip.visible;
   nameTag.position.set(p.x + P.w / 2, p.y + P.h - 84); // 다른 사람 이름표와 같은 높이(발에서 84px 위)
-  ui.hud({ h: Math.max(0, Math.round(hOf(p.y + P.h))), best: stats.best, falls: stats.falls, time: stats.time, low: p.y + P.h - camY > H - 70 });
+  ui.hud({ h: Math.max(0, Math.round(hOf(p.y + P.h))), best: stats.best, falls: stats.falls, time: stats.time, low: p.y + P.h - camY > H - 70, me: { x: p.x + P.w / 2, top: p.y + P.h - 90 - camY, bottom: p.y + P.h - camY } });
   if (ADMIN) {
     const h = hOf(p.y + P.h);
     const z = Math.max(0, ZONES.findIndex((zz, i) => h < zz.to || i === ZONES.length - 1)); // HUD 와 같이: 경계 높이에 서면 다음 구간
