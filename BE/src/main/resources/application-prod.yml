@@ -31,6 +31,9 @@ management:
         "[spring.data.repository.invocations]": 50ms,100ms,200ms,500ms,1s,3s
 
 pheeeew:
+  climb:
+    enabled: true
+    allowed-origin: https://climb.pheeeew.com
   collection:
     card-version: ${COLLECTION_CARD_VERSION:}
   play-integrity:
