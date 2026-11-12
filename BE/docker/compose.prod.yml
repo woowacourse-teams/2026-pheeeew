@@ -18,7 +18,7 @@ x-app: &app
     S3_KEY_PREFIX: ${S3_KEY_PREFIX:?}
     S3_REGION: ${S3_REGION:?}
     COLLECTION_CARD_VERSION: ${COLLECTION_CARD_VERSION:-}
-    JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=40"
+    JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=60"
   logging:
     driver: json-file
     options:
@@ -30,7 +30,7 @@ x-app: &app
     timeout: 5s
     retries: 12
     start_period: 60s
-  mem_limit: 640m
+  mem_limit: 1280m
   stop_grace_period: 30s
   init: true
 
