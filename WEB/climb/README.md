@@ -123,7 +123,7 @@ Pages가 API 경로에도 HTML을 `200`으로 반환하면 서버에 닿지 않�
 REST 요청에는 쿠키를 포함하며, 웹소켓은 같은 API 주소를 `https` → `wss`로 바꿔 연결한다.
 
 `_redirects`는 `/admin`, `/admin/` 요청에 `index.html`을 반환한다.
-`_headers`는 `/assets/*`에 7일, JS·MJS·CSS·HTML과 `manifest.json`에 짧은 브라우저 캐시를 설정한다.
+`_headers`는 `/assets/*`에 7일, `manifest.json`에 60초 브라우저 캐시를 설정한다. JS·MJS·CSS·HTML은 `private, no-cache`로 매번 서버에 확인한다(바뀌지 않았으면 304). `pheeeew.com` 영역은 캐시 가능한 응답의 브라우저 캐시를 4시간으로 덮어쓴다(`max-age=300`, `max-age=0, must-revalidate`, `no-cache` 모두 4시간이 됐다). 그러면 배포 뒤 최대 4시간 동안 새 파일과 옛 파일이 섞여 게임이 로딩에서 멈춘다. `private`이 있어야 덮어쓰지 않는다.
 게임은 목록표를 매번 서버에 확인(`cache: 'no-cache'`)하고, 목록표의 그림 주소에는 내용 해시(`?v=`)가 붙어 그림을 바꾸면 주소도 바뀐다.
 얼굴 그림(`front.webp`, `index.html`이 미리 받는다)과 음악은 버전이 없으므로 같은 이름으로 바꾸면 기존 브라우저 캐시가 최대 7일 남을 수 있다.
 
