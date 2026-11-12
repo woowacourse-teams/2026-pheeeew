@@ -6,7 +6,8 @@ import { JellyRig } from './jelly.js';
 import { traceTerrain, sketch } from './terrain.js';
 import { createUI, TINT } from './ui.js';
 import { createFx } from './fx.js';
-import { sfx, unlock, toggleMute } from './sfx.js';
+import { sfx, unlock, toggleMute, isMuted, audioCtx } from './sfx.js';
+import { createBgm, CREDITS } from './bgm.js';
 import { createNet } from './net.js';
 import { createGhosts } from './ghosts.js';
 import * as admin from './admin.js';
@@ -25,7 +26,8 @@ const INFO = {
   angry: { name: '분노', ability: '금방 화르르 타올라요', fall: '으아아악!!' },
 };
 const FONT = 'Jua, "Apple SD Gothic Neo", sans-serif';
-const ui = createUI({ ids: IDS, info: INFO, zones: ZONES, goal: ZONES.at(-1).to });
+const ui = createUI({ ids: IDS, info: INFO, zones: ZONES, goal: ZONES.at(-1).to, credits: CREDITS });
+const bgm = createBgm({ getCtx: audioCtx, muted: isMuted, zones: ZONES }); // 첫 키 입력·클릭(unlock) 뒤에 시작
 await document.fonts.load('20px Jua'); // 캔버스 글자(말풍선)도 같은 글꼴로 그리려면 먼저 불러와야 한다
 const INK = 0x2a2420;
 const app = new Application();
@@ -444,13 +446,17 @@ function showSelect() {
 const go = () => (saved ? begin(saved.id, saved) : showSelect());
 function showTitle() {
   mode = 'title';
-  ui.title(saved, go, () => { forget(); showSelect(); });
+  ui.title(saved, go, () => { forget(); showSelect(); }, showCredits);
   ui.guest(guest, rename);
   showBoards();
 }
 async function showBoards() {
   const [today, all] = await Promise.all([net.ranking('today'), net.ranking('all')]);
   if (mode === 'title') ui.boards(today.status === 200 ? today.body.top : null, all.status === 200 ? all.body.top : null, guest?.tag);
+}
+function showCredits() {
+  mode = 'credits';
+  ui.credits(() => { ui.closeCredits(); mode = 'title'; });
 }
 function askRestart() {
   mode = 'confirm';
@@ -549,7 +555,12 @@ addEventListener('keydown', (e) => {
   const k = e.code;
   unlock(); // 브라우저는 첫 키 입력 뒤에야 소리를 낸다
   if (k === 'KeyM') { const off = toggleMute(); if (mode === 'play') { say(off ? '소리 끔' : '소리 켬'); quipT = 1.2; } return; }
+  if (k === 'KeyB') { const off = bgm.toggle(); if (mode === 'play') { say(off ? '음악 끔' : '음악 켬'); quipT = 1.2; } return; }
   if (['Space', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(k)) e.preventDefault();
+  if (mode === 'credits') {
+    if (k === 'Escape' || k === 'Enter') { ui.closeCredits(); mode = 'title'; }
+    return;
+  }
   if (mode === 'title') {
     if (k === 'Enter' || k === 'Space') go();
     if (k === 'KeyN' && saved) { forget(); showSelect(); }
@@ -616,6 +627,8 @@ if (ADMIN) app.canvas.addEventListener('pointerdown', (e) => { // UI 버튼 위�
   if (at) teleport(admin.placeAt(level, P, at.x, at.y));
 });
 
+addEventListener('pointerdown', unlock); // 버튼을 눌러 시작해도 소리가 나게
+document.addEventListener('visibilitychange', () => bgm.hidden(document.hidden));
 addEventListener('blur', () => { keys.left = keys.right = keys.jump = false; });
 
 function tick() {
@@ -740,7 +753,10 @@ function frame(dt) {
     ui.adminInfo(`높이 ${Math.round(h)}칸 · 화면 ${Math.floor(Math.max(0, h) / SCREEN) + 1} · ${z + 1}구간 ${ZONES[z].name} · 칸 (${Math.floor((p.x + P.w / 2) / TILE)}, ${Math.floor(h)})`);
   }
 }
-app.ticker.add((tk) => { if (!window.paused) frame(Math.min(0.1, tk.deltaMS / 1000)); }); // paused: 시험할 때 시간을 멈춘다
+app.ticker.add((tk) => {
+  if (!window.paused) frame(Math.min(0.1, tk.deltaMS / 1000)); // paused: 시험할 때 시간을 멈춘다
+  bgm.update({ screen: mode, h: hOf(p.y + P.h) });
+});
 
 saved = JSON.parse(localStorage.getItem(SAVE_KEY) ?? 'null');
 if (saved && !IDS.includes(saved.id)) saved = null;
@@ -759,4 +775,4 @@ if (me.status === 401) askNickname();
 else if (saved || guest) showTitle();
 else showSelect();
 
-if (DEBUG || ADMIN) window.game = { get p() { return p; }, admin: { teleport, key: adminKey, get back() { return back; } }, get rig() { return rig; }, app, render: () => app.render(), view, get camY() { return camY; }, P: () => P, yOf, keys, begin, frame, get stats() { return stats; } }; // 숨겨진 창에서도 frame(dt) 로 시간을 넘겨 시험한다
+if (DEBUG || ADMIN) window.game = { get p() { return p; }, admin: { teleport, key: adminKey, get back() { return back; } }, get rig() { return rig; }, app, render: () => app.render(), view, get camY() { return camY; }, P: () => P, yOf, keys, begin, frame, get stats() { return stats; }, bgm }; // 숨겨진 창에서도 frame(dt) 로 시간을 넘겨 시험한다

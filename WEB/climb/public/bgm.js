@@ -21,6 +21,17 @@ const LAG = 3; // 경계에서 이만큼(칸) 넘어가야 곡을 바꾼다
 const AHEAD = 6; // 다음 구간 경계까지 이만큼(칸) 남으면 다음 곡을 미리 받는다
 const KEY = 'pheeeew-climb-bgm';
 
+// 출처 표시(CC BY 4.0). 게임 안 "음악" 창과 CREDITS.md·README 에 같은 내용
+const BY = { name: 'CC BY 4.0', url: 'https://creativecommons.org/licenses/by/4.0/' };
+export const CREDITS = [
+  { where: '제목·고르기 화면', title: 'Clear Blue Sky', by: 'Alexander Nakarada', byUrl: 'https://creatorchords.com', src: 'https://creatorchords.com/music/clear-blue-sky/', license: BY, changes: '파일은 원본 그대로. 게임에서 음량을 맞추고, 앞뒤 무음을 건너뛰어 반복 재생' },
+  { where: '구간 1 뉴욕 빌딩 숲', title: 'Bending Air 78 BPM Loop', by: 'Josh Lim', credit: 'Music by Josh Lim', byUrl: 'https://www.joshjameslim.com', from: 'cozy cats - lofi beat loops to game to', src: 'https://joshjameslim.itch.io/cozy-cats-lofi-beat-loops-to-game-to', license: BY, changes: '웹용 AAC(192kbps)로 변환. 게임에서 음량을 맞추고, 앞뒤 무음을 건너뛰어 반복 재생' },
+  { where: '구간 3 구름 위 성', title: 'Tranquil Fields (Peaceful - Loop Ready)', by: 'Alexander Nakarada', byUrl: 'https://creatorchords.com', src: 'https://creatorchords.com/music/tranquil-fields-peaceful-loop-ready/', license: BY, changes: '파일은 원본 그대로. 게임에서 음량을 맞추고, 앞뒤 무음을 건너뛰어 반복 재생' },
+  { where: '구간 4 열기구 축제 하늘', title: 'With Me', by: 'Sabine Bloch x Fachhochschule Dortmund', from: 'OER Tracks', src: 'https://www.orca.nrw/oer/oer-erstellen/oer-tracks/', license: BY, changes: '웹용 AAC(192kbps)로 변환. 게임에서 음량을 맞추고, 끝 3초를 처음과 겹쳐 반복 재생' },
+  { where: '구간 5 로켓 발사대와 우주', title: 'Space Ambience', by: 'Alexander Nakarada', byUrl: 'https://creatorchords.com', src: 'https://creatorchords.com/music/space-ambience/', license: BY, changes: '파일은 원본 그대로. 게임에서 음량을 맞추고, 앞뒤 무음을 건너뛰고 끝 3초를 처음과 겹쳐 반복 재생' },
+  { where: '구간 6 달', title: 'Moon', by: 'Alexander Nakarada', byUrl: 'https://creatorchords.com', src: 'https://creatorchords.com/music/moon/', license: BY, changes: '파일은 원본 그대로. 게임에서 음량을 맞추고, 앞뒤 무음을 건너뛰고 끝 3초를 처음과 겹쳐 반복 재생' },
+];
+
 const zoneAt = (h, zones) => Math.max(0, zones.findIndex((z, i) => h < z.to || i === zones.length - 1));
 // 지금 구간(prev)에서 위아래로 LAG 칸 안이면 그대로 둔다
 export function zoneWithLag(h, zones, prev, lag = LAG) {

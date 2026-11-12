@@ -18,6 +18,7 @@ export function unlock() {
 }
 
 export const isMuted = () => muted;
+export const audioCtx = () => ctx; // 배경음악(bgm.js)도 같은 AudioContext 를 쓴다
 export function toggleMute() {
   muted = !muted;
   localStorage.setItem('pheeeew-climb-mute', muted ? '1' : '0');

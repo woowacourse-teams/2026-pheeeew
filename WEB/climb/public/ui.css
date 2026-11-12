@@ -118,3 +118,12 @@ input.nick:focus { box-shadow: 0 0 0 4px var(--accent); }
 .adminmap { padding: 10px 14px 14px; }
 .adminmap .head { display: flex; align-items: center; justify-content: space-between; font-size: 16px; color: var(--dim); margin-bottom: 8px; }
 .adminmap canvas { display: block; pointer-events: auto; cursor: crosshair; }
+
+/* 음악 출처 창. 제목 화면 왼쪽 위 작은 버튼으로 연다 */
+.music { position: absolute; left: 24px; top: 20px; }
+.credits { width: 720px; max-height: 640px; display: flex; flex-direction: column; }
+.credits .list { flex: 1; min-height: 0; overflow-y: auto; pointer-events: auto; text-align: left; font-size: 15px; line-height: 1.45; margin: 12px 0 18px; padding-right: 6px; }
+.credits .song { padding: 8px 0; border-top: 2px dashed var(--shade); }
+.credits .t { font-size: 19px; }
+.credits small, .credits .ch { color: var(--dim); }
+.credits a { color: var(--ink); pointer-events: auto; word-break: break-all; }

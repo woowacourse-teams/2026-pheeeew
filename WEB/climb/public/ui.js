@@ -17,7 +17,7 @@ const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(
 const row = (it, mine) => `<div class="r${it.tag === mine ? ' me' : ''}"><b>${it.rank}</b>${TINT[it.character] ? face(it.character, 'avatar mini') : '<div class="avatar mini"></div>'}<span class="n">${esc(it.nickname)}<small>#${esc(it.tag)}</small></span><span class="v">${it.finished ? `완주${it.time != null ? ` ${clock(it.time)}` : ''}` : `${it.best}칸`}</span></div>`;
 const STATUS = { connecting: '연결하는 중…', offline: '연결 끊김 · 혼자 오르는 중', replaced: '다른 창에서 오르는 중' };
 
-export function createUI({ ids, info, zones, goal }) {
+export function createUI({ ids, info, zones, goal, credits = [] }) {
   const root = document.getElementById('ui');
   const loading = document.getElementById('loading');
 
@@ -33,6 +33,7 @@ export function createUI({ ids, info, zones, goal }) {
       <button class="btn ghost" data-new><span class="key">N</span>처음부터</button>
     </div>
     <div class="boards" data-boards hidden>${['오늘', '역대'].map((n) => `<div class="card board"><div class="head">${n} 순위</div><div class="list"></div></div>`).join('')}</div>
+    <button class="btn ghost small music" data-credits>♪ 음악</button>
     <div class="guest" data-guest hidden><span data-guest-name></span><button class="btn ghost small" data-rename>닉네임 바꾸기</button></div>`;
 
   // ---- 감정이 고르기 ----
@@ -64,7 +65,7 @@ export function createUI({ ids, info, zones, goal }) {
     <div id="ranks" class="card" hidden><div class="head"><span data-ranks-head></span><span class="key">Tab</span></div><div class="list" data-ranks-list></div></div>
     <div id="toast" class="pill" hidden></div>
     <div id="tower"><div class="fill"></div>${zones.slice(0, -1).map((z) => `<div class="tick" style="bottom:${(z.to / goal) * 100}%"></div>`).join('')}<div class="others"></div><div class="best"></div><div class="me"></div></div>
-    <div class="keys"><span><span class="key">◀</span> <span class="key">▶</span> 걷기</span><span><span class="key">Space</span> 길게 눌러 모으고, 놓으면 점프</span><span><span class="key">N</span> 처음부터</span><span><span class="key">J</span> 움직임 비교</span><span><span class="key">G</span> 다른 사람</span><span><span class="key">M</span> 소리</span></div>`;
+    <div class="keys"><span><span class="key">◀</span> <span class="key">▶</span> 걷기</span><span><span class="key">Space</span> 길게 눌러 모으고, 놓으면 점프</span><span><span class="key">N</span> 처음부터</span><span><span class="key">J</span> 움직임 비교</span><span><span class="key">G</span> 다른 사람</span><span><span class="key">M</span> 소리</span><span><span class="key">B</span> 음악</span></div>`;
   const q = (sel) => hud.querySelector(sel);
   const parts = { face: q('[data-face]'), name: q('[data-name]'), h: q('[data-h]'), falls: q('[data-falls]'), time: q('[data-time]'), zoneNo: q('[data-zone-no]'), zone: q('[data-zone]'), fill: q('#tower .fill'), best: q('#tower .best'), me: q('#tower .me'), others: q('#tower .others'), keys: q('.keys'), ranks: q('#ranks'), ranksHead: q('[data-ranks-head]'), ranksList: q('[data-ranks-list]'), toast: q('#toast') };
   const shown = {}; // 바뀐 값만 다시 쓴다
@@ -89,14 +90,27 @@ export function createUI({ ids, info, zones, goal }) {
     <div class="row" style="justify-content:center"><button class="btn" data-ok><span class="key">Enter</span><span data-ok-label></span></button><button class="btn ghost" data-alt><span class="key">Esc</span><span data-alt-label></span></button></div></div>`;
   const nickInput = nick.querySelector('[data-input]');
 
-  root.append(hud, banner, select, title, modal, nick);
+  // ---- 음악 출처(CC BY 4.0) ----
+  const link = (url, text) => `<a href="${url}" target="_blank" rel="noopener">${esc(text ?? url)}</a>`;
+  const music = el('div', 'screen veil');
+  music.hidden = true;
+  music.innerHTML = `<div class="card modal credits"><div class="big">음악</div><div class="list">${credits.map((c) => `
+    <div class="song"><div class="t">“${esc(c.title)}” <small>${esc(c.where)}</small></div>
+    <div>${c.credit ? esc(c.credit) : `by ${esc(c.by)}`}${c.byUrl ? ` (${link(c.byUrl)})` : ''}</div>
+    ${c.from ? `<div>From “${esc(c.from)}”</div>` : ''}<div>${link(c.src)}</div>
+    <div>${link(c.license.url, `Licensed under ${c.license.name}`)}</div>
+    <div class="ch">변경: ${esc(c.changes)}</div></div>`).join('')}</div>
+    <div class="row" style="justify-content:center"><button class="btn" data-close><span class="key">Esc</span>닫기</button></div></div>`;
+
+  root.append(hud, banner, select, title, modal, nick, music);
 
   const api = {
     // 게임 화면과 같은 자리·배율로 맞춘다
     fit(x, y, s) { root.style.transform = `translate(${x}px, ${y}px) scale(${s})`; },
     loaded() { loading.hidden = true; },
     // saved 가 없으면(첫 등반) 이어하기 카드 없이 "오르기 시작"만
-    title(saved, onContinue, onNew) {
+    title(saved, onContinue, onNew, onCredits) {
+      title.querySelector('[data-credits]').onclick = onCredits;
       const resume = title.querySelector('[data-resume]');
       resume.hidden = title.querySelector('[data-new]').hidden = !saved;
       title.querySelector('[data-continue-label]').textContent = saved ? '이어서 오르기' : '오르기 시작';
@@ -153,6 +167,8 @@ export function createUI({ ids, info, zones, goal }) {
       modal.hidden = false;
     },
     closeConfirm() { modal.hidden = true; },
+    credits(onClose) { music.querySelector('[data-close]').onclick = onClose; music.hidden = false; },
+    closeCredits() { music.hidden = true; },
     // 제목 화면: 내 닉네임(없으면 숨김)과 오늘·역대 순위(못 불러오면 숨김)
     guest(g, onRename) {
       title.querySelector('[data-guest]').hidden = !g;
