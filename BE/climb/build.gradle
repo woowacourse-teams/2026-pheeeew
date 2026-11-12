@@ -33,6 +33,11 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
+// 본체(Spring Boot 플러그인)와 같이 매개변수 이름을 남긴다. @RequestParam 이 이름을 읽는다.
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs << '-parameters'
+}
+
 tasks.named('test') {
     useJUnitPlatform()
 }

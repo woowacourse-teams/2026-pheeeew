@@ -6,6 +6,7 @@ import com.pheeeew.climb.domain.ClimbErrorCode;
 import com.pheeeew.climb.infra.ClimbGuestRepository;
 import com.pheeeew.climb.infra.ClimbRunRepository;
 import com.pheeeew.climb.presentation.ClimbGuestCookieFilter;
+import com.pheeeew.climb.presentation.ClimbWebSocketHandler;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.Duration;
@@ -59,6 +60,12 @@ public class ClimbConfiguration {
     ClimbGuestService climbGuestService(ClimbGuestRepository guests, ClimbRunRepository runs,
             ClimbRankingService ranking, ClimbProperties properties) {
         return new ClimbGuestService(guests, runs, ranking, properties.guestCreatesPerHour());
+    }
+
+    @Bean
+    ClimbWebSocketHandler climbWebSocketHandler(ClimbRankingService ranking, ClimbRunRepository runs,
+            ClimbGuestService guests) {
+        return new ClimbWebSocketHandler(ranking, runs, guests);
     }
 
     /** /api/v1/climb/** 전용 체인. 본체 체인보다 먼저 보고, JWT 대신 손님 쿠키로 확인한다. */
