@@ -2,6 +2,7 @@ import { Application, Assets, Container, Graphics, Sprite, Text, Texture, Tiling
 import { TILE, COLS, DT, IDS, params, newPlayer, step } from './physics.js';
 import { level, DECOR, SIGNS, HEIGHT, START, SCREEN, ZONES, GOAL, MAP_VERSION, nods, winds, updateNods, NOD_STAND, HOT_STAND, yOf, hOf } from './level.js';
 import { JellyRig, PARTS } from './jelly.js';
+import { isDebugEnabled } from './debug.js';
 import { traceTerrain, sketch } from './terrain.js';
 import { createUI, TINT, FACE } from './ui.js';
 import { createFx } from './fx.js';
@@ -18,7 +19,7 @@ import * as admin from './admin.js';
 
 const W = COLS * TILE; // 1280
 const H = 720;
-const DEBUG = new URLSearchParams(location.search).has('debug');
+const DEBUG = isDebugEnabled(location);
 
 const INFO = {
   defeated: { name: '좌절이', ability: '쉽게 풀이 죽어요', fall: '역시 난 안 돼…' },
@@ -1040,7 +1041,7 @@ function frame(dt) {
   }
 }
 app.ticker.add((tk) => {
-  if (!window.paused) frame(Math.min(0.1, tk.deltaMS / 1000)); // paused: 시험할 때 시간을 멈춘다
+  if (!((DEBUG || ADMIN) && window.paused)) frame(Math.min(0.1, tk.deltaMS / 1000)); // paused: 시험할 때 시간을 멈춘다
   bgm.update({ screen: mode, h: hOf(p.y + P.h) });
 });
 
