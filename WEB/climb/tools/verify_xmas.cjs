@@ -1,6 +1,6 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const sharp=require('./.image-work/node_modules/sharp');
-const ROOT=path.resolve(__dirname,'..'),OUT=path.join(ROOT,'public/assets/xmas'),WORK=path.join(ROOT,'docs/codex/xmas_work');
+const ROOT=path.resolve(__dirname,'..'),OUT=path.join(ROOT,'assets_src/xmas'),WORK=path.join(ROOT,'docs/codex/xmas_work');
 const report=JSON.parse(fs.readFileSync(path.join(WORK,'validation.json')));
 const sizes={rock:[512,512],fabric:[512,512],trim:[512,128],bg:[1024,1536],arrow_sign:[512,512],nod:[480,200]};
 let checks=0;function check(test,msg){assert(test,msg);checks++}

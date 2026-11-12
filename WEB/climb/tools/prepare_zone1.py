@@ -11,7 +11,7 @@ from PIL import Image, ImageChops, ImageDraw, ImageFont, ImageStat, ImageOps
 
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / 'docs/codex'
-DEST = ROOT / 'public/assets/zone1'
+DEST = ROOT / 'assets_src/zone1'
 SOURCES = json.loads((DOCS / 'zone1_sources.json').read_text())
 LANCZOS = Image.Resampling.LANCZOS
 

@@ -53,7 +53,7 @@ export const bubbleX = (x, w, W, margin = 12) => Math.min(W - w / 2 - margin, Ma
 // 안 읽었으면 빛 무리를 깔고, 멀 때는 머리 위 느낌표 꼬리표, 가까우면 꼬리표 대신 카드
 export const signLook = (read, near) => ({ tag: !read && !near, glow: !read, card: near });
 
-// 표지판 종류(구간 파일 signs 의 kind) → 카드에 넣을 장치 그림(assets/<테마>/<이름>.png). 게임이 그 장치에 쓰는 그림 그대로
+// 표지판 종류(구간 파일 signs 의 kind) → 카드에 넣을 장치 그림(assets/<테마>/<이름>.webp). 게임이 그 장치에 쓰는 그림 그대로
 export const SIGN_ART = { slope: 'fabric', nod: 'nod', wind: 'flag', hot: 'hot', boost: 'boost' };
 
 // 표지판이 장식에 묻히지 않게 비워 둘 너비(칸, 좌우 각각)

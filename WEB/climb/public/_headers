@@ -2,22 +2,26 @@
   Cache-Control: public, max-age=604800
 
 /*.js
-  Cache-Control: public, max-age=300
+  Cache-Control: private, no-cache
 
 /*.mjs
-  Cache-Control: public, max-age=300
+  Cache-Control: private, no-cache
 
 /*.css
-  Cache-Control: public, max-age=300
+  Cache-Control: private, no-cache
 
 /index.html
-  Cache-Control: public, max-age=300
+  Cache-Control: private, no-cache
 
 /
-  Cache-Control: public, max-age=300
+  Cache-Control: private, no-cache
 
 /admin
-  Cache-Control: public, max-age=300
+  Cache-Control: private, no-cache
 
 /admin/
-  Cache-Control: public, max-age=300
+  Cache-Control: private, no-cache
+
+/assets/manifest.json
+  ! Cache-Control
+  Cache-Control: public, max-age=60

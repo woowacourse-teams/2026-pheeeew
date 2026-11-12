@@ -13,15 +13,15 @@ export const SCREEN = 18;
 export const MAP_VERSION = 'v1';
 // 구간 목록. 구간 파일이 자기 꼭대기 높이(top)를 정하고, 아래 구간이 길어지면 위 구간은 통째로 올라간다.
 // base = 그 파일이 "내 시작 바닥은 이 높이"라고 보고 쓴 높이(구간 2만 117, 나머지는 0).
-// art = 그림 폴더, old = 그 그림이 아직 없을 때 쓰는 폴더
+// art = 그림 폴더(public/assets/<art>)
 // cap = 윗면 전체를 덮는 띠(옥상 난간, 쌓인 눈), windows = 벽에 창문을 줄 맞춰 찍는다, snow = 눈이 내린다
 const FILES = [
-  { mod: zone1, base: 0, name: '뉴욕 빌딩 숲', art: 'nyc', old: 'zone1', cap: true, windows: true, farAlpha: 0.85, bgAt: 0.27 }, // farAlpha = 원경 건물의 진하기, bgAt = 구간을 시작할 때 화면 맨 위에 올 배경 그림의 세로 위치(0~1)
-  { mod: zone2, base: 117, name: '크리스마스 마을', art: 'xmas', old: 'zone2', cap: true, snow: true },
-  { mod: zone3, base: 0, name: '구름 위 성', art: 'castle', old: 'xmas', cap: true },
-  { mod: zone4, base: 0, name: '열기구 축제 하늘', art: 'balloon', old: 'xmas', cap: true },
-  { mod: zone5, base: 0, name: '로켓 발사대와 우주', art: 'space', old: 'nyc', cap: true },
-  { mod: zone6, base: 0, name: '달', art: 'moon', old: 'nyc', cap: true },
+  { mod: zone1, base: 0, name: '뉴욕 빌딩 숲', art: 'nyc', cap: true, windows: true, farAlpha: 0.85, bgAt: 0.27 }, // farAlpha = 원경 건물의 진하기, bgAt = 구간을 시작할 때 화면 맨 위에 올 배경 그림의 세로 위치(0~1)
+  { mod: zone2, base: 117, name: '크리스마스 마을', art: 'xmas', cap: true, snow: true },
+  { mod: zone3, base: 0, name: '구름 위 성', art: 'castle', cap: true },
+  { mod: zone4, base: 0, name: '열기구 축제 하늘', art: 'balloon', cap: true },
+  { mod: zone5, base: 0, name: '로켓 발사대와 우주', art: 'space', cap: true },
+  { mod: zone6, base: 0, name: '달', art: 'moon', cap: true },
 ];
 // to = 이 높이에 서면 그 구간 완료.
 export const ZONES = [];

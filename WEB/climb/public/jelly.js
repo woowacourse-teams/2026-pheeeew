@@ -3,13 +3,34 @@
 //  1. 머리 끝이 몸을 늦게 따라온다(용수철). 멈추면 출렁이고, 착지하면 저절로 눌렸다 튄다.
 //  2. 눌리면 옆으로 퍼지고 늘어나면 가늘어진다(부피 유지).
 //  3. 발은 땅의 한 자리를 딛고 있다가, 몸이 멀어지면 한 걸음 옮긴다.
-// 그림은 기존 부위 PNG 그대로다(1024 캔버스, 발 기준점 512,900). 표정은 바뀌지 않는다.
+// 그림은 부위 그림 그대로다(1024 캔버스 좌표, 발 기준점 512,900). 표정은 바뀌지 않는다.
 import { Container, MeshPlane, Sprite } from '/vendor/pixi.mjs';
-import { bounds } from './rig.js';
+
+// 감정이 부위 그림 9장(assets/characters/<감정이>/<이름>.webp)
+export const PARTS = ['front_body', 'front_hand_l', 'front_hand_r', 'front_foot_l', 'front_foot_r', 'side_body', 'side_hand', 'side_foot_near', 'side_foot_far'];
 
 const BASE_X = 512;
 const BASE_Y = 900;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+// 투명 그림에서 실제 그림이 있는 영역(1024 좌표). 부위를 제자리에서 돌리고 늘리는 기준점이 된다.
+function bounds(texture) {
+  const S = 256;
+  const k = 1024 / S;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = S;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(texture.source.resource, 0, 0, S, S);
+  const { data } = ctx.getImageData(0, 0, S, S);
+  let x0 = S, y0 = S, x1 = -1, y1 = -1;
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) if (data[(y * S + x) * 4 + 3] > 24) {
+    if (x < x0) x0 = x;
+    if (x > x1) x1 = x;
+    if (y < y0) y0 = y;
+    if (y > y1) y1 = y;
+  }
+  return { cx: ((x0 + x1 + 1) / 2) * k, cy: ((y0 + y1 + 1) / 2) * k, bottom: (y1 + 1) * k, width: (x1 - x0 + 1) * k };
+}
 
 // 용수철: x 가 target 을 따라가되 지나쳤다가 돌아온다
 class Spring {
@@ -78,8 +99,6 @@ export class JellyRig {
     this.prevVx = 0;
     this.prevVy = 0;
     this.squeeze = new Spring(380, 20); // 벽에 부딪혀 가로로 눌린 정도
-    this.landT = 0; // 예전 리그와 같은 자리(쓰지 않는다)
-    this.wallT = 0;
   }
 
   // st: { ground, charging, charge(0~1), splat, vx, vy, facing, walking }
