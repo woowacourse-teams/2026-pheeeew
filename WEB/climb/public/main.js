@@ -17,8 +17,6 @@ import * as admin from './admin.js';
 const W = COLS * TILE; // 1280
 const H = 720;
 const DEBUG = new URLSearchParams(location.search).has('debug');
-const ADMIN = new URLSearchParams(location.search).has('admin'); // 관리자 모드: 아무 곳으로나 옮겨 다니며 구간을 해 본다. 서버에는 아무것도 보내지 않는다
-const SAVE_KEY = ADMIN ? 'pheeeew-climb-admin' : DEBUG ? 'pheeeew-climb-debug' : 'pheeeew-climb-v1'; // 시험 화면은 실제 저장을 건드리지 않는다
 
 const INFO = {
   defeated: { name: '좌절이', ability: '쉽게 풀이 죽어요', fall: '역시 난 안 돼…' },
@@ -47,6 +45,19 @@ function fit() {
 }
 app.renderer.on('resize', fit);
 fit();
+
+// 관리자 모드(/admin): 아무 곳으로나 옮겨 다니며 구간을 해 본다. 서버에는 아무것도 보고하지 않는다.
+// 서버가 키를 확인해 준 뒤에만 켠다. 관리자가 아니면 키 창만 보이고 게임을 시작하지 않는다(취소하면 / 로)
+const adminApi = admin.adminSession();
+const ADMIN = admin.isAdminPath(location.pathname) && await admin.enterAdmin(adminApi, (message, submit) => {
+  ui.nickname({ heading: '관리자 키', hint: '서버에 정해 둔 관리자 키를 넣어 주세요', ok: '들어가기', alt: '취소', secret: true }, async (key) => {
+    const err = await submit(key);
+    if (err) ui.nicknameError(err);
+    else ui.closeNickname();
+  }, () => location.assign('/'));
+  if (message) ui.nicknameError(message);
+});
+const SAVE_KEY = ADMIN ? 'pheeeew-climb-admin' : DEBUG ? 'pheeeew-climb-debug' : 'pheeeew-climb-v1'; // 시험 화면은 실제 저장을 건드리지 않는다
 
 const tex = {};
 for (const id of IDS) {
@@ -715,7 +726,7 @@ function adminKey(k) {
   if (k === 'Backspace' || k === 'KeyR') { const b = back.back; teleport(b); return true; } // 옮긴 뒤 가만히 서 있으면 그 자리를 다시 기억해 몇 번이고 되풀이한다
   return false;
 }
-const mini = ADMIN ? ui.adminPanel(admin.MINI, (mx, my) => {
+const mini = ADMIN ? ui.adminPanel(admin.MINI, async () => { await adminApi.close(); location.assign('/'); }, (mx, my) => {
   const at = admin.fromMini(mx, my);
   if (!at) return;
   teleport(admin.placeAt(level, P, at.x, at.y));

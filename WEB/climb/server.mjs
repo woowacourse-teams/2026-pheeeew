@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), 'public');
 const PORT = Number(process.env.PORT ?? 4320);
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.png': 'image/png', '.json': 'application/json', '.ttf': 'font/ttf', '.css': 'text/css; charset=utf-8' };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.png': 'image/png', '.json': 'application/json', '.ttf': 'font/ttf', '.css': 'text/css; charset=utf-8', '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4' };
 
 const BACKEND = new URL(process.env.CLIMB_BACKEND ?? 'http://127.0.0.1:8080');
 const API = '/api/v1/climb';
@@ -29,7 +29,7 @@ const server = http.createServer((req, res) => {
     return;
   }
   const p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
-  const file = path.join(ROOT, p === '/' ? 'index.html' : p);
+  const file = path.join(ROOT, ['/', '/admin', '/admin/'].includes(p) ? 'index.html' : p); // /admin 은 관리자 키 창부터 띄운다
   if (!file.startsWith(ROOT)) { res.writeHead(403).end(); return; }
   fs.readFile(file, (err, data) => {
     if (err) { res.writeHead(404).end('not found'); return; }

@@ -85,8 +85,8 @@ export function createUI({ ids, info, zones, goal, credits = [] }) {
   // ---- 닉네임 창 ----
   const nick = el('div', 'screen veil');
   nick.hidden = true;
-  nick.innerHTML = `<div class="card modal"><div class="big" data-title></div><div class="small">순위표에 나오는 이름이에요. 2~10자, 한글·영문·숫자</div>
-    <input class="nick" data-input maxlength="10" autocomplete="off" spellcheck="false"><div class="err" data-err></div>
+  nick.innerHTML = `<div class="card modal"><div class="big" data-title></div><div class="small" data-hint></div>
+    <input class="nick" data-input autocomplete="off" spellcheck="false"><div class="err" data-err></div>
     <div class="row" style="justify-content:center"><button class="btn" data-ok><span class="key">Enter</span><span data-ok-label></span></button><button class="btn ghost" data-alt><span class="key">Esc</span><span data-alt-label></span></button></div></div>`;
   const nickInput = nick.querySelector('[data-input]');
 
@@ -182,14 +182,17 @@ export function createUI({ ids, info, zones, goal, credits = [] }) {
         box.children[i].querySelector('.list').innerHTML = !top ? '<div class="none">불러오지 못했어요</div>' : top.length ? top.slice(0, 5).map((it) => row(it, mine)).join('') : '<div class="none">아직 아무도 없어요</div>';
       });
     },
-    // 닉네임 창. onOk(이름), onAlt() 는 main 이 정한다
-    nickname({ heading, value = '', ok, alt }, onOk, onAlt) {
+    // 닉네임 창. onOk(이름), onAlt() 는 main 이 정한다. secret 이면 비밀번호 입력란(관리자 키 창)
+    nickname({ heading, value = '', ok, alt, hint = '순위표에 나오는 이름이에요. 2~10자, 한글·영문·숫자', secret = false }, onOk, onAlt) {
       nick.querySelector('[data-title]').textContent = heading;
+      nick.querySelector('[data-hint]').textContent = hint;
+      nickInput.type = secret ? 'password' : 'text';
+      nickInput.maxLength = secret ? 200 : 10;
       nick.querySelector('[data-ok-label]').textContent = ok;
       nick.querySelector('[data-alt-label]').textContent = alt;
       nick.querySelector('[data-err]').textContent = '';
       nickInput.value = value;
-      const submit = () => onOk(nickInput.value.trim());
+      const submit = () => onOk(secret ? nickInput.value : nickInput.value.trim());
       nick.querySelector('[data-ok]').onclick = submit;
       nick.querySelector('[data-alt]').onclick = onAlt;
       nickInput.onkeydown = (e) => {
@@ -224,10 +227,11 @@ export function createUI({ ids, info, zones, goal, credits = [] }) {
     },
     foldRanks() { parts.ranks.classList.toggle('folded'); },
     // 다른 사람의 구간 통과·완주: 화면 위에 잠깐 한 줄
-    // 관리자 모드(?admin): 오른쪽 아래 정보 표시와 키 안내, V 전체 지도. onPick(지도 위 x, y) 는 main 이 정한다
-    adminPanel(mini, onPick) {
-      const info = el('div', 'card', '<b>관리자 모드</b><span data-admin-info></span><div class="keys"><span><span class="key">클릭</span> 그 자리로</span><span><span class="key">PgUp</span><span class="key">PgDn</span> 한 화면</span><span><span class="key">1</span>~<span class="key">6</span> 구간</span><span><span class="key">⌫</span> 되돌리기</span><span><span class="key">V</span> 지도</span></div>');
+    // 관리자 모드(/admin): 오른쪽 아래 정보 표시와 키 안내, 나가기, V 전체 지도. onLeave(), onPick(지도 위 x, y) 는 main 이 정한다
+    adminPanel(mini, onLeave, onPick) {
+      const info = el('div', 'card', '<b>관리자 모드</b><span data-admin-info></span><button class="btn ghost small" data-leave>나가기</button><div class="keys"><span><span class="key">클릭</span> 그 자리로</span><span><span class="key">PgUp</span><span class="key">PgDn</span> 한 화면</span><span><span class="key">1</span>~<span class="key">6</span> 구간</span><span><span class="key">⌫</span> 되돌리기</span><span><span class="key">V</span> 지도</span></div>');
       info.id = 'admin';
+      info.querySelector('[data-leave]').onclick = onLeave;
       hud.append(info);
       api.adminText = info.querySelector('[data-admin-info]');
       const map = el('div', 'screen veil', `<div class="card adminmap"><div class="head">전체 지도 · 누르면 그 자리로 <span class="key">V</span></div><canvas width="${mini.w}" height="${mini.h}"></canvas></div>`);

@@ -1,6 +1,7 @@
-// public/admin.js 시험. 화면 없이 관리자 모드의 좌표 계산과 자리 찾기만 확인한다(맵은 실제 level.js).
+// public/admin.js 시험. 화면 없이 관리자 모드의 좌표 계산과 자리 찾기, 관리자 진입 흐름(가짜 fetch)을 확인한다(맵은 실제 level.js).
 // 사용: node tools/admin_test.mjs
-import { toMap, placeAt, ledgeNear, screenJump, zoneStart, track, newTrack, MINI, fromMini } from '../public/admin.js';
+import fs from 'node:fs';
+import { toMap, placeAt, ledgeNear, screenJump, zoneStart, track, newTrack, MINI, fromMini, isAdminPath, adminSession, enterAdmin } from '../public/admin.js';
 import { TILE, params, hits, newPlayer } from '../public/physics.js';
 import { level, ZONES, START, SCREEN, HEIGHT, yOf, hOf } from '../public/level.js';
 
@@ -123,9 +124,82 @@ test('되돌리기: 엎어져 있거나 미끄러지는 자리는 기억하지 �
   eq(t.back, { x: 100, y: 500 }, '엎어지기 전 자리');
 });
 
+// ---- 관리자 진입: 서버가 키를 확인한다 ----
+// replies 의 상태 코드를 차례로 돌려주는 가짜 fetch. Error 를 넣으면 서버에 닿지 않은 것처럼 던진다.
+const fakeFetch = (replies) => {
+  const f = async (url, init = {}) => {
+    f.calls.push({ url, ...init });
+    const r = replies.shift();
+    if (r instanceof Error) throw r;
+    return { status: r };
+  };
+  f.calls = [];
+  return f;
+};
+const settle = () => new Promise((r) => setTimeout(r, 0));
+const OFF = '관리자 기능이 꺼져 있어요';
+
+test('/admin 과 /admin/ 경로에서만 관리자 진입을 시도한다', () => {
+  ok(isAdminPath('/admin') && isAdminPath('/admin/'), '/admin');
+  for (const p of ['/', '/index.html', '/administrator', '/admin/x', '/x/admin']) ok(!isAdminPath(p), p);
+});
+
+test('?admin 은 더는 관리자 모드를 켜지 않는다', () => {
+  ok(!isAdminPath(new URL('http://127.0.0.1:4320/?admin').pathname), '주소의 ?admin');
+  const main = fs.readFileSync(new URL('../public/main.js', import.meta.url), 'utf8');
+  ok(!main.includes("has('admin')"), 'main.js 가 아직 ?admin 을 읽는다');
+});
+
+test('세션 확인·키 보내기·나가기: 같은 주소에 GET·POST·DELETE, 키는 본문으로만', async () => {
+  const f = fakeFetch([204, 204, 204]);
+  const s = adminSession({ fetch: f, api: '/api/v1/climb' });
+  eq([await s.check(), await s.open('k3y?&x'), await s.close()], [204, 204, 204], '상태');
+  eq(f.calls.map((c) => [c.method, c.url]), [['GET', '/api/v1/climb/admin/session'], ['POST', '/api/v1/climb/admin/session'], ['DELETE', '/api/v1/climb/admin/session']], '요청');
+  eq(JSON.parse(f.calls[1].body), { key: 'k3y?&x' }, '본문');
+  ok(f.calls.every((c) => !c.url.includes('k3y') && c.credentials === 'include'), '주소에 키가 없고 쿠키를 싣는다');
+});
+
+test('서버에 닿지 않으면 상태 0', async () => {
+  eq(await adminSession({ fetch: fakeFetch([new Error('down')]) }).check(), 0, '상태');
+});
+
+test('관리자 세션이 이미 있으면 키 창 없이 바로 관리자 모드', async () => {
+  let asked = false;
+  eq(await enterAdmin(adminSession({ fetch: fakeFetch([204]) }), () => { asked = true; }), true, '결과');
+  ok(!asked, '키 창을 띄웠다');
+});
+
+test('세션이 없으면 키 창: 결과별 문구를 보이고 키가 맞을 때만 관리자 모드가 된다', async () => {
+  const f = fakeFetch([401, 401, 429, new Error('down'), 404, 204]);
+  let first;
+  let submit;
+  let entered = false;
+  enterAdmin(adminSession({ fetch: f }), (message, fn) => { first = message; submit = fn; }).then((v) => { entered = v; });
+  await settle();
+  eq(first, '', '처음 문구');
+  eq(await submit('a'), '키가 맞지 않아요', '401');
+  eq(await submit('b'), '잠시 뒤에 다시 해 주세요', '429');
+  eq(await submit('c'), OFF, '닿지 않음');
+  eq(await submit('d'), OFF, '404');
+  await settle();
+  ok(!entered, '틀린 키로 관리자 모드가 켜졌다');
+  eq(await submit('e'), null, '204');
+  await settle();
+  eq(entered, true, '맞는 키');
+});
+
+test('관리자 기능이 꺼져 있거나 서버에 닿지 않으면 키 창에 그 문구를 먼저 보인다', async () => {
+  for (const r of [404, 502, new Error('down')]) {
+    let first;
+    enterAdmin(adminSession({ fetch: fakeFetch([r]) }), (message) => { first = message; });
+    await settle();
+    eq(first, OFF, String(r));
+  }
+});
+
 let fail = 0;
 for (const { name, fn } of tests) {
-  try { fn(); console.log(`ok   ${name}`); } catch (e) { fail++; console.log(`FAIL ${name}\n     ${e.message}`); }
+  try { await fn(); console.log(`ok   ${name}`); } catch (e) { fail++; console.log(`FAIL ${name}\n     ${e.message}`); }
 }
 console.log(fail ? `${fail}개 실패` : `${tests.length}개 모두 통과`);
 process.exit(fail ? 1 : 0);

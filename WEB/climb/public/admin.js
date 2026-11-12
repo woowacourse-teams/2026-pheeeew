@@ -1,4 +1,4 @@
-// 관리자 모드(?admin)의 계산. 화면과 떨어진 순수 함수라 Node 에서 시험한다(tools/admin_test.mjs).
+// 관리자 모드(/admin)의 진입과 계산. 화면과 떨어진 순수 함수라 Node 에서 시험한다(tools/admin_test.mjs).
 // 자리(box)는 늘 충돌 상자의 왼쪽 위 { x, y } (px) 이다.
 import { TILE, COLS, hits } from './physics.js';
 import { ZONES, START, SCREEN, HEIGHT, yOf, hOf } from './level.js';
@@ -118,4 +118,43 @@ export function drawMini(ctx, level, zones, x, feetY) {
   ctx.arc(k * stride + (x / TILE) * cell, MINI.h - (h - k * rows) * cell, 6, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
+}
+
+// ---- 관리자 진입: 키는 서버(PHEEEEW_CLIMB_ADMIN_KEY)만 안다 ----
+export const isAdminPath = (pathname) => pathname === '/admin' || pathname === '/admin/';
+
+// 관리자 세션 요청. 상태 코드만 돌려준다(닿지 않으면 0). 키는 본문으로만 보낸다
+export function adminSession({ fetch = (...a) => globalThis.fetch(...a), api = globalThis.CLIMB_API ?? '/api/v1/climb' } = {}) {
+  const call = async (method, body) => {
+    try {
+      const res = await fetch(`${api}/admin/session`, {
+        method,
+        credentials: 'include', // 관리자 쿠키는 HttpOnly 라 스크립트가 읽지 않는다
+        headers: body ? { 'Content-Type': 'application/json' } : undefined,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      return res.status;
+    } catch {
+      return 0;
+    }
+  };
+  return { check: () => call('GET'), open: (key) => call('POST', { key }), close: () => call('DELETE') };
+}
+
+const OFF = '관리자 기능이 꺼져 있어요';
+const keyMessage = (status) => (status === 401 ? '키가 맞지 않아요' : status === 429 ? '잠시 뒤에 다시 해 주세요' : OFF);
+
+// 세션이 있으면 바로 true. 없으면 ask(처음 문구, submit) 로 키 창을 띄운다.
+// submit(key) 은 틀린 까닭(문구)을, 맞으면 null 을 돌려준다. 키가 맞을 때까지 끝나지 않는다(그동안 게임을 시작하지 않는다)
+export async function enterAdmin(session, ask) {
+  const status = await session.check();
+  if (status === 204) return true;
+  return new Promise((done) => {
+    ask(status === 401 ? '' : OFF, async (key) => {
+      const r = await session.open(key);
+      if (r !== 204) return keyMessage(r);
+      done(true);
+      return null;
+    });
+  });
 }
