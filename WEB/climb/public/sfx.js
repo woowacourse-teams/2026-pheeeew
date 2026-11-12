@@ -4,6 +4,7 @@ let ctx = null;
 let master = null;
 let muted = localStorage.getItem('pheeeew-climb-mute') === '1';
 let hum = null; // 힘을 모으는 동안 이어지는 소리
+const VOLUME = 0.4; // 효과음 전체 음량(음소거를 풀면 이 값으로 돌아간다)
 
 export function unlock() {
   if (!ctx) {
@@ -11,7 +12,7 @@ export function unlock() {
     if (!AC) return;
     ctx = new AC();
     master = ctx.createGain();
-    master.gain.value = muted ? 0 : 0.5;
+    master.gain.value = muted ? 0 : VOLUME;
     master.connect(ctx.destination);
   }
   if (ctx.state === 'suspended') ctx.resume();
@@ -22,7 +23,7 @@ export const audioCtx = () => ctx; // 배경음악(bgm.js)도 같은 AudioContex
 export function toggleMute() {
   muted = !muted;
   localStorage.setItem('pheeeew-climb-mute', muted ? '1' : '0');
-  if (master) master.gain.value = muted ? 0 : 0.5;
+  if (master) master.gain.value = muted ? 0 : VOLUME;
   return muted;
 }
 

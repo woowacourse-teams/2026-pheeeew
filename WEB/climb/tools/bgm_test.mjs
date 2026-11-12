@@ -1,6 +1,6 @@
 // public/bgm.js 시험. 소리는 내지 않는다: 곡 고르기와 반복 구간은 순수 함수로, 재생은 가짜 AudioContext 로 확인한다.
 // 사용: node tools/bgm_test.mjs
-import { zoneWithLag, pickTrack, loopPoints, createBgm, TRACKS, ZONE_TRACKS } from '../public/bgm.js';
+import { zoneWithLag, pickTrack, loopPoints, createBgm, TRACKS, ZONE_TRACKS, VOLUME } from '../public/bgm.js';
 
 const tests = [];
 const test = (name, fn) => tests.push({ name, fn });
@@ -117,7 +117,7 @@ test('음소거(M)이거나 배경음악 끔(B)이면 배경음악 전체 음량
   const store = {};
   const bgm = createBgm({ getCtx: () => ctx, load: okLoad, muted: () => muted, zones: ZONES, storage: { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } } });
   bgm.update({ screen: 'title', h: 0 });
-  eq(bgm.debug().bus.gain.value, 0.35, '기본 음량');
+  eq(bgm.debug().bus.gain.value, VOLUME, '기본 음량');
   muted = true;
   bgm.update({ screen: 'title', h: 0 });
   eq(bgm.debug().bus.gain.value, 0, '음소거');
@@ -128,7 +128,7 @@ test('음소거(M)이거나 배경음악 끔(B)이면 배경음악 전체 음량
   eq(store['pheeeew-climb-bgm'], 'off', '저장');
   eq(bgm.toggle(), false, '다시 켬');
   bgm.update({ screen: 'title', h: 0 });
-  eq(bgm.debug().bus.gain.value, 0.35, '다시 켜짐');
+  eq(bgm.debug().bus.gain.value, VOLUME, '다시 켜짐');
 });
 
 test('파일을 못 받거나 디코딩에 실패해도 예외 없이 조용하다', async () => {

@@ -15,7 +15,7 @@ export const TRACKS = {
 };
 // 구간 순서대로. null = 아직 곡이 없음(효과음만). 구간 2 크리스마스 곡이 정해지면 TRACKS 에 넣고 여기 이름을 쓴다.
 export const ZONE_TRACKS = ['nyc', null, 'castle', 'balloon', 'space', 'moon'];
-export const VOLUME = 0.35; // 배경음악 전체 음량(효과음보다 작게)
+export const VOLUME = 0.55; // 배경음악 전체 음량. 효과음 전체 음량은 sfx.js 의 VOLUME
 const FADE = 2; // 곡이 바뀔 때 넘기는 시간(초)
 const LAG = 3; // 경계에서 이만큼(칸) 넘어가야 곡을 바꾼다
 const AHEAD = 6; // 다음 구간 경계까지 이만큼(칸) 남으면 다음 곡을 미리 받는다
