@@ -16,6 +16,7 @@
 | `pheeeew.climb.presence.enabled` | `true` | 함께 오르기만 끈다. 꺼지면 `st` 를 무시하고 `sts`·`in`·`out` 을 보내지 않는다. 순위는 그대로다. |
 | `pheeeew.climb.presence.range` | `30` | 내 높이 위아래 이 칸 수 안의 사람만 보인다. |
 | `pheeeew.climb.presence.limit` | `20` | 한 사람이 받는 최대 인원(가까운 순서). |
+| `pheeeew.climb.admin-key` | 빈 값(환경 변수 `PHEEEEW_CLIMB_ADMIN_KEY`) | 관리자 키. 비어 있으면 관리자 기능이 꺼지고 관리자 끝점이 모두 `404` 다. 값은 환경 변수로만 넣는다. |
 
 `maps` 에 없는 맵 버전은 연결은 되지만 순위에 넣지 않는다.
 
@@ -24,6 +25,11 @@
 `climb_guest`: 무작위 32바이트(base64url). `HttpOnly; Secure; SameSite=Lax; Path=/api/v1/climb; Max-Age=15552000`(180일).
 쿠키가 확인될 때마다 응답에 같은 쿠키를 다시 내려 수명을 늘린다. DB 에는 SHA-256 해시만 둔다.
 브라우저는 `fetch(url, { credentials: 'include' })` 로 부른다.
+
+## 관리자 쿠키
+
+`climb_admin`: 관리자 키가 맞을 때 서버가 만든 무작위 32바이트(base64url). `HttpOnly; Secure; SameSite=Lax; Path=/api/v1/climb; Max-Age=28800`(8시간).
+손님 쿠키와 별개다. 세션은 서버 메모리에만 두어 서버가 다시 뜨면 사라진다(다시 키를 넣는다). 키와 토큰은 로그에 남기지 않는다.
 
 ## HTTP
 
@@ -35,6 +41,12 @@
 | `GET /api/v1/climb/me` | `{ "id", "nickname", "tag", "run" }`. `run` 은 가장 최근의 완주하지 않은 등반 `{ map, character, height, best, x, falls, time }` 또는 `null`. 쿠키 없음·무효 `401 UNAUTHORIZED` |
 | `PATCH /api/v1/climb/me` `{ "nickname" }` | `{ "id", "nickname", "tag" }`. 하루(한국 시간) 3번, 넘으면 `429 NICKNAME_CHANGE_LIMITED` |
 | `GET /api/v1/climb/ranking?board=online\|today\|all&map=v1` | `{ "top": [순위 항목], "me": { "rank", "best" } \| null, "online" }`. 쿠키가 없으면 `me` 는 `null`. 잘못된 `board` 는 `400 INVALID_BOARD` |
+
+| `POST /api/v1/climb/admin/session` `{ "key": "..." }` | 맞으면 `204` + 관리자 쿠키. 틀리면 `401 ADMIN_KEY_MISMATCH`. 틀린 시도가 IP당 1분에 5번을 넘으면(6번째부터, 맞는 키도) `429 ADMIN_ATTEMPTS_LIMITED`. 키는 본문으로만 받고 해시끼리 `MessageDigest.isEqual` 로 비교한다 |
+| `GET /api/v1/climb/admin/session` | 유효한 관리자 쿠키면 `204`, 아니면 `401 ADMIN_UNAUTHORIZED` |
+| `DELETE /api/v1/climb/admin/session` | 세션을 끝내고 쿠키를 지운다(`Max-Age=0`). `204` |
+
+관리자 끝점 셋은 관리자 키가 비어 있으면 모두 `404 ADMIN_DISABLED` 다. 손님 쿠키는 필요 없다.
 
 순위 항목: `{ "rank", "tag", "nickname", "character", "best", "finished", "time" }`. `time` 은 완주 시간(초), 완주 전이면 `null`.
 
@@ -79,6 +91,10 @@
 | `HELLO_REQUIRED`, `UNSUPPORTED_VERSION`, `INVALID_MESSAGE` | 1008 | 메시지를 고친다. |
 
 서버는 15초마다 Ping 을 보낸다(브라우저가 자동으로 Pong 한다). 끊겨도 게임은 계속하고, 다시 연결하면 `hello` 부터 한다.
+
+핸드셰이크에 유효한 `climb_admin` 쿠키가 있으면 관리자 연결이다(손님 쿠키도 필요하다). 등반을 만들지 않아서 `pos`·`zone`·`finish`·`restart` 는
+오류 없이 버리고(`welcome` 의 `run` 은 `null`), 기록·순위·`event` 에 넣지 않는다. `st` 는 받아 두지만 다른 사람에게 보내지 않는다.
+연결은 그대로 두고 `rank`(`me` 는 `null`)와 가까운 사람의 `in`·`sts`·`out` 은 받는다. 게임도 관리자 모드에서는 보고하지 않는다(이중 장치).
 
 ## 함께 오르기
 
@@ -127,3 +143,18 @@
 `climb_guest`, `climb_run` 두 테이블(`V20261112_90__create_climb_tables.sql`). 기능이 꺼져 있어도 마이그레이션은 돈다.
 등반은 손님당 10초에 한 번, 그리고 구간 통과·완주·처음부터 다시·연결 종료·배포 종료 때 쓴다.
 순위표는 서버 메모리에 두고 서버가 뜰 때 DB 에서 채운다(서버 1대 기준). 180일 동안 접속하지 않은 손님과 기록은 하루 한 번 지운다.
+
+## 관리자 키 넣기
+
+로컬: `BE/.env`(저장소가 무시한다)에 `PHEEEEW_CLIMB_ADMIN_KEY=<키>` 를 한 줄 넣고 `BE` 에서 `./gradlew bootRun` 한다.
+`bootRun` 은 개발 전용 의존성 `springboot4-dotenv` 가 작업 폴더의 `.env` 를 읽는다(`JWT_*` 와 같은 방식). 셸 환경 변수로 넘겨도 된다.
+형식은 `BE/.env.example` 에 있다.
+
+배포(아직 반영하지 않았다): 다른 비밀 값과 같은 길을 따른다.
+
+1. GitHub Environment secrets 에 `PHEEEEW_CLIMB_ADMIN_KEY` 를 더한다.
+2. `.github/workflows/be-deploy.yml`, `be-dev-deploy.yml` 의 `.env 갱신` 단계: `env:` 에 `PHEEEEW_CLIMB_ADMIN_KEY: ${{ secrets.PHEEEEW_CLIMB_ADMIN_KEY }}`,
+   `run:` 의 `{ ... } > env.tmp` 묶음에 `echo "PHEEEEW_CLIMB_ADMIN_KEY=$PHEEEEW_CLIMB_ADMIN_KEY"` 를 더한다. 서버 `/opt/pheeeew/.env` 에 기록된다.
+3. `BE/docker/compose.prod.yml`, `compose.dev.yml` 의 `x-app.environment` 에 `PHEEEEW_CLIMB_ADMIN_KEY: ${PHEEEEW_CLIMB_ADMIN_KEY:-}` 를 더한다
+   (빈 값이면 관리자 기능만 꺼진다). 로컬 compose 로 띄우면 `compose.local.yml` 의 `app.environment` 에도 같은 줄을 더한다.
+4. 운영·개발 프로필은 아직 `pheeeew.climb.enabled` 가 꺼져 있다. 등반을 켤 때 `allowed-origin` 과 함께 정한다.
