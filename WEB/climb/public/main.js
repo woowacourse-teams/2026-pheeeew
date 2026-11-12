@@ -702,8 +702,13 @@ function showTitle() {
   showBoards();
 }
 async function showBoards() {
-  const [today, all] = await Promise.all([net.ranking('today'), net.ranking('all')]);
+  const [today, all] = await Promise.all([net.ranking('today'), net.ranking('all'), showHall()]);
   if (mode === 'title') ui.boards(today.status === 200 ? today.body.top : null, all.status === 200 ? all.body.top : null, guest?.tag);
+}
+// 명예의 전당: 제목 화면을 열 때, 누가 완주했을 때, 게임 중 H 로 펼 때 다시 받는다
+async function showHall() {
+  const r = await net.hall();
+  ui.hall(r.status === 200 && Array.isArray(r.body?.hall) ? r.body.hall : null, guest?.tag);
 }
 function showCredits() {
   mode = 'credits';
@@ -771,6 +776,7 @@ function drawGhosts(dt) {
   for (const n of [...ghostViews.keys()]) if (!seen.has(n)) dropGhost(n);
 }
 net.on('event', (m) => {
+  if (m.kind === 'finish') showHall();
   if (m.tag === guest?.tag) return; // 내 구간 완료는 배너로 이미 보인다
   ui.toast(m.kind === 'finish' ? `${m.nickname} 님이 꼭대기까지 올랐어요!` : `${m.nickname} 님이 ${m.zone}구간(${ZONES[m.zone - 1]?.name ?? ''}) 통과!`);
 });
@@ -836,6 +842,7 @@ addEventListener('keydown', (e) => {
   if (k === 'Space') keys.jump = true;
   if (k === 'KeyN') askRestart();
   if (k === 'Tab') { e.preventDefault(); ui.foldRanks(); }
+  if (k === 'KeyH' && ui.toggleHall()) showHall();
   if (k === 'KeyG') { showGhosts = !showGhosts; ghostLayer.visible = showGhosts; localStorage.setItem('pheeeew-climb-ghosts', showGhosts ? 'on' : 'off'); say(showGhosts ? '다른 사람 보이기' : '다른 사람 숨기기'); quipT = 1.2; }
 });
 addEventListener('keyup', (e) => {

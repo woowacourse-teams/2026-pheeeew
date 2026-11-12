@@ -202,5 +202,6 @@ export function createNet({
     createGuest: (nickname) => call('POST', '/guests', { nickname }),
     rename: (nickname) => call('PATCH', '/me', { nickname }),
     ranking: (board) => call('GET', `/ranking?board=${encodeURIComponent(board)}&map=${encodeURIComponent(map)}`),
+    hall: () => call('GET', `/hall?map=${encodeURIComponent(map)}`), // 명예의 전당: 먼저 꼭대기에 온 순서
   };
 }
