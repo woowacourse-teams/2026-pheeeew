@@ -7,6 +7,7 @@ import { traceTerrain, sketch } from './terrain.js';
 import { createUI, TINT } from './ui.js';
 import { createFx } from './fx.js';
 import { boostLook, RISE_LIFE } from './boost.js';
+import { flagSpots } from './flags.js';
 import { nearestSign, signReader, signKey, splitSign, bubbleX, signLook, SIGN_ART, besideSign, signScale, signTop, signHalf, SIGN_SINK } from './signs.js';
 import { sfx, unlock, toggleMute, isMuted, audioCtx } from './sfx.js';
 import { createBgm, CREDITS } from './bgm.js';
@@ -557,11 +558,11 @@ const streaks = winds.flatMap((w) => {
 for (const w of winds) {
   const flag = arts[zoneOf(w.h0 + 1)].flag;
   if (!flag) continue;
-  for (const cx of [w.c0 + 0.3, w.c1 + 0.7]) { // 구역 양 끝 아래에 깃발
+  for (const f of flagSpots(w, (c, h) => level.raw(c, HEIGHT - 2 - h), [...SIGNS, ...DECOR.filter((d) => !d.hang)])) { // 구역 안 넓은 발판 위에만
     const sp = new Sprite(flag);
     sp.anchor.set(40 / 256, 240 / 256);
     sp.scale.set((w.ax < 0 ? -1 : 1) * 0.3, 0.3);
-    sp.position.set(cx * TILE, yOf(w.h0));
+    sp.position.set(f.c * TILE, yOf(f.h));
     world.addChild(sp);
   }
 }
