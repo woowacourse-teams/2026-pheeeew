@@ -12,7 +12,7 @@ import { nearestSign, signReader, signKey, splitSign, bubbleX, signLook, SIGN_AR
 import { sfx, unlock, toggleMute, isMuted, audioCtx } from './sfx.js';
 import { createBgm, CREDITS } from './bgm.js';
 import { createNet } from './net.js';
-import { zoneFiles, charFiles } from './art.js';
+import { zoneFiles, charFiles, createLoader, loadTree } from './art.js';
 import { entryState, canPlay } from './online.js';
 import { createGhosts } from './ghosts.js';
 import * as admin from './admin.js';
@@ -64,28 +64,21 @@ const SAVE_KEY = ADMIN ? 'pheeeew-climb-admin' : DEBUG ? 'pheeeew-climb-debug' :
 
 // 그림 목록표(tools/build_manifest.mjs). 그림이 있는지 서버에 묻지 않고 이 목록대로 받는다
 const MAN = await (await fetch('/assets/manifest.json', { cache: 'no-cache' })).json();
-const tex = {};
-for (const id of IDS) {
-  tex[id] = {};
-  // 점프 자세 그림은 있는 감정이만 쓴다
-  for (const [p, asset] of Object.entries(charFiles(MAN, id, [...PARTS, ...JUMPS]))) tex[id][p] = await Assets.load(asset);
-}
+const loader = createLoader((asset) => Assets.load(asset)); // 같은 단계의 그림은 함께 받는다. 한 장이 실패해도(null) 나머지는 그대로
+// 점프 자세 그림은 있는 감정이만 쓴다
+const tex = Object.fromEntries(await Promise.all(IDS.map(async (id) => [id, await loadTree(charFiles(MAN, id, [...PARTS, ...JUMPS]), loader.get)])));
 
 // ---- 맵 ----
 const world = new Container();
 view.addChild(world);
 // 구간 그림: 배경(천천히 따라 움직임), 지형 속 재질, 경사 재질, 윗면 띠
-const arts = [];
-for (const z of ZONES) {
-  const dir = z.art;
-  const files = zoneFiles(MAN, dir);
-  const a = { dir, files };
-  for (const k of ['bg', 'rock', 'fabric', 'trim']) a[k] = await Assets.load(files[k]);
-  for (const k of ['nod', 'hot', 'boost', 'flag']) a[k] = files[k] ? await Assets.load(files[k]) : null; // 발판 장치와 바람 깃발
-  a.kit = { top: [], hang: [], side: [], far: [], in: [] }; // in = 지형 면 위에 찍는 얼룩 무늬
-  for (const k of Object.keys(a.kit)) for (const f of files.kit[k] ?? []) a.kit[k].push(await Assets.load(f));
-  arts.push(a);
-}
+// 발판 장치(nod, hot, boost)와 바람 깃발(flag)은 있는 구간만. kit.in = 지형 면 위에 찍는 얼룩 무늬
+const arts = await Promise.all(ZONES.map(async (z) => {
+  const files = zoneFiles(MAN, z.art);
+  const a = await loadTree(files, loader.get);
+  a.kit = { top: [], hang: [], side: [], far: [], in: [], ...a.kit };
+  return { ...a, dir: z.art, files };
+}));
 // 칸의 윗면 높이로 어느 구간인지 정한다
 const zoneOf = (h) => Math.max(0, ZONES.findIndex((z, i) => h <= z.to || i === ZONES.length - 1));
 // 구간을 시작할 때 배경 그림의 어느 부분이 보일지 맞춘다(bgAt). 없으면 그림 맨 위부터.
@@ -290,7 +283,7 @@ const nodViews = nods.map((n) => {
 
 // 장식 소품: 충돌 없음. 보통은 바닥 중앙 (256,450), hang 은 천장에 매달려 위쪽 (256,60) 이 기준
 for (const d of DECOR) {
-  const sp = new Sprite(await Assets.load(arts[zoneOf(d.h)].files[d.img]));
+  const sp = new Sprite(arts[zoneOf(d.h)][d.img]);
   sp.pivot.set(256, d.hang ? 60 : 450);
   sp.scale.set(d.flip ? -d.s : d.s, d.s);
   sp.position.set(d.c * TILE, yOf(d.h) + (d.hang ? -4 : 5)); // 살짝 묻혀서 지형에 박힌 것처럼
@@ -304,7 +297,7 @@ const GLOW = { nyc: [0xffe08a, 'add', 0.5], space: [0xffe08a, 'add', 0.5], xmas:
 const ART_H = 52; // 카드 속 장치 그림 높이(px)
 const signViews = [];
 for (const s of SIGNS) {
-  const { dir, files } = arts[s.zone];
+  const { dir } = arts[s.zone];
   const k = signScale(s);
   const x = s.c * TILE;
   const y = yOf(s.h);
@@ -317,7 +310,7 @@ for (const s of SIGNS) {
   glow.alpha = 0;
   glow.peak = alpha;
   world.addChild(glow);
-  const sp = new Sprite(await Assets.load(files.info_sign ?? files.arrow_sign));
+  const sp = new Sprite(arts[s.zone].info_sign ?? arts[s.zone].arrow_sign);
   sp.pivot.set(256, 450);
   sp.scale.set(s.flip ? -k : k, k);
   sp.position.set(x, y + SIGN_SINK);
