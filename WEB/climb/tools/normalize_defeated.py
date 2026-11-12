@@ -12,7 +12,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / 'docs/codex'
-DEST = ROOT / 'public/assets/characters/defeated'
+DEST = ROOT / 'assets_src/characters/defeated'
 CONFIG = DOCS / 'defeated_normalization.json'
 
 

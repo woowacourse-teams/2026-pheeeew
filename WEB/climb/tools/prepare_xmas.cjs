@@ -1,7 +1,7 @@
 // Generated-art preparation only. Does not modify existing game code or source PNGs.
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const sharp=require('./.image-work/node_modules/sharp');
-const ROOT=path.resolve(__dirname,'..'),WORK=path.join(ROOT,'docs/codex/xmas_work'),OUT=path.join(ROOT,'public/assets/xmas'),DOC=path.join(ROOT,'docs/codex');
+const ROOT=path.resolve(__dirname,'..'),WORK=path.join(ROOT,'docs/codex/xmas_work'),OUT=path.join(ROOT,'assets_src/xmas'),DOC=path.join(ROOT,'docs/codex');
 const sources=JSON.parse(fs.readFileSync(path.join(WORK,'sources.json')));
 const clamp=(v,a=0,b=255)=>Math.max(a,Math.min(b,v));
 const smooth=t=>{t=clamp(t,0,1);return t*t*(3-2*t)};

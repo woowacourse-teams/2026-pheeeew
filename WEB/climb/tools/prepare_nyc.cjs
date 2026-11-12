@@ -2,7 +2,7 @@
 // Reads original art; writes only the new NYC assets and NYC verification files.
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const sharp=require('./.image-work/node_modules/sharp');
-const ROOT=path.resolve(__dirname,'..'),WORK=path.join(ROOT,'docs/codex/nyc_work'),OUT=path.join(ROOT,'public/assets/nyc');
+const ROOT=path.resolve(__dirname,'..'),WORK=path.join(ROOT,'docs/codex/nyc_work'),OUT=path.join(ROOT,'assets_src/nyc');
 const src=JSON.parse(fs.readFileSync(path.join(WORK,'sources.json')));
 const clamp=(v,a=0,b=255)=>Math.max(a,Math.min(b,v));
 const smooth=t=>{t=clamp(t,0,1);return t*t*(3-2*t)};

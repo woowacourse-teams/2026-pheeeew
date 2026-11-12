@@ -6,7 +6,7 @@ const crypto = require('node:crypto');
 const sharp = require('./.image-work/node_modules/sharp');
 const ROOT = path.resolve(__dirname, '..');
 const WORK = path.join(ROOT, 'docs/codex/zone1_kit_work');
-const OUT = path.join(ROOT, 'public/assets/zone1/kit');
+const OUT = path.join(ROOT, 'assets_src/zone1/kit');
 const specs = JSON.parse(fs.readFileSync(path.join(WORK, 'specs.json')));
 const sources = JSON.parse(fs.readFileSync(path.join(WORK, 'sources.json')));
 const clamp = (v, a=0, b=255) => Math.max(a, Math.min(b, v));
@@ -96,11 +96,11 @@ async function normalize(spec,rock,mean) {
 }
 async function scene() {
   const W=1280,H=960,bx=190,by=450,bw=900,bh=300;
-  let bg=await sharp(path.join(ROOT,'public/assets/zone1/bg.png')).resize(W,H,{fit:'cover'}).png().toBuffer();
+  let bg=await sharp(path.join(ROOT,'assets_src/zone1/bg.png')).resize(W,H,{fit:'cover'}).png().toBuffer();
   let layers=[];
   for(const [name,left,top,size] of [['far_1',60,120,470],['far_2',370,55,580],['far_3',800,105,420]])if(sources[name])layers.push({input:await sharp(path.join(OUT,name+'.png')).resize(size,size).toBuffer(),left,top});
   let tileLayers=[];
-  const tile=await sharp(path.join(ROOT,'public/assets/zone1/rock.png')).ensureAlpha().raw().toBuffer();
+  const tile=await sharp(path.join(ROOT,'assets_src/zone1/rock.png')).ensureAlpha().raw().toBuffer();
   const block=Buffer.alloc(bw*bh*4);
   for(let y=0;y<bh;y++)for(let x=0;x<bw;x++){let d=(y*bw+x)*4,s=((y%512)*512+x%512)*4;tile.copy(block,d,s,s+4);}
   layers.push({input:await raw(block,bw,bh).png().toBuffer(),left:bx,top:by});
@@ -113,8 +113,8 @@ async function scene() {
 }
 async function main(){
   fs.mkdirSync(OUT,{recursive:true});
-  const rock=await sharp(path.join(ROOT,'public/assets/zone1/rock.png')).ensureAlpha().raw().toBuffer();
-  const stats=await sharp(path.join(ROOT,'public/assets/zone1/rock.png')).stats(),mean=stats.channels.slice(0,3).map(c=>c.mean);
+  const rock=await sharp(path.join(ROOT,'assets_src/zone1/rock.png')).ensureAlpha().raw().toBuffer();
+  const stats=await sharp(path.join(ROOT,'assets_src/zone1/rock.png')).stats(),mean=stats.channels.slice(0,3).map(c=>c.mean);
   let results=[];
   for(const spec of specs)if(sources[spec[0]])results.push(await normalize(spec,rock,mean));
   await scene();

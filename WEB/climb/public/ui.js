@@ -9,7 +9,7 @@ const el = (tag, cls, html) => {
   if (html !== undefined) e.innerHTML = html;
   return e;
 };
-export const FACE = (id) => `/assets/characters/${id}/front.png`; // index.html 이 미리 받는 얼굴 그림과 같은 주소
+export const FACE = (id) => `/assets/characters/${id}/front.webp`; // index.html 이 미리 받는 얼굴 그림과 같은 주소
 const face = (id, cls) => `<div class="${cls}"><img src="${FACE(id)}" alt=""></div>`;
 const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 // 닉네임은 다른 사람이 정한 글자라 HTML 로 넣기 전에 바꾼다

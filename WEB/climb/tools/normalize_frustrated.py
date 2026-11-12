@@ -10,7 +10,7 @@ import hashlib
 
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / 'docs/codex'
-OUT = ROOT / 'public/assets/characters/frustrated'
+OUT = ROOT / 'assets_src/characters/frustrated'
 SOURCES = json.loads((DOCS / 'frustrated_sources.json').read_text())
 # Visible torso-only bands, chosen by inspecting each source (exclude limbs).
 SPECS = {
