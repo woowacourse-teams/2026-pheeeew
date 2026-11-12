@@ -155,7 +155,7 @@ test('연결하면 hello 를 먼저 보내고, welcome 을 받으면 online', ()
   eq(ws.url, 'ws://127.0.0.1:4320/api/v1/climb/ws', '주소');
   eq(t.net.status, 'connecting', '여는 중');
   ws.serverOpen();
-  eq(ws.sent, [{ t: 'hello', v: 1, map: 'v1', character: 'angry' }], 'hello');
+  eq(ws.sent, [{ t: 'hello', v: 1, build: 1, map: 'v1', character: 'angry' }], 'hello');
   ws.serverSend(welcome());
   eq([t.net.status, got], ['online', ['4f2a']], 'welcome');
   eq(t.statuses, ['connecting', 'online'], '상태 변화');

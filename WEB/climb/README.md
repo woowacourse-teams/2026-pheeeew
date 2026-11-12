@@ -19,6 +19,9 @@ node tools/manifest_test.mjs  # 그림 목록표와 실제 폴더가 같은지
 
 순위·함께 오르기 서버(`/api/v1/climb`)는 `CLIMB_BACKEND`(기본 `http://127.0.0.1:8080`)로 넘긴다.
 
+배포 뒤 열려 있는 탭을 모두 새로 고치게 하려면 게임의 `BUILD`(`public/net.js`)와 서버의 `pheeeew.climb.min-client-build` 를 같이 올린다.
+게임을 먼저 배포하고, 그다음 서버를 배포한다. 낮은 빌드의 탭은 "다른 창에서 접속했어요" 창의 새로 고침 버튼을 눌러야 한다.
+
 ## 조작
 
 | 키 | 하는 일 |

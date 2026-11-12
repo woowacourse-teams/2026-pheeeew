@@ -73,6 +73,7 @@ public class ClimbWebSocketHandler extends AbstractWebSocketHandler implements S
     private final ClimbRunRepository runs;
     private final ClimbGuestService guests;
     private final ClimbProperties.Presence presence;
+    private final int minClientBuild;
     private final AtomicInteger nextN = new AtomicInteger();
     private final JsonMapper json = JsonMapper.builder().build();
     private final Map<String, ClimbConnection> connections = new ConcurrentHashMap<>();
@@ -84,11 +85,12 @@ public class ClimbWebSocketHandler extends AbstractWebSocketHandler implements S
     private volatile boolean running;
 
     public ClimbWebSocketHandler(ClimbRankingService ranking, ClimbRunRepository runs, ClimbGuestService guests,
-            ClimbProperties.Presence presence) {
+            ClimbProperties.Presence presence, int minClientBuild) {
         this.ranking = ranking;
         this.runs = runs;
         this.guests = guests;
         this.presence = presence;
+        this.minClientBuild = minClientBuild;
         for (int index = 0; index < guestLocks.length; index++) {
             guestLocks[index] = new Object();
         }
@@ -266,6 +268,12 @@ public class ClimbWebSocketHandler extends AbstractWebSocketHandler implements S
     private void hello(ClimbConnection connection, JsonNode root, Instant now) {
         if (connection.helloed()) {
             throw new InvalidMessage("INVALID_MESSAGE");
+        }
+        // 옛 게임(build 없음·낮음)은 이미 아는 신호로 멈추고 새로 고치게 한다. 순위·접속·등반에 흔적을 남기지 않는다.
+        JsonNode build = root.get("build");
+        int clientBuild = build != null && build.isIntegralNumber() && build.canConvertToInt() ? build.intValue() : 0;
+        if (minClientBuild > 0 && clientBuild < minClientBuild) {
+            throw new InvalidMessage("CONNECTION_REPLACED");
         }
         JsonNode version = root.get("v");
         if (version == null || !version.isIntegralNumber() || version.intValue() != 1) {

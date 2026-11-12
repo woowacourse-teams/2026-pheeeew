@@ -2,6 +2,9 @@
 // 서버가 없거나 끊겨도 예외를 던지지 않는다. REST 는 { status, body } 를 돌려주고(닿지 않으면 status 0), 웹소켓은 상태만 바꾼다.
 // 브라우저 전역(fetch, WebSocket, 타이머)은 시험에서 가짜로 바꿔 넣는다(tools/net_test.mjs).
 
+// 게임 빌드 번호. 서버 min-client-build 보다 낮으면 서버가 CONNECTION_REPLACED 로 닫아 새로 고치게 한다.
+export const BUILD = 1;
+
 export function createNet({
   map,
   api = globalThis.CLIMB_API ?? '/api/v1/climb',
@@ -111,7 +114,7 @@ export function createNet({
     ws = sock;
     setStatus('connecting');
     let replaced = false;
-    sock.onopen = () => raw({ t: 'hello', v: 1, map, character });
+    sock.onopen = () => raw({ t: 'hello', v: 1, build: BUILD, map, character });
     sock.onmessage = (e) => {
       if (ws !== sock) return;
       let m;

@@ -30,6 +30,7 @@ class ClimbProfileConfigurationTest {
             assertThat(properties.enabled()).isTrue();
             assertThat(properties.allowedOrigin()).isEqualTo(origin);
             assertThat(properties.adminKey()).isEmpty();
+            assertThat(properties.minClientBuild()).isEqualTo(1);
             assertThat(properties.maps()).containsKey("v1");
             assertThat(properties.maps().get("v1").top()).isEqualTo(663);
         });
