@@ -41,6 +41,7 @@
 | `GET /api/v1/climb/me` | `{ "id", "nickname", "tag", "run" }`. `run` 은 가장 최근의 완주하지 않은 등반 `{ map, character, height, best, x, falls, time }` 또는 `null`. 쿠키 없음·무효 `401 UNAUTHORIZED` |
 | `PATCH /api/v1/climb/me` `{ "nickname" }` | `{ "id", "nickname", "tag" }`. 하루(한국 시간) 3번, 넘으면 `429 NICKNAME_CHANGE_LIMITED` |
 | `GET /api/v1/climb/ranking?board=online\|today\|all&map=v1` | `{ "top": [순위 항목], "me": { "rank", "best" } \| null, "online" }`. 쿠키가 없으면 `me` 는 `null`. 잘못된 `board` 는 `400 INVALID_BOARD` |
+| `GET /api/v1/climb/hall?map=v1` | 명예의 전당. `{ "hall": [ { "order", "tag", "nickname", "character", "time", "falls", "finishedAt" } ] }`. 먼저 꼭대기에 온 순서(`finishedAt` 오름차순)로 50명까지. `time` 은 완주 시간(초), `finishedAt` 은 ISO 시각. 쿠키 없이 부른다 |
 
 | `POST /api/v1/climb/admin/session` `{ "key": "..." }` | 맞으면 `204` + 관리자 쿠키. 틀리면 `401 ADMIN_KEY_MISMATCH`. 틀린 시도가 IP당 1분에 5번을 넘으면(6번째부터, 맞는 키도) `429 ADMIN_ATTEMPTS_LIMITED`. 키는 본문으로만 받고 해시끼리 `MessageDigest.isEqual` 로 비교한다 |
 | `GET /api/v1/climb/admin/session` | 유효한 관리자 쿠키면 `204`, 아니면 `401 ADMIN_UNAUTHORIZED` |
@@ -57,7 +58,7 @@
 브라우저 → 서버
 
 ```json
-{ "t": "hello", "v": 1, "map": "v1", "character": "angry" }
+{ "t": "hello", "v": 1, "build": 1, "map": "v1", "character": "angry" }
 { "t": "pos", "h": 120, "best": 131, "falls": 4, "time": 95, "x": 18 }
 { "t": "zone", "zone": 1, "time": 96 }
 { "t": "finish", "time": 640, "falls": 12 }
@@ -67,6 +68,8 @@
 - 숫자 필드는 모두 정수만 받는다(`1.5`, `"3"` 은 `INVALID_MESSAGE`). `h`, `best` 는 칸, `time` 은 게임 시간(초, 내림), `x` 는 가로 위치(픽셀, 반올림한 정수)다.
 - `hello` 는 연결 직후 한 번. `character` 는 `defeated`, `tired`, `frustrated`, `annoyed`, `angry` 중 하나.
   같은 맵에 완주하지 않은 등반이 있으면 이어 하고, 없으면 새 등반을 만든다.
+- `build` 는 게임 빌드 번호(정수, 없으면 0). `pheeeew.climb.min-client-build`(기본 1, 0 이면 보지 않음)보다 낮으면 등반을 만들지 않고
+  `CONNECTION_REPLACED` 로 닫는다. 옛 게임은 이 신호로 멈추고 새로 고침 버튼을 띄운다. 관리자 연결도 같다.
 - `pos` 는 착지할 때마다, 최대 2초에 한 번. `zone`·`finish` 를 보내기 전에는 그 높이까지 오른 `pos` 를 먼저 보낸다. `restart` 는 새 등반을 만든다. 이전 기록은 오늘·역대 순위에 남는다.
 
 서버 → 브라우저
@@ -94,7 +97,7 @@
 
 핸드셰이크에 유효한 `climb_admin` 쿠키가 있으면 관리자 연결이다(손님 쿠키도 필요하다). 등반을 만들지 않아서 `pos`·`zone`·`finish`·`restart` 는
 오류 없이 버리고(`welcome` 의 `run` 은 `null`), 기록·순위·`event` 에 넣지 않는다. `st` 는 받아 두지만 다른 사람에게 보내지 않는다.
-연결은 그대로 두고 `rank`(`me` 는 `null`)와 가까운 사람의 `in`·`sts`·`out` 은 받는다. 게임도 관리자 모드에서는 보고하지 않는다(이중 장치).
+연결은 그대로 두고 `rank`(`me` 는 `null`)와 가까운 사람의 `in`·`sts`·`out`, 다른 사람의 `event` 는 받는다. 게임도 관리자 모드에서는 `hello` 와 `st` 만 보낸다(이중 장치).
 
 ## 함께 오르기
 
@@ -141,6 +144,9 @@
 ## 저장
 
 `climb_guest`, `climb_run` 두 테이블(`V20261112_90__create_climb_tables.sql`). 기능이 꺼져 있어도 마이그레이션은 돈다.
+`climb_hall`(`V20261112_91__create_climb_hall.sql`): 명예의 전당. 손님·맵마다 첫 완주(의심 기록 제외) 한 줄을 그때의 닉네임·꼬리표와 함께 남긴다.
+외래 키가 없어 손님 정리·처음부터 다시와 상관없이 남는다. 완주 때와 1분마다 `climb_run` 에서 빠진 완주를 옮긴다(배포 중 옛 서버가 받은 완주도 뒤늦게 들어온다).
+같은 마이그레이션이 행사 운영자 요청으로 파라디(#f88b)의 완주 기록을 한 번 지웠다.
 등반은 손님당 10초에 한 번, 그리고 구간 통과·완주·처음부터 다시·연결 종료·배포 종료 때 쓴다.
 순위표는 서버 메모리에 두고 서버가 뜰 때 DB 에서 채운다(서버 1대 기준). 180일 동안 접속하지 않은 손님과 기록은 하루 한 번 지운다.
 

@@ -71,7 +71,8 @@ public class ClimbConfiguration {
     @Bean
     ClimbWebSocketHandler climbWebSocketHandler(ClimbRankingService ranking, ClimbRunRepository runs,
             ClimbGuestService guests, ClimbProperties properties) {
-        return new ClimbWebSocketHandler(ranking, runs, guests, properties.presence());
+        return new ClimbWebSocketHandler(ranking, runs, guests, properties.presence(),
+                properties.minClientBuild());
     }
 
     /** /api/v1/climb/** 전용 체인. 본체 체인보다 먼저 보고, JWT 대신 손님 쿠키로 확인한다. */
@@ -109,7 +110,7 @@ public class ClimbConfiguration {
                                 writeError(response, ClimbErrorCode.FORBIDDEN)))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.POST, "/api/v1/climb/guests").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/climb/ranking").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/climb/ranking", "/api/v1/climb/hall").permitAll()
                         // 관리자 세션은 손님 쿠키와 따로 컨트롤러가 관리자 쿠키로 확인한다
                         .requestMatchers("/api/v1/climb/admin/session").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/climb/me", "/api/v1/climb/ws").authenticated()

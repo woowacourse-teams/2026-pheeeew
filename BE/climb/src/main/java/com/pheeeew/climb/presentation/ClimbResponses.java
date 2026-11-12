@@ -1,6 +1,7 @@
 package com.pheeeew.climb.presentation;
 
 import com.pheeeew.climb.domain.ClimbGuest;
+import com.pheeeew.climb.domain.ClimbHallEntry;
 import com.pheeeew.climb.domain.ClimbRankView;
 import com.pheeeew.climb.domain.ClimbRunRecord;
 import java.util.List;
@@ -59,6 +60,23 @@ final class ClimbResponses {
 
         static RankingResponse of(ClimbRankView view, int online) {
             return new RankingResponse(RankItem.from(view.top()), MyRank.from(view.me()), online);
+        }
+    }
+
+    record HallItem(int order, String tag, String nickname, String character, int time, int falls,
+                    String finishedAt) {
+    }
+
+    record HallResponse(List<HallItem> hall) {
+
+        static HallResponse of(List<ClimbHallEntry> entries) {
+            return new HallResponse(java.util.stream.IntStream.range(0, entries.size())
+                    .mapToObj(index -> {
+                        ClimbHallEntry entry = entries.get(index);
+                        return new HallItem(index + 1, entry.tag(), entry.nickname(), entry.character(),
+                                entry.finishSeconds(), entry.falls(), entry.finishedAt().toString());
+                    })
+                    .toList());
         }
     }
 

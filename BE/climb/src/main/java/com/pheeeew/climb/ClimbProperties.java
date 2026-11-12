@@ -14,6 +14,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param maps          맵 버전별 꼭대기 높이, 구간 경계, 완주 최소 시간. 여기 없는 맵 버전은 순위에 넣지 않는다.
  * @param presence      함께 오르기(다른 사람 위치 공유).
  * @param adminKey      관리자 키(환경 변수 PHEEEEW_CLIMB_ADMIN_KEY). 비어 있으면 관리자 기능이 꺼진다.
+ * @param minClientBuild hello 의 build 가 이보다 낮은 게임은 CONNECTION_REPLACED 로 닫아 새로 고치게 한다. 0 이면 보지 않는다.
  */
 @ConfigurationProperties("pheeeew.climb")
 public record ClimbProperties(
@@ -22,7 +23,8 @@ public record ClimbProperties(
         @DefaultValue("10") int guestCreatesPerHour,
         Map<String, MapProperties> maps,
         @DefaultValue Presence presence,
-        String adminKey
+        String adminKey,
+        int minClientBuild
 ) {
 
     public ClimbProperties {
