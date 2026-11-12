@@ -1,12 +1,13 @@
 import { Application, Assets, Container, Graphics, Sprite, Text, TilingSprite } from '/vendor/pixi.mjs';
 import { TILE, COLS, DT, IDS, params, newPlayer, step } from './physics.js';
-import { level, DECOR, HEIGHT, START, SCREEN, ZONES, GOAL, MAP_VERSION, nods, winds, updateNods, NOD_STAND, HOT_STAND, yOf, hOf } from './level.js';
+import { level, DECOR, SIGNS, HEIGHT, START, SCREEN, ZONES, GOAL, MAP_VERSION, nods, winds, updateNods, NOD_STAND, HOT_STAND, yOf, hOf } from './level.js';
 import { Rig, PARTS, JUMPS } from './rig.js';
 import { JellyRig } from './jelly.js';
 import { traceTerrain, sketch } from './terrain.js';
 import { createUI, TINT } from './ui.js';
 import { createFx } from './fx.js';
 import { boostLook, RISE_LIFE } from './boost.js';
+import { nearestSign, signReader, signKey, splitSign, bubbleX } from './signs.js';
 import { sfx, unlock, toggleMute, isMuted, audioCtx } from './sfx.js';
 import { createBgm, CREDITS } from './bgm.js';
 import { createNet } from './net.js';
@@ -281,6 +282,32 @@ for (const d of DECOR) {
   world.addChild(sp);
 }
 
+// 안내 표지판: 충돌 없음. 그 구간의 info_sign 그림을 쓰고, 없으면 화살표 표지 위에 코드로 그린 느낌표 배지를 단다
+const SIGN_S = 0.24;
+const SIGN_TOP = 400 * SIGN_S; // 바닥에서 표지판 꼭대기까지(대략). 말풍선은 그 위에 뜬다
+const signViews = [];
+for (const s of SIGNS) {
+  const dir = arts[s.zone].dir;
+  const own = await has(`/assets/${dir}/info_sign.png`);
+  const sp = new Sprite(await Assets.load(`/assets/${dir}/${own ? 'info_sign' : 'arrow_sign'}.png`));
+  sp.pivot.set(256, 450);
+  sp.scale.set(s.flip ? -SIGN_S : SIGN_S, SIGN_S);
+  sp.position.set(s.c * TILE, yOf(s.h) + 5);
+  world.addChild(new Graphics().ellipse(s.c * TILE, yOf(s.h) + 2, 26, 6).fill({ color: 0x241c22, alpha: 0.18 }));
+  world.addChild(sp);
+  let badge = null;
+  if (!own) { // 그림이 없을 때만: 동그란 느낌표 배지
+    badge = new Container();
+    badge.addChild(new Graphics().circle(0, 3, 13).fill(INK).circle(0, 0, 13).fill(0xffd35a).stroke({ width: 3, color: INK }));
+    const mark = new Text({ text: '!', style: { fontFamily: FONT, fontSize: 20, fill: INK } });
+    mark.anchor.set(0.5);
+    badge.addChild(mark);
+    badge.position.set(s.c * TILE, yOf(s.h) - SIGN_TOP - 8);
+    world.addChild(badge);
+  }
+  signViews.push({ s, sp, badge, key: signKey(s), y: yOf(s.h) });
+}
+
 // 물방울: 지형 밑면 여기저기에 맺혔다가 제각각 떨어진다
 const drops = new Graphics();
 world.addChild(drops);
@@ -333,6 +360,64 @@ const hitbox = new Graphics();
 world.addChild(hitbox);
 const gauge = new Graphics();
 world.addChild(gauge);
+// 표지판 말풍선: 가까운 표지판 하나에만. 캐릭터 한마디(quip)보다 아래에 그린다
+const tip = new Container();
+const tipBox = new Graphics();
+const tipLines = [0, 1].map((i) => new Text({ text: '', style: { fontFamily: FONT, fontSize: i ? 17 : 20, fill: INK } }));
+for (const t of tipLines) t.anchor.set(0.5, 0);
+tip.addChild(tipBox, ...tipLines);
+tip.alpha = 0;
+tip.visible = false;
+tip.tipY = tip.tipH = 0;
+world.addChild(tip);
+let tipFor = -1; // 지금 말풍선에 쓴 표지판 번호
+let tipRead = false; // 그 표지판을 이미 읽은 채로 열었는지(옅게 띄운다)
+const SIGNS_KEY = `${SAVE_KEY}-signs`; // 읽은 표지판 목록
+let signRead = signReader();
+try { signRead = signReader(JSON.parse(localStorage.getItem(SIGNS_KEY) ?? '[]')); } catch {}
+function drawTip(i) {
+  const v = signViews[i];
+  const lines = splitSign(v.s.text);
+  tipLines.forEach((t, j) => { t.text = lines[j] ?? ''; t.visible = j < lines.length; });
+  const w = Math.max(...tipLines.filter((t) => t.visible).map((t) => t.width)) + 34;
+  const h = lines.length * 25 + 16;
+  const sx = v.s.c * TILE;
+  const bx = bubbleX(sx, w, W); // 화면 가장자리 근처면 안쪽으로 당긴다
+  const tail = Math.max(-w / 2 + 18, Math.min(w / 2 - 18, sx - bx)); // 꼬리는 표지판을 가리킨다
+  tipBox.clear()
+    .roundRect(-w / 2, -h + 4, w, h, 16).fill(INK) // 아래로 떨어진 그림자
+    .poly([tail - 9, 3, tail + 9, 3, tail, 17]).fill(INK)
+    .roundRect(-w / 2, -h, w, h, 16).fill(0xfff8ea).stroke({ width: 3, color: INK })
+    .poly([tail - 8, -1, tail + 8, -1, tail, 12]).fill(0xfff8ea);
+  tipLines[0].y = -h + 8;
+  tipLines[1].y = -h + 8 + 26;
+  tip.x = bx;
+  tip.tipY = v.y - SIGN_TOP - 16; // 꼬리 끝이 표지판 꼭대기 바로 위
+  tip.tipH = h;
+  tipFor = i;
+  tipRead = signRead.isRead(v.key);
+}
+function updateSigns(dt) {
+  const i = nearestSign(SIGNS, (p.x + P.w / 2) / TILE, hOf(p.y + P.h));
+  if (signRead.update(i < 0 ? null : signViews[i].key, dt)) {
+    try { localStorage.setItem(SIGNS_KEY, JSON.stringify(signRead.keys())); } catch {}
+  }
+  signViews.forEach((v, j) => { // 안 읽은 표지판은 멀리 있을 때 가끔 까딱거린다
+    if (Math.abs(v.y - (camY + H / 2)) > H) return; // 화면 밖
+    const ph = (clockT + j * 0.7) % 2.4;
+    const k = j !== i && !signRead.isRead(v.key) && ph < 0.6 ? Math.sin((ph / 0.6) * Math.PI * 4) * (1 - ph / 0.6) : 0;
+    v.sp.rotation = k * 0.08;
+    if (v.badge) v.badge.y = v.y - SIGN_TOP - 8 - Math.abs(k) * 6;
+  });
+  if (i >= 0 && i !== tipFor) drawTip(i);
+  const want = i >= 0 && quipT <= 0 ? (tipRead ? 0.72 : 1) : 0; // 캐릭터가 한마디 하는 동안은 비켜 준다
+  tip.alpha += (want - tip.alpha) * (1 - Math.exp(-dt * 10));
+  tip.visible = tip.alpha > 0.02;
+  if (!tip.visible && i < 0) tipFor = -1;
+  // 화면 위 HUD 줄(약 70px) 밑으로 내려 잘리지 않게 하고, 뜰 때 살짝 떠오른다
+  tip.y = Math.max(camY + 74 + tip.tipH, tip.tipY) + (1 - tip.alpha) * 8;
+}
+
 // 떨어졌을 때 한마디: 말풍선
 const quip = new Container();
 const quipBox = new Graphics();
@@ -787,6 +872,7 @@ function frame(dt) {
     v.y = yOf(n.h) + (n.away > 0 ? 10 : 0);
     v.rotation = sag > 0 ? Math.sin(performance.now() / 40) * 0.02 * sag : 0;
   });
+  updateSigns(dt);
   updateDrops(dt);
   updateSnow(dt, camH);
   updateWind(dt);
