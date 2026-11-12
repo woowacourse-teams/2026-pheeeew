@@ -24,7 +24,10 @@ export function createNet({
         signal: AbortSignal.timeout?.(5000),
       });
       let data = null;
-      try { data = await res.json(); } catch { /* 본문 없음 */ }
+      try { data = await res.json(); } catch {
+        // Pages의 SPA 대체 응답(HTML 200)은 API 성공이 아니다. 연결 실패로 처리한다.
+        if (res.status >= 200 && res.status < 300 && res.status !== 204) return { status: 0, body: null };
+      }
       return { status: res.status, body: data };
     } catch {
       return { status: 0, body: null };

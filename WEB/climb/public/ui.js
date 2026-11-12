@@ -15,7 +15,7 @@ const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStar
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 // 순위 한 줄: 순위, 감정이 얼굴, 닉네임#꼬리표, 최고 높이(완주면 시간)
 const row = (it, mine) => `<div class="r${it.tag === mine ? ' me' : ''}"><b>${it.rank}</b>${TINT[it.character] ? face(it.character, 'avatar mini') : '<div class="avatar mini"></div>'}<span class="n">${esc(it.nickname)}<small>#${esc(it.tag)}</small></span><span class="v">${it.finished ? `완주${it.time != null ? ` ${clock(it.time)}` : ''}` : `${it.best}칸`}</span></div>`;
-const STATUS = { connecting: '연결하는 중…', offline: '연결 끊김 · 혼자 오르는 중', replaced: '다른 창에서 오르는 중' };
+const STATUS = { connecting: '연결하는 중…', offline: '연결 끊김 · 다시 연결하는 중…', replaced: '다른 창에서 오르는 중' };
 
 export function createUI({ ids, info, zones, goal, credits = [] }) {
   const root = document.getElementById('ui');
@@ -90,6 +90,14 @@ export function createUI({ ids, info, zones, goal, credits = [] }) {
     <div class="row" style="justify-content:center"><button class="btn" data-ok><span class="key">Enter</span><span data-ok-label></span></button><button class="btn ghost" data-alt><span class="key">Esc</span><span data-alt-label></span></button></div></div>`;
   const nickInput = nick.querySelector('[data-input]');
 
+  // ---- 서버 연결 대기 ----
+  const connection = el('div', 'screen veil');
+  connection.hidden = true;
+  connection.style.pointerEvents = 'auto';
+  connection.innerHTML = `<div class="card modal"><div class="big">함께 오르려면 연결이 필요해요</div>
+    <div class="small" data-message></div><div class="row" style="justify-content:center">
+    <button class="btn" data-retry>다시 연결</button></div></div>`;
+
   // ---- 음악 출처(CC BY 4.0) ----
   const link = (url, text) => `<a href="${url}" target="_blank" rel="noopener">${esc(text ?? url)}</a>`;
   const music = el('div', 'screen veil');
@@ -102,12 +110,20 @@ export function createUI({ ids, info, zones, goal, credits = [] }) {
     <div class="ch">변경: ${esc(c.changes)}</div></div>`).join('')}</div>
     <div class="row" style="justify-content:center"><button class="btn" data-close><span class="key">Esc</span>닫기</button></div></div>`;
 
-  root.append(hud, banner, select, title, modal, nick, music);
+  root.append(hud, banner, select, title, modal, nick, music, connection);
 
   const api = {
     // 게임 화면과 같은 자리·배율로 맞춘다
     fit(x, y, s) { root.style.transform = `translate(${x}px, ${y}px) scale(${s})`; },
     loaded() { loading.hidden = true; },
+    connection(message, retry) {
+      connection.querySelector('[data-message]').textContent = message;
+      const button = connection.querySelector('[data-retry]');
+      button.hidden = !retry;
+      button.onclick = retry;
+      connection.hidden = false;
+    },
+    closeConnection() { connection.hidden = true; },
     // saved 가 없으면(첫 등반) 이어하기 카드 없이 "오르기 시작"만
     title(saved, onContinue, onNew, onCredits) {
       title.querySelector('[data-credits]').onclick = onCredits;
@@ -189,7 +205,8 @@ export function createUI({ ids, info, zones, goal, credits = [] }) {
       nickInput.type = secret ? 'password' : 'text';
       nickInput.maxLength = secret ? 200 : 10;
       nick.querySelector('[data-ok-label]').textContent = ok;
-      nick.querySelector('[data-alt-label]').textContent = alt;
+      nick.querySelector('[data-alt-label]').textContent = alt ?? '';
+      nick.querySelector('[data-alt]').hidden = !onAlt;
       nick.querySelector('[data-err]').textContent = '';
       nickInput.value = value;
       const submit = () => onOk(secret ? nickInput.value : nickInput.value.trim());
@@ -199,7 +216,7 @@ export function createUI({ ids, info, zones, goal, credits = [] }) {
         e.stopPropagation(); // 게임 조작 키(M 소리, N 처음부터 등)로 새지 않게
         if (e.isComposing) return; // 한글 조합 중의 Enter 는 글자 확정
         if (e.key === 'Enter') submit();
-        if (e.key === 'Escape') onAlt();
+        if (e.key === 'Escape') onAlt?.();
       };
       nick.hidden = false;
       title.hidden = select.hidden = hud.hidden = true;
@@ -208,7 +225,7 @@ export function createUI({ ids, info, zones, goal, credits = [] }) {
     },
     nicknameError(text) { nick.querySelector('[data-err]').textContent = text; nickInput.focus(); },
     closeNickname() { nick.hidden = true; nickInput.blur(); },
-    // 게임 중 순위 패널과 탑 진행 막대의 점. state 가 없으면(혼자 하기) 숨긴다
+    // 게임 중 순위 패널과 탑 진행 막대의 점. state 가 없으면(관리자 점검) 숨긴다
     ranks(state) {
       parts.ranks.hidden = !state;
       if (!state) { parts.others.innerHTML = ''; return; }

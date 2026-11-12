@@ -1,6 +1,8 @@
 // public/net.js 시험. 가짜 fetch·WebSocket·시계를 넣어 서버 없이 확인한다.
 // 사용: node tools/net_test.mjs
 import { createNet } from '../public/net.js';
+import { apiForHostname } from '../public/api-config.js';
+import { entryState, canPlay } from '../public/online.js';
 
 const tests = [];
 const test = (name, fn) => tests.push({ name, fn });
@@ -81,6 +83,38 @@ function online(t, opts = { character: 'angry' }, run = null) {
   ws.serverOpen();
   ws.serverSend(welcome(run));
   return ws;
+}
+
+for (const [host, expected] of [
+  ['climb.pheeeew.com', 'https://api.pheeeew.com/api/v1/climb'],
+  ['climb-dev.pheeeew.com', 'https://api-dev.pheeeew.com/api/v1/climb'],
+  ['localhost', undefined],
+  ['127.0.0.1', undefined],
+  ['pheeeew-climb.pages.dev', undefined],
+  ['preview.pheeeew-climb-dev.pages.dev', undefined],
+  ['example.com', undefined],
+  ['climb.pheeeew.com.example.com', undefined],
+]) {
+  test(`접속 호스트 ${host}의 API 선택`, () => {
+    eq(apiForHostname(host), expected, 'API 주소');
+  });
+}
+
+for (const [host, api] of [
+  ['climb.pheeeew.com', 'https://api.pheeeew.com/api/v1/climb'],
+  ['climb-dev.pheeeew.com', 'https://api-dev.pheeeew.com/api/v1/climb'],
+]) {
+  test(`${host}: 선택한 API로 쿠키 요청과 WSS 연결`, async () => {
+    const c = clock();
+    const s = fakeSockets();
+    const f = fakeFetch({ [`GET ${api}/me`]: { status: 401, body: null } });
+    const net = createNet({ map: 'v1', api: apiForHostname(host), base: `https://${host}/admin/`,
+      fetch: f.fetch, WebSocket: s.WebSocket, setTimeout: c.setTimeout, clearTimeout: c.clearTimeout, now: c.now });
+    eq((await net.me()).status, 401, 'API 응답');
+    eq([f.calls[0].url, f.calls[0].credentials], [`${api}/me`, 'include'], '다른 출처에 쿠키 포함');
+    net.connect({ character: 'angry' });
+    eq(s.sockets[0].url, `${api.replace('https:', 'wss:')}/ws`, '같은 API의 WSS');
+  });
 }
 
 test('첫 접속: me 가 401 이면 손님을 만들고, 그 뒤 me 는 200', async () => {
@@ -184,6 +218,12 @@ test('닫힘 사유만 CONNECTION_REPLACED 여도 다시 연결하지 않는다'
   online(t).serverClose(1008, 'CONNECTION_REPLACED');
   t.clock.advance(120000);
   eq(t.sockets.length, 1, '다시 연결 안 함');
+});
+
+test('Pages가 API 경로에 HTML 200을 반환하면 서버 없음으로 처리한다', async () => {
+  const t = setup({ fetch: async () => ({ status: 200, json: async () => { throw new SyntaxError('HTML response'); } }) });
+  eq(await t.net.me(), { status: 0, body: null }, '손님 조회');
+  eq(await t.net.ranking('today'), { status: 0, body: null }, '순위 조회');
 });
 
 test('서버가 없어도 예외 없이 offline', async () => {
@@ -402,6 +442,44 @@ test('in·sts·out 을 구독자에게 넘긴다', () => {
   ws.serverSend({ t: 'sts', s: [[9, 612, 135.42, -180, 420, 1, 0]] });
   ws.serverSend({ t: 'out', n: [9] });
   eq(got, [['in', '히유'], ['sts', 9], ['out', [9]]], '받은 것');
+});
+
+test('인증된 손님만 입장하고 401만 닉네임 등록으로 보낸다', () => {
+  eq(entryState({ status: 200, body: { id: 'g1' } }), 'ready', '인증됨');
+  eq(entryState({ status: 401, body: null }), 'nickname', '등록 필요');
+  for (const response of [{ status: 0 }, { status: 502 }, { status: 403 }, { status: 200, body: null }, { status: 200, body: {} }]) {
+    eq(entryState(response), 'unavailable', '연결 실패가 혼자 하기로 이어지지 않는다');
+  }
+});
+
+test('실시간 welcome 전에는 멈추고 연결이 끊기면 재연결까지 멈춘다', () => {
+  const t = setup(), guest = { id: 'g1' };
+  const playable = () => canPlay(false, guest, t.net.status);
+  eq(playable(), false, '처음');
+  t.net.connect({ character: 'angry' });
+  const ws = t.sockets[0];
+  ws.serverOpen();
+  eq(playable(), false, 'TCP 연결만으로는 시작하지 않는다');
+  ws.serverSend(welcome());
+  eq(playable(), true, '서버가 입장을 확인');
+  ws.serverClose();
+  eq(playable(), false, '끊김');
+  t.clock.advance(1000);
+  const retry = t.sockets.at(-1);
+  retry.serverOpen();
+  eq(playable(), false, '재연결 중');
+  retry.serverSend(welcome());
+  eq(playable(), true, '재입장 완료');
+  retry.serverSend({ t: 'error', code: 'CONNECTION_REPLACED' });
+  retry.serverClose();
+  eq(playable(), false, '다른 창에 연결을 넘긴 경우도 정지');
+});
+
+test('손님 없는 일반 플레이는 차단하고 인증된 관리자 점검은 유지한다', () => {
+  eq(canPlay(false, null, 'online'), false, '일반 플레이');
+  for (const status of ['offline', 'connecting', 'online', 'replaced']) {
+    eq(canPlay(true, null, status), true, '관리자 점검');
+  }
 });
 
 let failed = 0;
