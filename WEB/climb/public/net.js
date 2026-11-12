@@ -3,7 +3,7 @@
 // 브라우저 전역(fetch, WebSocket, 타이머)은 시험에서 가짜로 바꿔 넣는다(tools/net_test.mjs).
 
 // 게임 빌드 번호. 서버 min-client-build 보다 낮으면 서버가 CONNECTION_REPLACED 로 닫아 새로 고치게 한다.
-export const BUILD = 1;
+export const BUILD = 2;
 
 export function createNet({
   map,

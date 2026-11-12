@@ -818,7 +818,7 @@ class ClimbIntegrationTest {
     }
 
     private JsonNode hello(Socket socket) throws Exception {
-        socket.send("{\"t\":\"hello\",\"v\":1,\"build\":1,\"map\":\"v1\",\"character\":\"angry\"}");
+        socket.send("{\"t\":\"hello\",\"v\":1,\"build\":2,\"map\":\"v1\",\"character\":\"angry\"}");
         return socket.await("welcome", message -> true);
     }
 

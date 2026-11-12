@@ -18,7 +18,7 @@ import * as admin from './admin.js';
 
 const W = COLS * TILE; // 1280
 const H = 720;
-const DEBUG = new URLSearchParams(location.search).has('debug');
+const DEBUG = ['localhost', '127.0.0.1'].includes(location.hostname) && new URLSearchParams(location.search).has('debug'); // 시험 화면은 내 컴퓨터에서만. 운영 주소에서는 켜지지 않는다
 
 const INFO = {
   defeated: { name: '좌절이', ability: '쉽게 풀이 죽어요', fall: '역시 난 안 돼…' },
