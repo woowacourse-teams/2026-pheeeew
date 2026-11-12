@@ -105,6 +105,8 @@ function loadZone(i) {
   });
   return a.job;
 }
+// 제목·고르기 화면 뒤에는 맵 맨 위(달 구간)가 비친다(카메라와 배경 투명도는 플레이 중에만 정한다). 그 구간은 처음부터 받는다
+const backdrop = loadZone(ZONES.length - 1);
 const zoneAssets = (h) => zonesAround(h, ZONES).flatMap((i) => leaves(arts[i].files));
 const needZones = (h) => Promise.all(zonesAround(h, ZONES).map(loadZone));
 // 칸의 윗면 높이로 어느 구간인지 정한다
@@ -1079,6 +1081,7 @@ async function enter() {
   showTitle();
 }
 
+await backdrop;
 ui.loaded();
 if (ADMIN) { if (saved) showTitle(); else showSelect(); }
 else await enter();
