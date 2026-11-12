@@ -62,6 +62,11 @@ final class ClimbConnection {
         return guest;
     }
 
+    /** 핸드셰이크에 유효한 관리자 쿠키가 있었다. 보고를 받되 순위·기록·위치 공유에 넣지 않는다. */
+    boolean admin() {
+        return Boolean.TRUE.equals(session.getAttributes().get(ClimbWebSocketHandler.ADMIN));
+    }
+
     /** 다른 사람에게 보이는 이 접속의 번호. 서버가 켜져 있는 동안 접속마다 새로 준다. */
     int n() {
         return n;

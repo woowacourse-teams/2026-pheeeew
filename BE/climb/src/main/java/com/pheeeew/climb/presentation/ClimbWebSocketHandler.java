@@ -59,6 +59,8 @@ import tools.jackson.databind.json.JsonMapper;
  */
 public class ClimbWebSocketHandler extends AbstractWebSocketHandler implements SmartLifecycle {
 
+    /** 핸드셰이크가 세션 속성에 남기는 관리자 표시(ClimbWebSocketConfiguration). */
+    static final String ADMIN = "climb.admin";
     private static final Logger log = LoggerFactory.getLogger(ClimbWebSocketHandler.class);
     private static final Set<String> CHARACTERS = Set.of("defeated", "tired", "frustrated", "annoyed", "angry");
     private static final int MAX_MESSAGE_BYTES = 16 * 1024;
@@ -238,8 +240,11 @@ public class ClimbWebSocketHandler extends AbstractWebSocketHandler implements S
             }
             case "st" -> {
                 // 위치는 저장하지 않고 순위에 쓰지 않는다. 서버가 모르는 맵은 함께 오르기도 하지 않는다.
-                ClimbPose pose = presence.enabled() && run != null ? pose(root) : null;
-                if (pose != null && pose.within(run.map())) {
+                // 관리자는 등반이 없지만 자세는 받아 둔다. 그래야 가까운 사람이 보인다(남에게는 보이지 않는다).
+                ClimbMap map = run != null ? run.map()
+                        : connection.admin() ? ranking.map(connection.mapVersion()).orElse(null) : null;
+                ClimbPose pose = presence.enabled() && map != null ? pose(root) : null;
+                if (pose != null && pose.within(map)) {
                     connection.pose(pose);
                 }
             }
@@ -275,8 +280,8 @@ public class ClimbWebSocketHandler extends AbstractWebSocketHandler implements S
         Optional<ClimbMap> map = ranking.map(mapVersion);
         ClimbRun run = null;
         RunResponse resumed = null;
-        // 서버가 모르는 맵 버전은 연결은 두되 순위에 넣지 않는다.
-        if (map.isPresent()) {
+        // 서버가 모르는 맵 버전과 관리자 연결은 연결은 두되 등반을 만들지 않는다(순위·기록에 넣지 않는다).
+        if (map.isPresent() && !connection.admin()) {
             Optional<ClimbRunRecord> saved = runs.findLatestUnfinished(guest.id(), mapVersion);
             if (saved.isPresent()) {
                 run = ClimbRun.restore(saved.get(), map.get());
@@ -373,8 +378,8 @@ public class ClimbWebSocketHandler extends AbstractWebSocketHandler implements S
                 .filter(ClimbConnection::helloed)
                 .collect(Collectors.groupingBy(ClimbConnection::mapVersion));
         byMap.forEach((mapVersion, members) -> {
-            ClimbPresence everyone = new ClimbPresence(members.stream().map(ClimbConnection::present)
-                    .filter(Objects::nonNull).toList());
+            ClimbPresence everyone = new ClimbPresence(members.stream().filter(member -> !member.admin())
+                    .map(ClimbConnection::present).filter(Objects::nonNull).toList());
             Map<Integer, ClimbConnection> byN = members.stream()
                     .collect(Collectors.toMap(ClimbConnection::n, member -> member));
             members.forEach(receiver -> {

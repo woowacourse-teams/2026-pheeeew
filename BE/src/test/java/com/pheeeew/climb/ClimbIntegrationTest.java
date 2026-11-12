@@ -51,11 +51,13 @@ import tools.jackson.databind.json.JsonMapper;
         "server.address=127.0.0.1", "pheeeew.s3.bucket=pheeeew-test",
         "pheeeew.s3.key-prefix=pheeeew/test/", "pheeeew.s3.region=ap-northeast-2",
         "pheeeew.climb.enabled=true", "pheeeew.climb.allowed-origin=" + ClimbIntegrationTest.GAME,
-        "pheeeew.climb.guest-creates-per-hour=1000"
+        "pheeeew.climb.guest-creates-per-hour=1000", "pheeeew.climb.admin-key=" + ClimbIntegrationTest.ADMIN_KEY
 })
 class ClimbIntegrationTest {
 
     static final String GAME = "http://game.pheeeew.test";
+    static final String ADMIN_KEY = "integration-test-admin-key";
+    private static final String ADMIN_SESSION = "/api/v1/climb/admin/session";
 
     @LocalServerPort
     private int port;
@@ -608,6 +610,141 @@ class ClimbIntegrationTest {
         }
     }
 
+    @Test
+    void 관리자_키가_설정되지_않으면_관리자_끝점은_모두_404다() throws Exception {
+        // given
+        ConfigurableApplicationContext noKey = startServer();
+        String base = "http://127.0.0.1:" + serverPort(noKey);
+        try {
+            // when
+            HttpResponse<String> open = post(base + ADMIN_SESSION, "{\"key\":\"\"}", null);
+            HttpResponse<String> check = get(base + ADMIN_SESSION, null);
+            HttpResponse<String> close = delete(base + ADMIN_SESSION, null);
+
+            // then
+            assertThat(List.of(open.statusCode(), check.statusCode(), close.statusCode())).containsOnly(404);
+            assertThat(open.headers().firstValue("Set-Cookie")).isEmpty();
+        } finally {
+            noKey.close();
+        }
+    }
+
+    @Test
+    void 틀린_관리자_키는_401이고_쿠키를_주지_않는다() throws Exception {
+        // when
+        HttpResponse<String> response = post(ADMIN_SESSION, "{\"key\":\"wrong-key\"}", null);
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(401);
+        assertThat(json.readTree(response.body()).path("code").stringValue()).isEqualTo("ADMIN_KEY_MISMATCH");
+        assertThat(response.headers().firstValue("Set-Cookie")).isEmpty();
+    }
+
+    @Test
+    void 맞는_관리자_키면_204와_관리자_쿠키를_주고_그_쿠키로만_세션이_확인된다() throws Exception {
+        // when
+        HttpResponse<String> opened = post(ADMIN_SESSION, "{\"key\":\"" + ADMIN_KEY + "\"}", null);
+
+        // then
+        assertThat(opened.statusCode()).isEqualTo(204);
+        String setCookie = opened.headers().firstValue("Set-Cookie").orElseThrow();
+        assertThat(setCookie).startsWith("climb_admin=").doesNotContain(ADMIN_KEY)
+                .contains("Path=/api/v1/climb", "Max-Age=28800", "Secure", "HttpOnly", "SameSite=Lax");
+        assertThat(get(ADMIN_SESSION, cookie(opened)).statusCode()).isEqualTo(204);
+        assertThat(get(ADMIN_SESSION, null).statusCode()).isEqualTo(401);
+        assertThat(get(ADMIN_SESSION, "climb_admin=forged").statusCode()).isEqualTo(401);
+    }
+
+    @Test
+    void 관리자_키를_분당_다섯_번_넘게_틀리면_여섯_번째는_429다() throws Exception {
+        // given
+        ConfigurableApplicationContext limited = startServer(Map.of("pheeeew.climb.admin-key", ADMIN_KEY));
+        String url = "http://127.0.0.1:" + serverPort(limited) + ADMIN_SESSION;
+        try {
+            // when
+            List<Integer> statuses = new ArrayList<>();
+            for (int attempt = 0; attempt < 6; attempt++) {
+                statuses.add(post(url, "{\"key\":\"wrong-" + attempt + "\"}", null).statusCode());
+            }
+            HttpResponse<String> right = post(url, "{\"key\":\"" + ADMIN_KEY + "\"}", null);
+
+            // then
+            assertThat(statuses).containsExactly(401, 401, 401, 401, 401, 429);
+            assertThat(right.statusCode()).isEqualTo(429);
+        } finally {
+            limited.close();
+        }
+    }
+
+    @Test
+    void 관리자_세션을_끝내면_쿠키를_지우고_그_쿠키는_더_쓸_수_없다() throws Exception {
+        // given
+        String admin = cookie(post(ADMIN_SESSION, "{\"key\":\"" + ADMIN_KEY + "\"}", null));
+
+        // when
+        HttpResponse<String> closed = delete(ADMIN_SESSION, admin);
+
+        // then
+        assertThat(closed.statusCode()).isEqualTo(204);
+        assertThat(closed.headers().firstValue("Set-Cookie").orElseThrow())
+                .startsWith("climb_admin=;").contains("Max-Age=0", "Path=/api/v1/climb");
+        assertThat(get(ADMIN_SESSION, admin).statusCode()).isEqualTo(401);
+    }
+
+    @Test
+    void 허용되지_않은_출처의_관리자_키_요청은_거절한다() throws Exception {
+        // when
+        HttpResponse<String> foreign = send(HttpRequest.newBuilder(uri(ADMIN_SESSION))
+                .header("Content-Type", "application/json")
+                .header("Origin", "https://foreign.example")
+                .POST(HttpRequest.BodyPublishers.ofString("{\"key\":\"" + ADMIN_KEY + "\"}")));
+        HttpResponse<String> preflight = client.send(HttpRequest.newBuilder(uri(ADMIN_SESSION))
+                .method("OPTIONS", HttpRequest.BodyPublishers.noBody())
+                .header("Origin", "https://foreign.example")
+                .header("Access-Control-Request-Method", "POST")
+                .header("Access-Control-Request-Headers", "content-type")
+                .build(), HttpResponse.BodyHandlers.ofString());
+
+        // then
+        assertThat(foreign.statusCode()).isEqualTo(403);
+        assertThat(foreign.headers().firstValue("Set-Cookie")).isEmpty();
+        assertThat(preflight.statusCode()).isEqualTo(403);
+    }
+
+    @Test
+    void 관리자_쿠키가_있는_연결의_보고는_순위와_기록과_위치_공유에_넣지_않는다() throws Exception {
+        // given
+        HttpResponse<String> adminGuest = post("/api/v1/climb/guests", "{\"nickname\":\"관리\"}", null);
+        String admin = cookie(adminGuest) + "; "
+                + cookie(post(ADMIN_SESSION, "{\"key\":\"" + ADMIN_KEY + "\"}", null));
+        Socket me = connect(admin);
+        hello(me);
+        Socket other = climber("손님");
+
+        // when
+        me.send("{\"t\":\"pos\",\"h\":15,\"best\":15,\"falls\":0,\"time\":2,\"x\":5}");
+        me.send("{\"t\":\"restart\"}");
+        state(me, 640, 3);
+        other.send("{\"t\":\"pos\",\"h\":3,\"best\":3,\"falls\":0,\"time\":2,\"x\":5}");
+        state(other, 640, 2);
+        JsonNode rank = me.await("rank", message -> message.path("top").size() == 1);
+        in(me, "손님");
+        other.await("rank", message -> message.path("me").path("best").intValue() == 3);
+        Thread.sleep(1500);
+
+        // then
+        assertThat(rank.path("top").get(0).path("nickname").stringValue()).isEqualTo("손님");
+        assertThat(rank.path("me").isNull()).isTrue();
+        assertThat(other.received()).filteredOn(message -> "rank".equals(message.path("t").stringValue()))
+                .allMatch(message -> message.path("top").size() == 1);
+        assertThat(other.received()).noneMatch(message -> "in".equals(message.path("t").stringValue()));
+        JsonNode online = json.readTree(get("/api/v1/climb/ranking?board=online&map=v1", null).body());
+        assertThat(online.path("top").size()).isEqualTo(1);
+        String adminId = json.readTree(adminGuest.body()).path("id").stringValue();
+        assertThat(jdbc.sql("SELECT count(*) FROM climb_run WHERE guest_id = :id")
+                .param("id", java.util.UUID.fromString(adminId)).query(Long.class).single()).isZero();
+    }
+
     private Socket climber(String nickname) throws Exception {
         Socket socket = connect(cookie(post("/api/v1/climb/guests", "{\"nickname\":\"" + nickname + "\"}", null)));
         hello(socket);
@@ -774,6 +911,10 @@ class ClimbIntegrationTest {
 
     private HttpResponse<String> patch(String path, String body, String cookie) throws Exception {
         return send(request(path, cookie).method("PATCH", HttpRequest.BodyPublishers.ofString(body)));
+    }
+
+    private HttpResponse<String> delete(String path, String cookie) throws Exception {
+        return send(request(path, cookie).DELETE());
     }
 
     private HttpResponse<String> get(String path, String cookie) throws Exception {

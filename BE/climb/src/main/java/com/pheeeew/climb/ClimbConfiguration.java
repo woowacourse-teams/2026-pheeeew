@@ -2,6 +2,7 @@ package com.pheeeew.climb;
 
 import com.pheeeew.climb.application.ClimbGuestService;
 import com.pheeeew.climb.application.ClimbRankingService;
+import com.pheeeew.climb.domain.ClimbAdminSessions;
 import com.pheeeew.climb.domain.ClimbErrorCode;
 import com.pheeeew.climb.infra.ClimbGuestRepository;
 import com.pheeeew.climb.infra.ClimbRunRepository;
@@ -63,6 +64,11 @@ public class ClimbConfiguration {
     }
 
     @Bean
+    ClimbAdminSessions climbAdminSessions(ClimbProperties properties) {
+        return new ClimbAdminSessions(properties.adminKey());
+    }
+
+    @Bean
     ClimbWebSocketHandler climbWebSocketHandler(ClimbRankingService ranking, ClimbRunRepository runs,
             ClimbGuestService guests, ClimbProperties properties) {
         return new ClimbWebSocketHandler(ranking, runs, guests, properties.presence());
@@ -78,7 +84,7 @@ public class ClimbConfiguration {
         }
         CorsConfiguration cors = new CorsConfiguration();
         cors.setAllowedOrigins(List.of(properties.allowedOrigin()));
-        cors.setAllowedMethods(List.of("GET", "POST", "PATCH"));
+        cors.setAllowedMethods(List.of("GET", "POST", "PATCH", "DELETE"));
         cors.setAllowedHeaders(List.of("Content-Type"));
         cors.setAllowCredentials(true);
         cors.setMaxAge(Duration.ofHours(1));
@@ -104,6 +110,8 @@ public class ClimbConfiguration {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.POST, "/api/v1/climb/guests").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/climb/ranking").permitAll()
+                        // 관리자 세션은 손님 쿠키와 따로 컨트롤러가 관리자 쿠키로 확인한다
+                        .requestMatchers("/api/v1/climb/admin/session").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/climb/me", "/api/v1/climb/ws").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/climb/me").authenticated()
                         .anyRequest().denyAll());

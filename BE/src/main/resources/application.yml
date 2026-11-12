@@ -31,6 +31,8 @@ pheeeew:
     # 게임 주소 하나. 켤 때 반드시 정한다.
     allowed-origin:
     guest-creates-per-hour: 10
+    # 관리자 모드 키. 비어 있으면 관리자 끝점이 모두 404 다. 값은 환경 변수로만 넣는다.
+    admin-key: ${PHEEEEW_CLIMB_ADMIN_KEY:}
     # 맵 버전별 꼭대기 높이(칸), 구간 경계, 완주 최소 시간(초). 여기 없는 맵 버전은 순위에 넣지 않는다.
     maps:
       v1:
