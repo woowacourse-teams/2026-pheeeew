@@ -1,6 +1,7 @@
 // public/net.js 시험. 가짜 fetch·WebSocket·시계를 넣어 서버 없이 확인한다.
 // 사용: node tools/net_test.mjs
 import { createNet } from '../public/net.js';
+import { apiForHostname } from '../public/api-config.js';
 
 const tests = [];
 const test = (name, fn) => tests.push({ name, fn });
@@ -81,6 +82,38 @@ function online(t, opts = { character: 'angry' }, run = null) {
   ws.serverOpen();
   ws.serverSend(welcome(run));
   return ws;
+}
+
+for (const [host, expected] of [
+  ['climb.pheeeew.com', 'https://api.pheeeew.com/api/v1/climb'],
+  ['climb-dev.pheeeew.com', 'https://api-dev.pheeeew.com/api/v1/climb'],
+  ['localhost', undefined],
+  ['127.0.0.1', undefined],
+  ['pheeeew-climb.pages.dev', undefined],
+  ['preview.pheeeew-climb-dev.pages.dev', undefined],
+  ['example.com', undefined],
+  ['climb.pheeeew.com.example.com', undefined],
+]) {
+  test(`접속 호스트 ${host}의 API 선택`, () => {
+    eq(apiForHostname(host), expected, 'API 주소');
+  });
+}
+
+for (const [host, api] of [
+  ['climb.pheeeew.com', 'https://api.pheeeew.com/api/v1/climb'],
+  ['climb-dev.pheeeew.com', 'https://api-dev.pheeeew.com/api/v1/climb'],
+]) {
+  test(`${host}: 선택한 API로 쿠키 요청과 WSS 연결`, async () => {
+    const c = clock();
+    const s = fakeSockets();
+    const f = fakeFetch({ [`GET ${api}/me`]: { status: 401, body: null } });
+    const net = createNet({ map: 'v1', api: apiForHostname(host), base: `https://${host}/admin/`,
+      fetch: f.fetch, WebSocket: s.WebSocket, setTimeout: c.setTimeout, clearTimeout: c.clearTimeout, now: c.now });
+    eq((await net.me()).status, 401, 'API 응답');
+    eq([f.calls[0].url, f.calls[0].credentials], [`${api}/me`, 'include'], '다른 출처에 쿠키 포함');
+    net.connect({ character: 'angry' });
+    eq(s.sockets[0].url, `${api.replace('https:', 'wss:')}/ws`, '같은 API의 WSS');
+  });
 }
 
 test('첫 접속: me 가 401 이면 손님을 만들고, 그 뒤 me 는 200', async () => {
@@ -184,6 +217,12 @@ test('닫힘 사유만 CONNECTION_REPLACED 여도 다시 연결하지 않는다'
   online(t).serverClose(1008, 'CONNECTION_REPLACED');
   t.clock.advance(120000);
   eq(t.sockets.length, 1, '다시 연결 안 함');
+});
+
+test('Pages가 API 경로에 HTML 200을 반환하면 서버 없음으로 처리한다', async () => {
+  const t = setup({ fetch: async () => ({ status: 200, json: async () => { throw new SyntaxError('HTML response'); } }) });
+  eq(await t.net.me(), { status: 0, body: null }, '손님 조회');
+  eq(await t.net.ranking('today'), { status: 0, body: null }, '순위 조회');
 });
 
 test('서버가 없어도 예외 없이 offline', async () => {
