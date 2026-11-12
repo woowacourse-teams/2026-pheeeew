@@ -251,6 +251,30 @@ class ClimbIntegrationTest {
     }
 
     @Test
+    void 빌드가_없거나_낮은_hello는_CONNECTION_REPLACED로_닫고_흔적을_남기지_않는다() throws Exception {
+        // given
+        HttpResponse<String> legacyGuest = post("/api/v1/climb/guests", "{\"nickname\":\"옛탭\"}", null);
+        Socket legacy = connect(cookie(legacyGuest));
+        Socket outdated = connect(cookie(post("/api/v1/climb/guests", "{\"nickname\":\"낮은탭\"}", null)));
+
+        // when
+        legacy.send("{\"t\":\"hello\",\"v\":1,\"map\":\"v1\",\"character\":\"angry\"}");
+        outdated.send("{\"t\":\"hello\",\"v\":1,\"build\":0,\"map\":\"v1\",\"character\":\"angry\"}");
+
+        // then
+        assertThat(legacy.await("error", error -> true).path("code").stringValue()).isEqualTo("CONNECTION_REPLACED");
+        assertThat(legacy.closedReason()).isEqualTo("1008 CONNECTION_REPLACED");
+        assertThat(outdated.await("error", error -> true).path("code").stringValue()).isEqualTo("CONNECTION_REPLACED");
+        assertThat(outdated.closedReason()).isEqualTo("1008 CONNECTION_REPLACED");
+        JsonNode online = json.readTree(get("/api/v1/climb/ranking?board=online&map=v1", null).body());
+        assertThat(online.path("online").intValue()).isZero();
+        assertThat(online.path("top")).isEmpty();
+        String legacyId = json.readTree(legacyGuest.body()).path("id").stringValue();
+        assertThat(jdbc.sql("SELECT count(*) FROM climb_run WHERE guest_id = :id")
+                .param("id", java.util.UUID.fromString(legacyId)).query(Long.class).single()).isZero();
+    }
+
+    @Test
     void 불가능한_높이_보고는_순위에_반영되지_않는다() throws Exception {
         // given
         String cookie = cookie(post("/api/v1/climb/guests", "{\"nickname\":\"히유\"}", null));
@@ -794,7 +818,7 @@ class ClimbIntegrationTest {
     }
 
     private JsonNode hello(Socket socket) throws Exception {
-        socket.send("{\"t\":\"hello\",\"v\":1,\"map\":\"v1\",\"character\":\"angry\"}");
+        socket.send("{\"t\":\"hello\",\"v\":1,\"build\":2,\"map\":\"v1\",\"character\":\"angry\"}");
         return socket.await("welcome", message -> true);
     }
 

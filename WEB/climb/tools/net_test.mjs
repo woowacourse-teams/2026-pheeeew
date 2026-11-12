@@ -2,7 +2,7 @@
 // 사용: node tools/net_test.mjs
 import { createNet } from '../public/net.js';
 import { apiForHostname } from '../public/api-config.js';
-import { entryState, canPlay } from '../public/online.js';
+import { entryState, canPlay, watchOnly } from '../public/online.js';
 
 const tests = [];
 const test = (name, fn) => tests.push({ name, fn });
@@ -155,7 +155,7 @@ test('연결하면 hello 를 먼저 보내고, welcome 을 받으면 online', ()
   eq(ws.url, 'ws://127.0.0.1:4320/api/v1/climb/ws', '주소');
   eq(t.net.status, 'connecting', '여는 중');
   ws.serverOpen();
-  eq(ws.sent, [{ t: 'hello', v: 1, map: 'v1', character: 'angry' }], 'hello');
+  eq(ws.sent, [{ t: 'hello', v: 1, build: 2, map: 'v1', character: 'angry' }], 'hello');
   ws.serverSend(welcome());
   eq([t.net.status, got], ['online', ['4f2a']], 'welcome');
   eq(t.statuses, ['connecting', 'online'], '상태 변화');
@@ -480,6 +480,26 @@ test('손님 없는 일반 플레이는 차단하고 인증된 관리자 점검�
   for (const status of ['offline', 'connecting', 'online', 'replaced']) {
     eq(canPlay(true, null, status), true, '관리자 점검');
   }
+});
+
+test('관리자는 실시간으로 보기만 한다: hello 와 자세(st)만 보내고 기록이 될 보고는 보내지 않는다', async () => {
+  const t = setup();
+  watchOnly(t.net);
+  const ws = online(t, { character: 'angry', zone: 3, finished: false }); // 이어 하던 구간 수를 넘겨도 zone 을 보내지 않는다
+  t.net.reportPos({ h: 140, best: 140, falls: 1, time: 30, x: 600 });
+  t.net.reportZone({ zone: 4, time: 40 });
+  t.net.reportFinish({ time: 50, falls: 2 });
+  t.net.restart();
+  t.clock.advance(5000);
+  t.net.reportState([612, 135.42, 0, 0, 1, 0]);
+  eq(ws.sent.map((m) => m.t), ['hello', 'st'], '보낸 메시지');
+  eq(await t.net.createGuest('관리자'), { status: 0 }, '손님을 만들지 않는다');
+  eq(await t.net.rename('관리자'), { status: 0 }, '닉네임을 바꾸지 않는다');
+  eq(t.calls.length, 0, 'REST 요청 없음');
+  const got = [];
+  for (const k of ['rank', 'in', 'sts', 'out', 'event']) t.net.on(k, () => got.push(k));
+  for (const k of ['rank', 'in', 'sts', 'out', 'event']) ws.serverSend({ t: k, top: [], p: [], s: [], n: [] });
+  eq(got, ['rank', 'in', 'sts', 'out', 'event'], '순위와 다른 사람은 그대로 받는다');
 });
 
 let failed = 0;

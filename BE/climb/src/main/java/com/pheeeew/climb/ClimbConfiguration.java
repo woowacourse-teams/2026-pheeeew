@@ -71,7 +71,8 @@ public class ClimbConfiguration {
     @Bean
     ClimbWebSocketHandler climbWebSocketHandler(ClimbRankingService ranking, ClimbRunRepository runs,
             ClimbGuestService guests, ClimbProperties properties) {
-        return new ClimbWebSocketHandler(ranking, runs, guests, properties.presence());
+        return new ClimbWebSocketHandler(ranking, runs, guests, properties.presence(),
+                properties.minClientBuild());
     }
 
     /** /api/v1/climb/** 전용 체인. 본체 체인보다 먼저 보고, JWT 대신 손님 쿠키로 확인한다. */

@@ -57,7 +57,7 @@
 브라우저 → 서버
 
 ```json
-{ "t": "hello", "v": 1, "map": "v1", "character": "angry" }
+{ "t": "hello", "v": 1, "build": 1, "map": "v1", "character": "angry" }
 { "t": "pos", "h": 120, "best": 131, "falls": 4, "time": 95, "x": 18 }
 { "t": "zone", "zone": 1, "time": 96 }
 { "t": "finish", "time": 640, "falls": 12 }
@@ -67,6 +67,8 @@
 - 숫자 필드는 모두 정수만 받는다(`1.5`, `"3"` 은 `INVALID_MESSAGE`). `h`, `best` 는 칸, `time` 은 게임 시간(초, 내림), `x` 는 가로 위치(픽셀, 반올림한 정수)다.
 - `hello` 는 연결 직후 한 번. `character` 는 `defeated`, `tired`, `frustrated`, `annoyed`, `angry` 중 하나.
   같은 맵에 완주하지 않은 등반이 있으면 이어 하고, 없으면 새 등반을 만든다.
+- `build` 는 게임 빌드 번호(정수, 없으면 0). `pheeeew.climb.min-client-build`(기본 1, 0 이면 보지 않음)보다 낮으면 등반을 만들지 않고
+  `CONNECTION_REPLACED` 로 닫는다. 옛 게임은 이 신호로 멈추고 새로 고침 버튼을 띄운다. 관리자 연결도 같다.
 - `pos` 는 착지할 때마다, 최대 2초에 한 번. `zone`·`finish` 를 보내기 전에는 그 높이까지 오른 `pos` 를 먼저 보낸다. `restart` 는 새 등반을 만든다. 이전 기록은 오늘·역대 순위에 남는다.
 
 서버 → 브라우저
@@ -94,7 +96,7 @@
 
 핸드셰이크에 유효한 `climb_admin` 쿠키가 있으면 관리자 연결이다(손님 쿠키도 필요하다). 등반을 만들지 않아서 `pos`·`zone`·`finish`·`restart` 는
 오류 없이 버리고(`welcome` 의 `run` 은 `null`), 기록·순위·`event` 에 넣지 않는다. `st` 는 받아 두지만 다른 사람에게 보내지 않는다.
-연결은 그대로 두고 `rank`(`me` 는 `null`)와 가까운 사람의 `in`·`sts`·`out` 은 받는다. 게임도 관리자 모드에서는 보고하지 않는다(이중 장치).
+연결은 그대로 두고 `rank`(`me` 는 `null`)와 가까운 사람의 `in`·`sts`·`out`, 다른 사람의 `event` 는 받는다. 게임도 관리자 모드에서는 `hello` 와 `st` 만 보낸다(이중 장치).
 
 ## 함께 오르기
 
