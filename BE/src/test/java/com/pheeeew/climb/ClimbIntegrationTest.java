@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 
 import com.pheeeew.PheeeewApplication;
+import com.pheeeew.climb.application.ClimbGuestService;
 import com.pheeeew.device.application.token.AccessTokenIssuer;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
@@ -66,6 +67,8 @@ class ClimbIntegrationTest {
     private AccessTokenIssuer tokens;
     @Autowired
     private JdbcClient jdbc;
+    @Autowired
+    private ClimbGuestService guestService;
 
     private final JsonMapper json = JsonMapper.builder().build();
     private final List<WebSocket> sockets = new ArrayList<>();
@@ -395,6 +398,31 @@ class ClimbIntegrationTest {
             jdbc.sql("DELETE FROM device_daily_presses WHERE device_id = :device").param("device", device.getId()).update();
             devices.deleteById(device.getId());
         }
+    }
+
+    @Test
+    void 백팔십일_동안_접속하지_않은_손님과_기록을_지운다() throws Exception {
+        // given
+        HttpResponse<String> created = post("/api/v1/climb/guests", "{\"nickname\":\"오래전\"}", null);
+        String stale = cookie(created);
+        String active = cookie(post("/api/v1/climb/guests", "{\"nickname\":\"요즘\"}", null));
+        Socket socket = connect(stale);
+        hello(socket);
+        socket.send("{\"t\":\"pos\",\"h\":5,\"best\":5,\"falls\":0,\"time\":1,\"x\":0}");
+        socket.await("rank", rank -> rank.path("me").path("best").intValue() == 5);
+        socket.close();
+        jdbc.sql("UPDATE climb_guest SET last_seen_at = now() - interval '181 days' WHERE id = :id")
+                .param("id", java.util.UUID.fromString(json.readTree(created.body()).path("id").stringValue()))
+                .update();
+
+        // when
+        guestService.deleteInactive();
+
+        // then
+        assertThat(get("/api/v1/climb/me", stale).statusCode()).isEqualTo(401);
+        assertThat(get("/api/v1/climb/me", active).statusCode()).isEqualTo(200);
+        JsonNode all = json.readTree(get("/api/v1/climb/ranking?board=all&map=v1", null).body());
+        assertThat(all.path("top")).noneMatch(item -> "오래전".equals(item.path("nickname").stringValue()));
     }
 
     private ConfigurableApplicationContext startServer() {
