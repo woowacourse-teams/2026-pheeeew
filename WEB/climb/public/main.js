@@ -1,12 +1,13 @@
 import { Application, Assets, Container, Graphics, Sprite, Text, TilingSprite } from '/vendor/pixi.mjs';
 import { TILE, COLS, DT, IDS, params, newPlayer, step } from './physics.js';
-import { level, DECOR, HEIGHT, START, SCREEN, ZONES, nods, winds, updateNods, NOD_STAND, HOT_STAND, yOf, hOf } from './level.js';
+import { level, DECOR, HEIGHT, START, SCREEN, ZONES, GOAL, MAP_VERSION, nods, winds, updateNods, NOD_STAND, HOT_STAND, yOf, hOf } from './level.js';
 import { Rig, PARTS, JUMPS } from './rig.js';
 import { JellyRig } from './jelly.js';
 import { traceTerrain, sketch } from './terrain.js';
 import { createUI, TINT } from './ui.js';
 import { createFx } from './fx.js';
 import { sfx, unlock, toggleMute } from './sfx.js';
+import { createNet } from './net.js';
 
 const W = COLS * TILE; // 1280
 const H = 720;
@@ -417,34 +418,91 @@ function begin(who, saved) {
   ui.play(id);
   mode = 'play';
   sfx.start();
+  if (guest) net.connect({ character: id, zone: Math.min(stats.cleared, ZONES.length - 1), finished: stats.cleared >= ZONES.length });
+  showRanks();
 }
 
 // ---- 화면 전환 ----
 let pick = 0;
 let saved = null;
+// 처음부터 다시: 로컬 저장을 지우고 서버에도 새 등반을 알린다
+function forget() {
+  localStorage.removeItem(SAVE_KEY);
+  saved = null;
+  net.restart();
+}
 function showSelect() {
   mode = 'select';
   ui.select(pick, (i) => { pick = i; showSelect(); }, () => { begin(IDS[pick]); save(); });
 }
+const go = () => (saved ? begin(saved.id, saved) : showSelect());
 function showTitle() {
   mode = 'title';
-  ui.title(saved, () => begin(saved.id, saved), () => { localStorage.removeItem(SAVE_KEY); saved = null; showSelect(); });
+  ui.title(saved, go, () => { forget(); showSelect(); });
+  ui.guest(guest, rename);
+  showBoards();
+}
+async function showBoards() {
+  const [today, all] = await Promise.all([net.ranking('today'), net.ranking('all')]);
+  if (mode === 'title') ui.boards(today.status === 200 ? today.body.top : null, all.status === 200 ? all.body.top : null, guest?.tag);
 }
 function askRestart() {
   mode = 'confirm';
   keys.left = keys.right = keys.jump = false;
-  ui.confirm(() => { localStorage.removeItem(SAVE_KEY); saved = null; ui.closeConfirm(); showSelect(); }, () => { ui.closeConfirm(); mode = 'play'; });
+  ui.confirm(() => { forget(); ui.closeConfirm(); showSelect(); }, () => { ui.closeConfirm(); mode = 'play'; });
+}
+
+// ---- 서버(순위) ----
+// 서버가 없으면 guest 가 null 인 채로 지금처럼 혼자 한다
+const net = createNet({ map: MAP_VERSION });
+let guest = null; // { id, nickname, tag }
+let rank = null; // 마지막으로 받은 rank 메시지
+const showRanks = () => ui.ranks(guest && { rank, status: net.status, tag: guest.tag });
+net.on('rank', (m) => { rank = m; showRanks(); });
+net.on('status', showRanks);
+net.on('welcome', (m) => { guest = m.me; });
+net.on('event', (m) => {
+  if (m.tag === guest?.tag) return; // 내 구간 완료는 배너로 이미 보인다
+  ui.toast(m.kind === 'finish' ? `${m.nickname} 님이 꼭대기까지 올랐어요!` : `${m.nickname} 님이 ${m.zone}구간(${ZONES[m.zone - 1]?.name ?? ''}) 통과!`);
+});
+const NICK_ERR = {
+  NICKNAME_LENGTH: '닉네임은 2~10자로 정해 주세요.',
+  NICKNAME_CHARACTERS: '한글, 영문, 숫자만 쓸 수 있어요.',
+  GUEST_CREATE_LIMITED: '잠깐 사이에 너무 많이 만들었어요. 조금 뒤에 다시 해 주세요.',
+  NICKNAME_CHANGE_LIMITED: '닉네임은 하루에 3번까지 바꿀 수 있어요.',
+};
+const nickError = (r) => (r.status === 400 || r.status === 429 ? NICK_ERR[r.body?.code] ?? r.body?.message ?? '닉네임을 다시 확인해 주세요.' : '서버에 닿지 않아요. 혼자 하기로 오를 수 있어요.');
+// 첫 접속: 닉네임을 정하거나 혼자 하기
+function askNickname() {
+  mode = 'nickname';
+  ui.nickname({ heading: '닉네임을 정해 주세요', ok: '정하기', alt: '혼자 하기' }, async (name) => {
+    const r = await net.createGuest(name);
+    if (r.status !== 201) { ui.nicknameError(nickError(r)); return; }
+    guest = r.body;
+    ui.closeNickname();
+    showTitle();
+  }, () => { ui.closeNickname(); saved ? showTitle() : showSelect(); });
+}
+function rename() {
+  mode = 'nickname';
+  ui.nickname({ heading: '닉네임 바꾸기', value: guest.nickname, ok: '바꾸기', alt: '취소' }, async (name) => {
+    const r = await net.rename(name);
+    if (r.status !== 200) { ui.nicknameError(nickError(r)); return; }
+    guest = r.body;
+    ui.closeNickname();
+    showTitle();
+  }, () => { ui.closeNickname(); showTitle(); });
 }
 
 addEventListener('keydown', (e) => {
-  if (e.repeat) return;
+  if (e.repeat || mode === 'nickname') return; // 닉네임 입력 중에는 게임 키를 쓰지 않는다
   const k = e.code;
   unlock(); // 브라우저는 첫 키 입력 뒤에야 소리를 낸다
   if (k === 'KeyM') { const off = toggleMute(); if (mode === 'play') { say(off ? '소리 끔' : '소리 켬'); quipT = 1.2; } return; }
   if (['Space', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(k)) e.preventDefault();
   if (mode === 'title') {
-    if (k === 'Enter' || k === 'Space') begin(saved.id, saved);
-    if (k === 'KeyN') { localStorage.removeItem(SAVE_KEY); saved = null; showSelect(); }
+    if (k === 'Enter' || k === 'Space') go();
+    if (k === 'KeyN' && saved) { forget(); showSelect(); }
     return;
   }
   if (mode === 'select') {
@@ -454,7 +512,7 @@ addEventListener('keydown', (e) => {
     return;
   }
   if (mode === 'confirm') {
-    if (k === 'Enter') { localStorage.removeItem(SAVE_KEY); saved = null; ui.closeConfirm(); showSelect(); }
+    if (k === 'Enter') { forget(); ui.closeConfirm(); showSelect(); }
     if (k === 'Escape' || k === 'KeyN') { ui.closeConfirm(); mode = 'play'; }
     return;
   }
@@ -462,6 +520,7 @@ addEventListener('keydown', (e) => {
   if (k === 'ArrowRight' || k === 'KeyD') { keys.right = true; flail = 1; }
   if (k === 'Space') keys.jump = true;
   if (k === 'KeyN') askRestart();
+  if (k === 'Tab') { e.preventDefault(); ui.foldRanks(); }
   if (k === 'KeyJ') { jelly = !jelly; localStorage.setItem('pheeeew-climb-rig', jelly ? 'jelly' : 'old'); makeRig(); say(jelly ? '젤리 움직임' : '예전 움직임'); quipT = 1.2; }
 });
 addEventListener('keyup', (e) => {
@@ -494,11 +553,14 @@ function tick() {
     const done = ZONES.filter((z) => h >= z.to).length;
     if (done > stats.cleared) {
       stats.cleared = done;
+      net.reportZone({ zone: Math.min(done, ZONES.length - 1), time: stats.time }); // 마지막 구간을 넘는 것 = 완주
+      if (done === ZONES.length) net.reportFinish({ time: stats.time, falls: stats.falls });
       ui.banner(`${done}구간 ${ZONES[done - 1].name} 완료! 피유~`, `떨어진 횟수 ${stats.falls} · ${clock(stats.time)}`);
       sfx.clear();
       fx.confetti(p.x + P.w / 2, p.y, Object.values(TINT).map((c) => parseInt(c.slice(1), 16)));
     }
     save();
+    net.reportPos({ h: Math.min(GOAL, Math.max(0, h)), best: Math.min(GOAL, stats.best), falls: stats.falls, time: stats.time, x: p.x }); // 2초에 한 번으로 net 이 줄인다
   }
 }
 
@@ -586,7 +648,18 @@ app.ticker.add((tk) => { if (!window.paused) frame(Math.min(0.1, tk.deltaMS / 10
 saved = JSON.parse(localStorage.getItem(SAVE_KEY) ?? 'null');
 if (saved && !IDS.includes(saved.id)) saved = null;
 if (saved && saved.h === undefined) saved.h = (5080 - saved.y - 48) / TILE; // 예전 저장(y 픽셀) 읽기
+const me = await net.me();
+if (me.status === 200) {
+  guest = me.body;
+  // 서버에 같은 맵의 이어 할 등반이 있으면 로컬 저장보다 그것을 쓴다(로컬 저장은 서버가 없을 때의 예비)
+  const r = me.body.run;
+  if (r && r.map === MAP_VERSION && IDS.includes(r.character)) {
+    saved = { id: r.character, x: r.x > 0 ? r.x : START[0] * TILE, h: r.height + 0.4, falls: r.falls, time: r.time, best: r.best, cleared: ZONES.filter((z) => r.best >= z.to).length }; // 서버 높이는 정수라 살짝 위에서 내려놓는다
+  }
+}
 ui.loaded();
-if (saved) showTitle(); else showSelect();
+if (me.status === 401) askNickname();
+else if (saved || guest) showTitle();
+else showSelect();
 
 if (DEBUG) window.game = { get p() { return p; }, get rig() { return rig; }, app, render: () => app.render(), view, get camY() { return camY; }, P: () => P, yOf, keys, begin, frame, get stats() { return stats; } }; // 숨겨진 창에서도 frame(dt) 로 시간을 넘겨 시험한다
