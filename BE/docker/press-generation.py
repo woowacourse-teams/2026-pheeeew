@@ -274,7 +274,9 @@ def query(env: dict, sql: str) -> dict:
                             input=sql, text=True, capture_output=True, env=process_env, timeout=15)
     if result.returncode:
         # Diagnostics may contain credentials. Re-read after any failure, including a lost COMMIT response.
-        raise ValueError('Database operation failed; its outcome must be rechecked')
+        # Only a fixed, credential-free class of the failure is forwarded.
+        reason = ' (connection limit)' if 'too many clients' in result.stderr else ''
+        raise ValueError('Database operation failed; its outcome must be rechecked' + reason)
     state = json.loads(result.stdout.strip())
     if not isinstance(state.get('enabled'), bool):
         raise ValueError('Invalid server control row')

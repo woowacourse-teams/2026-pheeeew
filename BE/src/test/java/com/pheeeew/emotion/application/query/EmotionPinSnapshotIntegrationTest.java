@@ -221,7 +221,7 @@ class EmotionPinSnapshotIntegrationTest {
     private List<EmotionMapPin> snapshotPins(Object snapshot) {
         Object ordered = ReflectionTestUtils.invokeMethod(snapshot, "ordered");
         var cursor = EmotionCursor.initialWithinBounds(BOUNDS, clock.instant(), EmotionSearchFilter.from(null));
-        Object selection = ReflectionTestUtils.invokeMethod(ordered, "select", cursor,
+        Object selection = ReflectionTestUtils.invokeMethod(ordered, "select", cursor, requester.getId(),
                 EmotionMapBlocks.of(Set.of(), Set.of()), 201);
 
         return ReflectionTestUtils.invokeMethod(selection, "pins");

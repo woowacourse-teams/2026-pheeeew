@@ -39,9 +39,8 @@ def verify_metrics(config):
                                  "acquire_seconds_count acquire_seconds_sum acquire_seconds_max "
                                  "usage_seconds_count usage_seconds_sum usage_seconds_max",
     }
-    accepted.extend(f"pheeeew_map_cache_{kind}_total" for kind in
-                    ("requests", "rebuilds", "failures", "maintenance_failures", "maintenance_busy"))
-    for kind in ("lock_wait", "maintenance", "rebuild", "pin_search"):
+    accepted.append("pheeeew_map_cache_failures_total")
+    for kind in ("lock_wait", "maintenance", "rebuild"):
         families[f"pheeeew_map_cache_{kind}_seconds_"] = "count sum max"
     accepted.extend(["pheeeew_map_cache_pending_age_seconds", "pheeeew_map_cache_candidates"])
     families["pheeeew_map_cache_pin_scanned_"] = "count sum max"
@@ -53,6 +52,9 @@ def verify_metrics(config):
     accepted.extend(f"jvm_memory_{kind}_bytes" for kind in ("used", "committed", "max"))
     accepted.extend(f"tomcat_threads_{kind}_threads" for kind in ("busy", "current", "config_max"))
     rejected = ["pheeeew_activity_device_id", "pheeeew_activity_dau_created",
+                "pheeeew_map_cache_requests_total", "pheeeew_map_cache_rebuilds_total",
+                "pheeeew_map_cache_pin_search_seconds_count", "pheeeew_map_cache_maintenance_busy_total",
+                "pheeeew_map_cache_maintenance_failures_total",
                 "pheeeew_app_version_checks_total", "pheeeew_app_version_checks_created", "pheeeew_sigh_list_results_bucket",
                 "pheeeew_unreviewed_total", "unreviewed_metric",
                 "pheeeew_region_query_seconds_created", "pheeeew_region_query_seconds_device_id",

@@ -5,13 +5,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.pheeeew.emotion.application.dto.RegionEmotionSummary;
+import com.pheeeew.emotion.domain.Audio;
 import com.pheeeew.emotion.domain.Emotion;
 import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.emotion.domain.repository.projection.RegionEmotionStateCount;
+import com.pheeeew.emotion.domain.repository.query.EmotionContentFilter;
 import com.pheeeew.region.domain.RegionLevel;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -24,13 +27,13 @@ class RegionAggregateTest {
     void 시군구를_시도로_합산하고_NULL_상태와_동률_우선순위를_보존한다() {
         // given
         var aggregate = RegionAggregate.from(List.of(
-                RegionEmotionStateCount.of("11010", DAY, EmotionState.ANGRY, 2, null),
-                RegionEmotionStateCount.of("11010", DAY, null, 1, null),
-                RegionEmotionStateCount.of("11020", DAY, EmotionState.EXHAUSTED, 2, null),
-                RegionEmotionStateCount.of("26010", DAY, null, 3, null)));
+                RegionEmotionStateCount.of("11010", DAY, EmotionState.ANGRY, false, 2, null),
+                RegionEmotionStateCount.of("11010", DAY, null, false, 1, null),
+                RegionEmotionStateCount.of("11020", DAY, EmotionState.EXHAUSTED, false, 2, null),
+                RegionEmotionStateCount.of("26010", DAY, null, false, 3, null)));
 
         // when
-        var summaries = aggregate.summaries();
+        var summaries = aggregate.summaries(EmotionContentFilter.ALL);
 
         // then
         assertThat(summaries.get(RegionLevel.SIGUNGU)).containsEntry("11010", RegionEmotionSummary.of(3, EmotionState.ANGRY))
@@ -43,20 +46,20 @@ class RegionAggregateTest {
     void 현재_개수가_0인_지역도_가장_이른_미래_활성_시각은_보존한다() {
         // given / when
         var aggregate = RegionAggregate.from(List.of(
-                RegionEmotionStateCount.of("11010", DAY, EmotionState.ANGRY, 0, NOW.plusSeconds(20)),
-                RegionEmotionStateCount.of("11020", DAY, EmotionState.EXHAUSTED, 0, NOW.plusSeconds(10))));
+                RegionEmotionStateCount.of("11010", DAY, EmotionState.ANGRY, false, 0, NOW.plusSeconds(20)),
+                RegionEmotionStateCount.of("11020", DAY, EmotionState.EXHAUSTED, false, 0, NOW.plusSeconds(10))));
 
         // then
-        assertThat(aggregate.summaries().get(RegionLevel.SIGUNGU)).isEmpty();
-        assertThat(aggregate.summaries().get(RegionLevel.SIDO)).isEmpty();
+        assertThat(aggregate.summaries(EmotionContentFilter.ALL).get(RegionLevel.SIGUNGU)).isEmpty();
+        assertThat(aggregate.summaries(EmotionContentFilter.ALL).get(RegionLevel.SIDO)).isEmpty();
         assertThat(aggregate.nextActivation()).isEqualTo(NOW.plusSeconds(10));
     }
 
     @Test
     void 상태_변경은_새_집계에만_반영하고_이전_집계와_공개된_요약은_보존한다() {
         // given
-        var original = RegionAggregate.from(List.of(RegionEmotionStateCount.of("11010", DAY, null, 1, null)));
-        var published = original.summaries();
+        var original = RegionAggregate.from(List.of(RegionEmotionStateCount.of("11010", DAY, null, false, 1, null)));
+        var published = original.summaries(EmotionContentFilter.ALL);
         var before = contribution(null, "기존 기록", NOW.minusSeconds(1), false);
         var after = contribution(EmotionState.EXHAUSTED, "수정 기록", NOW.minusSeconds(1), false);
 
@@ -64,8 +67,8 @@ class RegionAggregateTest {
         var updated = original.applyChange(before, after, NOW);
 
         // then
-        assertThat(updated.summaries().get(RegionLevel.SIDO)).containsEntry("11", RegionEmotionSummary.of(1, EmotionState.EXHAUSTED));
-        assertThat(original.summaries()).isEqualTo(published);
+        assertThat(updated.summaries(EmotionContentFilter.ALL).get(RegionLevel.SIDO)).containsEntry("11", RegionEmotionSummary.of(1, EmotionState.EXHAUSTED));
+        assertThat(original.summaries(EmotionContentFilter.ALL)).isEqualTo(published);
         assertThat(published.get(RegionLevel.SIDO)).containsEntry("11", RegionEmotionSummary.of(1, null));
         assertThatThrownBy(() -> published.clear()).isInstanceOf(UnsupportedOperationException.class);
         assertThatThrownBy(() -> published.get(RegionLevel.SIDO).clear()).isInstanceOf(UnsupportedOperationException.class);
@@ -74,7 +77,7 @@ class RegionAggregateTest {
     @Test
     void 마지막_감정을_삭제하면_시군구와_시도_요약에서_모두_제거한다() {
         // given
-        var original = RegionAggregate.from(List.of(RegionEmotionStateCount.of("11010", DAY, EmotionState.ANGRY, 1, null)));
+        var original = RegionAggregate.from(List.of(RegionEmotionStateCount.of("11010", DAY, EmotionState.ANGRY, false, 1, null)));
         var before = contribution(EmotionState.ANGRY, "기록", NOW.minusSeconds(1), false);
         var after = contribution(EmotionState.ANGRY, "기록", NOW.minusSeconds(1), true);
 
@@ -82,9 +85,9 @@ class RegionAggregateTest {
         var deleted = original.applyChange(before, after, NOW);
 
         // then
-        assertThat(deleted.summaries().get(RegionLevel.SIGUNGU)).isEmpty();
-        assertThat(deleted.summaries().get(RegionLevel.SIDO)).isEmpty();
-        assertThat(original.summaries().get(RegionLevel.SIGUNGU)).hasSize(1);
+        assertThat(deleted.summaries(EmotionContentFilter.ALL).get(RegionLevel.SIGUNGU)).isEmpty();
+        assertThat(deleted.summaries(EmotionContentFilter.ALL).get(RegionLevel.SIDO)).isEmpty();
+        assertThat(original.summaries(EmotionContentFilter.ALL).get(RegionLevel.SIGUNGU)).hasSize(1);
     }
 
     @Test
@@ -97,8 +100,8 @@ class RegionAggregateTest {
         var deleted = withoutContent.applyChange(null, contribution(EmotionState.ANGRY, "기록", NOW, true), NOW);
 
         // then
-        assertThat(deleted.summaries().get(RegionLevel.SIGUNGU)).isEmpty();
-        assertThat(deleted.summaries().get(RegionLevel.SIDO)).isEmpty();
+        assertThat(deleted.summaries(EmotionContentFilter.ALL).get(RegionLevel.SIGUNGU)).isEmpty();
+        assertThat(deleted.summaries(EmotionContentFilter.ALL).get(RegionLevel.SIDO)).isEmpty();
         assertThat(deleted.nextActivation()).isNull();
     }
 
@@ -106,7 +109,7 @@ class RegionAggregateTest {
     void 미래_감정은_현재_개수에서_제외하고_기존보다_이른_활성_시각만_반영한다() {
         // given
         var original = RegionAggregate.from(List.of(
-                RegionEmotionStateCount.of("11010", DAY, EmotionState.ANGRY, 0, NOW.plusSeconds(5))));
+                RegionEmotionStateCount.of("11010", DAY, EmotionState.ANGRY, false, 0, NOW.plusSeconds(5))));
 
         // when
         var later = original.applyChange(null, contribution(EmotionState.ANGRY, "나중 기록", NOW.plusSeconds(10), false), NOW);
@@ -115,7 +118,7 @@ class RegionAggregateTest {
         // then
         assertThat(later.nextActivation()).isEqualTo(NOW.plusSeconds(5));
         assertThat(earlier.nextActivation()).isEqualTo(NOW.plusSeconds(3));
-        assertThat(earlier.summaries().get(RegionLevel.SIGUNGU)).isEmpty();
+        assertThat(earlier.summaries(EmotionContentFilter.ALL).get(RegionLevel.SIGUNGU)).isEmpty();
         assertThat(original.nextActivation()).isEqualTo(NOW.plusSeconds(5));
     }
 
@@ -128,29 +131,63 @@ class RegionAggregateTest {
         // when / then
         assertThatThrownBy(() -> empty.applyChange(before, null, NOW))
                 .isInstanceOf(IllegalStateException.class).hasMessage("지역 집계 기여분이 음수입니다.");
-        assertThat(empty.summaries().get(RegionLevel.SIDO)).isEmpty();
+        assertThat(empty.summaries(EmotionContentFilter.ALL).get(RegionLevel.SIDO)).isEmpty();
     }
 
     @Test
     void 기간_요약은_양끝_날짜를_포함해_합산하고_변경은_작성일의_KST_날짜에만_반영한다() {
         // given
         var original = RegionAggregate.from(List.of(
-                RegionEmotionStateCount.of("11010", DAY.minusDays(2), EmotionState.ANGRY, 1, null),
-                RegionEmotionStateCount.of("11010", DAY.minusDays(1), EmotionState.EXHAUSTED, 2, null),
-                RegionEmotionStateCount.of("11010", DAY, EmotionState.ANGRY, 1, null)));
+                RegionEmotionStateCount.of("11010", DAY.minusDays(2), EmotionState.ANGRY, false, 1, null),
+                RegionEmotionStateCount.of("11010", DAY.minusDays(1), EmotionState.EXHAUSTED, false, 2, null),
+                RegionEmotionStateCount.of("11010", DAY, EmotionState.ANGRY, false, 1, null)));
         var lateNightKst = Instant.parse("2026-10-19T14:59:59Z");
 
         // when
         var added = original.applyChange(null, contribution(EmotionState.ANGRY, "자정 직전", lateNightKst, false), NOW);
 
         // then
-        assertThat(original.summaries(DAY.minusDays(1), DAY).get(RegionLevel.SIGUNGU))
-                .containsExactlyEntriesOf(java.util.Map.of("11010", RegionEmotionSummary.of(3, EmotionState.EXHAUSTED)));
-        assertThat(added.summaries(DAY.minusDays(2), DAY.minusDays(2)).get(RegionLevel.SIDO))
-                .containsExactlyEntriesOf(java.util.Map.of("11", RegionEmotionSummary.of(2, EmotionState.ANGRY)));
-        assertThat(added.summaries(DAY.minusDays(1), DAY).get(RegionLevel.SIDO))
-                .containsExactlyEntriesOf(java.util.Map.of("11", RegionEmotionSummary.of(3, EmotionState.EXHAUSTED)));
-        assertThat(added.summaries().get(RegionLevel.SIDO)).containsEntry("11", RegionEmotionSummary.of(5, EmotionState.ANGRY));
+        assertThat(original.summaries(EmotionContentFilter.ALL, DAY.minusDays(1), DAY).get(RegionLevel.SIGUNGU))
+                .containsExactlyEntriesOf(Map.of("11010", RegionEmotionSummary.of(3, EmotionState.EXHAUSTED)));
+        assertThat(added.summaries(EmotionContentFilter.ALL, DAY.minusDays(2), DAY.minusDays(2)).get(RegionLevel.SIDO))
+                .containsExactlyEntriesOf(Map.of("11", RegionEmotionSummary.of(2, EmotionState.ANGRY)));
+        assertThat(added.summaries(EmotionContentFilter.ALL, DAY.minusDays(1), DAY).get(RegionLevel.SIDO))
+                .containsExactlyEntriesOf(Map.of("11", RegionEmotionSummary.of(3, EmotionState.EXHAUSTED)));
+        assertThat(added.summaries(EmotionContentFilter.ALL).get(RegionLevel.SIDO)).containsEntry("11", RegionEmotionSummary.of(5, EmotionState.ANGRY));
+    }
+
+    @Test
+    void 내용_종류별로_집계하고_ALL은_두_종류의_합이며_메모에서_녹음으로_바꾸면_종류를_옮긴다() {
+        // given
+        var original = RegionAggregate.from(List.of(
+                RegionEmotionStateCount.of("11010", DAY, EmotionState.ANGRY, false, 2, null),
+                RegionEmotionStateCount.of("11010", DAY, EmotionState.EXHAUSTED, true, 3, null),
+                RegionEmotionStateCount.of("26010", DAY.minusDays(1), EmotionState.ANGRY, true, 1, null)));
+        var memo = contribution(EmotionState.ANGRY, "기록", NOW, false);
+        Emotion recorded = 기본_한숨_빌더().state(EmotionState.ANGRY)
+                .audio(Audio.builder().objectKey("emotions/audio/1.m4a").build()).build();
+        ReflectionTestUtils.setField(recorded, "createdAt", NOW);
+
+        // when
+        var changed = original.applyChange(memo, EmotionMapContribution.from(recorded), NOW);
+
+        // then
+        assertThat(original.summaries(EmotionContentFilter.MEMO).get(RegionLevel.SIGUNGU))
+                .containsExactlyEntriesOf(Map.of("11010", RegionEmotionSummary.of(2, EmotionState.ANGRY)));
+        assertThat(original.summaries(EmotionContentFilter.AUDIO).get(RegionLevel.SIDO))
+                .containsExactlyInAnyOrderEntriesOf(Map.of(
+                        "11", RegionEmotionSummary.of(3, EmotionState.EXHAUSTED),
+                        "26", RegionEmotionSummary.of(1, EmotionState.ANGRY)));
+        assertThat(original.summaries(EmotionContentFilter.ALL).get(RegionLevel.SIGUNGU))
+                .containsEntry("11010", RegionEmotionSummary.of(5, EmotionState.EXHAUSTED));
+        assertThat(original.summaries(EmotionContentFilter.AUDIO, DAY, DAY).get(RegionLevel.SIDO))
+                .containsExactlyEntriesOf(Map.of("11", RegionEmotionSummary.of(3, EmotionState.EXHAUSTED)));
+        assertThat(changed.summaries(EmotionContentFilter.MEMO, DAY, DAY).get(RegionLevel.SIGUNGU))
+                .containsExactlyEntriesOf(Map.of("11010", RegionEmotionSummary.of(1, EmotionState.ANGRY)));
+        assertThat(changed.summaries(EmotionContentFilter.AUDIO).get(RegionLevel.SIGUNGU))
+                .containsEntry("11010", RegionEmotionSummary.of(4, EmotionState.EXHAUSTED));
+        assertThat(changed.summaries(EmotionContentFilter.ALL).get(RegionLevel.SIGUNGU))
+                .isEqualTo(original.summaries(EmotionContentFilter.ALL).get(RegionLevel.SIGUNGU));
     }
 
     private EmotionMapContribution contribution(EmotionState state, String memo, Instant createdAt, boolean deleted) {

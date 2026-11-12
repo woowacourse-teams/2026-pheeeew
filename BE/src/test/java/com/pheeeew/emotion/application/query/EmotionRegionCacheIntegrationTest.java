@@ -16,7 +16,6 @@ import com.pheeeew.emotion.domain.repository.query.EmotionSearchFilter;
 import com.pheeeew.report.application.EmotionReportService;
 import com.pheeeew.region.domain.RegionLevel;
 import com.pheeeew.support.PostgisDataJpaTest;
-import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -92,15 +91,15 @@ class EmotionRegionCacheIntegrationTest {
         // given
         var bounds = EmotionSearchBounds.of(126, 37, 128, 39);
         var first = queries.findRegionMap(bounds, RegionLevel.SIDO, requester.getPublicId(), EmotionSearchFilter.from(null));
-        double hits = cacheHits();
 
         // when
-        var second = queries.findRegionMap(bounds, RegionLevel.SIDO, requester.getPublicId(), EmotionSearchFilter.from(null));
+        var second = MapReadDecisions.regions(meters, () ->
+                queries.findRegionMap(bounds, RegionLevel.SIDO, requester.getPublicId(), EmotionSearchFilter.from(null)));
 
         // then
-        assertThat(second).isEqualTo(first).singleElement().satisfies(item ->
+        assertThat(second.value()).isEqualTo(first).singleElement().satisfies(item ->
                 assertThat(item.summary().totalCount()).isEqualTo(1));
-        assertThat(cacheHits() - hits).isEqualTo(1);
+        assertThat(second.decision()).isEqualTo("cache_hit");
     }
 
     @Test
@@ -108,15 +107,15 @@ class EmotionRegionCacheIntegrationTest {
         // given
         var bounds = EmotionSearchBounds.of(126, 37, 128, 39);
         queries.findRegionMap(bounds, RegionLevel.SIDO, requester.getPublicId(), EmotionSearchFilter.from(null));
-        double hits = cacheHits();
 
         // when
         commands.delete(emotionId, requester.getPublicId());
-        var result = queries.findRegionMap(bounds, RegionLevel.SIDO, requester.getPublicId(), EmotionSearchFilter.from(null));
+        var result = MapReadDecisions.regions(meters, () ->
+                queries.findRegionMap(bounds, RegionLevel.SIDO, requester.getPublicId(), EmotionSearchFilter.from(null)));
 
         // then
-        assertThat(result).isEmpty();
-        assertThat(cacheHits() - hits).isEqualTo(1);
+        assertThat(result.value()).isEmpty();
+        assertThat(result.decision()).isEqualTo("cache_hit");
     }
 
     @Test
@@ -178,18 +177,17 @@ class EmotionRegionCacheIntegrationTest {
         // given
         var bounds = EmotionSearchBounds.of(126, 37, 128, 39);
         queries.findRegionMap(bounds, RegionLevel.SIDO, requester.getPublicId(), EmotionSearchFilter.from(null));
-        double hits = cacheHits();
 
         // when
         new TransactionTemplate(transactions).executeWithoutResult(status -> {
             commands.update(emotionId, requester.getPublicId(), EmotionState.ANGRY, null, null, false, null);
             var own = queries.findRegionMap(bounds, RegionLevel.SIDO, requester.getPublicId(), EmotionSearchFilter.from(null));
             assertThat(own).isEmpty();
-            var other = CompletableFuture.supplyAsync(() -> queries.findRegionMap(
-                    bounds, RegionLevel.SIDO, requester.getPublicId(), EmotionSearchFilter.from(null)))
+            var other = CompletableFuture.supplyAsync(() -> MapReadDecisions.regions(meters, () -> queries.findRegionMap(
+                    bounds, RegionLevel.SIDO, requester.getPublicId(), EmotionSearchFilter.from(null))))
                     .orTimeout(5, TimeUnit.SECONDS).join();
-            assertThat(other.getFirst().summary().representativeState()).isEqualTo(EmotionState.ANGRY);
-            assertThat(cacheHits()).isEqualTo(hits);
+            assertThat(other.value().getFirst().summary().representativeState()).isEqualTo(EmotionState.ANGRY);
+            assertThat(other.decision()).isNotEqualTo("cache_hit");
             status.setRollbackOnly();
         });
 
@@ -239,10 +237,5 @@ class EmotionRegionCacheIntegrationTest {
             Thread.currentThread().interrupt();
             throw new IllegalStateException(interrupted);
         }
-    }
-
-    private double cacheHits() {
-        Counter counter = meters.find("pheeeew.map.cache.requests").tag("cache", "regions").tag("result", "hit").counter();
-        return counter == null ? 0 : counter.count();
     }
 }

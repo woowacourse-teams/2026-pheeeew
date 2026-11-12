@@ -127,6 +127,7 @@ Accepted (YYYY-MM-DD)
 | [0041](0041-use-stable-ties-and-device-parallel-press-storage.md) | 실시간 프레스의 안정적 동점 표시와 기기별 병렬 저장 | 도달 우선 표시·전역 번호를 제거하고 공통 공유 잠금과 기기별 배타 잠금, 전체 재조회로 정합성을 지켜요 |
 | [0042](0042-fence-press-admission-during-deployment.md) | 배포 입력 차단과 경쟁 공개 분리 | 재시작에 유지되는 차단과 DB 울타리로 전환하고, 제한된 ON 유지 복귀와 OFF 복구 전용 정산을 구분해요 |
 | [0043](0043-cache-period-emotion-map-queries.md) | 기간 지정 기본 지도 캐시 | `ALL/ALL` 기간 조회도 캐시를 써요. 지역은 KST 날짜별 개수를 합산하고 기간 결과를 Caffeine에 보관해요 |
+| [0044](0044-cache-my-and-content-filtered-emotion-map-queries.md) | 내 감정·내용 필터 지도 캐시 | `MY`·`MEMO`·`AUDIO`도 캐시를 써요. 핀은 기기별 색인, 지역은 내용 종류별 집계를 쓰고 `MY` SQL에 인덱스를 추가해요 |
 
 ## AI 사용
 
