@@ -7,7 +7,7 @@
 
 | 설정 | 기본값 | 설명 |
 |---|---|---|
-| `pheeeew.climb.enabled` | `false` | 꺼져 있으면 climb 의 빈이 하나도 올라오지 않는다. 로컬 프로필만 켠다. |
+| `pheeeew.climb.enabled` | `false` | 꺼져 있으면 climb 의 빈이 하나도 올라오지 않는다. local·dev·prod 프로필에서 켠다. |
 | `pheeeew.climb.allowed-origin` | 없음 | 게임 주소 하나. 켤 때 필수다. CORS 와 웹소켓 핸드셰이크가 이 출처만 허용한다. |
 | `pheeeew.climb.guest-creates-per-hour` | `10` | IP당 시간당 손님 만들기 한도. |
 | `pheeeew.climb.maps.<버전>.top` | `v1`: 663 | 꼭대기 높이(칸). |
@@ -150,11 +150,22 @@
 `bootRun` 은 개발 전용 의존성 `springboot4-dotenv` 가 작업 폴더의 `.env` 를 읽는다(`JWT_*` 와 같은 방식). 셸 환경 변수로 넘겨도 된다.
 형식은 `BE/.env.example` 에 있다.
 
-배포(아직 반영하지 않았다): 다른 비밀 값과 같은 길을 따른다.
+## 배포
 
-1. GitHub Environment secrets 에 `PHEEEEW_CLIMB_ADMIN_KEY` 를 더한다.
-2. `.github/workflows/be-deploy.yml`, `be-dev-deploy.yml` 의 `.env 갱신` 단계: `env:` 에 `PHEEEEW_CLIMB_ADMIN_KEY: ${{ secrets.PHEEEEW_CLIMB_ADMIN_KEY }}`,
-   `run:` 의 `{ ... } > env.tmp` 묶음에 `echo "PHEEEEW_CLIMB_ADMIN_KEY=$PHEEEEW_CLIMB_ADMIN_KEY"` 를 더한다. 서버 `/opt/pheeeew/.env` 에 기록된다.
-3. `BE/docker/compose.prod.yml`, `compose.dev.yml` 의 `x-app.environment` 에 `PHEEEEW_CLIMB_ADMIN_KEY: ${PHEEEEW_CLIMB_ADMIN_KEY:-}` 를 더한다
-   (빈 값이면 관리자 기능만 꺼진다). 로컬 compose 로 띄우면 `compose.local.yml` 의 `app.environment` 에도 같은 줄을 더한다.
-4. 운영·개발 프로필은 아직 `pheeeew.climb.enabled` 가 꺼져 있다. 등반을 켤 때 `allowed-origin` 과 함께 정한다.
+개발·운영 프로필은 등반 기능이 켜져 있다. 기본 `application.yml`의 `enabled: false`는 유지한다.
+
+| 프로필 | 허용하는 게임 출처 | GitHub Environment |
+|---|---|---|
+| dev | `https://climb-dev.pheeeew.com` | `development` |
+| prod | `https://climb.pheeeew.com` | `production` |
+
+관리자 키 전달 경로를 배포 설정에 반영했다. 실제 적용은 서버 배포 뒤다.
+
+1. 각 GitHub Environment에 등록된 `PHEEEEW_CLIMB_ADMIN_KEY` secret을 사용한다.
+2. `.github/workflows/be-dev-deploy.yml`, `be-deploy.yml`의 `.env 갱신` 단계가 키를 환경 변수로 받고,
+   `{ ... } > env.tmp` 안에서만 파일로 출력해 서버 `/opt/pheeeew/.env`로 전달한다. 키를 로그로 출력하지 않는다.
+3. `BE/docker/compose.dev.yml`, `compose.prod.yml`의 `x-app.environment`가 앱에 전달한다.
+   `compose.local.yml`의 `app.environment`도 같은 변수를 받는다.
+   `${PHEEEEW_CLIMB_ADMIN_KEY:-}`이므로 빈 값이면 관리자 기능만 꺼진다.
+4. 서버를 해당 환경에 배포한 뒤 게임을 수동 업로드한다. 순서와 되돌리는 방법은
+   [게임 배포 문서](../../WEB/climb/README.md#배포)를 따른다.
