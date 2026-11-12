@@ -12,6 +12,7 @@ import { nearestSign, signReader, signKey, splitSign, bubbleX, signLook, SIGN_AR
 import { sfx, unlock, toggleMute, isMuted, audioCtx } from './sfx.js';
 import { createBgm, CREDITS } from './bgm.js';
 import { createNet } from './net.js';
+import { hasImage } from './image-assets.js';
 import { entryState, canPlay } from './online.js';
 import { createGhosts } from './ghosts.js';
 import * as admin from './admin.js';
@@ -66,14 +67,14 @@ for (const id of IDS) {
   tex[id] = {};
   for (const p of PARTS) tex[id][p] = await Assets.load(`/assets/characters/${id}/${p}.png`);
   // 점프 자세 그림은 있는 감정이만 쓴다
-  if ((await fetch(`/assets/characters/${id}/jump_splat.png`, { method: 'HEAD' })).ok) for (const p of JUMPS) tex[id][p] = await Assets.load(`/assets/characters/${id}/${p}.png`);
+  if (await hasImage(`/assets/characters/${id}/jump_splat.png`)) for (const p of JUMPS) tex[id][p] = await Assets.load(`/assets/characters/${id}/${p}.png`);
 }
 
 // ---- 맵 ----
 const world = new Container();
 view.addChild(world);
 // 구간 그림: 배경(천천히 따라 움직임), 지형 속 재질, 경사 재질, 윗면 띠. 그림이 없는 구간은 구간 1 그림을 쓴다.
-const has = async (url) => (await fetch(url, { method: 'HEAD' })).ok;
+const has = hasImage;
 const arts = [];
 for (const z of ZONES) {
   // 새 그림 4장이 모두 있을 때만 새 폴더를 쓴다(그리는 도중이면 예전 그림)

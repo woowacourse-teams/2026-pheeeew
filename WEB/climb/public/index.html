@@ -14,7 +14,7 @@
 import { apiForHostname } from '/api-config.js';
 const api = apiForHostname(location.hostname);
 if (api !== undefined) window.CLIMB_API = api;
-await import('/main.js');
+await import('/main.js?v=2');
 </script>
 </body>
 </html>
