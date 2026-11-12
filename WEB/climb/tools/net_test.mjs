@@ -283,16 +283,37 @@ test('완주는 한 번만 보내고, 그 뒤로는 그 등반을 더 보고하�
   eq(kinds(ws2), ['hello'], '다시 연결해도 완주한 등반은 보내지 않음');
 });
 
-test('끊긴 동안 완주하면 다시 연결된 뒤 구간을 따라잡고 완주를 보낸다', () => {
+test('끊긴 동안 완주하면 다시 연결된 뒤 마지막 높이를 먼저 보내고 구간을 따라잡고 완주를 보낸다', () => {
   const t = setup();
   online(t, { character: 'angry', zone: 4 }).serverClose(1006);
+  t.net.reportPos({ h: 663, best: 663, falls: 3, time: 640, x: 200 });
   t.net.reportZone({ zone: 5, time: 600 });
   t.net.reportFinish({ time: 640, falls: 3 });
   t.clock.advance(1000);
   const ws = t.sockets.at(-1);
   ws.serverOpen();
   ws.serverSend(welcome({ map: 'v1', character: 'angry', height: 600, best: 600, x: 0, falls: 3, time: 600 }));
-  eq(kinds(ws), ['hello', 'zone', 'zone', 'zone', 'zone', 'zone', 'finish'], '따라잡기 후 완주');
+  eq(kinds(ws), ['hello', 'pos', 'zone', 'zone', 'zone', 'zone', 'zone', 'finish'], '높이, 따라잡기, 완주 순서');
+  eq(ws.sent[1].best, 663, '꼭대기 높이');
+});
+
+test('구간·완주 앞에는 그 높이의 pos 를 2초 제한을 기다리지 않고 먼저 보낸다', () => {
+  const t = setup();
+  const ws = online(t);
+  t.net.reportPos({ h: 120, best: 120, falls: 0, time: 60, x: 0 });
+  t.clock.advance(500);
+  t.net.reportPos({ h: 135, best: 135, falls: 0, time: 61, x: 40 });
+  t.net.reportZone({ zone: 1, time: 61 });
+  eq(ws.sent.slice(1), [
+    { t: 'pos', h: 120, best: 120, falls: 0, time: 60, x: 0 },
+    { t: 'pos', h: 135, best: 135, falls: 0, time: 61, x: 40 },
+    { t: 'zone', zone: 1, time: 61 },
+  ], 'pos 다음 구간');
+  t.clock.advance(5000);
+  eq(kinds(ws).length, 4, '같은 pos 를 2초 끝에 또 보내지 않음');
+  t.net.reportPos({ h: 261, best: 261, falls: 0, time: 90, x: 0 });
+  t.net.reportZone({ zone: 2, time: 90 });
+  eq(kinds(ws).slice(4), ['pos', 'zone'], '이미 보낸 pos 는 다시 보내지 않음');
 });
 
 test('처음부터 다시: 연결 중이면 바로 restart, 아니면 다음 welcome 에 이어 할 등반이 있을 때 보낸다', () => {

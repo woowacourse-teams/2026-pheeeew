@@ -550,6 +550,8 @@ function tick() {
     }
     const h = Math.round(hOf(p.y + P.h));
     if (h > stats.best) stats.best = h;
+    // 서버는 그 높이의 pos 를 받은 뒤에만 구간·완주를 받으므로 먼저 보고한다(구간 보고가 따라오면 net 이 바로 보낸다)
+    net.reportPos({ h: Math.min(GOAL, Math.max(0, h)), best: Math.min(GOAL, stats.best), falls: stats.falls, time: stats.time, x: p.x }); // 평소에는 2초에 한 번으로 net 이 줄인다
     const done = ZONES.filter((z) => h >= z.to).length;
     if (done > stats.cleared) {
       stats.cleared = done;
@@ -560,7 +562,6 @@ function tick() {
       fx.confetti(p.x + P.w / 2, p.y, Object.values(TINT).map((c) => parseInt(c.slice(1), 16)));
     }
     save();
-    net.reportPos({ h: Math.min(GOAL, Math.max(0, h)), best: Math.min(GOAL, stats.best), falls: stats.falls, time: stats.time, x: p.x }); // 2초에 한 번으로 net 이 줄인다
   }
 }
 

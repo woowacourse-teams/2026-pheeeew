@@ -56,12 +56,20 @@ export function createNet({
   let run = { zone: 0, time: 0, finish: null, done: false, restart: false };
   let sentZone = 0;
   let pos = null; // 아직 보내지 않은 마지막 pos
+  let last = null; // 마지막 pos(보냈든 아니든)
+  let lastSent = false; // last 를 지금 연결에서 보냈다
   let posAt = -Infinity;
   let posTimer = null;
   const int = (v) => Math.max(0, Math.floor(Number(v) || 0)); // 서버는 정수만 받는다
 
   function flush() {
     if (!live || run.done) return;
+    // 서버는 그 높이까지 오른 pos 를 받은 뒤에만 구간·완주를 받는다. 그래서 2초 제한을 기다리지 않고 먼저 보낸다.
+    if ((sentZone < run.zone || run.finish) && last && !lastSent) {
+      clearTimeout(posTimer);
+      posTimer = null;
+      sendLast();
+    }
     while (sentZone < run.zone) raw({ t: 'zone', zone: ++sentZone, time: run.time });
     if (run.finish) {
       raw({ t: 'finish', ...run.finish });
@@ -80,7 +88,11 @@ export function createNet({
       return;
     }
     if (run.done) return;
-    raw(pos);
+    sendLast();
+  }
+  function sendLast() {
+    raw(last);
+    lastSent = true;
     pos = null;
     posAt = now();
   }
@@ -101,6 +113,7 @@ export function createNet({
         live = true;
         retry = 0;
         sentZone = 0;
+        lastSent = false;
         if (run.restart) {
           run.restart = false;
           if (m.run) raw({ t: 'restart' }); // hello 가 이어 붙인 예전 등반을 새 등반으로 바꾼다
@@ -143,7 +156,8 @@ export function createNet({
     },
     reportPos({ h, best, falls, time, x }) {
       if (run.done) return;
-      pos = { t: 'pos', h: int(h), best: Math.max(int(best), int(h)), falls: int(falls), time: int(time), x: Math.round(Number(x) || 0) };
+      last = pos = { t: 'pos', h: int(h), best: Math.max(int(best), int(h)), falls: int(falls), time: int(time), x: Math.round(Number(x) || 0) };
+      lastSent = false;
       sendPos();
     },
     reportZone({ zone, time }) {
@@ -159,7 +173,7 @@ export function createNet({
     },
     restart() {
       run = { zone: 0, time: 0, finish: null, done: false, restart: !live };
-      pos = null;
+      pos = last = null;
       if (live) { raw({ t: 'restart' }); sentZone = 0; }
     },
     me: () => call('GET', '/me'),
