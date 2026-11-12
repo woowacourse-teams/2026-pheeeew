@@ -61,7 +61,7 @@ canvas { display: block; }
 #tower .me { position: absolute; left: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; background: var(--tint); border: 3px solid var(--ink); border-radius: 50%; }
 
 /* 구간 완료 */
-#banner { position: absolute; left: 50%; top: 96px; transform: translateX(-50%); padding: 18px 34px; text-align: center; animation: pop .45s cubic-bezier(.2, 1.6, .4, 1); }
+#banner { position: absolute; left: 50%; top: 116px; transform: translateX(-50%); padding: 18px 34px; text-align: center; animation: pop .45s cubic-bezier(.2, 1.6, .4, 1); }
 #banner .big { font-size: 34px; }
 #banner .small { font-size: 18px; color: var(--dim); margin-top: 6px; }
 @keyframes pop { from { transform: translateX(-50%) scale(.6); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
@@ -70,3 +70,42 @@ canvas { display: block; }
 .modal { width: 460px; padding: 28px 30px; text-align: center; }
 .modal .big { font-size: 28px; }
 .modal .small { font-size: 18px; color: var(--dim); margin: 10px 0 22px; line-height: 1.4; }
+
+/* 닉네임 창 */
+.btn.small { height: 40px; padding: 0 16px; font-size: 18px; border-radius: 14px; box-shadow: 0 4px 0 var(--ink); }
+input.nick { pointer-events: auto; user-select: text; display: block; width: 100%; height: 56px; box-sizing: border-box; padding: 0 16px; font: inherit; font-size: 28px; text-align: center; color: var(--ink); background: #fff; border: 3px solid var(--ink); border-radius: 14px; outline: none; }
+input.nick:focus { box-shadow: 0 0 0 4px var(--accent); }
+.modal .err { min-height: 24px; margin: 8px 0 14px; font-size: 17px; color: #d6453a; }
+
+/* 순위 한 줄(게임 중 패널, 제목 화면 공통). 내 줄은 강조색 */
+.r { display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px 0 4px; border-radius: 9px; font-size: 16px; }
+.r b { width: 20px; text-align: right; font-weight: 400; }
+.r .n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.r small, .guest small { font-size: 12px; color: var(--dim); margin-left: 2px; }
+.r .v { font-size: 15px; white-space: nowrap; }
+.r.me { background: var(--tint, var(--accent)); }
+.avatar.mini { width: 30px; height: 24px; margin: 0 -2px 0 0; }
+.avatar.mini img { top: -7px; left: -2px; width: 34px; }
+
+/* 제목 화면 순위·닉네임 */
+.boards { display: flex; gap: 16px; }
+.board { width: 280px; padding: 10px 12px 12px; }
+.board .head, #ranks .head { display: flex; align-items: center; justify-content: space-between; font-size: 16px; color: var(--dim); margin: 0 4px 6px; }
+.board .none { font-size: 16px; color: var(--dim); padding: 6px 4px; }
+.guest { position: absolute; right: 24px; top: 20px; display: flex; align-items: center; gap: 12px; font-size: 22px; color: var(--paper); text-shadow: 0 2px 0 var(--ink); }
+
+/* 게임 중 순위 패널: 오른쪽 위 구간 표시 아래에 작게. Tab 으로 접는다 */
+#ranks { position: absolute; right: 54px; top: 68px; width: 236px; padding: 8px 8px 8px; border-radius: 14px; box-shadow: 0 4px 0 var(--ink); }
+#ranks .head { margin: 0 2px 4px 6px; font-size: 15px; }
+#ranks .head b { font-weight: 400; color: var(--ink); }
+#ranks .key { min-width: 0; height: 24px; padding: 0 6px; font-size: 13px; border-width: 2px; border-radius: 7px; box-shadow: 0 2px 0 var(--ink); }
+#ranks.folded .head { margin-bottom: 0; }
+#ranks.folded .list { display: none; }
+#ranks .gap { height: 0; border-top: 2px dashed var(--shade); margin: 3px 6px; }
+
+/* 탑 진행 막대 위 다른 사람들의 최고 높이 */
+#tower .others i { position: absolute; left: -15px; width: 9px; height: 9px; margin-bottom: -6px; background: var(--c); border: 2px solid var(--ink); border-radius: 50%; }
+
+/* 사건 알림: 위 HUD 줄 아래, 구간 완료 배너 위 */
+#toast { position: absolute; left: 50%; top: 66px; transform: translateX(-50%); font-size: 18px; animation: drop .3s ease-out; }
+@keyframes drop { from { transform: translate(-50%, -10px); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }
