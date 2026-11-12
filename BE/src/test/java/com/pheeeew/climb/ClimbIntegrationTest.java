@@ -437,7 +437,201 @@ class ClimbIntegrationTest {
         assertThat(all.path("top")).noneMatch(item -> "오래전".equals(item.path("nickname").stringValue()));
     }
 
+    @Test
+    void 한쪽이_자세를_보내면_가까이_있는_다른_쪽이_들어옴과_상태를_받는다() throws Exception {
+        // given
+        Socket me = climber("나나");
+        Socket other = climber("너너");
+        state(me, 640, 10);
+
+        // when
+        other.send("{\"t\":\"st\",\"s\":[300,12.25,-120,40,3,55]}");
+        JsonNode states = me.await("sts", message -> message.path("s").size() > 0);
+
+        // then
+        JsonNode entered = in(me, "너너");
+        assertThat(entered.path("character").stringValue()).isEqualTo("angry");
+        assertThat(entered.path("tag").stringValue()).hasSize(4);
+        assertThat(states.path("s").get(0).toString())
+                .isEqualTo("[" + entered.path("n").intValue() + ",300,12.25,-120,40,3,55]");
+    }
+
+    @Test
+    void 높이가_삼십_칸_넘게_벌어지면_나감을_받고_더_받지_않는다() throws Exception {
+        // given
+        Socket me = climber("나나");
+        Socket other = climber("너너");
+        state(me, 640, 10);
+        state(other, 640, 20);
+        me.await("sts", message -> message.path("s").size() > 0);
+        int n = in(me, "너너").path("n").intValue();
+
+        // when
+        state(other, 640, 40.5);
+        JsonNode out = me.await("out", message -> true);
+        int before = me.received().size();
+        state(other, 600, 41);
+        Thread.sleep(400);
+
+        // then
+        assertThat(out.path("n").get(0).intValue()).isEqualTo(n);
+        assertThat(me.received().subList(before, me.received().size()))
+                .noneMatch(message -> "sts".equals(message.path("t").stringValue()));
+    }
+
+    @Test
+    void 스물한_번째로_가까운_사람은_받지_않는다() throws Exception {
+        // given
+        Socket me = climber("나나");
+        state(me, 640, 100);
+        for (int k = 1; k <= 21; k++) {
+            state(climber("남" + k), 640, 100 + k);
+        }
+
+        // when
+        me.await("sts", message -> true);
+        Thread.sleep(500);
+
+        // then: 받은 들어옴·나감을 차례로 따라가 지금 보이는 사람을 만든다(연결 순서가 엇갈려 잠깐 보였다 나갈 수 있다)
+        Map<Integer, String> seen = new HashMap<>();
+        for (JsonNode message : me.received()) {
+            if ("in".equals(message.path("t").stringValue())) {
+                message.path("p").forEach(person -> seen.put(person.path("n").intValue(), person.path("nickname").stringValue()));
+            } else if ("out".equals(message.path("t").stringValue())) {
+                message.path("n").forEach(n -> seen.remove(n.intValue()));
+            }
+        }
+        assertThat(seen.values()).hasSize(20).contains("남1", "남20").doesNotContain("남21");
+    }
+
+    @Test
+    void 다른_쪽이_연결을_끊으면_나감을_받는다() throws Exception {
+        // given
+        Socket me = climber("나나");
+        Socket other = climber("너너");
+        state(me, 640, 10);
+        state(other, 640, 11);
+        me.await("sts", message -> message.path("s").size() > 0);
+        int n = in(me, "너너").path("n").intValue();
+
+        // when
+        other.close();
+
+        // then
+        assertThat(me.await("out", message -> true).path("n").get(0).intValue()).isEqualTo(n);
+    }
+
+    @Test
+    void 초당_열두_개를_넘긴_자세는_전달하지_않고_연결은_유지한다() throws Exception {
+        // given
+        Socket me = climber("나나");
+        Socket other = climber("너너");
+        state(me, 640, 10);
+
+        // when
+        for (int k = 1; k <= 19; k++) {
+            state(other, k, 10);
+        }
+        state(other, 999, 10);
+        Thread.sleep(1500);
+        state(other, 777, 10);
+        me.await("sts", message -> message.toString().contains(",777,"));
+
+        // then
+        assertThat(me.received()).noneMatch(message -> message.toString().contains(",999,"));
+    }
+
+    @Test
+    void 자세를_계속_지나치게_보내면_연결을_닫는다() throws Exception {
+        // given
+        Socket other = climber("너너");
+
+        // when
+        for (int k = 0; k < 40; k++) {
+            try {
+                state(other, k, 10);
+            } catch (java.util.concurrent.CompletionException closed) {
+                break; // 서버가 이미 닫았다
+            }
+        }
+
+        // then
+        assertThat(other.await("error", error -> true).path("code").stringValue()).isEqualTo("MESSAGE_RATE_LIMITED");
+    }
+
+    @Test
+    void 자세_메시지로는_순위가_바뀌지_않는다() throws Exception {
+        // given
+        Socket me = climber("나나");
+        me.send("{\"t\":\"pos\",\"h\":5,\"best\":5,\"falls\":0,\"time\":1,\"x\":0}");
+        me.await("rank", rank -> rank.path("me").path("best").intValue() == 5);
+
+        // when
+        state(me, 640, 15);
+        Thread.sleep(1500);
+
+        // then
+        assertThat(me.received()).filteredOn(message -> "rank".equals(message.path("t").stringValue()))
+                .allMatch(rank -> rank.path("me").path("best").intValue() <= 5);
+        JsonNode online = json.readTree(get("/api/v1/climb/ranking?board=online&map=v1", null).body());
+        assertThat(online.path("top").get(0).path("best").intValue()).isEqualTo(5);
+    }
+
+    @Test
+    void 위치_공유를_끄면_자세는_오지_않고_순위는_계속_온다() throws Exception {
+        // given
+        ConfigurableApplicationContext off = startServer(Map.of("pheeeew.climb.presence.enabled", "false"));
+        int offPort = serverPort(off);
+        try {
+            Socket me = connect(cookie(client.send(request("http://127.0.0.1:" + offPort + "/api/v1/climb/guests", null)
+                    .POST(HttpRequest.BodyPublishers.ofString("{\"nickname\":\"나나\"}")).build(),
+                    HttpResponse.BodyHandlers.ofString())), GAME, offPort);
+            hello(me);
+            Socket other = connect(cookie(client.send(request("http://127.0.0.1:" + offPort + "/api/v1/climb/guests", null)
+                    .POST(HttpRequest.BodyPublishers.ofString("{\"nickname\":\"너너\"}")).build(),
+                    HttpResponse.BodyHandlers.ofString())), GAME, offPort);
+            hello(other);
+
+            // when
+            state(me, 640, 1);
+            state(other, 640, 2);
+            other.send("{\"t\":\"pos\",\"h\":3,\"best\":3,\"falls\":0,\"time\":1,\"x\":0}");
+            me.await("rank", rank -> rank.path("top").get(0).path("best").intValue() == 3);
+            Thread.sleep(300);
+
+            // then
+            assertThat(me.received()).noneMatch(message -> List.of("sts", "in", "out")
+                    .contains(message.path("t").stringValue()));
+        } finally {
+            sockets.forEach(WebSocket::abort);
+            off.close();
+        }
+    }
+
+    private Socket climber(String nickname) throws Exception {
+        Socket socket = connect(cookie(post("/api/v1/climb/guests", "{\"nickname\":\"" + nickname + "\"}", null)));
+        hello(socket);
+        return socket;
+    }
+
+    private static void state(Socket socket, int x, double h) {
+        socket.send("{\"t\":\"st\",\"s\":[" + x + "," + h + ",0,0,1,0]}");
+    }
+
+    private static JsonNode in(Socket socket, String nickname) {
+        return socket.received().stream()
+                .filter(message -> "in".equals(message.path("t").stringValue()))
+                .flatMap(message -> java.util.stream.StreamSupport.stream(message.path("p").spliterator(), false))
+                .filter(person -> nickname.equals(person.path("nickname").stringValue()))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError(nickname + " 의 in 을 받지 못했다. 받은 것: " + socket.received()));
+    }
+
     private ConfigurableApplicationContext startServer() {
+        return startServer(Map.of());
+    }
+
+    private ConfigurableApplicationContext startServer(Map<String, String> extra) {
         Map<String, String> properties = new HashMap<>();
         properties.put("server.port", "0");
         properties.put("server.address", "127.0.0.1");
@@ -451,6 +645,7 @@ class ClimbIntegrationTest {
         properties.put("pheeeew.s3.region", "ap-northeast-2");
         properties.put("pheeeew.climb.enabled", "true");
         properties.put("pheeeew.climb.allowed-origin", GAME);
+        properties.putAll(extra);
         // 기본 속성은 application.yml 보다 우선순위가 낮아서 명령행 인자로 넘긴다.
         return new SpringApplicationBuilder(PheeeewApplication.class).profiles("test")
                 .run(properties.entrySet().stream().map(entry -> "--" + entry.getKey() + "=" + entry.getValue())
