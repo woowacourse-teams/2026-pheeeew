@@ -104,6 +104,7 @@ public class ClimbWebSocketHandler extends AbstractWebSocketHandler implements S
             ticker.scheduleWithFixedDelay(() -> safely(this::presenceTick), 100, 100, TimeUnit.MILLISECONDS);
         }
         ticker.scheduleWithFixedDelay(() -> safely(guests::deleteInactive), 1, 24 * 60, TimeUnit.MINUTES);
+        ticker.scheduleWithFixedDelay(() -> safely(runs::syncHall), 0, 1, TimeUnit.MINUTES);
     }
 
     /** 배포로 서버가 내려갈 때 진행을 저장하고 SERVER_DRAINING 으로 닫는다. 브라우저는 다시 연결한다. */
@@ -234,6 +235,7 @@ public class ClimbWebSocketHandler extends AbstractWebSocketHandler implements S
             case "finish" -> {
                 if (run != null && run.finish(integer(root, "time"), integer(root, "falls"), now)) {
                     runs.save(run.record());
+                    runs.syncHall();
                     publish(connection, run);
                     if (!run.suspect()) {
                         announce(connection, "finish", null);
