@@ -1,0 +1,67 @@
+{
+  "mode": "built-in image_gen",
+  "initial": [
+    {
+      "name": "rock",
+      "transparent": false,
+      "prompt": "Use case: stylized-concept. Production asset for Pheeeew side-view 2D climbing game, zone 2 Sleepless Bedroom. Match the viewed reference set: soft granular watercolor/paper pigment, friendly cozy handmade storybook art. Muted purple and indigo, warm cream and moonlight yellow. Not frightening. ONE seamless opaque square material texture, requested final 512x512. Fills whole image edge to edge. Cross-sectional stacked quilt and folded blanket layers, grey lavender near #8f86b8. Low contrast and lower saturation than pale purple character. Subtle small quilting stitches, soft fabric folds, softly undulating layered horizontal seams and occasional patchwork joints. No black outlines, no object silhouette, no large shadows, no directional lighting, no isolated motif, no frame. Medium texture details readable when displayed at 256x256. MUST tile seamlessly on BOTH axes; uniform color distribution."
+    },
+    {
+      "name": "fabric",
+      "transparent": false,
+      "prompt": "Use case: stylized-concept. Production asset for Pheeeew side-view 2D climbing game, zone 2 Sleepless Bedroom. Match the viewed reference set: soft granular watercolor/paper pigment, friendly cozy handmade storybook art. Muted purple and indigo, warm cream and moonlight yellow. Not frightening. ONE seamless opaque square material texture, final 512x512. Flat continuous satin pillowcase surface filling entire square edge to edge. Pale yellow #f6e3a1 with regular muted lavender diagonal stripes, exactly 45 degrees, approximately two whole stripe periods per tile width. Long silky soft reflective highlights parallel to stripes communicate a slippery satin surface. Watercolor pigment visible, stylized hand-painted not photographic. No black outlines, no objects, no vignette, no directional gradient, no isolated motifs. Both x and y edges MUST tile seamlessly, stripes exiting one side re-enter opposite side at same position. Even medium contrast."
+    },
+    {
+      "name": "trim",
+      "transparent": true,
+      "prompt": "Use case: stylized-concept. Pheeeew 2D side-view climbing game, cozy sleepless bedroom. Match viewed refs: soft granular watercolor pigment, friendly handmade art, muted lavender and indigo, warm cream and moonlight yellow, not frightening. ONE horizontal seamless blanket edge/fringe sprite on transparent background. A long straight continuous lavender quilt binding with cream accent seam spans full width, touching both side edges. Wide 4:1 composition, final 512x128. Platform baseline y=32 of 128: puffy piping and tiny fuzz above baseline, soft short dangling fringes and a few folded fabric shadows below. Fade gently transparent downward, no bottom border. No black outline, only soft purple fine seams like zone1 trim. Left and right ends same height/profile for endless horizontal repeat. No curling ends or perspective."
+    },
+    {
+      "name": "bg",
+      "transparent": false,
+      "prompt": "Use case: stylized-concept. Pheeeew 2D side-view climbing game, cozy sleepless bedroom. Match viewed refs: soft granular watercolor pigment, friendly handmade art, muted lavender and indigo, warm cream and moonlight yellow, not frightening. ONE opaque portrait 1024x1536 scrolling background. Pale blurry EXTREMELY LOW CONTRAST lavender bedroom wall, average near #dcd6f2. Tiny faint star-pattern wallpaper, one distant softly drawn off-center window showing pale yellow crescent moon and a few stars; sparse small framed pictures, one gentle string of UNLIT bulbs. Flat side view, no floor/bed/foreground. All details just a few shades from wall, no dark night sky, no black outlines, no strong shadows. Bright yet quiet dawn. Top and bottom MUST connect seamlessly vertically; only plain faint star wallpaper at both boundaries. No frame or global gradient. Subtle watercolor paper."
+    },
+    {
+      "name": "book_stack",
+      "transparent": true,
+      "prompt": "Use case: stylized-concept. Pheeeew 2D side-view climbing game, cozy sleepless bedroom. Match viewed refs: soft granular watercolor pigment, friendly handmade art, muted lavender and indigo, warm cream and moonlight yellow, not frightening. ONE isolated side-view sprite of 5 unfinished books stacked. Top book OPEN and FACE DOWN like a low roof, cream pages downward. Thick near-black handdrawn contours and watercolor fills matching reference props and lineup. Muted purple, indigo, cream covers, slightly uneven stacking, no lettering. Transparent square 512x512. Object width approximately 260px, bottom center exactly (256,450), generous empty margins. No ground shadow or surroundings."
+    },
+    {
+      "name": "coffee_cup",
+      "transparent": true,
+      "prompt": "Use case: stylized-concept. Pheeeew 2D side-view climbing game, cozy sleepless bedroom. Match the viewed purple tired character and umbrella/tissue/bottle reference props: bold almost-black handdrawn outlines with soft granular watercolor fills. Muted lavender and indigo with warm cream and pale yellow. ONE isolated mug of cold coffee, no steam. Side-view pale lavender ceramic mug with cream rim, large round handle on right, dark still coffee visible in a small elliptical top. Simple bold contour, charming hand-painted object, no face, no words, no saucer or spoon. Real transparent square 512x512 canvas, object width about 200px, bottom center (256,450), generous empty margins. No ground shadow."
+    },
+    {
+      "name": "moon_mobile",
+      "transparent": true,
+      "prompt": "Use case: stylized-concept. Pheeeew 2D side-view climbing game, cozy sleepless bedroom. Match the viewed purple tired character and umbrella/tissue/bottle reference props: bold almost-black handdrawn outlines with soft granular watercolor fills. Muted lavender and indigo with warm cream and pale yellow. ONE isolated hanging moon and stars mobile. Top of single thin purple hanging cord exactly at (256,60) on transparent square 512x512 canvas. Cord drops vertically to gently curved lavender crossbar, with a pale yellow crescent and three little five-point stars dangling at varied lengths. Thick handdrawn near-black outlines on charms, watercolor fills, delicate but clear strings. Total mobile width around 270px, bottom around y=430. Pure side view, no wall or ceiling, no letters, no glow background."
+    },
+    {
+      "name": "alarm_clock",
+      "transparent": true,
+      "prompt": "Use case: stylized-concept. Pheeeew 2D side-view climbing game, cozy sleepless bedroom. Match the viewed purple tired character and umbrella/tissue/bottle reference props: bold almost-black handdrawn outlines with soft granular watercolor fills. Muted lavender and indigo with warm cream and pale yellow. ONE isolated vintage twin-bell bedside alarm clock, side elevation/front readable dial. Clearly EXACTLY 3:00: long minute hand vertically UP at 12, short hour hand horizontally RIGHT at 3, NO third hand. Cream dial with simple tick marks and NO numbers or lettering, purple round body, lavender twin bells, two little feet. Thick handdrawn almost-black contour, watercolor pigments. Real transparent square 512x512, total width about 200px, feet bottom center (256,450), generous empty margins, no ground shadow."
+    },
+    {
+      "name": "arrow_sign",
+      "transparent": true,
+      "prompt": "Use case: stylized-concept. Pheeeew 2D side-view climbing game, cozy sleepless bedroom. Match viewed purple tired character and props: thick near-black handdrawn contour, soft watercolor pigments, handmade friendly storybook appearance. ONE pale yellow sticky-note paper square with a very clear large purple colored-pencil arrow pointing diagonally UP AND RIGHT, 45 degrees northeast. No letters or words. Note gently curls at lower corner, bold black outside contour, textured watercolor paper and rough colored-pencil strokes inside arrow. Flat side view. Actual transparent square 512x512 canvas. Note width about 220px, bottom center (256,450). Generous empty margins, no wall/backdrop, no other object, no cast shadow."
+    },
+    {
+      "name": "nod",
+      "transparent": true,
+      "prompt": "Use case: stylized-concept. Pheeeew 2D side-view climbing game, cozy sleepless bedroom. Match viewed purple tired character and props: thick near-black handdrawn contour, soft watercolor pigments, handmade friendly storybook appearance. ONE wide fluffy sleeping pillow PLATFORM sprite. Target canvas 480x200 transparent. Pillow spans full width edge to edge. Cream fabric with lavender piping and subtle purple folds, two small CLOSED SLEEPY EYES embroidered near front center (no text needed). Crucial shape: long nearly STRAIGHT HORIZONTAL top edge at y=20, with only very slight handmade irregularity, NOT arched and NOT wavy, character must stand anywhere on it. Pillow body between y=20 and y=180. Soft plump lower edge, small pinched side corners. Thick near-black outer outline, watercolor cream fill, purple accents. Side elevation, not top view, no ground shadow, no scene, single pillow only. Wide landscape 2.4:1 canvas."
+    }
+  ],
+  "revisions": [
+    {
+      "name": "arrow_sign",
+      "prompt": "Edit this image: keep ONLY the yellow sticky note and its bold black outline, curled corner and purple colored-pencil arrow pointing up-right. Completely remove ALL grey/white glowing haze and shadows around the note. Every pixel outside the note must be truly TRANSPARENT. Do not add a checkerboard. Preserve exact artwork inside note, same watercolor handdrawn style, no letters. Output one clean isolated sprite.",
+      "path": "~/.codex/generated_images/01a1c9da-db4f-7d51-80e9-6bddfdfaf55e/exec-e1db1f9f-c3e3-443d-8f75-f9aebc3544b2.png"
+    },
+    {
+      "name": "rock",
+      "prompt": "Edit this repeating quilt material texture. Remove ALL printed decorative stars, polka dots, plaid and stripes. Keep only stacked folded blanket layers, very subtle diamond quilting stitches, fabric creases and granular watercolor pigments. Make overall color uniform muted grey lavender near #8f86b8, lower contrast with no strong highlights or shadows. No black outlines. Tile must seamlessly repeat on both horizontal and vertical axes, no isolated obvious motif. Full square opaque texture, no border.",
+      "path": "~/.codex/generated_images/01a1c9da-db4f-7d51-80e9-6bddfdfaf55e/exec-66dafd50-7bba-4b71-b6f6-e5db9c9e04d3.png"
+    }
+  ]
+}

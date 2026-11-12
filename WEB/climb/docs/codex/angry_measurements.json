@@ -1,0 +1,236 @@
+{
+  "reference_body_width": 802,
+  "alpha_threshold": 8,
+  "body_width_method": "Torso ROI selected by visual inspection, excluding limbs; occluded contours estimated manually. Pixel width measured in that ROI after uniform resizing.",
+  "original_files_unchanged": 70,
+  "concurrent_changes_not_written_by_this_task": [
+    "public/main.js",
+    "public/physics.js"
+  ],
+  "files": [
+    {
+      "file": "jump_charge.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "mode": "RGBA",
+      "bottom_y": 900,
+      "center_x": 512.5,
+      "body_width": 832,
+      "alpha_bbox": [
+        90,
+        515,
+        936,
+        901
+      ],
+      "corner_alpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "source_body_width": 1046,
+      "uniform_scale": 0.7954110898661568,
+      "source_body_band": [
+        0,
+        850,
+        1254,
+        1000
+      ],
+      "body_measurement_note": "Visible torso contour in a band unobstructed by limbs."
+    },
+    {
+      "file": "jump_rise.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "mode": "RGBA",
+      "bottom_y": 900,
+      "center_x": 511.5,
+      "body_width": 764,
+      "alpha_bbox": [
+        130,
+        3,
+        894,
+        901
+      ],
+      "corner_alpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "source_body_width": 906,
+      "uniform_scale": 0.8432671081677704,
+      "source_body_band": [
+        0,
+        450,
+        1254,
+        701
+      ],
+      "body_measurement_note": "Visible torso contour in a band unobstructed by limbs."
+    },
+    {
+      "file": "jump_apex.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "mode": "RGBA",
+      "bottom_y": 900,
+      "center_x": 512.0,
+      "body_width": 800,
+      "alpha_bbox": [
+        56,
+        23,
+        969,
+        901
+      ],
+      "corner_alpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "source_body_width": 860,
+      "uniform_scale": 0.9302325581395349,
+      "source_body_band": [
+        0,
+        500,
+        1254,
+        701
+      ],
+      "body_measurement_note": "Visible torso contour in a band unobstructed by limbs."
+    },
+    {
+      "file": "jump_fall.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "mode": "RGBA",
+      "bottom_y": 900,
+      "center_x": 512.0,
+      "body_width": 775,
+      "alpha_bbox": [
+        66,
+        6,
+        959,
+        901
+      ],
+      "corner_alpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "source_body_width": 784,
+      "uniform_scale": 0.9885204081632653,
+      "source_body_band": [
+        0,
+        600,
+        1254,
+        751
+      ],
+      "body_measurement_note": "Visible torso contour in a band unobstructed by limbs."
+    },
+    {
+      "file": "jump_land.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "mode": "RGBA",
+      "bottom_y": 900,
+      "center_x": 512.0,
+      "body_width": 816,
+      "alpha_bbox": [
+        8,
+        415,
+        1017,
+        901
+      ],
+      "corner_alpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "source_body_width": 938,
+      "uniform_scale": 0.8699360341151386,
+      "source_body_band": [
+        157,
+        800,
+        1095,
+        951
+      ],
+      "body_measurement_note": "Manually identified left/right torso contour at hand attachments; ROI excludes protruding hands."
+    },
+    {
+      "file": "jump_wall.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "mode": "RGBA",
+      "bottom_y": 900,
+      "center_x": 512.0,
+      "body_width": 780,
+      "alpha_bbox": [
+        85,
+        42,
+        940,
+        901
+      ],
+      "corner_alpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "source_body_width": 770,
+      "uniform_scale": 1.0129870129870129,
+      "source_body_band": [
+        195,
+        600,
+        965,
+        750
+      ],
+      "body_measurement_note": "Right torso boundary partly occluded by rear hand; visually selected torso ROI excludes rear limbs."
+    },
+    {
+      "file": "jump_splat.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "mode": "RGBA",
+      "bottom_y": 900,
+      "center_x": 512.0,
+      "body_width": 838,
+      "alpha_bbox": [
+        16,
+        710,
+        1009,
+        901
+      ],
+      "corner_alpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "source_body_width": 951,
+      "uniform_scale": 0.8811777076761304,
+      "source_body_band": [
+        153,
+        1080,
+        1104,
+        1130
+      ],
+      "body_measurement_note": "Manually identified flattened torso contour between side hands; ROI excludes protruding hands and feet."
+    }
+  ]
+}

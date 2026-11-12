@@ -1,0 +1,177 @@
+{
+  "rock": {
+    "size": [
+      512,
+      512
+    ],
+    "mode": "RGB",
+    "mean_rgb": [
+      118.84,
+      141.09,
+      165.32
+    ],
+    "x_edge_max_difference": 0,
+    "y_edge_max_difference": 0
+  },
+  "puddle": {
+    "size": [
+      512,
+      512
+    ],
+    "mode": "RGBA",
+    "mean_rgb": [
+      7.56,
+      9.6,
+      11.47
+    ],
+    "alpha_bbox": [
+      106,
+      389,
+      406,
+      451
+    ],
+    "alpha_extrema": [
+      0,
+      255
+    ]
+  },
+  "trim": {
+    "size": [
+      512,
+      128
+    ],
+    "mode": "RGBA",
+    "mean_rgb": [
+      102.95,
+      110.91,
+      122.43
+    ],
+    "alpha_bbox": [
+      0,
+      15,
+      512,
+      97
+    ],
+    "alpha_extrema": [
+      0,
+      255
+    ],
+    "x_edge_max_difference": 0
+  },
+  "fabric": {
+    "size": [
+      512,
+      512
+    ],
+    "mode": "RGB",
+    "mean_rgb": [
+      248.63,
+      165.02,
+      180.66
+    ],
+    "x_edge_max_difference": 0,
+    "y_edge_max_difference": 0
+  },
+  "arrow_sign": {
+    "size": [
+      512,
+      512
+    ],
+    "mode": "RGBA",
+    "mean_rgb": [
+      15.3,
+      16.13,
+      18.29
+    ],
+    "alpha_bbox": [
+      146,
+      268,
+      366,
+      451
+    ],
+    "alpha_extrema": [
+      0,
+      255
+    ]
+  },
+  "paper_boat": {
+    "size": [
+      512,
+      512
+    ],
+    "mode": "RGBA",
+    "mean_rgb": [
+      10.37,
+      10.48,
+      10.5
+    ],
+    "alpha_bbox": [
+      146,
+      347,
+      366,
+      451
+    ],
+    "alpha_extrema": [
+      0,
+      255
+    ]
+  },
+  "tissue_pile": {
+    "size": [
+      512,
+      512
+    ],
+    "mode": "RGBA",
+    "mean_rgb": [
+      16.49,
+      15.53,
+      14.8
+    ],
+    "alpha_bbox": [
+      126,
+      315,
+      386,
+      451
+    ],
+    "alpha_extrema": [
+      0,
+      255
+    ]
+  },
+  "drips": {
+    "size": [
+      512,
+      512
+    ],
+    "mode": "RGBA",
+    "mean_rgb": [
+      2.9,
+      3.57,
+      4.15
+    ],
+    "alpha_bbox": [
+      232,
+      60,
+      278,
+      388
+    ],
+    "alpha_extrema": [
+      0,
+      255
+    ]
+  },
+  "bg": {
+    "size": [
+      1024,
+      1536
+    ],
+    "mode": "RGB",
+    "mean_rgb": [
+      202.22,
+      229.25,
+      250.06
+    ],
+    "y_edge_max_difference": 0
+  },
+  "existing_png_and_js_unchanged": 119
+}

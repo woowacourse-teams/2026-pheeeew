@@ -1,0 +1,107 @@
+{
+  "jump_charge": {
+    "source": "~/.codex/generated_images/01a1c9b1-111b-73f2-b580-102e6f7bd24b/exec-b8c4d31f-3cc9-4903-857f-0ac6fbdd4038.png",
+    "body_band": [
+      0,
+      800,
+      1254,
+      940
+    ],
+    "raw_body_width": 902,
+    "uniform_scale": 0.9146341463414634,
+    "translation": [
+      -52,
+      -174
+    ]
+  },
+  "jump_rise": {
+    "source": "~/.codex/generated_images/01a1c9b1-111b-73f2-b580-102e6f7bd24b/exec-86b94468-ff9a-4b6f-bfbc-b42f7f6108c9.png",
+    "body_band": [
+      0,
+      450,
+      1254,
+      700
+    ],
+    "raw_body_width": 848,
+    "uniform_scale": 0.9080188679245284,
+    "translation": [
+      -35,
+      -122
+    ]
+  },
+  "jump_apex": {
+    "source": "~/.codex/generated_images/01a1c9b1-111b-73f2-b580-102e6f7bd24b/exec-65bee2b4-a521-4ae6-8132-322226df8292.png",
+    "body_band": [
+      0,
+      550,
+      1254,
+      637
+    ],
+    "raw_body_width": 796,
+    "uniform_scale": 0.9962311557788944,
+    "translation": [
+      -112,
+      -116
+    ]
+  },
+  "jump_fall": {
+    "source": "~/.codex/generated_images/01a1c9b1-111b-73f2-b580-102e6f7bd24b/exec-98e18230-b6ab-4b08-a428-9f39d0d14b40.png",
+    "body_band": [
+      0,
+      600,
+      1254,
+      810
+    ],
+    "raw_body_width": 791,
+    "uniform_scale": 0.9734513274336283,
+    "translation": [
+      -98,
+      -187
+    ]
+  },
+  "jump_land": {
+    "source": "~/.codex/generated_images/01a1c9b1-111b-73f2-b580-102e6f7bd24b/exec-755713f9-df11-4c46-8d9d-994b3435b9ec.png",
+    "body_band": [
+      0,
+      650,
+      1254,
+      744
+    ],
+    "raw_body_width": 896,
+    "uniform_scale": 0.9040178571428571,
+    "translation": [
+      -54,
+      -60
+    ]
+  },
+  "jump_wall": {
+    "source": "~/.codex/generated_images/01a1c9b1-111b-73f2-b580-102e6f7bd24b/exec-5a18af12-b030-4c55-aae9-c567e66ab497.png",
+    "body_band": [
+      0,
+      540,
+      982,
+      581
+    ],
+    "raw_body_width": 743,
+    "uniform_scale": 1.0686406460296096,
+    "translation": [
+      -201,
+      -112
+    ]
+  },
+  "jump_splat": {
+    "source": "~/.codex/generated_images/01a1c9b1-111b-73f2-b580-102e6f7bd24b/exec-459dee13-56bd-48d2-83de-ce11cb82d383.png",
+    "body_band": [
+      157,
+      870,
+      1097,
+      891
+    ],
+    "raw_body_width": 940,
+    "uniform_scale": 0.8829787234042553,
+    "translation": [
+      -43,
+      27
+    ]
+  }
+}

@@ -1,0 +1,225 @@
+{
+  "reference_body_width": 780,
+  "alpha_threshold": 8,
+  "body_width_method": "Visible body contour in manually inspected bands excluding limbs; measured after uniform resizing.",
+  "original_files_unchanged": 65,
+  "files": [
+    {
+      "file": "jump_charge.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "mode": "RGBA",
+      "bottom_y": 900,
+      "center_x": 512.0,
+      "body_width": 810,
+      "alpha_bbox": [
+        107,
+        448,
+        918,
+        901
+      ],
+      "corner_alpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "source_body_width": 1132,
+      "uniform_scale": 0.715547703180212,
+      "source_body_band": [
+        0,
+        500,
+        1536,
+        701
+      ]
+    },
+    {
+      "file": "jump_rise.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "mode": "RGBA",
+      "bottom_y": 900,
+      "center_x": 512.5,
+      "body_width": 755,
+      "alpha_bbox": [
+        104,
+        19,
+        922,
+        901
+      ],
+      "corner_alpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "source_body_width": 778,
+      "uniform_scale": 0.9704370179948586,
+      "source_body_band": [
+        0,
+        500,
+        1254,
+        656
+      ]
+    },
+    {
+      "file": "jump_apex.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "mode": "RGBA",
+      "bottom_y": 900,
+      "center_x": 512.0,
+      "body_width": 780,
+      "alpha_bbox": [
+        59,
+        121,
+        966,
+        901
+      ],
+      "corner_alpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "source_body_width": 838,
+      "uniform_scale": 0.9307875894988067,
+      "source_body_band": [
+        0,
+        500,
+        1254,
+        641
+      ]
+    },
+    {
+      "file": "jump_fall.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "mode": "RGBA",
+      "bottom_y": 900,
+      "center_x": 511.5,
+      "body_width": 760,
+      "alpha_bbox": [
+        42,
+        189,
+        982,
+        901
+      ],
+      "corner_alpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "source_body_width": 770,
+      "uniform_scale": 0.987012987012987,
+      "source_body_band": [
+        0,
+        640,
+        1254,
+        801
+      ]
+    },
+    {
+      "file": "jump_land.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "mode": "RGBA",
+      "bottom_y": 900,
+      "center_x": 512.0,
+      "body_width": 795,
+      "alpha_bbox": [
+        34,
+        308,
+        991,
+        901
+      ],
+      "corner_alpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "source_body_width": 982,
+      "uniform_scale": 0.8095723014256619,
+      "source_body_band": [
+        0,
+        500,
+        1254,
+        701
+      ]
+    },
+    {
+      "file": "jump_wall.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "mode": "RGBA",
+      "bottom_y": 900,
+      "center_x": 512.5,
+      "body_width": 775,
+      "alpha_bbox": [
+        62,
+        176,
+        964,
+        901
+      ],
+      "corner_alpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "source_body_width": 791,
+      "uniform_scale": 0.9797724399494311,
+      "source_body_band": [
+        0,
+        480,
+        1254,
+        541
+      ]
+    },
+    {
+      "file": "jump_splat.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "mode": "RGBA",
+      "bottom_y": 900,
+      "center_x": 511.5,
+      "body_width": 800,
+      "alpha_bbox": [
+        62,
+        573,
+        962,
+        901
+      ],
+      "corner_alpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "source_body_width": 879,
+      "uniform_scale": 0.9101251422070534,
+      "source_body_band": [
+        0,
+        650,
+        1254,
+        746
+      ]
+    }
+  ]
+}

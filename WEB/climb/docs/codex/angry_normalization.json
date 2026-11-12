@@ -1,0 +1,75 @@
+{
+  "jump_charge": {
+    "source": "~/.codex/generated_images/01a1c9b1-111b-75b1-8df9-dd4abdfb265a/exec-b3de72f8-67bb-4627-8611-2183a4bf9e94.png",
+    "body_band": [
+      0,
+      850,
+      1254,
+      1000
+    ],
+    "target_body_width": 832
+  },
+  "jump_rise": {
+    "source": "~/.codex/generated_images/01a1c9b1-111b-75b1-8df9-dd4abdfb265a/exec-f196e570-05f0-42dd-baf9-cc0c4c403bd2.png",
+    "body_band": [
+      0,
+      450,
+      1254,
+      701
+    ],
+    "target_body_width": 764
+  },
+  "jump_apex": {
+    "source": "~/.codex/generated_images/01a1c9b1-111b-75b1-8df9-dd4abdfb265a/exec-37fd217a-8de4-4528-b917-07c99175a91a.png",
+    "body_band": [
+      0,
+      500,
+      1254,
+      701
+    ],
+    "target_body_width": 800
+  },
+  "jump_fall": {
+    "source": "~/.codex/generated_images/01a1c9b1-111b-75b1-8df9-dd4abdfb265a/exec-9537457a-53f3-48b5-bfdf-56b7d26c919c.png",
+    "body_band": [
+      0,
+      600,
+      1254,
+      751
+    ],
+    "target_body_width": 775
+  },
+  "jump_land": {
+    "source": "~/.codex/generated_images/01a1c9b1-111b-75b1-8df9-dd4abdfb265a/exec-70a37f78-90e6-42bc-8c80-d78a8e7b02b2.png",
+    "body_band": [
+      157,
+      800,
+      1095,
+      951
+    ],
+    "target_body_width": 816,
+    "measurement_note": "Manually identified left/right torso contour at hand attachments; ROI excludes protruding hands."
+  },
+  "jump_wall": {
+    "source": "~/.codex/generated_images/01a1c9b1-111b-75b1-8df9-dd4abdfb265a/exec-9b8c2805-4aa2-4e5c-b89b-c62ad464fdad.png",
+    "body_band": [
+      195,
+      600,
+      965,
+      750
+    ],
+    "target_body_width": 780,
+    "measurement_note": "Right torso boundary partly occluded by rear hand; visually selected torso ROI excludes rear limbs."
+  },
+  "jump_splat": {
+    "source": "~/.codex/generated_images/01a1c9b1-111b-75b1-8df9-dd4abdfb265a/exec-b414bfd4-082c-4d67-a0f9-f6a4c8af345c.png",
+    "body_band": [
+      153,
+      1080,
+      1104,
+      1130
+    ],
+    "target_body_width": 838,
+    "measurement_note": "Manually identified flattened torso contour between side hands; ROI excludes protruding hands and feet."
+  }
+}

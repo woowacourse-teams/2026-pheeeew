@@ -1,0 +1,229 @@
+{
+  "reference_body_width": 794,
+  "alpha_threshold": 8,
+  "body_width_method": "Visible body contour in manually inspected bands excluding limbs; measured after uniform resizing.",
+  "original_files_unchanged": 71,
+  "externally_changed_files": [
+    "public/main.js",
+    "public/physics.js"
+  ],
+  "files": [
+    {
+      "file": "jump_charge.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "mode": "RGBA",
+      "bottom_y": 900,
+      "center_x": 511.5,
+      "body_width": 824,
+      "alpha_bbox": [
+        74,
+        450,
+        950,
+        901
+      ],
+      "corner_alpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "source_body_width": 980,
+      "uniform_scale": 0.8408163265306122,
+      "source_body_band": [
+        0,
+        700,
+        1254,
+        825
+      ]
+    },
+    {
+      "file": "jump_rise.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "mode": "RGBA",
+      "bottom_y": 900,
+      "center_x": 511.5,
+      "body_width": 780,
+      "alpha_bbox": [
+        90,
+        153,
+        934,
+        901
+      ],
+      "corner_alpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "source_body_width": 814,
+      "uniform_scale": 0.9582309582309583,
+      "source_body_band": [
+        0,
+        500,
+        1020,
+        615
+      ]
+    },
+    {
+      "file": "jump_apex.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "mode": "RGBA",
+      "bottom_y": 900,
+      "center_x": 512.0,
+      "body_width": 794,
+      "alpha_bbox": [
+        111,
+        212,
+        914,
+        901
+      ],
+      "corner_alpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "source_body_width": 847,
+      "uniform_scale": 0.9374262101534829,
+      "source_body_band": [
+        0,
+        550,
+        1254,
+        710
+      ]
+    },
+    {
+      "file": "jump_fall.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "mode": "RGBA",
+      "bottom_y": 900,
+      "center_x": 512.0,
+      "body_width": 770,
+      "alpha_bbox": [
+        79,
+        234,
+        946,
+        901
+      ],
+      "corner_alpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "source_body_width": 823,
+      "uniform_scale": 0.9356014580801945,
+      "source_body_band": [
+        0,
+        600,
+        1254,
+        800
+      ]
+    },
+    {
+      "file": "jump_land.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "mode": "RGBA",
+      "bottom_y": 900,
+      "center_x": 512.0,
+      "body_width": 810,
+      "alpha_bbox": [
+        31,
+        292,
+        994,
+        901
+      ],
+      "corner_alpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "source_body_width": 865,
+      "uniform_scale": 0.9364161849710982,
+      "source_body_band": [
+        0,
+        650,
+        1254,
+        730
+      ]
+    },
+    {
+      "file": "jump_wall.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "mode": "RGBA",
+      "bottom_y": 900,
+      "center_x": 511.5,
+      "body_width": 784,
+      "alpha_bbox": [
+        54,
+        255,
+        970,
+        901
+      ],
+      "corner_alpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "source_body_width": 802,
+      "uniform_scale": 0.9600997506234414,
+      "source_body_band": [
+        0,
+        480,
+        1254,
+        537
+      ]
+    },
+    {
+      "file": "jump_splat.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "mode": "RGBA",
+      "bottom_y": 900,
+      "center_x": 512.0,
+      "body_width": 820,
+      "alpha_bbox": [
+        25,
+        538,
+        1000,
+        901
+      ],
+      "corner_alpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "source_body_width": 904,
+      "uniform_scale": 0.9070796460176991,
+      "source_body_band": [
+        0,
+        700,
+        1254,
+        770
+      ]
+    }
+  ]
+}
