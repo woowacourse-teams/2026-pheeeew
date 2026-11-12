@@ -3,8 +3,15 @@ package com.pheeeew.climb;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
+import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
+
+import com.pheeeew.PheeeewApplication;
+import com.pheeeew.device.application.token.AccessTokenIssuer;
+import com.pheeeew.device.domain.Device;
+import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.support.SharedJwtTestConfiguration;
 import com.pheeeew.support.SharedPostgisTestConfiguration;
+import com.pheeeew.support.SharedTestContainers;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -12,7 +19,9 @@ import java.net.http.HttpResponse;
 import java.net.http.WebSocket;
 import java.net.http.WebSocketHandshakeException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -22,9 +31,15 @@ import java.util.function.Predicate;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.web.server.context.WebServerApplicationContext;
+import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.core.env.Environment;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.ActiveProfiles;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -43,6 +58,14 @@ class ClimbIntegrationTest {
 
     @LocalServerPort
     private int port;
+    @Autowired
+    private Environment environment;
+    @Autowired
+    private DeviceRepository devices;
+    @Autowired
+    private AccessTokenIssuer tokens;
+    @Autowired
+    private JdbcClient jdbc;
 
     private final JsonMapper json = JsonMapper.builder().build();
     private final List<WebSocket> sockets = new ArrayList<>();
@@ -307,6 +330,97 @@ class ClimbIntegrationTest {
         assertThat(me.closedReason()).isEqualTo("1008 HELLO_REQUIRED");
     }
 
+    @Test
+    void 배포로_서버가_내려가면_진행을_저장하고_닫으며_다시_뜬_서버는_순위표를_DB에서_복원한다() throws Exception {
+        // given
+        ConfigurableApplicationContext before = startServer();
+        int beforePort = serverPort(before);
+        String cookie = cookie(client.send(request("http://127.0.0.1:" + beforePort + "/api/v1/climb/guests", null)
+                .POST(HttpRequest.BodyPublishers.ofString("{\"nickname\":\"재시작\"}")).build(),
+                HttpResponse.BodyHandlers.ofString()));
+        Socket me = connect(cookie, GAME, beforePort);
+        hello(me);
+        me.send("{\"t\":\"pos\",\"h\":10,\"best\":10,\"falls\":0,\"time\":1,\"x\":0}");
+        me.send("{\"t\":\"pos\",\"h\":17,\"best\":18,\"falls\":0,\"time\":2,\"x\":3}");
+        me.await("rank", rank -> rank.path("me").path("best").intValue() == 18);
+
+        // when
+        before.close();
+        ConfigurableApplicationContext after = startServer();
+
+        // then
+        try {
+            assertThat(me.await("error", error -> true).path("code").stringValue()).isEqualTo("SERVER_DRAINING");
+            assertThat(me.closedReason()).isEqualTo("1012 SERVER_DRAINING");
+            HttpResponse<String> restored = client.send(request("http://127.0.0.1:" + serverPort(after)
+                    + "/api/v1/climb/ranking?board=all&map=v1", cookie).GET().build(), HttpResponse.BodyHandlers.ofString());
+            JsonNode ranking = json.readTree(restored.body());
+            assertThat(ranking.path("me").path("best").intValue()).isEqualTo(18);
+            assertThat(ranking.path("top")).anyMatch(item -> "재시작".equals(item.path("nickname").stringValue()));
+        } finally {
+            after.close();
+        }
+    }
+
+    @Test
+    void 등반을_켜도_기기_JWT_경로와_프레스_경쟁_웹소켓은_그대로_동작한다() throws Exception {
+        // given
+        Device device = devices.save(기본_기기_빌더().build());
+        String token = tokens.issue(device.getPublicId()).accessToken();
+        try {
+            // when
+            HttpResponse<String> withJwt = client.send(HttpRequest.newBuilder(uri("/api/v3/devices/me/notification-settings"))
+                    .header("Authorization", "Bearer " + token).GET().build(), HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> withoutJwt = client.send(HttpRequest.newBuilder(uri("/api/v3/devices/me/notification-settings"))
+                    .GET().build(), HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> climbCookieOnDeviceApi = client.send(HttpRequest.newBuilder(uri("/api/v3/devices/me/notification-settings"))
+                    .header("Cookie", cookie(post("/api/v1/climb/guests", "{\"nickname\":\"피유\"}", null)))
+                    .GET().build(), HttpResponse.BodyHandlers.ofString());
+            Socket pressRace = new Socket();
+            WebSocket socket = client.newWebSocketBuilder().header("Authorization", "Bearer " + token)
+                    .buildAsync(URI.create("ws://127.0.0.1:" + port + "/api/v1/press-race"), pressRace)
+                    .get(10, TimeUnit.SECONDS);
+            sockets.add(socket);
+            Throwable pressRaceWithoutJwt = catchThrowable(() -> client.newWebSocketBuilder()
+                    .buildAsync(URI.create("ws://127.0.0.1:" + port + "/api/v1/press-race"), new Socket()).join());
+
+            // then
+            assertThat(withJwt.statusCode()).isEqualTo(200);
+            assertThat(withoutJwt.statusCode()).isEqualTo(401);
+            assertThat(climbCookieOnDeviceApi.statusCode()).isEqualTo(401);
+            assertThat(pressRace.next().path("v").intValue(0)).isEqualTo(1);
+            assertThat(handshakeStatus(pressRaceWithoutJwt)).isEqualTo(401);
+        } finally {
+            sockets.forEach(WebSocket::abort);
+            jdbc.sql("DELETE FROM device_daily_presses WHERE device_id = :device").param("device", device.getId()).update();
+            devices.deleteById(device.getId());
+        }
+    }
+
+    private ConfigurableApplicationContext startServer() {
+        Map<String, String> properties = new HashMap<>();
+        properties.put("server.port", "0");
+        properties.put("server.address", "127.0.0.1");
+        properties.put("spring.datasource.url", SharedTestContainers.postgis().getJdbcUrl());
+        properties.put("spring.datasource.username", SharedTestContainers.postgis().getUsername());
+        properties.put("spring.datasource.password", SharedTestContainers.postgis().getPassword());
+        properties.put("pheeeew.jwt.private-key-base64", environment.getRequiredProperty("pheeeew.jwt.private-key-base64"));
+        properties.put("pheeeew.jwt.public-key-base64", environment.getRequiredProperty("pheeeew.jwt.public-key-base64"));
+        properties.put("pheeeew.s3.bucket", "pheeeew-test");
+        properties.put("pheeeew.s3.key-prefix", "pheeeew/test/");
+        properties.put("pheeeew.s3.region", "ap-northeast-2");
+        properties.put("pheeeew.climb.enabled", "true");
+        properties.put("pheeeew.climb.allowed-origin", GAME);
+        // 기본 속성은 application.yml 보다 우선순위가 낮아서 명령행 인자로 넘긴다.
+        return new SpringApplicationBuilder(PheeeewApplication.class).profiles("test")
+                .run(properties.entrySet().stream().map(entry -> "--" + entry.getKey() + "=" + entry.getValue())
+                        .toArray(String[]::new));
+    }
+
+    private static int serverPort(ConfigurableApplicationContext context) {
+        return ((WebServerApplicationContext) context).getWebServer().getPort();
+    }
+
     private JsonNode hello(Socket socket) throws Exception {
         socket.send("{\"t\":\"hello\",\"v\":1,\"map\":\"v1\",\"character\":\"angry\"}");
         return socket.await("welcome", message -> true);
@@ -367,6 +481,12 @@ class ClimbIntegrationTest {
                 }
             }
             throw new AssertionError(type + " 메시지를 받지 못했다. 받은 것: " + received);
+        }
+
+        JsonNode next() throws Exception {
+            JsonNode message = messages.poll(10, TimeUnit.SECONDS);
+            assertThat(message).isNotNull();
+            return message;
         }
 
         synchronized List<JsonNode> received() {
@@ -430,7 +550,7 @@ class ClimbIntegrationTest {
     }
 
     private HttpRequest.Builder request(String path, String cookie) {
-        HttpRequest.Builder builder = HttpRequest.newBuilder(uri(path))
+        HttpRequest.Builder builder = HttpRequest.newBuilder(path.startsWith("http") ? URI.create(path) : uri(path))
                 .header("Content-Type", "application/json")
                 .header("Origin", GAME);
         if (cookie != null) {
