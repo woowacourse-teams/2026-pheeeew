@@ -48,6 +48,9 @@ export function createLoader(load, { warn = console.warn } = {}) {
   return { get, has: (key) => ok.has(key), progress: () => ({ done, total: jobs.size }) };
 }
 
+// 나무의 잎(주소 또는 asset)만 한 줄로
+export const leaves = (tree) => (typeof tree === 'string' || tree?.src ? [tree] : Object.values(tree).flatMap(leaves));
+
 // 주소(또는 asset) 나무를 같은 모양의 텍스처 나무로. 모두 한꺼번에 요청한다
 export async function loadTree(tree, get) {
   if (typeof tree === 'string' || tree?.src) return get(tree);

@@ -1,10 +1,10 @@
-import { Application, Assets, Container, Graphics, Sprite, Text, TilingSprite } from '/vendor/pixi.mjs';
+import { Application, Assets, Container, Graphics, Sprite, Text, Texture, TilingSprite } from '/vendor/pixi.mjs';
 import { TILE, COLS, DT, IDS, params, newPlayer, step } from './physics.js';
 import { level, DECOR, SIGNS, HEIGHT, START, SCREEN, ZONES, GOAL, MAP_VERSION, nods, winds, updateNods, NOD_STAND, HOT_STAND, yOf, hOf } from './level.js';
 import { Rig, PARTS, JUMPS } from './rig.js';
 import { JellyRig } from './jelly.js';
 import { traceTerrain, sketch } from './terrain.js';
-import { createUI, TINT } from './ui.js';
+import { createUI, TINT, FACE } from './ui.js';
 import { createFx } from './fx.js';
 import { boostLook, RISE_LIFE } from './boost.js';
 import { flagSpots } from './flags.js';
@@ -12,7 +12,7 @@ import { nearestSign, signReader, signKey, splitSign, bubbleX, signLook, SIGN_AR
 import { sfx, unlock, toggleMute, isMuted, audioCtx } from './sfx.js';
 import { createBgm, CREDITS } from './bgm.js';
 import { createNet } from './net.js';
-import { zoneFiles, charFiles, createLoader, loadTree } from './art.js';
+import { zoneFiles, charFiles, createLoader, loadTree, leaves, zoneOf as zoneAt, zonesAround } from './art.js';
 import { entryState, canPlay } from './online.js';
 import { createGhosts } from './ghosts.js';
 import * as admin from './admin.js';
@@ -31,7 +31,18 @@ const INFO = {
 const FONT = 'Jua, "Apple SD Gothic Neo", sans-serif';
 const ui = createUI({ ids: IDS, info: INFO, zones: ZONES, goal: ZONES.at(-1).to, credits: CREDITS });
 const bgm = createBgm({ getCtx: audioCtx, muted: isMuted, zones: ZONES }); // 첫 키 입력·클릭(unlock) 뒤에 시작
-await document.fonts.load('20px Jua'); // 캔버스 글자(말풍선)도 같은 글꼴로 그리려면 먼저 불러와야 한다
+// 첫 단계: 글꼴, 그림 목록표(tools/build_manifest.mjs), 고르기 화면의 얼굴 5장. 나머지 그림은 필요할 때 받는다
+// 그림이 있는지 서버에 묻지 않고 목록표대로 받는다
+const manifest = fetch('/assets/manifest.json', { cache: 'no-cache' }).then((r) => r.json());
+const faces = IDS.map((id) => new Promise((done) => { const img = new Image(); img.onload = img.onerror = done; img.src = FACE(id); })); // decode() 는 숨은 탭에서 끝나지 않을 수 있다
+await bar([document.fonts.load('20px Jua'), manifest, ...faces]); // 캔버스 글자(말풍선)도 같은 글꼴로 그리려면 먼저 불러와야 한다
+const MAN = await manifest;
+// 받는 동안 로딩 화면에 받은 수/받을 수 막대를 보인다
+async function bar(jobs) {
+  let done = 0;
+  ui.progress(0, jobs.length);
+  await Promise.all(jobs.map((j) => j.finally(() => ui.progress(++done, jobs.length))));
+}
 const INK = 0x2a2420;
 const app = new Application();
 await app.init({ resizeTo: window, background: 0x1c1a22, antialias: true, autoDensity: true, resolution: Math.min(2, window.devicePixelRatio || 1) });
@@ -62,34 +73,57 @@ const ADMIN = admin.isAdminPath(location.pathname) && await admin.enterAdmin(adm
 });
 const SAVE_KEY = ADMIN ? 'pheeeew-climb-admin' : DEBUG ? 'pheeeew-climb-debug' : 'pheeeew-climb-v1'; // 시험 화면은 실제 저장을 건드리지 않는다
 
-// 그림 목록표(tools/build_manifest.mjs). 그림이 있는지 서버에 묻지 않고 이 목록대로 받는다
-const MAN = await (await fetch('/assets/manifest.json', { cache: 'no-cache' })).json();
 const loader = createLoader((asset) => Assets.load(asset)); // 같은 단계의 그림은 함께 받는다. 한 장이 실패해도(null) 나머지는 그대로
-// 점프 자세 그림은 있는 감정이만 쓴다
-const tex = Object.fromEntries(await Promise.all(IDS.map(async (id) => [id, await loadTree(charFiles(MAN, id, [...PARTS, ...JUMPS]), loader.get)])));
+// 감정이 그림: 부위 9장은 그 감정이가 처음 나올 때(고른 감정이, 화면에 보인 다른 사람), 점프 자세 그림(있는 감정이만)은 예전 움직임(J)일 때만
+const tex = Object.fromEntries(IDS.map((id) => [id, {}]));
+const charAssets = (who, names) => leaves(charFiles(MAN, who, names));
+const loadChar = (who, names = PARTS) => loadTree(charFiles(MAN, who, names), loader.get).then((t) => Object.assign(tex[who], t));
+const charReady = (who) => PARTS.every((k) => tex[who]?.[k]);
 
 // ---- 맵 ----
 const world = new Container();
 view.addChild(world);
 // 구간 그림: 배경(천천히 따라 움직임), 지형 속 재질, 경사 재질, 윗면 띠
 // 발판 장치(nod, hot, boost)와 바람 깃발(flag)은 있는 구간만. kit.in = 지형 면 위에 찍는 얼룩 무늬
-const arts = await Promise.all(ZONES.map(async (z) => {
+// 맵(장식 자리까지)은 처음에 전부 만들고, 그림은 그 구간에 가까워지면 받아 붙인다(art.js 의 zonesAround).
+// 받기 전에는 배경·지형을 그 구간 그림의 평균 색(STAND_IN)으로 칠하고 윤곽선만 그린다. 장식은 받은 뒤에 보인다.
+const STAND_IN = { // [배경, 지형, 경사 천]
+  nyc: [0x615372, 0xa6776f, 0xbbc4a7], xmas: [0xc8d1ed, 0xb98a5e, 0xc9a69d], castle: [0xf7ddd0, 0xd2cdc0, 0x839ab2],
+  balloon: [0xb5d8ec, 0xb99c72, 0xdbc7af], space: [0x1c2744, 0xbbc1c8, 0x4a69a2], moon: [0x0a0c14, 0xbfc0c4, 0x7d8087],
+};
+const arts = ZONES.map((z) => {
   const files = zoneFiles(MAN, z.art);
-  const a = await loadTree(files, loader.get);
-  a.kit = { top: [], hang: [], side: [], far: [], in: [], ...a.kit };
-  return { ...a, dir: z.art, files };
-}));
+  return { dir: z.art, files, size: MAN.zones[z.art], count: (k) => files.kit[k]?.length ?? 0, tex: null, wait: [], job: null };
+});
+// 그 구간 그림을 받으면 fn(텍스처 나무)을 부른다. 이미 받았으면 바로
+function onZone(i, fn) {
+  if (arts[i].tex) fn(arts[i].tex);
+  else arts[i].wait.push(fn);
+}
+const later = (sp, i, pick) => onZone(i, (t) => { sp.texture = pick(t) ?? Texture.EMPTY; });
+const paint = (sp, i, pick, color) => { sp.tint = color; onZone(i, (t) => { const tx = pick(t); if (tx) { sp.texture = tx; sp.tint = 0xffffff; } }); };
+function loadZone(i) {
+  const a = arts[i];
+  a.job ??= loadTree(a.files, loader.get).then((t) => {
+    a.tex = t;
+    for (const fn of a.wait.splice(0)) fn(t);
+  });
+  return a.job;
+}
+const zoneAssets = (h) => zonesAround(h, ZONES).flatMap((i) => leaves(arts[i].files));
+const needZones = (h) => Promise.all(zonesAround(h, ZONES).map(loadZone));
 // 칸의 윗면 높이로 어느 구간인지 정한다
-const zoneOf = (h) => Math.max(0, ZONES.findIndex((z, i) => h <= z.to || i === ZONES.length - 1));
+const zoneOf = (h) => zoneAt(h, ZONES);
 // 구간을 시작할 때 배경 그림의 어느 부분이 보일지 맞춘다(bgAt). 없으면 그림 맨 위부터.
 const bgShift = ZONES.map((z, i) => {
   if (z.bgAt === undefined) return 0;
   const cam0 = Math.min(HEIGHT * TILE - H, yOf(z.from) - H * 0.55);
-  return cam0 * 0.35 - z.bgAt * arts[i].bg.height * (W / arts[i].bg.width);
+  return cam0 * 0.35 - z.bgAt * arts[i].size.bg.h * (W / arts[i].size.bg.w);
 });
 const bgs = arts.map((a, i) => {
-  const b = new TilingSprite({ texture: a.bg, width: W, height: H });
-  b.tileScale.set(W / a.bg.width);
+  const b = new TilingSprite({ texture: Texture.WHITE, width: W, height: H });
+  b.tileScale.set(W / a.size.bg.w);
+  paint(b, i, (t) => t.bg, STAND_IN[a.dir][0]);
   view.addChildAt(b, i);
   return b;
 });
@@ -107,16 +141,19 @@ function seeded(seed) {
   return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
 const rnd = seeded(20261111);
-const any = (list) => list[Math.floor(rnd() * list.length)];
+const any = (n) => Math.floor(rnd() * n); // n 장 중 하나의 번호. 그림을 받기 전에도 같은 순서로 뽑아 장식 자리가 늘 같다
 
 // 지형 뒤 큰 배경물: 지형보다 느리게 움직여 멀리 있는 것처럼 보인다
 const FAR = 0.6;
 const far = new Container();
 view.addChildAt(far, bgs.length);
 ZONES.forEach((z, i) => {
-  if (!arts[i].kit.far.length) return;
+  const n = arts[i].count('far');
+  if (!n) return;
   for (let h = z.from + 6; h < z.to - 4; h += 15) {
-    const sp = new Sprite(any(arts[i].kit.far));
+    const k = any(n);
+    const sp = new Sprite();
+    later(sp, i, (t) => t.kit.far[k]);
     sp.anchor.set(0.5);
     sp.scale.set(0.55 + rnd() * 0.2);
     sp.alpha = z.farAlpha ?? 0.45; // 멀리 있는 것처럼 옅게(야경은 불빛이 보이게 진하게)
@@ -141,8 +178,9 @@ const skins = new Container(); // 구간마다 그 높이 띠에만 재질을 �
 ZONES.forEach((z, i) => {
   const top = i === ZONES.length - 1 ? 0 : yOf(z.to);
   const bottom = i === 0 ? HEIGHT * TILE : yOf(z.from);
-  const skin = new TilingSprite({ texture: arts[i].rock, width: W, height: bottom - top });
+  const skin = new TilingSprite({ texture: Texture.WHITE, width: W, height: bottom - top });
   skin.tileScale.set(0.5);
+  paint(skin, i, (t) => t.rock, STAND_IN[arts[i].dir][1]);
   skin.y = top;
   skins.addChild(skin);
 });
@@ -165,8 +203,9 @@ ZONES.forEach((_, z) => {
     else if (t === 3) cloth.poly([x, y, x + TILE, y + TILE, x + TILE, y + TILE + CLOTH, x, y + CLOTH]);
   }
   cloth.fill(0xffffff);
-  const skin = new TilingSprite({ texture: arts[z].fabric, width: W, height: HEIGHT * TILE });
+  const skin = new TilingSprite({ texture: Texture.WHITE, width: W, height: HEIGHT * TILE });
   skin.tileScale.set(0.5);
+  paint(skin, z, (t) => t.fabric, STAND_IN[arts[z].dir][2]);
   skin.mask = cloth;
   skins.addChild(cloth, skin);
 });
@@ -174,9 +213,11 @@ ZONES.forEach((_, z) => {
   const solid = (c, r) => level.raw(c, r) === 1;
   for (let r = 1; r < HEIGHT - 1; r++) for (let c = 1; c < COLS - 1; c++) {
     const z = zoneOf(HEIGHT - 1 - r);
-    const list = arts[z].kit.in;
-    if (!list.length || !solid(c, r)) continue;
-    const sp = new Sprite(any(list));
+    const n = arts[z].count('in');
+    if (!n || !solid(c, r)) continue;
+    const k = any(n);
+    const sp = new Sprite();
+    later(sp, z, (t) => t.kit.in[k]);
     sp.anchor.set(0.5);
     if (ZONES[z].windows) {
       // 두 칸마다 한 자리, 둘레 한 칸까지 모두 지형인 곳에만(벽 한가운데)
@@ -210,7 +251,8 @@ for (let r = 1; r < HEIGHT; r++) for (let c = 0; c < COLS; c++) {
   if (!ZONES[z].cap || !top(c)) continue;
   let e = c;
   while (e + 1 < COLS && top(e + 1)) e++;
-  const strip = new TilingSprite({ texture: arts[z].trim, width: (e - c + 1) * TILE + 8, height: 64 });
+  const strip = new TilingSprite({ texture: Texture.EMPTY, width: (e - c + 1) * TILE + 8, height: 64 });
+  later(strip, z, (t) => t.trim);
   strip.tileScale.set(0.5);
   strip.tilePosition.x = -c * TILE;
   strip.position.set(c * TILE - 4, r * TILE - 20); // 그림의 y=40 줄이 윗면
@@ -222,8 +264,9 @@ for (let r = 1; r < HEIGHT; r++) for (let c = 0; c < COLS; c++) {
 {
   const solid = (c, r) => level.raw(c, r) === 1;
   const empty = (c, r) => level.raw(c, r) === 0;
-  const put = (texture, x, y, px, py, flip) => {
-    const sp = new Sprite(texture);
+  const put = (z, kind, k, x, y, px, py, flip) => {
+    const sp = new Sprite();
+    later(sp, z, (t) => t.kit[kind][k]);
     sp.pivot.set(px, py);
     sp.scale.set(flip ? -0.5 : 0.5, 0.5);
     sp.position.set(x, y);
@@ -231,27 +274,28 @@ for (let r = 1; r < HEIGHT; r++) for (let c = 0; c < COLS; c++) {
   };
   for (let r = 1; r < HEIGHT - 1; r++) for (let c = 1; c < COLS - 1; c++) {
     if (!solid(c, r)) continue;
-    const kit = arts[zoneOf(HEIGHT - 1 - r)].kit;
-    if (!kit.top.length) continue;
+    const z = zoneOf(HEIGHT - 1 - r);
+    const n = { top: arts[z].count('top'), hang: arts[z].count('hang'), side: arts[z].count('side') };
+    if (!n.top) continue;
     const x = c * TILE;
     const y = r * TILE;
     // 윗면: 양옆도 윗면인 칸에만(끝에 걸치지 않게), 세 칸에 하나꼴
     if (empty(c, r - 1) && solid(c - 1, r) && empty(c - 1, r - 1) && solid(c + 1, r) && empty(c + 1, r - 1) && rnd() < 0.3) {
       // 난수는 늘 같은 순서로 뽑는다(다른 곳 장식 자리가 그대로). 표지판 옆이면 뽑기만 하고 그리지 않는다
-      const t = any(kit.top);
+      const t = any(n.top);
       const dx = (rnd() - 0.5) * 16;
       const flip = rnd() < 0.5;
-      if (!besideSign(SIGNS, c + 0.5 + dx / TILE, HEIGHT - 1 - r)) put(t, x + TILE / 2 + dx, y, 128, 200, flip);
+      if (!besideSign(SIGNS, c + 0.5 + dx / TILE, HEIGHT - 1 - r)) put(z, 'top', t, x + TILE / 2 + dx, y, 128, 200, flip);
     }
-    if (empty(c, r + 1) && solid(c - 1, r) && empty(c - 1, r + 1) && solid(c + 1, r) && empty(c + 1, r + 1) && rnd() < 0.3) put(any(kit.hang), x + TILE / 2 + (rnd() - 0.5) * 16, y + TILE, 128, 56, rnd() < 0.5);
-    if (empty(c + 1, r) && solid(c, r - 1) && empty(c + 1, r - 1) && solid(c, r + 1) && empty(c + 1, r + 1) && rnd() < 0.16) put(any(kit.side), x + TILE, y + TILE / 2, 56, 128, false);
-    if (empty(c - 1, r) && solid(c, r - 1) && empty(c - 1, r - 1) && solid(c, r + 1) && empty(c - 1, r + 1) && rnd() < 0.16) put(any(kit.side), x, y + TILE / 2, 56, 128, true);
+    if (empty(c, r + 1) && solid(c - 1, r) && empty(c - 1, r + 1) && solid(c + 1, r) && empty(c + 1, r + 1) && rnd() < 0.3) put(z, 'hang', any(n.hang), x + TILE / 2 + (rnd() - 0.5) * 16, y + TILE, 128, 56, rnd() < 0.5);
+    if (empty(c + 1, r) && solid(c, r - 1) && empty(c + 1, r - 1) && solid(c, r + 1) && empty(c + 1, r + 1) && rnd() < 0.16) put(z, 'side', any(n.side), x + TILE, y + TILE / 2, 56, 128, false);
+    if (empty(c - 1, r) && solid(c, r - 1) && empty(c - 1, r - 1) && solid(c, r + 1) && empty(c - 1, r + 1) && rnd() < 0.16) put(z, 'side', any(n.side), x, y + TILE / 2, 56, 128, true);
   }
 }
 // 꾸벅 발판: 서 있으면 점점 처지다가 꺼진다
 const nodViews = nods.map((n) => {
   const w = (n.c1 - n.c0 + 1) * TILE;
-  const tex2 = arts[zoneOf(n.h)][n.kind];
+  const z = zoneOf(n.h);
   const v = new Container();
   if (n.kind === 'boost') { // 분사 판: 위로 번지는 빛 기둥. 밝기는 boostLook 이 정한다
     v.halo = new Graphics();
@@ -259,7 +303,11 @@ const nodViews = nods.map((n) => {
     v.halo.blendMode = 'add';
     v.addChild(v.halo);
   }
-  if (tex2) {
+  const temp = v.addChild(new Graphics().roundRect(-w / 2, 0, w, TILE, 16).fill({ nod: 0xf3ecd8, hot: 0xff8a5c, boost: 0x7fd0ff }[n.kind]).stroke({ width: 3.5, color: INK })); // 그림이 오기 전(또는 그림이 없는 구간)의 임시 모양
+  if (arts[z].files[n.kind]) onZone(z, (t) => {
+    const tex2 = t[n.kind];
+    if (!tex2) return;
+    temp.destroy();
     const sp = new Sprite(tex2);
     sp.anchor.set(0.5, 20 / 160); // 그림(512×160)의 y=20 줄이 윗면. 분사 불꽃은 그 아래로 판 밑까지 내려온다
     sp.width = w + 12;
@@ -273,9 +321,7 @@ const nodViews = nods.map((n) => {
       v.shine.blendMode = 'add';
       v.addChild(v.shine);
     }
-  } else {
-    v.addChild(new Graphics().roundRect(-w / 2, 0, w, TILE, 16).fill({ nod: 0xf3ecd8, hot: 0xff8a5c, boost: 0x7fd0ff }[n.kind]).stroke({ width: 3.5, color: INK })); // 그림이 오기 전의 임시 모양
-  }
+  });
   v.position.set(n.c0 * TILE + w / 2, yOf(n.h));
   world.addChild(v);
   return v;
@@ -283,7 +329,8 @@ const nodViews = nods.map((n) => {
 
 // 장식 소품: 충돌 없음. 보통은 바닥 중앙 (256,450), hang 은 천장에 매달려 위쪽 (256,60) 이 기준
 for (const d of DECOR) {
-  const sp = new Sprite(arts[zoneOf(d.h)][d.img]);
+  const sp = new Sprite();
+  later(sp, zoneOf(d.h), (t) => t[d.img]);
   sp.pivot.set(256, d.hang ? 60 : 450);
   sp.scale.set(d.flip ? -d.s : d.s, d.s);
   sp.position.set(d.c * TILE, yOf(d.h) + (d.hang ? -4 : 5)); // 살짝 묻혀서 지형에 박힌 것처럼
@@ -297,7 +344,7 @@ const GLOW = { nyc: [0xffe08a, 'add', 0.5], space: [0xffe08a, 'add', 0.5], xmas:
 const ART_H = 52; // 카드 속 장치 그림 높이(px)
 const signViews = [];
 for (const s of SIGNS) {
-  const { dir } = arts[s.zone];
+  const { dir, files } = arts[s.zone];
   const k = signScale(s);
   const x = s.c * TILE;
   const y = yOf(s.h);
@@ -310,7 +357,8 @@ for (const s of SIGNS) {
   glow.alpha = 0;
   glow.peak = alpha;
   world.addChild(glow);
-  const sp = new Sprite(arts[s.zone].info_sign ?? arts[s.zone].arrow_sign);
+  const sp = new Sprite();
+  later(sp, s.zone, (t) => t[files.info_sign ? 'info_sign' : 'arrow_sign']);
   sp.pivot.set(256, 450);
   sp.scale.set(s.flip ? -k : k, k);
   sp.position.set(x, y + SIGN_SINK);
@@ -328,12 +376,11 @@ for (const s of SIGNS) {
   tag.baseY = tag.y;
   tag.alpha = 0;
   world.addChild(tag);
-  signViews.push({ s, sp, glow, tag, key: signKey(s), y, art: cardArt(s) });
+  signViews.push({ s, sp, glow, tag, key: signKey(s), y, art: null }); // 카드 그림은 그 구간 그림을 받은 뒤 처음 띄울 때 만든다
 }
 // 카드에 넣을 장치 그림(높이 ART_H 안팎, 비율 그대로). 게임이 그 장치에 쓰는 그림을 그대로 쓴다
 function cardArt(s) {
-  const a = arts[s.zone];
-  const tex2 = a[SIGN_ART[s.kind]];
+  const tex2 = arts[s.zone].tex[SIGN_ART[s.kind]];
   const box = new Container();
   if (!tex2) return box;
   if (s.kind === 'slope') { // 게임의 경사처럼 오른쪽으로 오르는 삼각형을 경사 재질로 채우고 지형 선을 두른다
@@ -433,9 +480,10 @@ function drawTip(i) {
   tipName.text = name;
   tipDesc.text = desc;
   tipArt.removeChildren();
-  tipArt.addChild(v.art);
-  const aw = v.art.width;
-  const ah = v.art.height;
+  if (!v.art && arts[v.s.zone].tex) v.art = cardArt(v.s);
+  if (v.art) tipArt.addChild(v.art);
+  const aw = v.art?.width ?? 0;
+  const ah = v.art?.height ?? 0;
   const PAD = 14;
   const GAP = aw ? 14 : 0;
   const th = desc ? 50 : 26; // 글 두 줄 높이
@@ -546,10 +594,11 @@ const streaks = winds.flatMap((w) => {
   return Array.from({ length: n }, () => ({ w, x: Math.random(), y: Math.random(), len: 26 + Math.random() * 46, k: 0.6 + Math.random() * 0.8 }));
 });
 for (const w of winds) {
-  const flag = arts[zoneOf(w.h0 + 1)].flag;
-  if (!flag) continue;
+  const z = zoneOf(w.h0 + 1);
+  if (!arts[z].files.flag) continue;
   for (const f of flagSpots(w, (c, h) => level.raw(c, HEIGHT - 2 - h), [...SIGNS, ...DECOR.filter((d) => !d.hang)])) { // 구역 안 넓은 발판 위에만
-    const sp = new Sprite(flag);
+    const sp = new Sprite();
+    later(sp, z, (t) => t.flag);
     sp.anchor.set(40 / 256, 240 / 256);
     sp.scale.set((w.ax < 0 ? -1 : 1) * 0.3, 0.3);
     sp.position.set(f.c * TILE, yOf(f.h));
@@ -598,11 +647,19 @@ function makeRig() {
   actor.addChild(rig.root);
 }
 
-function begin(who, saved) {
+async function begin(who, saved) {
   if (!ADMIN && !guest) { enter(); return; }
+  if (mode === 'loading') return;
+  const sh = saved ? saved.h ?? (5080 - saved.y - params(who).h) / TILE : START[1]; // 예전 저장(y 픽셀, 맵 높이 128칸 기준)도 읽는다
+  // 그 감정이의 부위 그림과 시작 높이 근처 구간 그림을 받은 뒤 시작한다(고르는 동안 미리 받아 둔다)
+  mode = 'loading';
+  const names = jelly ? PARTS : [...PARTS, ...JUMPS];
+  const assets = [...charAssets(who, names), ...zoneAssets(sh)];
+  if (assets.some((a) => !loader.has(a.src ?? a))) await bar(assets.map(loader.get)); // 다 받아 두었으면 막대 없이 바로
+  await Promise.all([loadChar(who, names), needZones(sh)]);
+  ui.loaded();
   id = who;
   P = params(id);
-  const sh = saved ? saved.h ?? (5080 - saved.y - P.h) / TILE : START[1]; // 예전 저장(y 픽셀, 맵 높이 128칸 기준)도 읽는다
   p = newPlayer(saved ? saved.x : START[0] * TILE, yOf(sh) - P.h);
   stats = saved ? { falls: saved.falls, time: saved.time, best: saved.best, cleared: Number(saved.cleared) || 0 } : { falls: 0, time: 0, best: 0, cleared: 0 };
   makeRig();
@@ -624,13 +681,20 @@ function forget() {
   saved = null;
   net.restart();
 }
+// 제목·고르기 화면 뒤에서 시작할 높이 근처의 구간 그림(이어하기면 그 감정이 그림까지)을 미리 받는다
+function prefetch() {
+  needZones(saved ? saved.h : START[1]);
+  if (saved) loadChar(saved.id);
+}
 function showSelect() {
   mode = 'select';
-  ui.select(pick, (i) => { pick = i; showSelect(); }, () => { begin(IDS[pick]); save(); });
+  prefetch();
+  ui.select(pick, (i) => { pick = i; showSelect(); }, () => { begin(IDS[pick]).then(save); });
 }
 const go = () => (saved ? begin(saved.id, saved) : showSelect());
 function showTitle() {
   mode = 'title';
+  prefetch();
   ui.title(saved, go, () => { forget(); showSelect(); }, showCredits);
   ui.guest(guest, rename);
   showBoards();
@@ -681,6 +745,7 @@ function drawGhosts(dt) {
     let v = ghostViews.get(g.n);
     if (v && v.character !== g.character) { dropGhost(g.n); v = null; }
     if (!v) {
+      if (!charReady(g.character)) { loadChar(g.character); continue; } // 처음 보는 감정이: 받는 동안은 그리지 않는다
       const c = new Container();
       const rig = new JellyRig(tex[g.character]);
       const label = new Text({ text: g.nickname, style: { fontFamily: FONT, fontSize: 15, fill: 0xfff8ea, stroke: { color: INK, width: 4 } } }); // 어두운 배경에서도 읽히게
@@ -737,7 +802,7 @@ function rename() {
 }
 
 addEventListener('keydown', (e) => {
-  if (e.repeat || mode === 'nickname' || mode === 'connection' || (mode === 'play' && !canPlay(ADMIN, guest, net.status))) return; // 닉네임 입력 중에는 게임 키를 쓰지 않는다
+  if (e.repeat || mode === 'nickname' || mode === 'connection' || mode === 'loading' || (mode === 'play' && !canPlay(ADMIN, guest, net.status))) return; // 닉네임 입력 중에는 게임 키를 쓰지 않는다
   const k = e.code;
   unlock(); // 브라우저는 첫 키 입력 뒤에야 소리를 낸다
   if (k === 'KeyM') { const off = toggleMute(); if (mode === 'play') { say(off ? '소리 끔' : '소리 켬'); quipT = 1.2; } return; }
@@ -755,7 +820,7 @@ addEventListener('keydown', (e) => {
   if (mode === 'select') {
     if (k === 'ArrowLeft') { pick = (pick + 4) % 5; showSelect(); sfx.blip(); }
     if (k === 'ArrowRight') { pick = (pick + 1) % 5; showSelect(); sfx.blip(); }
-    if (k === 'Space' || k === 'Enter') { begin(IDS[pick]); save(); }
+    if (k === 'Space' || k === 'Enter') { begin(IDS[pick]).then(save); }
     return;
   }
   if (mode === 'confirm') {
@@ -770,7 +835,14 @@ addEventListener('keydown', (e) => {
   if (k === 'KeyN') askRestart();
   if (k === 'Tab') { e.preventDefault(); ui.foldRanks(); }
   if (k === 'KeyG') { showGhosts = !showGhosts; ghostLayer.visible = showGhosts; localStorage.setItem('pheeeew-climb-ghosts', showGhosts ? 'on' : 'off'); say(showGhosts ? '다른 사람 보이기' : '다른 사람 숨기기'); quipT = 1.2; }
-  if (k === 'KeyJ') { jelly = !jelly; localStorage.setItem('pheeeew-climb-rig', jelly ? 'jelly' : 'old'); makeRig(); say(jelly ? '젤리 움직임' : '예전 움직임'); quipT = 1.2; }
+  if (k === 'KeyJ') { // 예전 움직임은 점프 자세 그림을 처음 켤 때 받는다(받는 동안은 부위로 움직인다)
+    jelly = !jelly;
+    localStorage.setItem('pheeeew-climb-rig', jelly ? 'jelly' : 'old');
+    makeRig();
+    if (!jelly) loadChar(id, JUMPS).then(() => { if (!jelly) makeRig(); });
+    say(jelly ? '젤리 움직임' : '예전 움직임');
+    quipT = 1.2;
+  }
 });
 addEventListener('keyup', (e) => {
   const k = e.code;
@@ -906,6 +978,7 @@ function frame(dt) {
   quip.visible = quipT > 0;
   quip.position.set(p.x + P.w / 2, p.y - 58);
 
+  needZones(hOf(p.y + P.h)); // 다음 구간 경계 18칸 앞에서 그 위 구간 그림을 미리 받는다(받은 구간은 다시 받지 않는다)
   const target = Math.min(HEIGHT * TILE - H, p.y + P.h / 2 - H * 0.55);
   camY += (target - camY) * (1 - Math.exp(-dt * 7));
   fx.update(dt);
@@ -1014,4 +1087,4 @@ ui.loaded();
 if (ADMIN) { if (saved) showTitle(); else showSelect(); }
 else await enter();
 
-if (DEBUG || ADMIN) window.game = { get p() { return p; }, admin: { teleport, key: adminKey, get back() { return back; } }, get rig() { return rig; }, app, render: () => app.render(), view, get camY() { return camY; }, P: () => P, yOf, keys, begin, frame, get stats() { return stats; }, bgm }; // 숨겨진 창에서도 frame(dt) 로 시간을 넘겨 시험한다
+if (DEBUG || ADMIN) window.game = { get p() { return p; }, admin: { teleport, key: adminKey, get back() { return back; } }, get rig() { return rig; }, app, arts, loader, loadZone, render: () => app.render(), view, get camY() { return camY; }, P: () => P, yOf, keys, begin, frame, get stats() { return stats; }, bgm }; // 숨겨진 창에서도 frame(dt) 로 시간을 넘겨 시험한다

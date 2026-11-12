@@ -1,6 +1,6 @@
 // public/art.js 시험: 높이별로 받을 구간, 목록표 조회, 감정이 그림 배율, 받기 관리.
 // 사용: node tools/art_test.mjs
-import { zoneOf, zonesAround, AHEAD, zoneFiles, charFiles, LOGICAL, createLoader, loadTree } from '../public/art.js';
+import { zoneOf, zonesAround, AHEAD, zoneFiles, charFiles, LOGICAL, createLoader, loadTree, leaves } from '../public/art.js';
 
 const tests = [];
 const test = (name, fn) => tests.push({ name, fn });
@@ -77,6 +77,8 @@ test('주소 나무(구간 그림)를 같은 모양의 텍스처 나무로 함�
   const t = await loadTree(zoneFiles(MAN, 'nyc'), loader.get);
   eq(t, { bg: 'T/assets/nyc/bg.webp?v=1', nod: 'T/assets/nyc/nod.webp?v=2', kit: { top: ['T/assets/nyc/kit/top_1.webp?v=3', null] } }, '모양 그대로, 실패한 장은 null');
   eq(order.length, 4, '모두 한꺼번에 요청(직렬로 기다리지 않는다)');
+  eq(leaves(zoneFiles(MAN, 'nyc')).length, 4, '잎(받을 그림 수)');
+  eq(leaves(charFiles(MAN, 'angry', ['front_body'])), [{ src: '/assets/characters/angry/front_body.webp?v=5', data: { resolution: 0.375 } }], 'asset 잎');
 });
 
 let fail = 0;

@@ -17,7 +17,9 @@ canvas { display: block; }
 .veil { background: rgba(43, 36, 51, .62); backdrop-filter: blur(5px); }
 
 /* 로딩 */
-#loading { background: #2b2433; color: var(--paper); gap: 14px; }
+#loading { background: #2b2433; color: var(--paper); gap: 14px; z-index: 5; } /* 감정이를 고른 뒤 그림을 기다릴 때도 고르기 화면 위에 뜬다 */
+#loading .bar { width: 320px; height: 10px; border-radius: 5px; background: rgba(255, 248, 234, .18); overflow: hidden; }
+#loading .bar i { display: block; width: 0; height: 100%; background: #ffd35a; transition: width .15s; }
 #loading b { font-size: 34px; font-weight: 400; color: #ffd35a; }
 #loading span { font-size: 18px; opacity: .8; }
 .dots i { display: inline-block; width: 12px; height: 12px; margin: 0 5px; border-radius: 50%; background: #ffd35a; animation: hop .9s infinite; }

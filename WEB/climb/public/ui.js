@@ -9,7 +9,8 @@ const el = (tag, cls, html) => {
   if (html !== undefined) e.innerHTML = html;
   return e;
 };
-const face = (id, cls) => `<div class="${cls}"><img src="/assets/characters/${id}/front.png" alt=""></div>`;
+export const FACE = (id) => `/assets/characters/${id}/front.png`; // index.html 이 미리 받는 얼굴 그림과 같은 주소
+const face = (id, cls) => `<div class="${cls}"><img src="${FACE(id)}" alt=""></div>`;
 const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 // 닉네임은 다른 사람이 정한 글자라 HTML 로 넣기 전에 바꾼다
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -20,6 +21,7 @@ const STATUS = { connecting: '연결하는 중…', offline: '연결 끊김 · �
 export function createUI({ ids, info, zones, goal, credits = [] }) {
   const root = document.getElementById('ui');
   const loading = document.getElementById('loading');
+  const loadingBar = loading.querySelector('.bar i');
 
   // ---- 제목 ----
   const title = el('div', 'screen veil');
@@ -116,6 +118,11 @@ export function createUI({ ids, info, zones, goal, credits = [] }) {
     // 게임 화면과 같은 자리·배율로 맞춘다
     fit(x, y, s) { root.style.transform = `translate(${x}px, ${y}px) scale(${s})`; },
     loaded() { loading.hidden = true; },
+    // 받은 수/받을 수 막대. 부르면 로딩 화면을 (다시) 띄운다
+    progress(done, total) {
+      loading.hidden = false;
+      loadingBar.style.width = `${total ? (done / total) * 100 : 0}%`;
+    },
     connection(message, retry) {
       connection.querySelector('[data-message]').textContent = message;
       const button = connection.querySelector('[data-retry]');
