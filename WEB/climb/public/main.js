@@ -578,7 +578,7 @@ function updateWind(dt) {
     const y = yOf(w.h1) + s.y * (w.h1 - w.h0) * TILE;
     if (y < camY - 40 || y > camY + H + 40) continue;
     const fade = Math.sin(Math.PI * s.x); // 구역 끝에서 옅어진다
-    gusts.moveTo(x, y).lineTo(x - Math.sign(w.ax) * s.len, y).stroke({ width: 3, color: 0xffffff, alpha: 0.5 * fade, cap: 'round' });
+    gusts.moveTo(x, y).lineTo(Math.max(w.c0 * TILE, Math.min(w.c0 * TILE + wide, x - Math.sign(w.ax) * s.len)), y).stroke({ width: 3, color: 0xffffff, alpha: 0.5 * fade, cap: 'round' }); // 꼬리가 구역 밖(바람 없는 곳)으로 나가지 않게 자른다
   }
 }
 
