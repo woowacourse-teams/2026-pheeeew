@@ -109,3 +109,12 @@ input.nick:focus { box-shadow: 0 0 0 4px var(--accent); }
 /* 사건 알림: 위 HUD 줄 아래, 구간 완료 배너 위 */
 #toast { position: absolute; left: 50%; top: 66px; transform: translateX(-50%); font-size: 18px; animation: drop .3s ease-out; }
 @keyframes drop { from { transform: translate(-50%, -10px); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }
+
+/* 관리자 모드(?admin): 오른쪽 아래 작은 정보 카드와 전체 지도 */
+#admin { position: absolute; right: 54px; bottom: 62px; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; padding: 8px 12px; font-size: 15px; border-radius: 14px; box-shadow: 0 4px 0 var(--ink); }
+#admin b { font-weight: 400; color: #d6453a; }
+#admin .keys { position: static; gap: 8px; font-size: 13px; color: var(--ink); text-shadow: none; }
+#admin .key { min-width: 0; height: 22px; padding: 0 5px; font-size: 12px; border-width: 2px; border-radius: 6px; box-shadow: 0 2px 0 var(--ink); }
+.adminmap { padding: 10px 14px 14px; }
+.adminmap .head { display: flex; align-items: center; justify-content: space-between; font-size: 16px; color: var(--dim); margin-bottom: 8px; }
+.adminmap canvas { display: block; pointer-events: auto; cursor: crosshair; }

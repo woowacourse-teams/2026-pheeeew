@@ -78,3 +78,44 @@ export function fromMini(mx, my) {
   if (k < 0 || k >= MINI.strips || lx > COLS * MINI.cell || my < 0 || my > MINI.h) return null;
   return { x: (lx / MINI.cell) * TILE, y: yOf(k * MINI.rows + (MINI.h - my) / MINI.cell) };
 }
+
+// 전체 지도 그리기(canvas 2D). 지형 칸은 구간 색, 화면 경계마다 번호, 내 위치(몸 가운데 x, 발 y px)는 빨간 점.
+const ZONE_COLORS = ['#7aa7d6', '#e48a8a', '#b9a3e3', '#efb95a', '#6fc1aa', '#c9c2b2'];
+export function drawMini(ctx, level, zones, x, feetY) {
+  const { cell, rows, gap } = MINI;
+  const stride = COLS * cell + gap;
+  ctx.clearRect(0, 0, MINI.w, MINI.h);
+  ctx.font = '11px Jua, sans-serif';
+  for (let k = 0; k < MINI.strips; k++) {
+    const ox = k * stride;
+    ctx.fillStyle = '#efe4cf';
+    ctx.fillRect(ox, 0, COLS * cell, MINI.h);
+    for (let i = 0; i < rows; i++) {
+      const hh = k * rows + i; // 높이 hh~hh+1 의 칸 줄
+      const r = HEIGHT - 2 - hh;
+      if (r < 0) break;
+      const z = Math.max(0, zones.findIndex((zz, j) => hh < zz.to || j === zones.length - 1));
+      const y = MINI.h - (i + 1) * cell;
+      for (let c = 0; c < COLS; c++) {
+        const t = level.raw(c, r);
+        if (!t) continue;
+        ctx.fillStyle = t === 4 ? '#fff8ea' : ZONE_COLORS[z % ZONE_COLORS.length];
+        ctx.fillRect(ox + c * cell, y, cell, cell);
+      }
+      if (hh % SCREEN === 0) { // 화면 경계와 번호(화면 1 = 높이 0~18)
+        ctx.fillStyle = '#2b2433';
+        ctx.fillRect(ox, MINI.h - i * cell - 1, COLS * cell, 1);
+        ctx.fillText(String(hh / SCREEN + 1), ox + 2, MINI.h - i * cell - 3);
+      }
+    }
+  }
+  const h = hOf(feetY);
+  const k = Math.max(0, Math.min(MINI.strips - 1, Math.floor(h / rows)));
+  ctx.fillStyle = '#ff3b30';
+  ctx.strokeStyle = '#2b2433';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(k * stride + (x / TILE) * cell, MINI.h - (h - k * rows) * cell, 6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+}

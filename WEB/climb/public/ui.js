@@ -209,6 +209,30 @@ export function createUI({ ids, info, zones, goal }) {
     },
     foldRanks() { parts.ranks.classList.toggle('folded'); },
     // 다른 사람의 구간 통과·완주: 화면 위에 잠깐 한 줄
+    // 관리자 모드(?admin): 오른쪽 아래 정보 표시와 키 안내, V 전체 지도. onPick(지도 위 x, y) 는 main 이 정한다
+    adminPanel(mini, onPick) {
+      const info = el('div', 'card', '<b>관리자 모드</b><span data-admin-info></span><div class="keys"><span><span class="key">클릭</span> 그 자리로</span><span><span class="key">PgUp</span><span class="key">PgDn</span> 한 화면</span><span><span class="key">1</span>~<span class="key">6</span> 구간</span><span><span class="key">⌫</span> 되돌리기</span><span><span class="key">V</span> 지도</span></div>');
+      info.id = 'admin';
+      hud.append(info);
+      api.adminText = info.querySelector('[data-admin-info]');
+      const map = el('div', 'screen veil', `<div class="card adminmap"><div class="head">전체 지도 · 누르면 그 자리로 <span class="key">V</span></div><canvas width="${mini.w}" height="${mini.h}"></canvas></div>`);
+      map.hidden = true;
+      root.append(map);
+      const canvas = map.querySelector('canvas');
+      canvas.onpointerdown = (e) => {
+        const r = canvas.getBoundingClientRect(); // 화면 배율이 걸려 있어 그 비율로 되돌린다
+        onPick(((e.clientX - r.left) / r.width) * mini.w, ((e.clientY - r.top) / r.height) * mini.h);
+      };
+      api.adminMapEl = map;
+      return map;
+    },
+    // draw(ctx) 를 주면 지도를 그려 열고, null 이면 닫는다
+    adminMap(draw) {
+      const map = api.adminMapEl;
+      if (draw) draw(map.querySelector('canvas').getContext('2d'));
+      map.hidden = !draw;
+    },
+    adminInfo(text) { if (api.adminText.textContent !== text) api.adminText.textContent = text; },
     toast(text) {
       parts.toast.textContent = text;
       parts.toast.hidden = true;

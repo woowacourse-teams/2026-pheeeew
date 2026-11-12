@@ -9,12 +9,13 @@ import { createFx } from './fx.js';
 import { sfx, unlock, toggleMute } from './sfx.js';
 import { createNet } from './net.js';
 import { createGhosts } from './ghosts.js';
+import * as admin from './admin.js';
 
 const W = COLS * TILE; // 1280
 const H = 720;
 const DEBUG = new URLSearchParams(location.search).has('debug');
-const ADMIN = new URLSearchParams(location.search).has('admin'); // 관리자 모드: 내 자세를 다른 사람에게 보내지 않는다
-const SAVE_KEY = DEBUG ? 'pheeeew-climb-debug' : 'pheeeew-climb-v1'; // 시험 화면은 실제 저장을 건드리지 않는다
+const ADMIN = new URLSearchParams(location.search).has('admin'); // 관리자 모드: 아무 곳으로나 옮겨 다니며 구간을 해 본다. 서버에는 아무것도 보내지 않는다
+const SAVE_KEY = ADMIN ? 'pheeeew-climb-admin' : DEBUG ? 'pheeeew-climb-debug' : 'pheeeew-climb-v1'; // 시험 화면은 실제 저장을 건드리지 않는다
 
 const INFO = {
   defeated: { name: '좌절이', ability: '쉽게 풀이 죽어요', fall: '역시 난 안 돼…' },
@@ -460,6 +461,7 @@ function askRestart() {
 // ---- 서버(순위) ----
 // 서버가 없으면 guest 가 null 인 채로 지금처럼 혼자 한다
 const net = createNet({ map: MAP_VERSION });
+if (ADMIN) for (const k of ['connect', 'reportPos', 'reportState', 'reportZone', 'reportFinish', 'restart', 'createGuest', 'rename']) net[k] = () => ({ status: 0 }); // 관리자 모드: 보고하지 않는다
 let guest = null; // { id, nickname, tag }
 let rank = null; // 마지막으로 받은 rank 메시지
 const showRanks = () => ui.ranks(guest && { rank, status: net.status, tag: guest.tag });
@@ -564,6 +566,7 @@ addEventListener('keydown', (e) => {
     if (k === 'Escape' || k === 'KeyN') { ui.closeConfirm(); mode = 'play'; }
     return;
   }
+  if (ADMIN && adminKey(k)) { e.preventDefault(); return; }
   if (k === 'ArrowLeft' || k === 'KeyA') { keys.left = true; flail = -1; }
   if (k === 'ArrowRight' || k === 'KeyD') { keys.right = true; flail = 1; }
   if (k === 'Space') keys.jump = true;
@@ -578,6 +581,41 @@ addEventListener('keyup', (e) => {
   if (k === 'ArrowRight' || k === 'KeyD') keys.right = false;
   if (k === 'Space') keys.jump = false;
 });
+// ---- 관리자 모드 ----
+let back = admin.newTrack(); // 되돌리기 자리
+// 캐릭터를 상자 자리(box)로 옮긴다. 가만히 선 채로 놓고, 공중이면 그대로 떨어진다.
+function teleport(box) {
+  if (!box) return; // 관리자 모드: 되돌릴 자리가 아직 없거나 없는 구간
+  const facing = p.facing;
+  p = newPlayer(box.x, box.y);
+  p.facing = facing;
+  acc = 0;
+  back = admin.newTrack();
+  camY = Math.min(HEIGHT * TILE - H, p.y + P.h / 2 - H * 0.55); // 멀리 옮기면 카메라도 바로
+  rig.root.position.set(p.x + P.w / 2, p.y + P.h);
+  save();
+}
+function adminKey(k) {
+  if (k === 'KeyV') { ui.adminMap(!mini.hidden ? null : drawMini); return true; }
+  if (k === 'PageUp' || k === 'BracketRight') { teleport(admin.screenJump(level, P, p, 1)); return true; }
+  if (k === 'PageDown' || k === 'BracketLeft') { teleport(admin.screenJump(level, P, p, -1)); return true; }
+  if (/^Digit[1-9]$/.test(k)) { teleport(admin.zoneStart(P, Number(k.slice(5)))); return true; }
+  if (k === 'Backspace' || k === 'KeyR') { const b = back.back; teleport(b); return true; } // 옮긴 뒤 가만히 서 있으면 그 자리를 다시 기억해 몇 번이고 되풀이한다
+  return false;
+}
+const mini = ADMIN ? ui.adminPanel(admin.MINI, (mx, my) => {
+  const at = admin.fromMini(mx, my);
+  if (!at) return;
+  teleport(admin.placeAt(level, P, at.x, at.y));
+  ui.adminMap(null);
+}) : { hidden: true };
+function drawMini(ctx) { admin.drawMini(ctx, level, ZONES, p.x + P.w / 2, p.y + P.h); }
+if (ADMIN) app.canvas.addEventListener('pointerdown', (e) => { // UI 버튼 위를 누르면 버튼이 받으므로 여기 오지 않는다
+  if (mode !== 'play' || !mini.hidden) return;
+  const at = admin.toMap(e.clientX, e.clientY, { x: view.x, y: view.y, s: view.scale.x }, camY);
+  if (at) teleport(admin.placeAt(level, P, at.x, at.y));
+});
+
 addEventListener('blur', () => { keys.left = keys.right = keys.jump = false; });
 
 function tick() {
@@ -586,6 +624,7 @@ function tick() {
   const dirV = Math.sign(p.vx);
   step(p, { ...keys, flail }, level, P);
   updateNods(p, P, DT);
+  if (ADMIN) admin.track(back, p);
   feel(fallV, charged, dirV);
   flail = 0;
   stats.time += DT;
@@ -695,13 +734,18 @@ function frame(dt) {
   updateWind(dt);
   drawGhosts(dt); // 카메라가 정해진 뒤
   ui.hud({ h: Math.max(0, Math.round(hOf(p.y + P.h))), best: stats.best, falls: stats.falls, time: stats.time });
+  if (ADMIN) {
+    const h = hOf(p.y + P.h);
+    const z = Math.max(0, ZONES.findIndex((zz, i) => h < zz.to || i === ZONES.length - 1)); // HUD 와 같이: 경계 높이에 서면 다음 구간
+    ui.adminInfo(`높이 ${Math.round(h)}칸 · 화면 ${Math.floor(Math.max(0, h) / SCREEN) + 1} · ${z + 1}구간 ${ZONES[z].name} · 칸 (${Math.floor((p.x + P.w / 2) / TILE)}, ${Math.floor(h)})`);
+  }
 }
 app.ticker.add((tk) => { if (!window.paused) frame(Math.min(0.1, tk.deltaMS / 1000)); }); // paused: 시험할 때 시간을 멈춘다
 
 saved = JSON.parse(localStorage.getItem(SAVE_KEY) ?? 'null');
 if (saved && !IDS.includes(saved.id)) saved = null;
 if (saved && saved.h === undefined) saved.h = (5080 - saved.y - 48) / TILE; // 예전 저장(y 픽셀) 읽기
-const me = await net.me();
+const me = ADMIN ? { status: 0 } : await net.me(); // 관리자 모드: 닉네임 창 없이 혼자 하기
 if (me.status === 200) {
   guest = me.body;
   // 서버에 같은 맵의 이어 할 등반이 있으면 로컬 저장보다 그것을 쓴다(로컬 저장은 서버가 없을 때의 예비)
@@ -715,4 +759,4 @@ if (me.status === 401) askNickname();
 else if (saved || guest) showTitle();
 else showSelect();
 
-if (DEBUG) window.game = { get p() { return p; }, get rig() { return rig; }, app, render: () => app.render(), view, get camY() { return camY; }, P: () => P, yOf, keys, begin, frame, get stats() { return stats; } }; // 숨겨진 창에서도 frame(dt) 로 시간을 넘겨 시험한다
+if (DEBUG || ADMIN) window.game = { get p() { return p; }, admin: { teleport, key: adminKey, get back() { return back; } }, get rig() { return rig; }, app, render: () => app.render(), view, get camY() { return camY; }, P: () => P, yOf, keys, begin, frame, get stats() { return stats; } }; // 숨겨진 창에서도 frame(dt) 로 시간을 넘겨 시험한다
