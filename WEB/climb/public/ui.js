@@ -15,7 +15,13 @@ const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStar
 // 닉네임은 다른 사람이 정한 글자라 HTML 로 넣기 전에 바꾼다
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 // 순위 한 줄: 순위, 감정이 얼굴, 닉네임#꼬리표, 최고 높이(완주면 시간)
-const row = (it, mine) => `<div class="r${it.tag === mine ? ' me' : ''}"><b>${it.rank}</b>${TINT[it.character] ? face(it.character, 'avatar mini') : '<div class="avatar mini"></div>'}<span class="n">${esc(it.nickname)}<small>#${esc(it.tag)}</small></span><span class="v">${it.finished ? `완주${it.time != null ? ` ${clock(it.time)}` : ''}` : `${it.best}칸`}</span></div>`;
+const who = (it) => `${TINT[it.character] ? face(it.character, 'avatar mini') : '<div class="avatar mini"></div>'}<span class="n">${esc(it.nickname)}<small>#${esc(it.tag)}</small></span>`;
+const row = (it, mine) => `<div class="r${it.tag === mine ? ' me' : ''}"><b>${it.rank}</b>${who(it)}<span class="v">${it.finished ? `완주${it.time != null ? ` ${clock(it.time)}` : ''}` : `${it.best}칸`}</span></div>`;
+// 명예의 전당 한 줄: 도착 순서, 얼굴, 닉네임#꼬리표, 완주 시간과 도착한 때(이 기기 시각, 11/12 19:42)
+const two = (n) => String(n).padStart(2, '0');
+const when = (iso) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? '' : `${d.getMonth() + 1}/${d.getDate()} ${two(d.getHours())}:${two(d.getMinutes())}`; };
+const hallRow = (it, mine) => `<div class="r${it.tag === mine ? ' me' : ''}"><b>${Number(it.order) || ''}</b>${who(it)}<span class="v">${clock(Number(it.time) || 0)}<small>${when(it.finishedAt)}</small></span></div>`;
+const list = (items, render) => (!items ? '<div class="none">불러오지 못했어요</div>' : items.length ? items.map(render).join('') : '<div class="none">아직 아무도 없어요</div>');
 const STATUS = { connecting: '연결하는 중…', offline: '연결 끊김 · 다시 연결하는 중…', replaced: '다른 창에서 오르는 중' };
 
 export function createUI({ ids, info, zones, goal, credits = [] }) {
@@ -34,7 +40,7 @@ export function createUI({ ids, info, zones, goal, credits = [] }) {
       <button class="btn" data-continue><span class="key">Enter</span><span data-continue-label>이어서 오르기</span></button>
       <button class="btn ghost" data-new><span class="key">N</span>처음부터</button>
     </div>
-    <div class="boards" data-boards hidden>${['오늘', '역대'].map((n) => `<div class="card board"><div class="head">${n} 순위</div><div class="list"></div></div>`).join('')}</div>
+    <div class="boards" data-boards hidden>${['오늘', '역대'].map((n) => `<div class="card board"><div class="head">${n} 순위</div><div class="list"></div></div>`).join('')}<div class="card board hall"><div class="head">명예의 전당 · 먼저 온 순서</div><div class="list" data-hall></div></div></div>
     <button class="btn ghost small music" data-credits>♪ 음악</button>
     <div class="guest" data-guest hidden><span data-guest-name></span><button class="btn ghost small" data-rename>닉네임 바꾸기</button></div>`;
 
@@ -67,10 +73,13 @@ export function createUI({ ids, info, zones, goal, credits = [] }) {
     <div id="ranks" class="card" hidden><div class="head"><span data-ranks-head></span><span class="key">Tab</span></div><div class="list" data-ranks-list></div></div>
     <div id="toast" class="pill" hidden></div>
     <div id="tower"><div class="fill"></div>${zones.slice(0, -1).map((z) => `<div class="tick" style="bottom:${(z.to / goal) * 100}%"></div>`).join('')}<div class="others"></div><div class="best"></div><div class="me"></div></div>
-    <div class="keys"><span><span class="key">◀</span> <span class="key">▶</span> 걷기</span><span><span class="key">Space</span> 길게 눌러 모으고, 놓으면 점프</span><span><span class="key">N</span> 처음부터</span><span><span class="key">G</span> 다른 사람</span><span><span class="key">M</span> 소리</span><span><span class="key">B</span> 음악</span></div>`;
+    <div class="keys"><span><span class="key">◀</span> <span class="key">▶</span> 걷기</span><span><span class="key">Space</span> 길게 눌러 모으고, 놓으면 점프</span><span><span class="key">N</span> 처음부터</span><span><span class="key">G</span> 다른 사람</span><span><span class="key">H</span> 명예의 전당</span><span><span class="key">M</span> 소리</span><span><span class="key">B</span> 음악</span></div>`;
   const q = (sel) => hud.querySelector(sel);
   const parts = { face: q('[data-face]'), name: q('[data-name]'), h: q('[data-h]'), falls: q('[data-falls]'), time: q('[data-time]'), zoneNo: q('[data-zone-no]'), zone: q('[data-zone]'), fill: q('#tower .fill'), best: q('#tower .best'), me: q('#tower .me'), others: q('#tower .others'), ranks: q('#ranks'), ranksHead: q('[data-ranks-head]'), ranksList: q('[data-ranks-list]'), toast: q('#toast'), keys: q('.keys') };
   const shown = {}; // 바뀐 값만 다시 쓴다
+  let hall = null; // 명예의 전당 목록(null: 못 불러옴)
+  let hallOn = false; // 게임 중 순위 패널이 명예의 전당을 보여 준다
+  let ranksState = null; // 마지막 ranks(state)
   const put = (k, v) => { if (shown[k] !== v) { shown[k] = v; parts[k].textContent = v; } };
 
   // ---- 구간 완료 ----
@@ -205,7 +214,7 @@ export function createUI({ ids, info, zones, goal, credits = [] }) {
       const box = title.querySelector('[data-boards]');
       box.hidden = !today && !all;
       [today, all].forEach((top, i) => {
-        box.children[i].querySelector('.list').innerHTML = !top ? '<div class="none">불러오지 못했어요</div>' : top.length ? top.slice(0, 5).map((it) => row(it, mine)).join('') : '<div class="none">아직 아무도 없어요</div>';
+        box.children[i].querySelector('.list').innerHTML = list(top?.slice(0, 5), (it) => row(it, mine));
       });
     },
     // 닉네임 창. onOk(이름), onAlt() 는 main 이 정한다. secret 이면 비밀번호 입력란(관리자 키 창)
@@ -235,21 +244,41 @@ export function createUI({ ids, info, zones, goal, credits = [] }) {
     },
     nicknameError(text) { nick.querySelector('[data-err]').textContent = text; nickInput.focus(); },
     closeNickname() { nick.hidden = true; nickInput.blur(); },
+    // 명예의 전당(null 이면 못 불러옴): 제목 화면 카드와, 게임 중 H 로 바꾸는 순위 패널에 함께 쓴다
+    hall(items, mine) {
+      hall = items;
+      title.querySelector('[data-hall]').innerHTML = list(items, (it) => hallRow(it, mine));
+      if (hallOn) api.ranks(ranksState);
+    },
+    // 게임 중 순위 패널을 접속자 순위 ↔ 명예의 전당으로 바꾼다. 명예의 전당이 되면 true
+    toggleHall() {
+      hallOn = !hallOn;
+      parts.ranks.classList.toggle('hall', hallOn);
+      parts.ranks.classList.remove('folded');
+      api.ranks(ranksState);
+      return hallOn;
+    },
     // 게임 중 순위 패널과 탑 진행 막대의 점. state 가 없으면(관리자 점검) 숨긴다
     ranks(state) {
+      ranksState = state;
       parts.ranks.hidden = !state;
       if (!state) { parts.others.innerHTML = ''; return; }
       const { rank, status, tag } = state;
       const on = status === 'online' && rank;
-      parts.ranksHead.innerHTML = on ? `${rank.me ? `<b>${rank.me.rank}위</b> · ` : ''}접속 ${rank.online}명` : STATUS[status] ?? STATUS.connecting;
-      let list = '';
-      if (on) {
-        const top = rank.top.slice(0, 5);
-        list = top.map((it) => row(it, tag)).join('');
-        const mineRow = rank.me && rank.me.rank > top.length && (rank.near ?? []).find((it) => it.tag === tag);
-        if (mineRow) list += `<div class="gap"></div>${row(mineRow, tag)}`;
+      let html = '';
+      if (hallOn) {
+        parts.ranksHead.textContent = '명예의 전당 · 먼저 온 순서';
+        html = list(hall, (it) => hallRow(it, tag));
+      } else {
+        parts.ranksHead.innerHTML = on ? `${rank.me ? `<b>${rank.me.rank}위</b> · ` : ''}접속 ${rank.online}명` : STATUS[status] ?? STATUS.connecting;
+        if (on) {
+          const top = rank.top.slice(0, 5);
+          html = top.map((it) => row(it, tag)).join('');
+          const mineRow = rank.me && rank.me.rank > top.length && (rank.near ?? []).find((it) => it.tag === tag);
+          if (mineRow) html += `<div class="gap"></div>${row(mineRow, tag)}`;
+        }
       }
-      parts.ranksList.innerHTML = list;
+      if (shown.ranksList !== html) { shown.ranksList = html; parts.ranksList.innerHTML = html; } // 매초 다시 써서 굴린 자리가 돌아가지 않게
       parts.others.innerHTML = on ? rank.top.filter((it) => it.tag !== tag).slice(0, 5).map((it) => `<i style="bottom:${Math.max(0, Math.min(100, (it.best / goal) * 100))}%;--c:${TINT[it.character] ?? '#fff8ea'}"></i>`).join('') : '';
     },
     foldRanks() { parts.ranks.classList.toggle('folded'); },

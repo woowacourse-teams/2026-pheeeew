@@ -1,5 +1,6 @@
 package com.pheeeew.climb.application;
 
+import com.pheeeew.climb.domain.ClimbHallEntry;
 import com.pheeeew.climb.domain.ClimbMap;
 import com.pheeeew.climb.domain.ClimbRankEntry;
 import com.pheeeew.climb.domain.ClimbRanking;
@@ -95,6 +96,11 @@ public class ClimbRankingService {
         return ClimbRanking.sort(source.values().stream()
                 .filter(entry -> LocalDate.ofInstant(entry.bestAt(), KST).equals(today))
                 .toList());
+    }
+
+    /** 명예의 전당은 작아서 메모리에 두지 않고 그때그때 DB 에서 읽는다. */
+    public List<ClimbHallEntry> hall(String mapVersion, int limit) {
+        return runs.findHall(mapVersion, limit);
     }
 
     public int onlineCount() {

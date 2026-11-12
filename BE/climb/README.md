@@ -41,6 +41,7 @@
 | `GET /api/v1/climb/me` | `{ "id", "nickname", "tag", "run" }`. `run` 은 가장 최근의 완주하지 않은 등반 `{ map, character, height, best, x, falls, time }` 또는 `null`. 쿠키 없음·무효 `401 UNAUTHORIZED` |
 | `PATCH /api/v1/climb/me` `{ "nickname" }` | `{ "id", "nickname", "tag" }`. 하루(한국 시간) 3번, 넘으면 `429 NICKNAME_CHANGE_LIMITED` |
 | `GET /api/v1/climb/ranking?board=online\|today\|all&map=v1` | `{ "top": [순위 항목], "me": { "rank", "best" } \| null, "online" }`. 쿠키가 없으면 `me` 는 `null`. 잘못된 `board` 는 `400 INVALID_BOARD` |
+| `GET /api/v1/climb/hall?map=v1` | 명예의 전당. `{ "hall": [ { "order", "tag", "nickname", "character", "time", "falls", "finishedAt" } ] }`. 먼저 꼭대기에 온 순서(`finishedAt` 오름차순)로 50명까지. `time` 은 완주 시간(초), `finishedAt` 은 ISO 시각. 쿠키 없이 부른다 |
 
 | `POST /api/v1/climb/admin/session` `{ "key": "..." }` | 맞으면 `204` + 관리자 쿠키. 틀리면 `401 ADMIN_KEY_MISMATCH`. 틀린 시도가 IP당 1분에 5번을 넘으면(6번째부터, 맞는 키도) `429 ADMIN_ATTEMPTS_LIMITED`. 키는 본문으로만 받고 해시끼리 `MessageDigest.isEqual` 로 비교한다 |
 | `GET /api/v1/climb/admin/session` | 유효한 관리자 쿠키면 `204`, 아니면 `401 ADMIN_UNAUTHORIZED` |
@@ -143,6 +144,9 @@
 ## 저장
 
 `climb_guest`, `climb_run` 두 테이블(`V20261112_90__create_climb_tables.sql`). 기능이 꺼져 있어도 마이그레이션은 돈다.
+`climb_hall`(`V20261112_91__create_climb_hall.sql`): 명예의 전당. 손님·맵마다 첫 완주(의심 기록 제외) 한 줄을 그때의 닉네임·꼬리표와 함께 남긴다.
+외래 키가 없어 손님 정리·처음부터 다시와 상관없이 남는다. 완주 때와 1분마다 `climb_run` 에서 빠진 완주를 옮긴다(배포 중 옛 서버가 받은 완주도 뒤늦게 들어온다).
+같은 마이그레이션이 행사 운영자 요청으로 파라디(#f88b)의 완주 기록을 한 번 지웠다.
 등반은 손님당 10초에 한 번, 그리고 구간 통과·완주·처음부터 다시·연결 종료·배포 종료 때 쓴다.
 순위표는 서버 메모리에 두고 서버가 뜰 때 DB 에서 채운다(서버 1대 기준). 180일 동안 접속하지 않은 손님과 기록은 하루 한 번 지운다.
 

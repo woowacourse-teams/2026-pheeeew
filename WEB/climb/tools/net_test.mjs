@@ -146,6 +146,12 @@ test('순위표는 board 와 맵 버전을 붙여 부른다', async () => {
   eq((await t.net.ranking('today')).body.online, 0, '오늘 순위');
 });
 
+test('명예의 전당은 맵 버전을 붙여 부르고, 닿지 않으면 status 0', async () => {
+  const t = setup({ routes: { [`GET ${API}/hall?map=v1`]: { status: 200, body: { hall: [{ order: 1, tag: '4f2a', nickname: '히유', character: 'angry', time: 640, falls: 3, finishedAt: '2026-11-12T10:42:00Z' }] } } } });
+  eq((await t.net.hall()).body.hall[0].order, 1, '명예의 전당');
+  eq(await setup().net.hall(), { status: 0, body: null }, '닿지 않음');
+});
+
 test('연결하면 hello 를 먼저 보내고, welcome 을 받으면 online', () => {
   const t = setup();
   const got = [];

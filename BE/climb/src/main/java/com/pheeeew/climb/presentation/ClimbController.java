@@ -10,6 +10,7 @@ import com.pheeeew.climb.domain.ClimbGuest;
 import com.pheeeew.climb.domain.ClimbRanking;
 import com.pheeeew.climb.presentation.ClimbResponses.ErrorResponse;
 import com.pheeeew.climb.presentation.ClimbResponses.GuestResponse;
+import com.pheeeew.climb.presentation.ClimbResponses.HallResponse;
 import com.pheeeew.climb.presentation.ClimbResponses.MeResponse;
 import com.pheeeew.climb.presentation.ClimbResponses.RankingResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -41,6 +42,7 @@ public class ClimbController {
 
     public static final String ADMIN_COOKIE = "climb_admin";
     private static final int TOP_SIZE = 10;
+    private static final int HALL_SIZE = 50;
 
     private final ClimbGuestService guests;
     private final ClimbRankingService ranking;
@@ -75,6 +77,12 @@ public class ClimbController {
             @RequestParam String map) {
         return RankingResponse.of(ClimbRanking.view(ranking.board(map, ClimbBoard.from(board), Instant.now()),
                 guest == null ? null : guest.id(), TOP_SIZE), ranking.onlineCount());
+    }
+
+    /** 명예의 전당: 손님·맵마다 첫 완주를 먼저 도착한 순서로. */
+    @GetMapping("/hall")
+    public HallResponse findHall(@RequestParam String map) {
+        return HallResponse.of(ranking.hall(map, HALL_SIZE));
     }
 
     /** 키는 본문으로만 받는다. 맞으면 손님 쿠키와 별개인 관리자 쿠키를 내려 준다. */

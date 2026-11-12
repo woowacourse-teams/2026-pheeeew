@@ -1,5 +1,6 @@
 package com.pheeeew.climb.infra;
 
+import com.pheeeew.climb.domain.ClimbHallEntry;
 import com.pheeeew.climb.domain.ClimbRankEntry;
 import com.pheeeew.climb.domain.ClimbRunRecord;
 import java.sql.ResultSet;
@@ -91,6 +92,39 @@ public class ClimbRunRepository {
                         rs.getObject("id", UUID.class), rs.getObject("guest_id", UUID.class), rs.getString("tag"),
                         rs.getString("nickname"), rs.getString("character"), rs.getInt("best_height"),
                         rs.getTimestamp("best_at").toInstant(), rs.getObject("finish_seconds", Integer.class))))
+                .list();
+    }
+
+    /**
+     * 손님·맵마다 첫 완주(의심 제외)를 명예의 전당에 옮긴다. 이미 있으면 그대로 둔다. 마이그레이션 V20261112_91 과 같은 규칙이다.
+     * 완주마다, 그리고 1분마다 부른다. 배포 중 옛 서버가 받은 완주도 이렇게 뒤늦게 들어온다(순서는 finished_at 이라 그대로다).
+     */
+    public void syncHall() {
+        jdbc.sql("""
+                        insert into climb_hall (run_id, guest_id, map_version, tag, nickname, "character", finish_seconds,
+                                                falls, finished_at)
+                        select distinct on (r.guest_id, r.map_version)
+                               r.id, r.guest_id, r.map_version, g.tag, g.nickname, r."character", r.finish_seconds,
+                               r.falls, r.finished_at
+                        from climb_run r join climb_guest g on g.id = r.guest_id
+                        where r.finished_at is not null and r.finish_seconds is not null and not r.suspect
+                        order by r.guest_id, r.map_version, r.finished_at
+                        on conflict do nothing
+                        """)
+                .update();
+    }
+
+    /** 먼저 도착한 순서. */
+    public List<ClimbHallEntry> findHall(String mapVersion, int limit) {
+        return jdbc.sql("""
+                        select tag, nickname, "character", finish_seconds, falls, finished_at from climb_hall
+                        where map_version = :map order by finished_at, run_id limit :limit
+                        """)
+                .param("map", mapVersion)
+                .param("limit", limit)
+                .query((rs, row) -> new ClimbHallEntry(rs.getString("tag"), rs.getString("nickname"),
+                        rs.getString("character"), rs.getInt("finish_seconds"), rs.getInt("falls"),
+                        rs.getTimestamp("finished_at").toInstant()))
                 .list();
     }
 
