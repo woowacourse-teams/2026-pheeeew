@@ -1,8 +1,7 @@
 import { Application, Assets, Container, Graphics, Sprite, Text, Texture, TilingSprite } from '/vendor/pixi.mjs';
 import { TILE, COLS, DT, IDS, params, newPlayer, step } from './physics.js';
 import { level, DECOR, SIGNS, HEIGHT, START, SCREEN, ZONES, GOAL, MAP_VERSION, nods, winds, updateNods, NOD_STAND, HOT_STAND, yOf, hOf } from './level.js';
-import { Rig, PARTS, JUMPS } from './rig.js';
-import { JellyRig } from './jelly.js';
+import { JellyRig, PARTS } from './jelly.js';
 import { traceTerrain, sketch } from './terrain.js';
 import { createUI, TINT, FACE } from './ui.js';
 import { createFx } from './fx.js';
@@ -69,10 +68,10 @@ const ADMIN = admin.isAdminPath(location.pathname) && await admin.enterAdmin(adm
 const SAVE_KEY = ADMIN ? 'pheeeew-climb-admin' : DEBUG ? 'pheeeew-climb-debug' : 'pheeeew-climb-v1'; // 시험 화면은 실제 저장을 건드리지 않는다
 
 const loader = createLoader((asset) => Assets.load(asset)); // 같은 단계의 그림은 함께 받는다. 한 장이 실패해도(null) 나머지는 그대로
-// 감정이 그림: 부위 9장은 그 감정이가 처음 나올 때(고른 감정이, 화면에 보인 다른 사람), 점프 자세 그림(있는 감정이만)은 예전 움직임(J)일 때만
+// 감정이 그림: 부위 9장은 그 감정이가 처음 나올 때 받는다(고른 감정이, 화면에 보인 다른 사람)
 const tex = Object.fromEntries(IDS.map((id) => [id, {}]));
-const charAssets = (who, names) => leaves(charFiles(MAN, who, names));
-const loadChar = (who, names = PARTS) => loadTree(charFiles(MAN, who, names), loader.get).then((t) => Object.assign(tex[who], t));
+const charAssets = (who) => leaves(charFiles(MAN, who, PARTS));
+const loadChar = (who) => loadTree(charFiles(MAN, who, PARTS), loader.get).then((t) => Object.assign(tex[who], t));
 const charReady = (who) => PARTS.every((k) => tex[who]?.[k]);
 
 // ---- 맵 ----
@@ -640,11 +639,9 @@ function save() {
   localStorage.setItem(SAVE_KEY, JSON.stringify({ id, x: p.x, h: hOf(p.y + P.h), ...stats })); // 맵이 위로 늘어나도 위치가 유지되게 높이로 저장
 }
 
-// 움직임 방식: 젤리(몸을 그물로 나눠 계산) / 예전(그림 바꿔 끼우기). J 키로 바꿔 가며 비교한다.
-let jelly = localStorage.getItem('pheeeew-climb-rig') !== 'old';
 function makeRig() {
   actor.removeChildren();
-  rig = jelly ? new JellyRig(tex[id]) : new Rig(tex[id]);
+  rig = new JellyRig(tex[id]);
   rig.root.position.set(p.x + P.w / 2, p.y + P.h);
   actor.addChild(rig.root);
 }
@@ -655,11 +652,10 @@ async function begin(who, saved) {
   const sh = saved ? saved.h ?? (5080 - saved.y - params(who).h) / TILE : START[1]; // 예전 저장(y 픽셀, 맵 높이 128칸 기준)도 읽는다
   // 그 감정이의 부위 그림과 시작 높이 근처 구간 그림을 받은 뒤 시작한다(고르는 동안 미리 받아 둔다)
   mode = 'loading';
-  const names = jelly ? PARTS : [...PARTS, ...JUMPS];
-  const assets = [...charAssets(who, names), ...zoneAssets(sh)];
+  const assets = [...charAssets(who), ...zoneAssets(sh)];
   if (assets.some((a) => !loader.has(a.src ?? a))) await bar(assets.map(loader.get)); // 다 받아 두었으면 막대 없이 바로
-  await Promise.all([loadChar(who, names), needZones(sh)]);
-  for (; !charReady(who); await loadChar(who, names)) await new Promise((r) => setTimeout(r, 1000)); // 부위 그림이 없으면 그릴 수 없다: 1초마다 다시 받는다
+  await Promise.all([loadChar(who), needZones(sh)]);
+  for (; !charReady(who); await loadChar(who)) await new Promise((r) => setTimeout(r, 1000)); // 부위 그림이 없으면 그릴 수 없다: 1초마다 다시 받는다
   ui.loaded();
   id = who;
   P = params(id);
@@ -839,14 +835,6 @@ addEventListener('keydown', (e) => {
   if (k === 'KeyN') askRestart();
   if (k === 'Tab') { e.preventDefault(); ui.foldRanks(); }
   if (k === 'KeyG') { showGhosts = !showGhosts; ghostLayer.visible = showGhosts; localStorage.setItem('pheeeew-climb-ghosts', showGhosts ? 'on' : 'off'); say(showGhosts ? '다른 사람 보이기' : '다른 사람 숨기기'); quipT = 1.2; }
-  if (k === 'KeyJ') { // 예전 움직임은 점프 자세 그림을 처음 켤 때 받는다(받는 동안은 부위로 움직인다)
-    jelly = !jelly;
-    localStorage.setItem('pheeeew-climb-rig', jelly ? 'jelly' : 'old');
-    makeRig();
-    if (!jelly) loadChar(id, JUMPS).then(() => { if (!jelly) makeRig(); });
-    say(jelly ? '젤리 움직임' : '예전 움직임');
-    quipT = 1.2;
-  }
 });
 addEventListener('keyup', (e) => {
   const k = e.code;
@@ -904,9 +892,7 @@ function tick() {
   feel(fallV, charged, dirV, pad);
   flail = 0;
   stats.time += DT;
-  if (p.ev === 'bounce') rig.wallT = 0.16;
   if (p.ev === 'land' || p.ev === 'splat') {
-    rig.landT = 0.18;
     if (p.y - p.takeoffY > 4 * TILE) { // 뛴 곳보다 4칸 넘게 아래에 떨어졌다
       stats.falls++;
       say(INFO[id].fall);

@@ -34,7 +34,7 @@ const MAN = {
   zones: {
     nyc: { bg: { src: 'nyc/bg.webp?v=1', w: 1024, h: 1536 }, nod: { src: 'nyc/nod.webp?v=2', w: 480, h: 200 }, kit: { top: [{ src: 'nyc/kit/top_1.webp?v=3', w: 256, h: 256 }, { src: 'nyc/kit/top_2.webp?v=4', w: 256, h: 256 }] } },
   },
-  characters: { angry: { front_body: { src: 'characters/angry/front_body.webp?v=5', w: 384, h: 384 }, jump_rise: { src: 'characters/angry/jump_rise.webp?v=6', w: 1024, h: 1024 } } },
+  characters: { angry: { front_body: { src: 'characters/angry/front_body.webp?v=5', w: 384, h: 384 }, front: { src: 'characters/angry/front.webp?v=6', w: 1024, h: 1024 } } },
 };
 
 test('목록표 조회: 구간 폴더의 파일 주소와 장식 개수', () => {
@@ -49,9 +49,9 @@ test('목록표 조회: 구간 폴더의 파일 주소와 장식 개수', () => 
 
 test('감정이 그림: 실제 크기와 상관없이 논리 크기 1024 좌표로 그리게 배율을 준다', () => {
   eq(LOGICAL, 1024, '논리 크기');
-  eq(charFiles(MAN, 'angry', ['front_body', 'jump_rise', 'side_hand']), {
+  eq(charFiles(MAN, 'angry', ['front_body', 'front', 'side_hand']), {
     front_body: { src: '/assets/characters/angry/front_body.webp?v=5', data: { resolution: 0.375 } },
-    jump_rise: { src: '/assets/characters/angry/jump_rise.webp?v=6', data: { resolution: 1 } },
+    front: { src: '/assets/characters/angry/front.webp?v=6', data: { resolution: 1 } },
   }, '384px 는 0.375, 1024px 는 1, 없는 부위는 뺀다');
 });
 

@@ -63,7 +63,7 @@ test('목록의 모든 파일이 실제로 있고, 주소에 내용 버전(?v=)�
 test('게임이 쓰는 구간 폴더와 감정이가 모두 목록에 있다', async () => {
   const { ZONES } = await import('../public/level.js');
   const { IDS } = await import('../public/physics.js');
-  const PARTS = JSON.parse(fs.readFileSync(path.join(PUBLIC, 'rig.js'), 'utf8').match(/export const PARTS = (\[[^\]]+\])/)[1].replace(/'/g, '"')); // rig.js 는 pixi 를 읽어 Node 에서 import 하지 않는다
+  const PARTS = JSON.parse(fs.readFileSync(path.join(PUBLIC, 'jelly.js'), 'utf8').match(/export const PARTS = (\[[^\]]+\])/)[1].replace(/'/g, '"')); // jelly.js 는 pixi 를 읽어 Node 에서 import 하지 않는다
   for (const z of ZONES) for (const k of ['bg', 'rock', 'fabric', 'trim', 'arrow_sign']) if (!committed.zones[z.art]?.[k]) throw new Error(`${z.art}/${k} 없음`);
   for (const id of IDS) for (const p of ['front', ...PARTS]) if (!committed.characters[id]?.[p]) throw new Error(`${id}/${p} 없음`);
 });
