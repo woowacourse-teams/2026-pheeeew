@@ -1,7 +1,9 @@
 // public/signs.js 시험과 실제 맵의 안내 표지판(level.js 의 SIGNS) 자리 검사.
 // 사용: node tools/signs_test.mjs
-import { nearestSign, signReader, signKey, splitSign, bubbleX, READ_AFTER } from '../public/signs.js';
-import { level, SIGNS, ZONES, HEIGHT } from '../public/level.js';
+import { nearestSign, signReader, signKey, splitSign, bubbleX, READ_AFTER, signLook, SIGN_ART, besideSign, SIGN_S, signScale, signTall, signHalf } from '../public/signs.js';
+import { existsSync } from 'node:fs';
+import { level, SIGNS, ZONES, HEIGHT, DECOR } from '../public/level.js';
+import { TILE } from '../public/physics.js';
 
 const tests = [];
 const test = (name, fn) => tests.push({ name, fn });
@@ -76,6 +78,27 @@ test('화면 가장자리 근처의 말풍선은 안쪽으로 당긴다', () => 
   eq(bubbleX(1250, 300, 1280), 1118, '오른쪽 끝');
 });
 
+test('안 읽은 표지판은 멀리서 꼬리표와 빛 무리, 가까이 가면 꼬리표 대신 카드', () => {
+  eq(signLook(false, false), { tag: true, glow: true, card: false }, '안 읽음, 멀리');
+  eq(signLook(false, true), { tag: false, glow: true, card: true }, '안 읽음, 가까이');
+});
+
+test('읽은 표지판은 꼬리표도 빛 무리도 없고, 가까이 가면 카드만 뜬다', () => {
+  eq(signLook(true, false), { tag: false, glow: false, card: false }, '읽음, 멀리');
+  eq(signLook(true, true), { tag: false, glow: false, card: true }, '읽음, 가까이');
+});
+
+test('표지판 자리 좌우 1.5칸 안의 같은 윗면에는 윗면 장식을 놓지 않는다', () => {
+  eq(besideSign([A], 10, 20), true, '바로 그 자리');
+  eq(besideSign([A], 8.6, 20), true, '왼쪽 1.4칸');
+  eq(besideSign([A], 11.4, 20), true, '오른쪽 1.4칸');
+  eq(besideSign([A], 8.4, 20), false, '왼쪽 1.6칸');
+  eq(besideSign([A], 11.6, 20), false, '오른쪽 1.6칸');
+  eq(besideSign([A], 10, 21), false, '다른 높이의 윗면');
+  eq(besideSign([A, B], 14, 20), true, '둘 중 하나라도 가까우면');
+  eq(besideSign([], 10, 20), false, '표지판 없음');
+});
+
 // ---- 실제 맵 ----
 const zoneOf = (h) => ZONES.findIndex((z, i) => h < z.to || i === ZONES.length - 1);
 // 높이 h 칸(윗면이 h+1 인 칸)의 행 번호
@@ -93,11 +116,28 @@ test('새 장치 다섯 가지마다 처음 나오는 구간에 하나씩 있다
   for (const s of SIGNS) eq(zoneOf(s.h), s.zone, `${s.text} 의 높이 ${s.h} 가 그 구간 안`);
 });
 
-test('표지판은 지형 윗면 위에 서 있고, 지형 속에 박혀 있지 않다', () => {
+test('표지판마다 장치 종류가 있고, 그 구간에 카드에 넣을 장치 그림이 있다', () => {
+  eq(SIGNS.map((s) => s.kind), ['slope', 'nod', 'wind', 'hot', 'boost'], '종류');
+  eq(SIGNS.map((s) => SIGN_ART[s.kind]), ['fabric', 'nod', 'flag', 'hot', 'boost'], '그림 이름');
+  for (const s of SIGNS) {
+    const file = new URL(`../public/assets/${ZONES[s.zone].art}/${SIGN_ART[s.kind]}.png`, import.meta.url);
+    ok(existsSync(file), `${s.text}: ${file.pathname} 이 없다`);
+  }
+});
+
+test('표지판은 방향 표지보다 크다(기본 배율), 좁은 자리만 따로 줄인다', () => {
+  const arrows = DECOR.filter((d) => d.img === 'arrow_sign').map((d) => d.s);
+  ok(SIGN_S > Math.max(...arrows), `기본 ${SIGN_S} 가 방향 표지 최대 ${Math.max(...arrows)} 보다 크다`);
+  eq(signScale({ c: 1, h: 1 }), SIGN_S, '기본');
+  eq(signScale({ c: 1, h: 1, s: 0.3 }), 0.3, '따로 정한 배율');
+});
+
+test('표지판은 지형 윗면 위에 서 있고, 표지판과 머리 위 꼬리표 자리가 비어 있다', () => {
   for (const s of SIGNS) {
     eq(level.raw(Math.floor(s.c), row(s.h - 1)), 1, `${s.text}: 바로 아래 칸이 지형`);
-    for (const c of [Math.floor(s.c - 0.5), Math.floor(s.c + 0.5)]) {
-      for (let h = s.h; h < s.h + 3; h++) eq(level.raw(c, row(h)), 0, `${s.text}: 칸 ${c}, 높이 ${h} 가 빈 칸`);
+    const rows = Math.ceil(signTall(s) / TILE);
+    for (let c = Math.floor(s.c - signHalf(s) / TILE); c <= Math.floor(s.c + signHalf(s) / TILE); c++) {
+      for (let h = s.h; h < s.h + rows; h++) eq(level.raw(c, row(h)), 0, `${s.text}: 칸 ${c}, 높이 ${h} 가 빈 칸`);
     }
   }
 });
