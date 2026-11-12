@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), 'public');
 const PORT = Number(process.env.PORT ?? 4320);
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.png': 'image/png', '.json': 'application/json', '.ttf': 'font/ttf', '.css': 'text/css; charset=utf-8', '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4' };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.png': 'image/png', '.webp': 'image/webp', '.json': 'application/json', '.ttf': 'font/ttf', '.css': 'text/css; charset=utf-8', '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4' };
 
 const BACKEND = new URL(process.env.CLIMB_BACKEND ?? 'http://127.0.0.1:8080');
 const API = '/api/v1/climb';

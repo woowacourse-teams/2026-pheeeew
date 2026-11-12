@@ -12,7 +12,7 @@ import { nearestSign, signReader, signKey, splitSign, bubbleX, signLook, SIGN_AR
 import { sfx, unlock, toggleMute, isMuted, audioCtx } from './sfx.js';
 import { createBgm, CREDITS } from './bgm.js';
 import { createNet } from './net.js';
-import { hasImage } from './image-assets.js';
+import { zoneFiles, charFiles } from './art.js';
 import { entryState, canPlay } from './online.js';
 import { createGhosts } from './ghosts.js';
 import * as admin from './admin.js';
@@ -62,32 +62,28 @@ const ADMIN = admin.isAdminPath(location.pathname) && await admin.enterAdmin(adm
 });
 const SAVE_KEY = ADMIN ? 'pheeeew-climb-admin' : DEBUG ? 'pheeeew-climb-debug' : 'pheeeew-climb-v1'; // 시험 화면은 실제 저장을 건드리지 않는다
 
+// 그림 목록표(tools/build_manifest.mjs). 그림이 있는지 서버에 묻지 않고 이 목록대로 받는다
+const MAN = await (await fetch('/assets/manifest.json', { cache: 'no-cache' })).json();
 const tex = {};
 for (const id of IDS) {
   tex[id] = {};
-  for (const p of PARTS) tex[id][p] = await Assets.load(`/assets/characters/${id}/${p}.png`);
   // 점프 자세 그림은 있는 감정이만 쓴다
-  if (await hasImage(`/assets/characters/${id}/jump_splat.png`)) for (const p of JUMPS) tex[id][p] = await Assets.load(`/assets/characters/${id}/${p}.png`);
+  for (const [p, asset] of Object.entries(charFiles(MAN, id, [...PARTS, ...JUMPS]))) tex[id][p] = await Assets.load(asset);
 }
 
 // ---- 맵 ----
 const world = new Container();
 view.addChild(world);
-// 구간 그림: 배경(천천히 따라 움직임), 지형 속 재질, 경사 재질, 윗면 띠. 그림이 없는 구간은 구간 1 그림을 쓴다.
-const has = hasImage;
+// 구간 그림: 배경(천천히 따라 움직임), 지형 속 재질, 경사 재질, 윗면 띠
 const arts = [];
 for (const z of ZONES) {
-  // 새 그림 4장이 모두 있을 때만 새 폴더를 쓴다(그리는 도중이면 예전 그림)
-  let themed = true;
-  for (const k of ['bg', 'rock', 'fabric', 'trim']) themed = themed && (await has(`/assets/${z.art}/${k}.png`));
-  const dir = themed ? z.art : z.old;
-  const a = { dir, themed };
-  for (const k of ['bg', 'rock', 'fabric', 'trim']) a[k] = await Assets.load(`/assets/${dir}/${k}.png`);
-  for (const k of ['nod', 'hot', 'boost', 'flag']) a[k] = (await has(`/assets/${dir}/${k}.png`)) ? await Assets.load(`/assets/${dir}/${k}.png`) : null; // 발판 장치와 바람 깃발
+  const dir = z.art;
+  const files = zoneFiles(MAN, dir);
+  const a = { dir, files };
+  for (const k of ['bg', 'rock', 'fabric', 'trim']) a[k] = await Assets.load(files[k]);
+  for (const k of ['nod', 'hot', 'boost', 'flag']) a[k] = files[k] ? await Assets.load(files[k]) : null; // 발판 장치와 바람 깃발
   a.kit = { top: [], hang: [], side: [], far: [], in: [] }; // in = 지형 면 위에 찍는 얼룩 무늬
-  for (const k of Object.keys(a.kit)) {
-    for (let i = 1; await has(`/assets/${dir}/kit/${k}_${i}.png`); i++) a.kit[k].push(await Assets.load(`/assets/${dir}/kit/${k}_${i}.png`));
-  }
+  for (const k of Object.keys(a.kit)) for (const f of files.kit[k] ?? []) a.kit[k].push(await Assets.load(f));
   arts.push(a);
 }
 // 칸의 윗면 높이로 어느 구간인지 정한다
@@ -189,7 +185,7 @@ ZONES.forEach((_, z) => {
     if (!list.length || !solid(c, r)) continue;
     const sp = new Sprite(any(list));
     sp.anchor.set(0.5);
-    if (ZONES[z].windows && arts[z].themed) {
+    if (ZONES[z].windows) {
       // 두 칸마다 한 자리, 둘레 한 칸까지 모두 지형인 곳에만(벽 한가운데)
       let inside = c % 2 === 1 && r % 3 === 0;
       for (let dr = -1; dr <= 2 && inside; dr++) for (let dc = -1; dc <= 2; dc++) inside = inside && solid(c + dc, r + dr);
@@ -218,7 +214,7 @@ world.addChild(map);
 for (let r = 1; r < HEIGHT; r++) for (let c = 0; c < COLS; c++) {
   const z = zoneOf(HEIGHT - 1 - r);
   const top = (cc) => level.raw(cc, r) === 1 && level.raw(cc, r - 1) === 0;
-  if (!ZONES[z].cap || !arts[z].themed || !top(c)) continue;
+  if (!ZONES[z].cap || !top(c)) continue;
   let e = c;
   while (e + 1 < COLS && top(e + 1)) e++;
   const strip = new TilingSprite({ texture: arts[z].trim, width: (e - c + 1) * TILE + 8, height: 64 });
@@ -294,7 +290,7 @@ const nodViews = nods.map((n) => {
 
 // 장식 소품: 충돌 없음. 보통은 바닥 중앙 (256,450), hang 은 천장에 매달려 위쪽 (256,60) 이 기준
 for (const d of DECOR) {
-  const sp = new Sprite(await Assets.load(`/assets/${arts[zoneOf(d.h)].dir}/${d.img}.png`));
+  const sp = new Sprite(await Assets.load(arts[zoneOf(d.h)].files[d.img]));
   sp.pivot.set(256, d.hang ? 60 : 450);
   sp.scale.set(d.flip ? -d.s : d.s, d.s);
   sp.position.set(d.c * TILE, yOf(d.h) + (d.hang ? -4 : 5)); // 살짝 묻혀서 지형에 박힌 것처럼
@@ -308,8 +304,7 @@ const GLOW = { nyc: [0xffe08a, 'add', 0.5], space: [0xffe08a, 'add', 0.5], xmas:
 const ART_H = 52; // 카드 속 장치 그림 높이(px)
 const signViews = [];
 for (const s of SIGNS) {
-  const dir = arts[s.zone].dir;
-  const own = await has(`/assets/${dir}/info_sign.png`);
+  const { dir, files } = arts[s.zone];
   const k = signScale(s);
   const x = s.c * TILE;
   const y = yOf(s.h);
@@ -322,7 +317,7 @@ for (const s of SIGNS) {
   glow.alpha = 0;
   glow.peak = alpha;
   world.addChild(glow);
-  const sp = new Sprite(await Assets.load(`/assets/${dir}/${own ? 'info_sign' : 'arrow_sign'}.png`));
+  const sp = new Sprite(await Assets.load(files.info_sign ?? files.arrow_sign));
   sp.pivot.set(256, 450);
   sp.scale.set(s.flip ? -k : k, k);
   sp.position.set(x, y + SIGN_SINK);
