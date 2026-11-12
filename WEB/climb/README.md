@@ -13,6 +13,8 @@ node tools/admin_test.mjs
 node tools/bgm_test.mjs
 node tools/net_test.mjs
 node tools/ghosts_test.mjs
+node tools/art_test.mjs       # 받을 구간, 목록표 조회, 감정이 그림 배율, 받기 관리
+node tools/manifest_test.mjs  # 그림 목록표와 실제 폴더가 같은지
 ```
 
 순위·함께 오르기 서버(`/api/v1/climb`)는 `CLIMB_BACKEND`(기본 `http://127.0.0.1:8080`)로 넘긴다.
@@ -63,6 +65,24 @@ node tools/ghosts_test.mjs
 - 저장은 `pheeeew-climb-admin` 키를 따로 쓴다. 실제 기록과 `?debug` 기록을 건드리지 않는다.
 - 오른쪽 아래에 높이, 화면 번호, 구간, 칸 좌표를 보인다. `window.game`도 켜진다.
 
+## 그림
+
+원본 PNG는 `assets_src/`에 있고 Pages에 올라가지 않는다. 게임은 `public/assets/`의 WebP와 목록표 `public/assets/manifest.json`만 쓴다.
+
+```
+node tools/optimize_assets.mjs   # assets_src → public/assets (WebP) 후 목록표까지 다시 만든다. macOS sips, cwebp(brew install webp) 필요
+node tools/build_manifest.mjs    # public/assets 의 그림을 바꿨을 때 목록표만 다시 만든다
+```
+
+- 그림을 더하거나 빼거나 바꾸면 위 명령을 다시 돌리고 `manifest.json`도 커밋한다. `tools/manifest_test.mjs`가 목록과 폴더가 다르면 실패한다.
+- 감정이 그림은 384×384로 줄인다(품질 95, 투명도 무손실). 코드는 1024 캔버스 좌표(발 기준점 512,900)를 그대로 쓰고, 목록표의 실제 폭으로 해상도를 주어 같은 자리·크기로 그린다(`art.js`의 `charFiles`).
+- 구간 그림은 픽셀 크기를 바꾸지 않는다(코드가 원본 크기로 배치·배율을 정한다). 배경은 품질 82, 나머지는 품질 90에 투명도 무손실.
+- 받는 순서: 제목·고르기 화면은 글꼴, 목록표, 얼굴 5장만 받고 띄운다. 그 뒤에서 시작 높이 근처 구간을 미리 받는다.
+  감정이를 고르면 그 감정이의 부위 9장과 지금 구간·바로 위 구간 그림을 기다린 뒤 시작한다. 플레이 중에는 다음 구간 경계 18칸 앞에서 그 위 구간을 미리 받는다.
+  받지 않은 구간으로 바로 가면(관리자 이동, 긴 낙하) 받을 때까지 그 구간을 평균 색과 윤곽선으로 그린다. 충돌은 그림과 상관없다.
+- 다른 사람의 감정이 그림은 그 사람이 처음 화면에 보일 때, 점프 자세 그림 7장은 예전 움직임(J)을 켤 때만 받는다.
+- 장식 자리는 처음에 전 구간을 같은 난수 순서로 정하고 그림만 나중에 붙인다. 장식 그림 개수가 바뀌면 자리가 바뀐다.
+
 ## 배경음악
 
 `public/bgm.js`. 효과음과 같은 AudioContext를 쓰고 첫 키 입력이나 클릭 뒤에 시작한다. 제목·고르기 화면 곡과 6구간 각각의 곡이 있고, 구간 경계를 3칸 넘어가면 2초에 걸쳐 넘어간다. 필요한 곡만 그때 받고, 다음 구간 경계 6칸 앞에서 다음 곡을 미리 받는다. 탭이 숨겨지면 멈춘다.
@@ -104,13 +124,13 @@ Pages가 API 경로에도 HTML을 `200`으로 반환하면 서버에 닿지 않�
 REST 요청에는 쿠키를 포함하며, 웹소켓은 같은 API 주소를 `https` → `wss`로 바꿔 연결한다.
 
 `_redirects`는 `/admin`, `/admin/` 요청에 `index.html`을 반환한다.
-`_headers`는 `/assets/*`에 7일, JS·MJS·CSS·HTML에 5분의 브라우저 캐시를 설정한다.
-파일 이름에 버전이 없으므로 `immutable`은 사용하지 않는다. 같은 이름의 그림·음악을 교체하면
-기존 브라우저 캐시가 최대 7일 남을 수 있다.
+`_headers`는 `/assets/*`에 7일, JS·MJS·CSS·HTML과 `manifest.json`에 짧은 브라우저 캐시를 설정한다.
+게임은 목록표를 매번 서버에 확인(`cache: 'no-cache'`)하고, 목록표의 그림 주소에는 내용 해시(`?v=`)가 붙어 그림을 바꾸면 주소도 바뀐다.
+얼굴 그림(`front.webp`, `index.html`이 미리 받는다)과 음악은 버전이 없으므로 같은 이름으로 바꾸면 기존 브라우저 캐시가 최대 7일 남을 수 있다.
 
-루트의 `404.html`은 없는 이미지가 HTML 200 응답으로 대체되는 Pages의 SPA fallback을 끈다. 게임이 선택적 이미지의 존재를 HEAD 요청으로 확인하므로 이 파일을 유지한다. `/admin`과 `/admin/`은 `_redirects`에서 `/`로 내부 rewrite한다. `/index.html`을 대상으로 쓰면 Pages의 canonical redirect 때문에 주소가 `/`로 바뀌어 관리자 진입 경로를 잃을 수 있다.
+루트의 `404.html`은 없는 파일이 HTML 200 응답으로 대체되는 Pages의 SPA fallback을 끈다. 게임은 그림이 있는지 묻지 않고 목록표대로 받지만, 잘못된 주소가 그림 대신 HTML로 캐시되지 않게 이 파일을 유지한다. `/admin`과 `/admin/`은 `_redirects`에서 `/`로 내부 rewrite한다. `/index.html`을 대상으로 쓰면 Pages의 canonical redirect 때문에 주소가 `/`로 바뀌어 관리자 진입 경로를 잃을 수 있다.
 
-선택적 이미지는 HEAD 응답의 성공 여부와 `image/*` 형식을 함께 확인하고 캐시를 재검증한다. 초기 Pages fallback이 브라우저에 남은 경우도 무시한다. `index.html`의 게임 진입 모듈에는 버전 쿼리를 붙여 초기 배포의 캐시를 갱신했다. 진입 모듈을 즉시 교체해야 하는 배포에서는 이 버전도 올린다.
+그림 한 장을 받지 못해도(깨진 캐시 응답 등) 그 장만 빠지고 나머지 그림과 게임 시작은 멈추지 않는다. `index.html`의 게임 진입 모듈에는 버전 쿼리를 붙여 초기 배포의 캐시를 갱신했다. 진입 모듈을 즉시 교체해야 하는 배포에서는 이 버전도 올린다.
 
 ### 병합·배포 순서
 

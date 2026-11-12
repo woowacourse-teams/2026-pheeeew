@@ -21,3 +21,7 @@
 
 /admin/
   Cache-Control: public, max-age=300
+
+/assets/manifest.json
+  ! Cache-Control
+  Cache-Control: public, max-age=60
