@@ -6,6 +6,7 @@ import { JellyRig } from './jelly.js';
 import { traceTerrain, sketch } from './terrain.js';
 import { createUI, TINT } from './ui.js';
 import { createFx } from './fx.js';
+import { boostLook, RISE_LIFE } from './boost.js';
 import { sfx, unlock, toggleMute, isMuted, audioCtx } from './sfx.js';
 import { createBgm, CREDITS } from './bgm.js';
 import { createNet } from './net.js';
@@ -242,12 +243,26 @@ const nodViews = nods.map((n) => {
   const w = (n.c1 - n.c0 + 1) * TILE;
   const tex2 = arts[zoneOf(n.h)][n.kind];
   const v = new Container();
+  if (n.kind === 'boost') { // 분사 판: 위로 번지는 빛 기둥. 밝기는 boostLook 이 정한다
+    v.halo = new Graphics();
+    for (let i = 0; i < 10; i++) v.halo.rect(-w / 2 + 3, -8 * (i + 1), w - 6, 8).fill({ color: 0x8ff5e0, alpha: 0.3 * (1 - i / 10) ** 1.6 }); // 위로 갈수록 옅어진다
+    v.halo.blendMode = 'add';
+    v.addChild(v.halo);
+  }
   if (tex2) {
     const sp = new Sprite(tex2);
-    sp.anchor.set(0.5, 0.1); // 그림의 y=20 줄이 윗면
+    sp.anchor.set(0.5, 20 / 160); // 그림(512×160)의 y=20 줄이 윗면. 분사 불꽃은 그 아래로 판 밑까지 내려온다
     sp.width = w + 12;
     sp.height = TILE * 1.25;
     v.addChild(sp);
+    if (n.kind === 'boost') { // 같은 그림을 더해 그려 판 자체를 밝힌다
+      v.shine = new Sprite(tex2);
+      v.shine.anchor.copyFrom(sp.anchor);
+      v.shine.width = sp.width;
+      v.shine.height = sp.height;
+      v.shine.blendMode = 'add';
+      v.addChild(v.shine);
+    }
   } else {
     v.addChild(new Graphics().roundRect(-w / 2, 0, w, TILE, 16).fill({ nod: 0xf3ecd8, hot: 0xff8a5c, boost: 0x7fd0ff }[n.kind]).stroke({ width: 3.5, color: INK })); // 그림이 오기 전의 임시 모양
   }
@@ -401,6 +416,7 @@ let camY = HEIGHT * TILE - H;
 let quipT = 0;
 const keys = { left: false, right: false, jump: false };
 let flail = 0;
+let clockT = 0; // 놀이 시간(초). 멈춘 채 game.frame(dt) 로 넘겨도 효과가 따라간다
 
 function save() {
   localStorage.setItem(SAVE_KEY, JSON.stringify({ id, x: p.x, h: hOf(p.y + P.h), ...stats })); // 맵이 위로 늘어나도 위치가 유지되게 높이로 저장
@@ -635,10 +651,11 @@ function tick() {
   const fallV = p.vy; // 닿기 직전의 속도와 모은 정도(step 이 지운다)
   const charged = Math.min(1, p.charge / P.chargeMax);
   const dirV = Math.sign(p.vx);
+  const pad = p.ground ? level.padUnder(p.x, p.y, P) : null; // 뛰기 직전 발밑(물리도 같은 자리를 본다)
   step(p, { ...keys, flail }, level, P);
   updateNods(p, P, DT);
   if (ADMIN) admin.track(back, p);
-  feel(fallV, charged, dirV);
+  feel(fallV, charged, dirV, pad);
   flail = 0;
   stats.time += DT;
   if (p.ev === 'bounce') rig.wallT = 0.16;
@@ -667,11 +684,17 @@ function tick() {
 }
 
 // 손맛: 물리에서 일어난 일(p.ev)에 먼지·별·흔들림·소리를 붙인다
-function feel(fallV, charged, dirV) {
+function feel(fallV, charged, dirV, pad) {
   const cx = p.x + P.w / 2;
   const feet = p.y + P.h;
   const tint = parseInt(TINT[id].slice(1), 16);
-  if (p.ev === 'jump') { sfx.jump(charged); fx.dust(cx, feet, 0.25 + charged * 0.5); }
+  if (p.ev === 'jump' && pad?.kind === 'boost') { // 분사 판: 판 밑으로 불꽃, 길게 치솟는 소리, 살짝 흔들림
+    const w = (pad.c1 - pad.c0 + 1) * TILE;
+    sfx.boost(charged);
+    fx.boost(pad.c0 * TILE + w / 2, yOf(pad.h), w);
+    fx.dust(cx, feet, 0.3 + charged * 0.4);
+    fx.shake(3.5);
+  } else if (p.ev === 'jump') { sfx.jump(charged); fx.dust(cx, feet, 0.25 + charged * 0.5); }
   else if (p.ev === 'land') { const v = Math.min(1, Math.max(0, fallV) / 1200); sfx.land(v); fx.dust(cx, feet, 0.2 + v * 0.8); if (v > 0.75) fx.shake(2.5 * v); }
   else if (p.ev === 'splat') { sfx.splat(); fx.dust(cx, feet, 1); fx.stars(cx, feet - 14, 5); fx.shake(9); }
   else if (p.ev === 'bounce') { sfx.bounce(); fx.stars(cx + dirV * P.w / 2, p.y + P.h / 2, 3, tint); fx.shake(1.5); }
@@ -725,9 +748,31 @@ function frame(dt) {
     b.tilePosition.y = -camY * 0.35 + bgShift[i];
     b.alpha = i === 0 ? 1 : Math.max(0, Math.min(1, (camH - (ZONES[i].from - 6)) / 12)); // 구간 경계에서 배경이 서서히 바뀐다
   });
+  clockT += dt;
+  const under = p.ground ? level.padUnder(p.x, p.y, P) : null;
+  const charge = p.charging ? Math.min(1, p.charge / P.chargeMax) : 0;
   nods.forEach((n, i) => {
     const v = nodViews[i];
-    if (n.kind === 'boost') { v.scale.set(1, 1 + Math.sin(performance.now() / 90) * 0.03); return; } // 분사 판: 늘 부르르 떤다
+    if (n.kind === 'boost') { // 분사 판: 숨 쉬듯 빛나고 위로 화살표가 솟는다. 화면 밖이면 건너뛴다
+      v.visible = Math.abs(yOf(n.h) - (camY + H / 2)) < H * 0.75;
+      if (!v.visible) return;
+      const on = under === n;
+      const look = boostLook(clockT, on, charge);
+      v.halo.alpha = look.glow;
+      if (v.shine) v.shine.alpha = look.glow * 0.5;
+      v.scale.set(1, on && charge > 0 ? 1 + Math.sin(clockT * 70) * 0.03 * charge : 1); // 모으는 동안 부르르 떤다
+      const x0 = n.c0 * TILE;
+      const w = (n.c1 - n.c0 + 1) * TILE;
+      n.rise = (n.rise ?? []).filter((t) => clockT - t < RISE_LIFE);
+      n.riseAcc = Math.min(look.every, (n.riseAcc ?? Math.random() * look.every) + dt);
+      if (n.riseAcc >= look.every && n.rise.length < look.max) {
+        n.riseAcc = 0;
+        n.rise.push(clockT);
+        const spread = on ? 40 : 0; // 서 있으면 캐릭터 양옆으로도 솟아 가려지지 않는다
+        fx.rise(x0 + 8 - spread + Math.random() * (w - 16 + 2 * spread), yOf(n.h) - 6);
+      }
+      return;
+    }
     if (n.kind === 'hot') { // 달궈진 판: 서 있을수록 붉어지고 떨린다
       const k = Math.min(1, n.t / HOT_STAND);
       v.tint = 0xffffff - (Math.round(k * 110) << 8) - Math.round(k * 140);

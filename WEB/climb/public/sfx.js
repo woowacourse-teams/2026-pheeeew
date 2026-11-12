@@ -67,6 +67,12 @@ export const sfx = {
   jump(c) { tone(240 + c * 160, 520 + c * 620, 0.17, { type: 'triangle', vol: 0.3 }); },
   // v = 떨어진 세기 0~1
   land(v) { noise(0.07 + v * 0.06, 260 + v * 300, 0.18 + v * 0.3); tone(130, 70, 0.09, { vol: 0.12 + v * 0.2 }); },
+  // 분사 판에서 뛸 때: 보통 점프보다 길게 치솟는 소리와 푸슉. c = 모은 정도 0~1
+  boost(c) {
+    tone(200 + c * 120, 1300 + c * 700, 0.45, { type: 'triangle', vol: 0.28 });
+    tone(400, 2400, 0.38, { type: 'sine', vol: 0.08, delay: 0.04 });
+    noise(0.32, 2600, 0.2);
+  },
   bounce() { tone(330, 170, 0.1, { type: 'square', vol: 0.12 }); },
   bump() { tone(210, 110, 0.09, { type: 'square', vol: 0.12 }); },
   splat() { noise(0.28, 700, 0.5); tone(170, 45, 0.32, { type: 'triangle', vol: 0.35 }); },

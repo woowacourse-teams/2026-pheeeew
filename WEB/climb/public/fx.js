@@ -1,5 +1,6 @@
-// 손맛 효과: 먼지, 별, 반짝이, 색종이, 화면 흔들림. 캐릭터 그림이 아니라 효과용 도형이다.
+// 손맛 효과: 먼지, 별, 반짝이, 분사 판의 솟는 화살표와 불꽃, 색종이, 화면 흔들림. 캐릭터 그림이 아니라 효과용 도형이다.
 import { Graphics } from '/vendor/pixi.mjs';
+import { RISE_LIFE } from './boost.js';
 
 const INK = 0x2b2433;
 const PAPER = 0xfff8ea;
@@ -37,6 +38,17 @@ export function createFx() {
     ring(x, y, color = PAPER, size = 46) {
       add({ kind: 'ring', x, y, r: size, life: 0.28, color });
     },
+    // 분사 판 위로 솟아올라 사라지는 작은 위쪽 화살표
+    rise(x, y, color = 0xc8fff2) {
+      add({ kind: 'rise', x, y, vy: -(48 + Math.random() * 22), r: 6 + Math.random() * 2, life: RISE_LIFE, color });
+    },
+    // 분사 판에서 뛰는 순간: 판 밑으로 불꽃이 터지고 윗면에 고리가 퍼진다. x = 판 가운데, y = 판 윗면, w = 판 폭
+    boost(x, y, w) {
+      for (let i = 0; i < 16; i++) {
+        add({ kind: 'flame', x: x + (Math.random() - 0.5) * (w - 10), y: y + 30, vx: (Math.random() - 0.5) * 70, vy: 220 + Math.random() * 260, r: 5 + Math.random() * 5, life: 0.32 + Math.random() * 0.2, color: [0xffffff, 0xbff4ff, 0x7fe7d4][i % 3] });
+      }
+      add({ kind: 'ring', x, y, r: Math.max(46, w * 0.7), life: 0.3, color: 0xbff4ff });
+    },
     // 색종이: 구간을 끝냈을 때
     confetti(x, y, colors) {
       for (let i = 0; i < 46; i++) {
@@ -69,6 +81,14 @@ export function createFx() {
           g.poly(pts).fill({ color: p.color, alpha: 1 - k * k }).stroke({ width: 2, color: INK, alpha: 0.8 * (1 - k) });
         } else if (p.kind === 'spark') {
           g.circle(p.x, p.y, p.r * (1 - k)).fill({ color: p.color, alpha: 1 - k });
+        } else if (p.kind === 'rise') { // ^ 모양. 처음 15% 동안 나타나고 끝으로 갈수록 옅어진다
+          const a = Math.min(1, k / 0.15) * (1 - k);
+          const pts = [p.x - p.r, p.y + p.r * 0.6, p.x, p.y - p.r * 0.4, p.x + p.r, p.y + p.r * 0.6];
+          g.poly(pts, false).stroke({ width: 5.5, color: INK, alpha: 0.55 * a, cap: 'round', join: 'round' });
+          g.poly(pts, false).stroke({ width: 2.8, color: p.color, alpha: a, cap: 'round', join: 'round' });
+        } else if (p.kind === 'flame') { // 아래로 길게 늘어진 불꽃
+          const r = p.r * (1 - k * 0.6);
+          g.ellipse(p.x, p.y, r * 0.7, r * 1.8).fill({ color: p.color, alpha: 0.95 * (1 - k) });
         } else if (p.kind === 'ring') {
           g.circle(p.x, p.y, p.r * (0.3 + k)).stroke({ width: 5 * (1 - k), color: p.color, alpha: 1 - k });
         } else { // 색종이
