@@ -6,13 +6,12 @@ import java.util.UUID;
 
 /**
  * 한 번의 등반. 브라우저가 물리를 계산하므로 서버는 보고가 가능한 범위인지만 검사하고, 맞지 않는 보고는 버린다.
- * 높이 검사와 시간 검사의 기준점은 연결마다 attach 로 다시 잡는다.
+ * 높이 검사의 기준점은 연결마다 attach 로 다시 잡는다. 구간과 완주는 그 높이까지 오른 pos 를 받은 뒤에만 받는다.
  */
 public class ClimbRun {
 
     private static final int MAX_RISE_PER_WINDOW = 20;
     private static final long RISE_WINDOW_MILLIS = 2_000;
-    private static final long TIME_SLACK_SECONDS = 10;
 
     private final UUID id;
     private final UUID guestId;
@@ -30,8 +29,6 @@ public class ClimbRun {
     private boolean suspect;
     private Instant updatedAt;
     private int zone;
-    private Instant connectedAt;
-    private int playSecondsAtConnect;
     private Instant anchorAt;
     private int anchorBest;
 
@@ -64,8 +61,6 @@ public class ClimbRun {
     }
 
     public synchronized void attach(Instant now) {
-        connectedAt = now;
-        playSecondsAtConnect = playSeconds;
         anchorAt = now;
         anchorBest = best;
     }
@@ -101,7 +96,8 @@ public class ClimbRun {
     }
 
     public synchronized boolean zone(int reportedZone, int time, Instant now) {
-        if (finishedAt != null || reportedZone != zone + 1 || reportedZone > map.zones().size() || time < 0) {
+        if (finishedAt != null || reportedZone != zone + 1 || reportedZone > map.zones().size() || time < 0
+                || best < map.zones().get(reportedZone - 1)) {
             return false;
         }
         zone = reportedZone;
@@ -111,18 +107,10 @@ public class ClimbRun {
     }
 
     public synchronized boolean finish(int time, int reportedFalls, Instant now) {
-        if (finishedAt != null || zone != map.zones().size() || time < 0 || reportedFalls < 0) {
+        if (finishedAt != null || zone != map.zones().size() || best < map.top() || time < 0 || reportedFalls < 0) {
             return false;
         }
-        // 서버가 잰 연결 시간보다 크게 짧은 완주 시간은 믿지 않는다.
-        long connected = Duration.between(connectedAt, now).toSeconds();
-        if (time < playSecondsAtConnect + connected - TIME_SLACK_SECONDS) {
-            return false;
-        }
-        if (best < map.top()) {
-            best = map.top();
-            bestAt = now;
-        }
+        // 게임 시간은 탭이 숨겨지면 멈추므로 연결 시간과 비교하지 않는다. 지나치게 짧은 완주만 의심한다.
         height = map.top();
         falls = reportedFalls;
         playSeconds = time;

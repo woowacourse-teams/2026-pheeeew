@@ -11,8 +11,10 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 class ClimbRunTest {
 
-    private static final ClimbMap MAP = ClimbMap.of("v1", 662, List.of(135, 261, 397, 523, 653), 300);
+    private static final ClimbMap MAP = ClimbMap.of("v1", 663, List.of(135, 261, 397, 523, 653), 300);
     private static final Instant T0 = Instant.parse("2026-11-12T00:00:00Z");
+
+    private Instant now = T0;
 
     @Test
     void 범위_안의_높이_보고는_최고_높이와_도달_시각을_갱신한다() {
@@ -34,7 +36,7 @@ class ClimbRunTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"-1, 5", "663, 663", "10, 9", "5, 663"})
+    @CsvSource({"-1, 5", "664, 664", "10, 9", "5, 664"})
     void 범위를_벗어나거나_최고_높이가_현재_높이보다_낮은_보고는_버린다(int h, int best) {
         // given
         ClimbRun run = started();
@@ -89,12 +91,13 @@ class ClimbRunTest {
     void 구간은_순서대로만_넘을_수_있다() {
         // given
         ClimbRun run = started();
+        climbTo(run, 261);
 
         // when
-        boolean skipped = run.zone(2, 60, T0.plusSeconds(60));
-        boolean first = run.zone(1, 60, T0.plusSeconds(60));
-        boolean second = run.zone(2, 120, T0.plusSeconds(120));
-        boolean again = run.zone(2, 121, T0.plusSeconds(121));
+        boolean skipped = run.zone(2, 60, now);
+        boolean first = run.zone(1, 60, now);
+        boolean second = run.zone(2, 120, now);
+        boolean again = run.zone(2, 121, now);
 
         // then
         assertThat(skipped).isFalse();
@@ -104,13 +107,30 @@ class ClimbRunTest {
     }
 
     @Test
+    void 구간_경계_높이까지_오른_보고가_없으면_구간을_받지_않는다() {
+        // given
+        ClimbRun run = started();
+        climbTo(run, 134);
+
+        // when
+        boolean below = run.zone(1, 30, now);
+        climbTo(run, 135);
+        boolean reached = run.zone(1, 31, now);
+
+        // then
+        assertThat(below).isFalse();
+        assertThat(reached).isTrue();
+    }
+
+    @Test
     void 구간을_다_넘지_않은_완주는_버린다() {
         // given
         ClimbRun run = started();
+        climbTo(run, 663);
         passZones(run, 4);
 
         // when
-        boolean accepted = run.finish(900, 3, T0.plusSeconds(900));
+        boolean accepted = run.finish(900, 3, now);
 
         // then
         assertThat(accepted).isFalse();
@@ -118,45 +138,68 @@ class ClimbRunTest {
     }
 
     @Test
-    void 구간을_다_넘은_완주는_꼭대기_높이와_걸린_시간으로_기록한다() {
+    void 꼭대기까지_오른_보고가_없으면_완주를_받지_않는다() {
         // given
         ClimbRun run = started();
+        climbTo(run, 662);
         passZones(run, 5);
 
         // when
-        boolean accepted = run.finish(900, 3, T0.plusSeconds(900));
+        boolean below = run.finish(900, 3, now);
+        climbTo(run, 663);
+        boolean reached = run.finish(901, 3, now);
+
+        // then
+        assertThat(below).isFalse();
+        assertThat(reached).isTrue();
+    }
+
+    @Test
+    void 구간을_다_넘은_완주는_꼭대기_높이와_걸린_시간으로_기록한다() {
+        // given
+        ClimbRun run = started();
+        climbTo(run, 663);
+        passZones(run, 5);
+
+        // when
+        boolean accepted = run.finish(900, 3, now);
 
         // then
         assertThat(accepted).isTrue();
         ClimbRunRecord record = run.record();
         assertThat(record.finishSeconds()).isEqualTo(900);
-        assertThat(record.finishedAt()).isEqualTo(T0.plusSeconds(900));
-        assertThat(record.best()).isEqualTo(662);
+        assertThat(record.finishedAt()).isEqualTo(now);
+        assertThat(record.best()).isEqualTo(663);
+        assertThat(record.height()).isEqualTo(663);
         assertThat(record.suspect()).isFalse();
         assertThat(run.entry("a1b2", "피유").finished()).isTrue();
     }
 
     @Test
-    void 서버가_잰_연결_시간보다_크게_짧은_완주_시간은_버린다() {
+    void 탭을_비워_게임_시간이_연결_시간보다_짧아도_완주를_받는다() {
         // given
         ClimbRun run = started();
+        climbTo(run, 663);
         passZones(run, 5);
 
         // when
-        boolean accepted = run.finish(400, 3, T0.plusSeconds(900));
+        boolean accepted = run.finish(400, 3, T0.plusSeconds(3600));
 
         // then
-        assertThat(accepted).isFalse();
+        assertThat(accepted).isTrue();
+        assertThat(run.record().finishSeconds()).isEqualTo(400);
+        assertThat(run.record().suspect()).isFalse();
     }
 
     @Test
     void 완주_최소_시간보다_빠른_완주는_의심_기록으로_표시한다() {
         // given
         ClimbRun run = started();
+        climbTo(run, 663);
         passZones(run, 5);
 
         // when
-        boolean accepted = run.finish(200, 0, T0.plusSeconds(200));
+        boolean accepted = run.finish(200, 0, now);
 
         // then
         assertThat(accepted).isTrue();
@@ -167,28 +210,33 @@ class ClimbRunTest {
     void 완주한_등반은_더_이상_보고를_받지_않는다() {
         // given
         ClimbRun run = started();
+        climbTo(run, 663);
         passZones(run, 5);
-        run.finish(900, 3, T0.plusSeconds(900));
+        run.finish(900, 3, now);
 
         // when
-        boolean accepted = run.pos(10, 662, 0, 910, 0, T0.plusSeconds(910));
+        boolean accepted = run.pos(10, 663, 0, 910, 0, now.plusSeconds(10));
 
         // then
         assertThat(accepted).isFalse();
-        assertThat(run.record().height()).isEqualTo(662);
+        assertThat(run.record().height()).isEqualTo(663);
     }
 
     @Test
     void 저장된_등반을_이어하면_최고_높이까지의_구간을_넘은_것으로_본다() {
         // given
-        ClimbRunRecord saved = saved(300, 280, 600);
+        ClimbRunRecord saved = saved(390, 380, 600);
         ClimbRun resumed = ClimbRun.restore(saved, MAP);
-        resumed.attach(T0.plusSeconds(3600));
+        now = T0.plusSeconds(3600);
+        resumed.attach(now);
 
         // when
-        boolean third = resumed.zone(3, 700, T0.plusSeconds(3700));
+        boolean second = resumed.zone(2, 700, now);
+        climbTo(resumed, 397);
+        boolean third = resumed.zone(3, 700, now);
 
         // then
+        assertThat(second).isFalse();
         assertThat(third).isTrue();
     }
 
@@ -221,7 +269,16 @@ class ClimbRunTest {
 
     private static void passZones(ClimbRun run, int count) {
         for (int zone = 1; zone <= count; zone++) {
-            run.zone(zone, zone * 100, T0.plusSeconds(zone * 100L));
+            run.zone(zone, zone * 100, run.record().updatedAt());
+        }
+    }
+
+    /** 2초마다 20칸씩(검사 상한) 올라 target 까지 보고한다. */
+    private void climbTo(ClimbRun run, int target) {
+        for (int best = run.record().best(); best < target; ) {
+            best = Math.min(target, best + 20);
+            now = now.plusSeconds(2);
+            assertThat(run.pos(best, best, 0, (int) (now.getEpochSecond() - T0.getEpochSecond()), 0, now)).isTrue();
         }
     }
 }

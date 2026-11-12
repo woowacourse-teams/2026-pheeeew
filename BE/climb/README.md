@@ -10,7 +10,7 @@
 | `pheeeew.climb.enabled` | `false` | 꺼져 있으면 climb 의 빈이 하나도 올라오지 않는다. 로컬 프로필만 켠다. |
 | `pheeeew.climb.allowed-origin` | 없음 | 게임 주소 하나. 켤 때 필수다. CORS 와 웹소켓 핸드셰이크가 이 출처만 허용한다. |
 | `pheeeew.climb.guest-creates-per-hour` | `10` | IP당 시간당 손님 만들기 한도. |
-| `pheeeew.climb.maps.<버전>.top` | `v1`: 662 | 꼭대기 높이(칸). |
+| `pheeeew.climb.maps.<버전>.top` | `v1`: 663 | 꼭대기 높이(칸). |
 | `pheeeew.climb.maps.<버전>.zones` | `v1`: 135, 261, 397, 523, 653 | 구간 경계 높이. |
 | `pheeeew.climb.maps.<버전>.min-finish-seconds` | `v1`: 300 | 이보다 빠른 완주는 의심 기록으로 숨긴다. |
 
@@ -49,9 +49,10 @@
 { "t": "restart" }
 ```
 
+- 숫자 필드는 모두 정수만 받는다(`1.5`, `"3"` 은 `INVALID_MESSAGE`). `h`, `best` 는 칸, `time` 은 게임 시간(초, 내림), `x` 는 가로 위치(픽셀, 반올림한 정수)다.
 - `hello` 는 연결 직후 한 번. `character` 는 `defeated`, `tired`, `frustrated`, `annoyed`, `angry` 중 하나.
   같은 맵에 완주하지 않은 등반이 있으면 이어 하고, 없으면 새 등반을 만든다.
-- `pos` 는 착지할 때마다, 최대 2초에 한 번. `restart` 는 새 등반을 만든다. 이전 기록은 오늘·역대 순위에 남는다.
+- `pos` 는 착지할 때마다, 최대 2초에 한 번. `zone`·`finish` 를 보내기 전에는 그 높이까지 오른 `pos` 를 먼저 보낸다. `restart` 는 새 등반을 만든다. 이전 기록은 오늘·역대 순위에 남는다.
 
 서버 → 브라우저
 
@@ -82,9 +83,10 @@
 
 - `0 ≤ h ≤ top`, `h ≤ best ≤ top`.
 - 최고 높이는 2초 창마다 20칸까지만 오른다(연결할 때 기준점을 다시 잡는다).
-- `zone` 은 순서대로만, `finish` 는 모든 구간을 넘은 뒤에만.
-- 완주 `time` 이 서버가 잰 연결 시간보다 10초 넘게 짧으면 버린다.
-- `min-finish-seconds` 보다 빠른 완주는 지우지 않고 의심 표시만 해서 순위에서 숨긴다.
+- `zone` 은 순서대로만, 그리고 그 구간 경계 높이 이상의 최고 높이(`pos` 의 `best`)를 받은 뒤에만.
+- `finish` 는 모든 구간을 넘고 최고 높이가 꼭대기(`top`) 이상일 때만.
+- 완주 `time` 은 연결 시간과 비교하지 않는다(탭이 숨겨지거나 확인 창이 떠 있으면 게임 시간이 멈춘다).
+  `min-finish-seconds` 보다 빠른 완주는 지우지 않고 의심 표시만 해서 순위에서 숨긴다.
 
 ## 저장
 

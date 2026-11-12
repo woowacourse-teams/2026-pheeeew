@@ -268,13 +268,24 @@ class ClimbIntegrationTest {
     @Test
     void 구간을_넘으면_접속자에게_알리고_연결을_끊었다_다시_오면_이어서_한다() throws Exception {
         // given
-        String cookie = cookie(post("/api/v1/climb/guests", "{\"nickname\":\"피유\"}", null));
+        HttpResponse<String> created = post("/api/v1/climb/guests", "{\"nickname\":\"피유\"}", null);
+        String cookie = cookie(created);
         String watcherCookie = cookie(post("/api/v1/climb/guests", "{\"nickname\":\"구경\"}", null));
+        // 1구간 경계(135칸) 바로 아래까지 오른 등반. 2초에 20칸 상한 때문에 처음부터 오르면 오래 걸린다.
+        jdbc.sql("""
+                INSERT INTO climb_run (id, guest_id, map_version, character, best_height, best_at, height, x, falls,
+                    play_seconds, started_at, updated_at)
+                VALUES (:id, :guest, 'v1', 'angry', 130, now(), 128, 0, 2, 29, now(), now())
+                """)
+                .param("id", java.util.UUID.randomUUID())
+                .param("guest", java.util.UUID.fromString(json.readTree(created.body()).path("id").stringValue()))
+                .update();
         Socket watcher = connect(watcherCookie);
         hello(watcher);
         Socket me = connect(cookie);
         hello(me);
-        me.send("{\"t\":\"pos\",\"h\":15,\"best\":16,\"falls\":2,\"time\":30,\"x\":7}");
+        me.send("{\"t\":\"zone\",\"zone\":1,\"time\":30}");
+        me.send("{\"t\":\"pos\",\"h\":148,\"best\":150,\"falls\":2,\"time\":30,\"x\":7}");
 
         // when
         me.send("{\"t\":\"zone\",\"zone\":1,\"time\":31}");
@@ -288,8 +299,9 @@ class ClimbIntegrationTest {
         assertThat(event.path("kind").stringValue()).isEqualTo("zone");
         assertThat(event.path("nickname").stringValue()).isEqualTo("피유");
         assertThat(event.path("zone").intValue()).isEqualTo(1);
-        assertThat(resumed.path("height").intValue()).isEqualTo(15);
-        assertThat(resumed.path("best").intValue()).isEqualTo(16);
+        assertThat(event.path("tag").stringValue()).isEqualTo(welcome.path("me").path("tag").stringValue());
+        assertThat(resumed.path("height").intValue()).isEqualTo(148);
+        assertThat(resumed.path("best").intValue()).isEqualTo(150);
         assertThat(resumed.path("x").intValue()).isEqualTo(7);
         assertThat(resumed.path("falls").intValue()).isEqualTo(2);
         assertThat(resumed.path("time").intValue()).isEqualTo(31);
