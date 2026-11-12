@@ -120,7 +120,7 @@ test('표지판마다 장치 종류가 있고, 그 구간에 카드에 넣을 �
   eq(SIGNS.map((s) => s.kind), ['slope', 'nod', 'wind', 'hot', 'boost'], '종류');
   eq(SIGNS.map((s) => SIGN_ART[s.kind]), ['fabric', 'nod', 'flag', 'hot', 'boost'], '그림 이름');
   for (const s of SIGNS) {
-    const file = new URL(`../public/assets/${ZONES[s.zone].art}/${SIGN_ART[s.kind]}.png`, import.meta.url);
+    const file = new URL(`../public/assets/${ZONES[s.zone].art}/${SIGN_ART[s.kind]}.webp`, import.meta.url);
     ok(existsSync(file), `${s.text}: ${file.pathname} 이 없다`);
   }
 });

@@ -17,7 +17,9 @@ canvas { display: block; }
 .veil { background: rgba(43, 36, 51, .62); backdrop-filter: blur(5px); }
 
 /* 로딩 */
-#loading { background: #2b2433; color: var(--paper); gap: 14px; }
+#loading { background: #2b2433; color: var(--paper); gap: 14px; z-index: 5; } /* 감정이를 고른 뒤 그림을 기다릴 때도 고르기 화면 위에 뜬다 */
+#loading .bar { width: 320px; height: 10px; border-radius: 5px; background: rgba(255, 248, 234, .18); overflow: hidden; }
+#loading .bar i { display: block; width: 0; height: 100%; background: #ffd35a; transition: width .15s; }
 #loading b { font-size: 34px; font-weight: 400; color: #ffd35a; }
 #loading span { font-size: 18px; opacity: .8; }
 .dots i { display: inline-block; width: 12px; height: 12px; margin: 0 5px; border-radius: 50%; background: #ffd35a; animation: hop .9s infinite; }
@@ -60,7 +62,7 @@ canvas { display: block; }
 #tower .fill { position: absolute; left: 0; right: 0; bottom: 0; background: var(--tint); border-radius: 0 0 7px 7px; }
 #tower .tick { position: absolute; left: -3px; right: -3px; height: 3px; background: var(--ink); }
 #tower .best { position: absolute; left: -6px; right: -6px; height: 3px; background: #ff7a6b; border-radius: 2px; }
-#tower .me { position: absolute; left: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; background: var(--tint); border: 3px solid var(--ink); border-radius: 50%; }
+#tower .me { position: absolute; left: 50%; width: 18px; height: 18px; margin: -12px 0 0 -12px; /* 테두리 3px 포함 전체 24px 의 절반 */ background: var(--tint); border: 3px solid var(--ink); border-radius: 50%; }
 
 /* 구간 완료 */
 #banner { position: absolute; left: 50%; top: 116px; transform: translateX(-50%); padding: 18px 34px; text-align: center; animation: pop .45s cubic-bezier(.2, 1.6, .4, 1); }
@@ -97,7 +99,10 @@ input.nick:focus { box-shadow: 0 0 0 4px var(--accent); }
 .guest { position: absolute; right: 24px; top: 20px; display: flex; align-items: center; gap: 12px; font-size: 22px; color: var(--paper); text-shadow: 0 2px 0 var(--ink); }
 
 /* 게임 중 순위 패널: 오른쪽 위 구간 표시 아래에 작게. Tab 으로 접는다 */
-#ranks { position: absolute; right: 54px; top: 68px; width: 236px; padding: 8px 8px 8px; border-radius: 14px; box-shadow: 0 4px 0 var(--ink); }
+/* 반투명 바탕: 뒤의 발판이 비친다(글자·테두리는 또렷하게). 캐릭터가 패널 뒤에 있으면(.behind) 안내 줄처럼 옅게 */
+#ranks { position: absolute; right: 54px; top: 68px; width: 236px; padding: 8px 8px 8px; border-radius: 14px; background: rgba(255, 248, 234, .65); box-shadow: 0 4px 0 rgba(43, 36, 51, .4); transition: opacity .3s; }
+#ranks.behind { opacity: .3; }
+#ranks .r.me { background: color-mix(in srgb, var(--tint, var(--accent)) 80%, transparent); }
 #ranks .head { margin: 0 2px 4px 6px; font-size: 15px; }
 #ranks .head b { font-weight: 400; color: var(--ink); }
 #ranks .key { min-width: 0; height: 24px; padding: 0 6px; font-size: 13px; border-width: 2px; border-radius: 7px; box-shadow: 0 2px 0 var(--ink); }

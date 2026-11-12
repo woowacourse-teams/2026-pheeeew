@@ -9,7 +9,8 @@ const el = (tag, cls, html) => {
   if (html !== undefined) e.innerHTML = html;
   return e;
 };
-const face = (id, cls) => `<div class="${cls}"><img src="/assets/characters/${id}/front.png" alt=""></div>`;
+export const FACE = (id) => `/assets/characters/${id}/front.webp`; // index.html 이 미리 받는 얼굴 그림과 같은 주소
+const face = (id, cls) => `<div class="${cls}"><img src="${FACE(id)}" alt=""></div>`;
 const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 // 닉네임은 다른 사람이 정한 글자라 HTML 로 넣기 전에 바꾼다
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -20,6 +21,7 @@ const STATUS = { connecting: '연결하는 중…', offline: '연결 끊김 · �
 export function createUI({ ids, info, zones, goal, credits = [] }) {
   const root = document.getElementById('ui');
   const loading = document.getElementById('loading');
+  const loadingBar = loading.querySelector('.bar i');
 
   // ---- 제목 ----
   const title = el('div', 'screen veil');
@@ -65,7 +67,7 @@ export function createUI({ ids, info, zones, goal, credits = [] }) {
     <div id="ranks" class="card" hidden><div class="head"><span data-ranks-head></span><span class="key">Tab</span></div><div class="list" data-ranks-list></div></div>
     <div id="toast" class="pill" hidden></div>
     <div id="tower"><div class="fill"></div>${zones.slice(0, -1).map((z) => `<div class="tick" style="bottom:${(z.to / goal) * 100}%"></div>`).join('')}<div class="others"></div><div class="best"></div><div class="me"></div></div>
-    <div class="keys"><span><span class="key">◀</span> <span class="key">▶</span> 걷기</span><span><span class="key">Space</span> 길게 눌러 모으고, 놓으면 점프</span><span><span class="key">N</span> 처음부터</span><span><span class="key">J</span> 움직임 비교</span><span><span class="key">G</span> 다른 사람</span><span><span class="key">M</span> 소리</span><span><span class="key">B</span> 음악</span></div>`;
+    <div class="keys"><span><span class="key">◀</span> <span class="key">▶</span> 걷기</span><span><span class="key">Space</span> 길게 눌러 모으고, 놓으면 점프</span><span><span class="key">N</span> 처음부터</span><span><span class="key">G</span> 다른 사람</span><span><span class="key">M</span> 소리</span><span><span class="key">B</span> 음악</span></div>`;
   const q = (sel) => hud.querySelector(sel);
   const parts = { face: q('[data-face]'), name: q('[data-name]'), h: q('[data-h]'), falls: q('[data-falls]'), time: q('[data-time]'), zoneNo: q('[data-zone-no]'), zone: q('[data-zone]'), fill: q('#tower .fill'), best: q('#tower .best'), me: q('#tower .me'), others: q('#tower .others'), ranks: q('#ranks'), ranksHead: q('[data-ranks-head]'), ranksList: q('[data-ranks-list]'), toast: q('#toast'), keys: q('.keys') };
   const shown = {}; // 바뀐 값만 다시 쓴다
@@ -116,6 +118,11 @@ export function createUI({ ids, info, zones, goal, credits = [] }) {
     // 게임 화면과 같은 자리·배율로 맞춘다
     fit(x, y, s) { root.style.transform = `translate(${x}px, ${y}px) scale(${s})`; },
     loaded() { loading.hidden = true; },
+    // 받은 수/받을 수 막대. 부르면 로딩 화면을 (다시) 띄운다
+    progress(done, total) {
+      loading.hidden = false;
+      loadingBar.style.width = `${total ? (done / total) * 100 : 0}%`;
+    },
     connection(message, retry) {
       connection.querySelector('[data-message]').textContent = message;
       const button = connection.querySelector('[data-retry]');
@@ -155,8 +162,11 @@ export function createUI({ ids, info, zones, goal, credits = [] }) {
       hud.hidden = false;
     },
     // low = 캐릭터 발이 안내 줄 높이에 있다(맨 아래 바닥): 그동안 안내 줄을 옅게 해 캐릭터를 가리지 않는다
-    hud({ h, best, falls, time, low }) {
+    // me = 캐릭터가 화면에서 차지하는 자리 { x, top, bottom }(1280×720 좌표). 순위 패널과 겹치면 패널을 옅게 한다
+    hud({ h, best, falls, time, low, me }) {
       parts.keys.classList.toggle('low', !!low);
+      const r = parts.ranks;
+      r.classList.toggle('behind', !r.hidden && !!me && me.x + 40 > r.offsetLeft && me.x - 40 < r.offsetLeft + r.offsetWidth && me.bottom > r.offsetTop && me.top < r.offsetTop + r.offsetHeight);
       put('h', String(h));
       put('falls', String(falls));
       put('time', clock(time));

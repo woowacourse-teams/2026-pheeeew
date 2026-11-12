@@ -10,7 +10,7 @@ from prepare_zone1 import clean, periodic, wrap_axis, checker, tile, LANCZOS
 
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / 'docs/codex'
-DEST = ROOT / 'public/assets/zone2'
+DEST = ROOT / 'assets_src/zone2'
 SOURCES = json.loads((DOCS / 'zone2_sources.json').read_text())
 
 

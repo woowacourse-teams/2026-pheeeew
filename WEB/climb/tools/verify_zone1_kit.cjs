@@ -1,7 +1,7 @@
 // Pixel-level acceptance checks and transparent contact sheet, no game-code writes.
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const sharp=require('./.image-work/node_modules/sharp');
-const ROOT=path.resolve(__dirname,'..'),DIR=path.join(ROOT,'public/assets/zone1/kit'),WORK=path.join(ROOT,'docs/codex/zone1_kit_work');
+const ROOT=path.resolve(__dirname,'..'),DIR=path.join(ROOT,'assets_src/zone1/kit'),WORK=path.join(ROOT,'docs/codex/zone1_kit_work');
 const specs=JSON.parse(fs.readFileSync(path.join(WORK,'specs.json')));
 async function main(){
  let records=[];

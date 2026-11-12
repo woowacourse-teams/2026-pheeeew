@@ -1,7 +1,7 @@
 // Pixel-level delivery checks, independent of the export's requested dimensions.
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const sharp=require('./.image-work/node_modules/sharp');
-const root=path.resolve(__dirname,'..'),out=path.join(root,'public/assets/nyc'),work=path.join(root,'docs/codex/nyc_work');
+const root=path.resolve(__dirname,'..'),out=path.join(root,'assets_src/nyc'),work=path.join(root,'docs/codex/nyc_work');
 const errors=[],assets={},check=(ok,label)=>{if(!ok)errors.push(label);};
 function bb(data,w,h,condition=()=>true){let l=w,t=h,r=-1,b=-1;for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(condition(x,y)&&data[(y*w+x)*4+3]>16){l=Math.min(l,x);t=Math.min(t,y);r=Math.max(r,x);b=Math.max(b,y);}return {left:l,top:t,right:r,bottom:b,width:r-l+1,height:b-t+1};}
 async function main(){

@@ -7,7 +7,7 @@ const sharp = require('./.image-work/node_modules/sharp');
 const root = path.resolve(__dirname, '..');
 const work = path.join(root, 'docs/codex/nyc_night_work');
 const src = JSON.parse(fs.readFileSync(path.join(work, 'sources.json')));
-const out = path.join(root, 'public/assets/nyc');
+const out = path.join(root, 'assets_src/nyc');
 const raw = (data, w, h) => sharp(data, {raw:{width:w,height:h,channels:4}});
 const smooth = t => { t=Math.max(0,Math.min(1,t)); return t*t*(3-2*t); };
 function bounds(data,w,h,threshold=12) {
@@ -101,7 +101,7 @@ async function validate(){
  }
  const before=JSON.parse(fs.readFileSync(path.join(work,'before_hashes.json')));
  const changed=Object.entries(before).filter(([p,h])=>crypto.createHash('sha256').update(fs.readFileSync(path.join(root,p))).digest('hex')!==h).map(([p])=>p);
- const allowed=['public/assets/nyc/bg.png',...Array.from({length:3},(_,i)=>'public/assets/nyc/kit/far_'+(i+1)+'.png')];
+ const allowed=['assets_src/nyc/bg.png',...Array.from({length:3},(_,i)=>'assets_src/nyc/kit/far_'+(i+1)+'.png')];
  if(changed.some(p=>!allowed.includes(p)))errors.push('protected file changed');
  const report={passed:errors.length===0,errors,changedExistingFiles:changed,protectedFilesUnchanged:Object.keys(before).length-changed.length,assets};
  fs.writeFileSync(path.join(work,'validation.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));if(errors.length)process.exitCode=1;

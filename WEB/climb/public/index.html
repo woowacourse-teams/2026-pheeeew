@@ -5,16 +5,38 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>감정이들의 점프 대모험</title>
 <link rel="stylesheet" href="/ui.css">
+<link rel="icon" href="data:,">
+<!-- 첫 화면에 꼭 필요한 것(글꼴, 고르기 화면 얼굴, 그림 엔진)을 먼저 받는다. 그림 목록표는 main.js 가 매번 새로 확인한다 -->
+<link rel="preload" href="/assets/fonts/Jua-Regular.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="preload" href="/assets/characters/defeated/front.webp" as="image">
+<link rel="preload" href="/assets/characters/tired/front.webp" as="image">
+<link rel="preload" href="/assets/characters/frustrated/front.webp" as="image">
+<link rel="preload" href="/assets/characters/annoyed/front.webp" as="image">
+<link rel="preload" href="/assets/characters/angry/front.webp" as="image">
+<link rel="modulepreload" href="/vendor/pixi.mjs">
 </head>
 <body>
 <div id="ui">
-  <div id="loading" class="screen"><b>감정이들이 신발 끈 묶는 중…</b><span>탑을 쌓고 있어요</span><div class="dots"><i></i><i></i><i></i></div></div>
+  <div id="loading" class="screen"><b>감정이들이 신발 끈 묶는 중…</b><span>탑을 쌓고 있어요</span><div class="dots"><i></i><i></i><i></i></div><div class="bar"><i></i></div></div>
 </div>
+<script>
+// main.js 가 받아지기 전에도 로딩 화면이 창에 맞게 보이도록 같은 계산을 먼저 한다 (main.js 의 fit 과 같다)
+(() => {
+  const ui = document.getElementById('ui');
+  const fit = () => {
+    if (window.CLIMB_FITTED) return removeEventListener('resize', fit); // 이후는 main.js 가 맡는다
+    const s = Math.min(innerWidth / 1280, innerHeight / 720);
+    ui.style.transform = `translate(${(innerWidth - 1280 * s) / 2}px, ${(innerHeight - 720 * s) / 2}px) scale(${s})`;
+  };
+  addEventListener('resize', fit);
+  fit();
+})();
+</script>
 <script type="module">
 import { apiForHostname } from '/api-config.js';
 const api = apiForHostname(location.hostname);
 if (api !== undefined) window.CLIMB_API = api;
-await import('/main.js?v=2');
+await import('/main.js?v=3');
 </script>
 </body>
 </html>

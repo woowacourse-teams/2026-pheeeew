@@ -3,7 +3,7 @@ const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypt
 const sharp=require('./.image-work/node_modules/sharp');
 const ROOT=path.resolve(__dirname,'..'),DOC=path.join(ROOT,'docs/codex'),WORK=path.join(DOC,'sky_work');
 const theme=process.argv[2];if(!['castle','balloon','space','moon'].includes(theme))throw Error('theme required');
-const OUT=path.join(ROOT,'public/assets',theme),sources=JSON.parse(fs.readFileSync(path.join(WORK,theme+'_sources.json')));
+const OUT=path.join(ROOT,'assets_src',theme),sources=JSON.parse(fs.readFileSync(path.join(WORK,theme+'_sources.json')));
 const conf={castle:{base:[211,206,193],bg:[247,222,209],line:'#706b64',sat:.75},balloon:{base:[186,157,116],bg:[182,216,236],line:'#75624d',sat:.72},space:{base:[188,194,201],bg:[28,39,68],line:'#555f71',sat:.65},moon:{base:[191,192,196],bg:[10,13,21],line:'#646774',sat:.50}}[theme];
 const clamp=(v,a=0,b=255)=>Math.max(a,Math.min(b,v)),smooth=t=>{t=clamp(t,0,1);return t*t*(3-2*t)};
 const raw=(d,w,h)=>sharp(d,{raw:{width:w,height:h,channels:4}});
