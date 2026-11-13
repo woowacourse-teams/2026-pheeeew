@@ -8,8 +8,11 @@ import com.pheeeew.climb.infra.ClimbGuestRepository;
 import com.pheeeew.climb.infra.ClimbRunRepository;
 import com.pheeeew.climb.presentation.ClimbGuestCookieFilter;
 import com.pheeeew.climb.presentation.ClimbWebSocketHandler;
+import com.pheeeew.climb.stairs.StairsRepository;
+import com.pheeeew.climb.stairs.StairsService;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -37,6 +40,11 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableConfigurationProperties(ClimbProperties.class)
 @Configuration(proxyBeanMethods = false)
 public class ClimbConfiguration {
+
+    @Bean
+    StairsService stairsService(JdbcClient jdbc) {
+        return new StairsService(new StairsRepository(jdbc), Clock.systemUTC());
+    }
 
     static final String PATHS = "/api/v1/climb/**";
 
@@ -110,7 +118,9 @@ public class ClimbConfiguration {
                                 writeError(response, ClimbErrorCode.FORBIDDEN)))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.POST, "/api/v1/climb/guests").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/climb/ranking", "/api/v1/climb/hall").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/climb/ranking", "/api/v1/climb/hall",
+                                "/api/v1/climb/stairs/today", "/api/v1/climb/stairs/ranking").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/climb/stairs/runs").authenticated()
                         // 관리자 세션은 손님 쿠키와 따로 컨트롤러가 관리자 쿠키로 확인한다
                         .requestMatchers("/api/v1/climb/admin/session").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/climb/me", "/api/v1/climb/ws").authenticated()

@@ -54,6 +54,7 @@ export function createUI({ ids, info, zones, goal, credits = [] }) {
     <div class="row">
       <button class="btn" data-continue><span class="key">Enter</span><span data-continue-label>이어서 오르기</span></button>
       <button class="btn ghost" data-new><span class="key">N</span>처음부터</button>
+      <a class="btn ghost small" href="/stairs" style="text-decoration:none">계단 러시 ↗</a>
     </div>
     <div class="boards" data-boards hidden>${['오늘', '역대'].map((n) => `<div class="card board"><div class="head">${n} 순위</div><div class="list"></div></div>`).join('')}<div class="card board hall" data-hall-card><div class="head">명예의 전당 · 먼저 온 순서<button class="btn ghost small" data-hall-open>전체 보기</button></div><div class="list" data-hall></div></div></div>
     <button class="btn ghost small music" data-credits>♪ 음악</button>
@@ -106,12 +107,8 @@ export function createUI({ ids, info, zones, goal, credits = [] }) {
     <div class="row" style="justify-content:center"><button class="btn" data-yes><span class="key">Enter</span>다시 시작</button><button class="btn ghost" data-no><span class="key">Esc</span>계속 오르기</button></div></div>`;
 
   // ---- 닉네임 창 ----
-  const nick = el('div', 'screen veil');
-  nick.hidden = true;
-  nick.innerHTML = `<div class="card modal"><div class="big" data-title></div><div class="small" data-hint></div>
-    <input class="nick" data-input autocomplete="off" spellcheck="false"><div class="err" data-err></div>
-    <div class="row" style="justify-content:center"><button class="btn" data-ok><span class="key">Enter</span><span data-ok-label></span></button><button class="btn ghost" data-alt><span class="key">Esc</span><span data-alt-label></span></button></div></div>`;
-  const nickInput = nick.querySelector('[data-input]');
+  const nickDialog = createNicknameDialog();
+  const nick = nickDialog.element;
 
   // ---- 서버 연결 대기 ----
   const connection = el('div', 'screen veil');
@@ -251,32 +248,12 @@ export function createUI({ ids, info, zones, goal, credits = [] }) {
       });
     },
     // 닉네임 창. onOk(이름), onAlt() 는 main 이 정한다. secret 이면 비밀번호 입력란(관리자 키 창)
-    nickname({ heading, value = '', ok, alt, hint = '순위표에 나오는 이름이에요. 2~10자, 한글·영문·숫자', secret = false }, onOk, onAlt) {
-      nick.querySelector('[data-title]').textContent = heading;
-      nick.querySelector('[data-hint]').textContent = hint;
-      nickInput.type = secret ? 'password' : 'text';
-      nickInput.maxLength = secret ? 200 : 10;
-      nick.querySelector('[data-ok-label]').textContent = ok;
-      nick.querySelector('[data-alt-label]').textContent = alt ?? '';
-      nick.querySelector('[data-alt]').hidden = !onAlt;
-      nick.querySelector('[data-err]').textContent = '';
-      nickInput.value = value;
-      const submit = () => onOk(secret ? nickInput.value : nickInput.value.trim());
-      nick.querySelector('[data-ok]').onclick = submit;
-      nick.querySelector('[data-alt]').onclick = onAlt;
-      nickInput.onkeydown = (e) => {
-        e.stopPropagation(); // 게임 조작 키(M 소리, N 처음부터 등)로 새지 않게
-        if (e.isComposing) return; // 한글 조합 중의 Enter 는 글자 확정
-        if (e.key === 'Enter') submit();
-        if (e.key === 'Escape') onAlt?.();
-      };
-      nick.hidden = false;
+    nickname(options, onOk, onAlt) {
+      nickDialog.show(options, onOk, onAlt);
       title.hidden = select.hidden = hud.hidden = true;
-      nickInput.focus();
-      nickInput.select(); // 바꾸기: 지금 이름을 통째로 덮어쓰게
     },
-    nicknameError(text) { nick.querySelector('[data-err]').textContent = text; nickInput.focus(); },
-    closeNickname() { nick.hidden = true; nickInput.blur(); },
+    nicknameError(text) { nickDialog.error(text); },
+    closeNickname() { nickDialog.close(); },
     // 명예의 전당(null 이면 못 불러옴): 제목 화면 카드와 전체 화면에 함께 쓴다
     hall(items, mine) {
       hall = items;
@@ -353,4 +330,42 @@ export function createUI({ ids, info, zones, goal, credits = [] }) {
     },
   };
   return api;
+}
+
+// 두 게임이 같은 닉네임 창을 사용한다.
+export function createNicknameDialog() {
+  const nick = el('div', 'screen veil');
+  nick.hidden = true;
+  nick.innerHTML = `<div class="card modal"><div class="big" data-title></div><div class="small" data-hint></div>
+    <input class="nick" data-input autocomplete="off" spellcheck="false"><div class="err" data-err></div>
+    <div class="row" style="justify-content:center"><button class="btn" data-ok><span class="key">Enter</span><span data-ok-label></span></button><button class="btn ghost" data-alt><span class="key">Esc</span><span data-alt-label></span></button></div></div>`;
+  const nickInput = nick.querySelector('[data-input]');
+
+  return { element: nick,
+    show({ heading, value = '', ok, alt, hint = '순위표에 나오는 이름이에요. 2~10자, 한글·영문·숫자', secret = false }, onOk, onAlt) {
+      nick.querySelector('[data-title]').textContent = heading;
+      nick.querySelector('[data-hint]').textContent = hint;
+      nickInput.type = secret ? 'password' : 'text';
+      nickInput.maxLength = secret ? 200 : 10;
+      nick.querySelector('[data-ok-label]').textContent = ok;
+      nick.querySelector('[data-alt-label]').textContent = alt ?? '';
+      nick.querySelector('[data-alt]').hidden = !onAlt;
+      nick.querySelector('[data-err]').textContent = '';
+      nickInput.value = value;
+      const submit = () => onOk(secret ? nickInput.value : nickInput.value.trim());
+      nick.querySelector('[data-ok]').onclick = submit;
+      nick.querySelector('[data-alt]').onclick = onAlt;
+      nickInput.onkeydown = (e) => {
+        e.stopPropagation(); // 게임 조작 키(M 소리, N 처음부터 등)로 새지 않게
+        if (e.isComposing) return; // 한글 조합 중의 Enter 는 글자 확정
+        if (e.key === 'Enter') submit();
+        if (e.key === 'Escape') onAlt?.();
+      };
+      nick.hidden = false;
+      nickInput.focus();
+      nickInput.select(); // 바꾸기: 지금 이름을 통째로 덮어쓰게
+    },
+    error(text) { nick.querySelector('[data-err]').textContent = text; nickInput.focus(); },
+    close() { nick.hidden = true; nickInput.blur(); },
+  };
 }

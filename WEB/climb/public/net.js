@@ -198,6 +198,9 @@ export function createNet({
       pos = last = null;
       if (live) { raw({ t: 'restart' }); sentZone = 0; }
     },
+    stairsToday: () => call('GET', '/stairs/today'),
+    stairsRanking: (day) => call('GET', `/stairs/ranking?day=${encodeURIComponent(day)}`),
+    stairsRun: (body) => call('POST', '/stairs/runs', body),
     me: () => call('GET', '/me'),
     createGuest: (nickname) => call('POST', '/guests', { nickname }),
     rename: (nickname) => call('PATCH', '/me', { nickname }),
