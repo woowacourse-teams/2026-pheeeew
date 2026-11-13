@@ -17,11 +17,11 @@ export function createNet({
 } = {}) {
   const root = new URL(api, base).href.replace(/\/$/, '');
 
-  async function call(method, path, body) {
+  async function call(method, path, body, credentials = 'include') {
     try {
       const res = await fetch(root + path, {
         method,
-        credentials: 'include', // 손님 쿠키는 HttpOnly 라 스크립트가 읽지 않는다
+        credentials, // 계단 러시는 쿠키를 보내거나 받지 않는다
         headers: body ? { 'Content-Type': 'application/json' } : undefined,
         body: body ? JSON.stringify(body) : undefined,
         signal: AbortSignal.timeout?.(5000),
@@ -198,6 +198,9 @@ export function createNet({
       pos = last = null;
       if (live) { raw({ t: 'restart' }); sentZone = 0; }
     },
+    stairsToday: () => call('GET', '/stairs/today', undefined, 'omit'),
+    stairsRanking: (day) => call('GET', `/stairs/ranking?day=${encodeURIComponent(day)}`, undefined, 'omit'),
+    stairsRun: (body) => call('POST', '/stairs/runs', body, 'omit'),
     me: () => call('GET', '/me'),
     createGuest: (nickname) => call('POST', '/guests', { nickname }),
     rename: (nickname) => call('PATCH', '/me', { nickname }),
