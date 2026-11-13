@@ -68,14 +68,18 @@ public class StairsController {
             }
             inputs.add(new StairsRules.Input(d.asString(), t.intValue()));
         }
+        JsonNode seed = root.path("seed"), ticket = root.path("ticket");
+        if (!seed.isIntegralNumber() || !seed.canConvertToInt() || !ticket.isString()) {
+            throw new IllegalArgumentException("INVALID_TICKET");
+        }
         return ResponseEntity.ok(service.submit(root.path("nickname").asString(), LocalDate.parse(root.path("day").asString()),
-                root.path("character").asString(), inputs));
+                root.path("character").asString(), seed.intValue(), ticket.asString(), inputs));
     }
 
     @ExceptionHandler({IllegalArgumentException.class, java.time.DateTimeException.class, JacksonException.class})
     public ResponseEntity<?> invalid(Exception exception) {
         String code = exception instanceof IllegalArgumentException ? exception.getMessage() : "INVALID_REQUEST";
-        if (!java.util.Set.of("INVALID_REQUEST", "INVALID_INPUTS", "TOO_FAST", "GAUGE_EXPIRED", "INVALID_DAY")
+        if (!java.util.Set.of("INVALID_REQUEST", "INVALID_INPUTS", "TOO_FAST", "GAUGE_EXPIRED", "INVALID_DAY", "INVALID_TICKET")
                 .contains(code == null ? "" : code)) code = "INVALID_REQUEST";
         return error(400, code);
     }
@@ -90,6 +94,7 @@ public class StairsController {
             case "TOO_FAST" -> "너무 빠른 연속 입력이에요. 다시 도전해 주세요.";
             case "GAUGE_EXPIRED" -> "시간 게이지가 끝난 뒤의 입력은 기록할 수 없어요.";
             case "INVALID_DAY" -> "오늘의 계단으로 다시 시작해 주세요.";
+            case "INVALID_TICKET" -> "계단 정보가 만료됐어요. 새로고침 후 다시 도전해 주세요.";
             case "BODY_TOO_LARGE" -> "기록 크기 한도를 넘었어요.";
             case "NICKNAME_LENGTH" -> "닉네임은 1~10자로 입력해 주세요.";
             case "NICKNAME_CHARACTERS" -> "한글, 영문, 숫자만 입력해 주세요.";
