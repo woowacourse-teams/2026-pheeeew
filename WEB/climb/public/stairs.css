@@ -25,7 +25,9 @@ button:disabled { opacity: .6; cursor: wait; }
 .board-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 16px; }
 .board-heading span { font-size: 11px; color: var(--dim); }
 .board-heading #day { display: block; margin-top: 3px; }
-.ranking-open { flex: none; min-height: 44px; padding: 8px; border: 2px solid var(--ink); border-radius: 10px; background: #ffd35a; color: var(--ink); font: inherit; font-size: 13px; cursor: pointer; }
+.ranking-open { flex: none; height: 34px; margin-bottom: 4px; padding: 0 12px; border: 2px solid var(--ink); border-radius: 11px; background: #ffd35a; color: var(--ink); font: inherit; font-size: 14px; white-space: nowrap; cursor: pointer; box-shadow: 0 4px 0 var(--ink); transition: transform .08s, box-shadow .08s; }
+.ranking-open:hover { transform: translateY(-1px); box-shadow: 0 5px 0 var(--ink); }
+.ranking-open:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
 .ranking-open:focus-visible { outline: 3px solid #b554ee; outline-offset: 2px; }
 .rank-list { max-height: 230px; overflow-y: auto; touch-action: pan-y; padding: 4px; }
 .rank-list .r { display: flex; gap: 6px; min-height: 35px; margin-bottom: 5px; padding: 4px 7px; border-radius: 8px; font-size: 13px; }
