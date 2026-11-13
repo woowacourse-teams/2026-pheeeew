@@ -16,7 +16,7 @@
     }
   ],
   "uid": "pheeeew-dev-v2",
-  "title": "Pheeeew · 개발 모니터링 v2",
+  "title": "히유 개발 모니터링",
   "description": "개발 앱의 상태를 경로와 조회 단위로 확인해요. API 경로별 지연, 리포지터리 조회별 지연, JVM·DB 연결, 문제 로그를 함께 봐요. 수집 60초.",
   "tags": [
     "pheeeew",
@@ -25,7 +25,7 @@
   ],
   "timezone": "Asia/Seoul",
   "editable": true,
-  "schemaVersion": 39,
+  "schemaVersion": 42,
   "version": 1,
   "refresh": "1m",
   "time": {
@@ -53,7 +53,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "# Pheeeew · 개발 모니터링 v2\n**DEVELOPMENT**　/　한눈에 상태를 확인하고, 경로별로 어디가 느린지 찾아요.　•　수집·새로고침 1분"
+        "content": "# 히유 개발 모니터링\n**DEVELOPMENT**　/　한눈에 상태를 확인하고, 경로별로 어디가 느린지 찾아요. 수집·새로고침 1분"
       }
     },
     {
@@ -67,7 +67,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 8,
+        "y": 3,
         "w": 4,
         "h": 5
       },
@@ -171,7 +171,7 @@
       },
       "gridPos": {
         "x": 4,
-        "y": 8,
+        "y": 3,
         "w": 4,
         "h": 5
       },
@@ -264,7 +264,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 8,
+        "y": 3,
         "w": 4,
         "h": 5
       },
@@ -314,7 +314,9 @@
                 }
               }
             }
-          ]
+          ],
+          "max": 1,
+          "min": 0
         },
         "overrides": []
       },
@@ -364,7 +366,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 8,
+        "y": 3,
         "w": 4,
         "h": 5
       },
@@ -463,7 +465,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 8,
+        "y": 3,
         "w": 4,
         "h": 5
       },
@@ -513,7 +515,9 @@
                 }
               }
             }
-          ]
+          ],
+          "max": 1,
+          "min": 0
         },
         "overrides": []
       },
@@ -563,7 +567,7 @@
       },
       "gridPos": {
         "x": 20,
-        "y": 8,
+        "y": 3,
         "w": 4,
         "h": 5
       },
@@ -661,9 +665,9 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 13
+        "y": 8
       },
-      "id": 111
+      "id": 212
     },
     {
       "id": 6,
@@ -676,7 +680,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 14,
+        "y": 9,
         "w": 12,
         "h": 8
       },
@@ -754,7 +758,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 14,
+        "y": 9,
         "w": 12,
         "h": 8
       },
@@ -831,7 +835,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 22,
+        "y": 17,
         "w": 12,
         "h": 8
       },
@@ -905,7 +909,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 22,
+        "y": 17,
         "w": 12,
         "h": 8
       },
@@ -979,7 +983,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 30,
+        "y": 25,
         "w": 12,
         "h": 8
       },
@@ -1053,7 +1057,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 30,
+        "y": 25,
         "w": 12,
         "h": 8
       },
@@ -1157,7 +1161,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 38
+        "y": 33
       },
       "fieldConfig": {
         "defaults": {
@@ -1228,21 +1232,21 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 46
+        "y": 41
       },
-      "id": 116
+      "id": 213
     },
     {
       "type": "timeseries",
       "title": "DB 조회 · 평균",
-      "description": "성공한 Spring Data 리포지터리 호출과 RegionRepository·개인 Press의 직접 JDBC 작업을 비교해요. JDBC 시간에는 통신·결과 매핑이 포함되며 순수 SQL 시간이나 연결 점유 시간과 달라요. 호출 표본이 없으면 지연을 표시하지 않아요. 범례 Last *는 선택 구간의 마지막 유효 관측값이며 현재 값이 아니에요.",
+      "description": "성공한 Spring Data 리포지터리 호출과 RegionRepository·개인 Press의 직접 JDBC 작업을 비교해요. JDBC 시간에는 통신·결과 매핑이 포함되며 순수 SQL 시간이나 연결 점유 시간과 달라요. 추가한 JDBC 조회는 호출 표본이 없으면 지연을 표시하지 않아요. 범례 Last *는 선택 구간의 마지막 유효 관측값이며 현재 값이 아니에요.",
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
       "gridPos": {
         "x": 0,
-        "y": 47,
+        "y": 42,
         "w": 12,
         "h": 8
       },
@@ -1296,7 +1300,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "topk(10, sum by (repository, method) (rate(spring_data_repository_invocations_seconds_sum{job=\"pheeeew-api\",environment=\"dev\",state=\"SUCCESS\"}[$__rate_interval])) / (sum by (repository, method) (rate(spring_data_repository_invocations_seconds_count{job=\"pheeeew-api\",environment=\"dev\",state=\"SUCCESS\"}[$__rate_interval])) > 0))",
+          "expr": "topk(10, sum by (repository, method) (rate(spring_data_repository_invocations_seconds_sum{job=\"pheeeew-api\",environment=\"dev\",state=\"SUCCESS\"}[$__rate_interval])) / clamp_min(sum by (repository, method) (rate(spring_data_repository_invocations_seconds_count{job=\"pheeeew-api\",environment=\"dev\",state=\"SUCCESS\"}[$__rate_interval])), 0.0001))",
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
@@ -1329,14 +1333,14 @@
     {
       "type": "timeseries",
       "title": "DB 조회 · p95",
-      "description": "성공한 Spring Data 리포지터리 호출과 RegionRepository·개인 Press의 직접 JDBC 작업을 비교해요. JDBC 시간에는 통신·결과 매핑이 포함되며 순수 SQL 시간이나 연결 점유 시간과 달라요. 호출 표본이 없으면 지연을 표시하지 않아요. 범례 Last *는 선택 구간의 마지막 유효 관측값이며 현재 값이 아니에요. p95·p99는 버킷 기반 추정값이에요. Spring Data의 마지막 유한 경계는 3s, Region·개인 Press는 300s예요. 계산한 분위수가 +Inf 버킷에 속하면 마지막 유한 경계로 표시되며, 요청이 적으면 추정값이 크게 흔들려요.",
+      "description": "성공한 Spring Data 리포지터리 호출과 RegionRepository·개인 Press의 직접 JDBC 작업을 비교해요. JDBC 시간에는 통신·결과 매핑이 포함되며 순수 SQL 시간이나 연결 점유 시간과 달라요. 추가한 JDBC 조회는 호출 표본이 없으면 지연을 표시하지 않아요. 범례 Last *는 선택 구간의 마지막 유효 관측값이며 현재 값이 아니에요. p95·p99는 버킷 기반 추정값이에요. Spring Data의 마지막 유한 경계는 3s, Region·개인 Press는 300s예요. 계산한 분위수가 +Inf 버킷에 속하면 마지막 유한 경계로 표시되며, 요청이 적으면 추정값이 크게 흔들려요.",
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
       "gridPos": {
         "x": 12,
-        "y": 47,
+        "y": 42,
         "w": 12,
         "h": 8
       },
@@ -1423,14 +1427,14 @@
     {
       "type": "timeseries",
       "title": "DB 조회 · p99",
-      "description": "성공한 Spring Data 리포지터리 호출과 RegionRepository·개인 Press의 직접 JDBC 작업을 비교해요. JDBC 시간에는 통신·결과 매핑이 포함되며 순수 SQL 시간이나 연결 점유 시간과 달라요. 호출 표본이 없으면 지연을 표시하지 않아요. 범례 Last *는 선택 구간의 마지막 유효 관측값이며 현재 값이 아니에요. p95·p99는 버킷 기반 추정값이에요. Spring Data의 마지막 유한 경계는 3s, Region·개인 Press는 300s예요. 계산한 분위수가 +Inf 버킷에 속하면 마지막 유한 경계로 표시되며, 요청이 적으면 추정값이 크게 흔들려요.",
+      "description": "성공한 Spring Data 리포지터리 호출과 RegionRepository·개인 Press의 직접 JDBC 작업을 비교해요. JDBC 시간에는 통신·결과 매핑이 포함되며 순수 SQL 시간이나 연결 점유 시간과 달라요. 추가한 JDBC 조회는 호출 표본이 없으면 지연을 표시하지 않아요. 범례 Last *는 선택 구간의 마지막 유효 관측값이며 현재 값이 아니에요. p95·p99는 버킷 기반 추정값이에요. Spring Data의 마지막 유한 경계는 3s, Region·개인 Press는 300s예요. 계산한 분위수가 +Inf 버킷에 속하면 마지막 유한 경계로 표시되며, 요청이 적으면 추정값이 크게 흔들려요.",
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
       "gridPos": {
         "x": 0,
-        "y": 55,
+        "y": 50,
         "w": 12,
         "h": 8
       },
@@ -1524,7 +1528,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 55,
+        "y": 50,
         "w": 12,
         "h": 8
       },
@@ -1589,110 +1593,329 @@
       "id": 120
     },
     {
-      "id": 130,
-      "type": "stat",
-      "title": "Region·개인 Press DB 작업 · 선택 기간 표본 수",
-      "description": "선택 기간의 DB 작업 호출 수 추정치를 operation·outcome별로 표시해요. success는 정상 반환, error는 예외 종료예요. 한 HTTP 요청에서 여러 번 실행될 수 있어 HTTP 요청 수·사용자 수와 달라요. Counter 증가량을 보간하므로 정수가 아닐 수 있어요. 계산 가능한 수집 표본에서 증가가 없으면 0, 계산할 표본이 없으면 데이터 없음이에요. 수집 중단 시 선택 기간의 일부만 반영될 수 있어 수집 연결을 함께 확인해요.",
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "gridPos": {
-        "x": 0,
-        "y": 63,
-        "w": 24,
-        "h": 8
-      },
+      "description": "선택 기간의 DB 작업 실행 횟수 추정치예요. 작업별 성공(파랑)·실패/예외 종료(빨강)를 나란히 표시해요. HTTP 요청 수·사용자 수와 달라요. increase 보간으로 소수값이 가능해요. 관측된 증가가 없으면 0.0, 수집 표본이 없으면 데이터 없음이며 0으로 채우지 않아요. 양쪽 패널의 세로축은 각각 자동 조정돼요. 집계 준비: aggregation_ready / 경계 검증: boundaries_verified / 코드 조회: emd_code / 공간 조회: intersecting_regions",
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
-          "noValue": "데이터 없음",
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "#8E8E9E"
+          "custom": {
+            "axisBorderShow": false,
+            "axisColorMode": "text",
+            "axisLabel": "실행 횟수 (추정)",
+            "axisPlacement": "left",
+            "fillOpacity": 85,
+            "gradientMode": "none",
+            "lineWidth": 0
           },
+          "decimals": 1,
+          "min": 0,
+          "noValue": "데이터 없음",
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "blue",
+                "value": 0
               }
             ]
           },
-          "decimals": 1,
-          "mappings": [
-            {
-              "type": "special",
-              "options": {
-                "match": "null",
-                "result": {
-                  "text": "데이터 없음",
-                  "color": "#8E8E9E"
-                }
-              }
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "성공"
             },
-            {
-              "type": "special",
-              "options": {
-                "match": "nan",
-                "result": {
-                  "text": "데이터 없음",
-                  "color": "#8E8E9E"
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
                 }
               }
-            }
-          ]
-        },
-        "overrides": []
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "실패"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#F2495C",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "작업"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "aggregation_ready": {
+                        "text": "집계 준비"
+                      },
+                      "boundaries_verified": {
+                        "text": "경계 검증"
+                      },
+                      "emd_code": {
+                        "text": "코드 조회"
+                      },
+                      "intersecting_regions": {
+                        "text": "공간 조회"
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
       },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 58
+      },
+      "id": 130,
       "options": {
-        "reduceOptions": {
-          "calcs": [
-            "last"
-          ],
-          "fields": "",
-          "values": false
+        "barRadius": 0.08,
+        "barWidth": 0.8,
+        "fullHighlight": false,
+        "groupWidth": 0.6,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
         },
-        "colorMode": "value",
-        "graphMode": "none",
-        "textMode": "value_and_name",
-        "orientation": "auto",
-        "wideLayout": true,
-        "text": {
-          "valueSize": 24,
-          "titleSize": 13
+        "orientation": "vertical",
+        "showValue": "always",
+        "stacking": "none",
+        "tooltip": {
+          "mode": "all"
         },
-        "justifyMode": "center"
+        "xField": "작업",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
       },
       "targets": [
         {
-          "refId": "A",
-          "expr": "sum by (operation, outcome) (increase(pheeeew_region_query_seconds_count{job=\"pheeeew-api\",environment=\"dev\"}[$__range]))",
-          "legendFormat": "RegionRepository · {{operation}} · {{outcome}}",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
           "editorMode": "code",
-          "range": false,
+          "expr": "sum by (operation, outcome) (increase(pheeeew_region_query_seconds_count{job=\"pheeeew-api\",environment=\"dev\"}[$__range]))",
+          "format": "table",
           "instant": true,
-          "interval": "1m"
+          "interval": "1m",
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Region · DB 작업 실행 횟수",
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "outcome",
+            "emptyValue": "null",
+            "rowField": "operation",
+            "valueField": "Value"
+          }
         },
         {
-          "refId": "B",
-          "expr": "sum by (operation, outcome) (increase(pheeeew_emotion_press_query_seconds_count{job=\"pheeeew-api\",environment=\"dev\"}[$__range]))",
-          "legendFormat": "개인 Press · {{operation}} · {{outcome}}",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "range": false,
-          "instant": true,
-          "interval": "1m"
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "indexByName": {
+              "error": 2,
+              "operation\\outcome": 0,
+              "success": 1
+            },
+            "renameByName": {
+              "error": "실패",
+              "operation\\outcome": "작업",
+              "success": "성공"
+            }
+          }
         }
-      ]
+      ],
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "선택 기간의 DB 작업 실행 횟수 추정치예요. 작업별 성공(파랑)·실패/예외 종료(빨강)를 나란히 표시해요. HTTP 요청 수·사용자 수와 달라요. increase 보간으로 소수값이 가능해요. 관측된 증가가 없으면 0.0, 수집 표본이 없으면 데이터 없음이며 0으로 채우지 않아요. 양쪽 패널의 세로축은 각각 자동 조정돼요. 증가 처리: increase / 내 누적: my_daily / 전체 누적: daily_total",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "axisBorderShow": false,
+            "axisColorMode": "text",
+            "axisLabel": "실행 횟수 (추정)",
+            "axisPlacement": "left",
+            "fillOpacity": 85,
+            "gradientMode": "none",
+            "lineWidth": 0
+          },
+          "decimals": 1,
+          "min": 0,
+          "noValue": "데이터 없음",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "성공"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "실패"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#F2495C",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "작업"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "daily_total": {
+                        "text": "전체 누적"
+                      },
+                      "increase": {
+                        "text": "증가 처리"
+                      },
+                      "my_daily": {
+                        "text": "내 누적"
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 58
+      },
+      "id": 131,
+      "options": {
+        "barRadius": 0.08,
+        "barWidth": 0.8,
+        "fullHighlight": false,
+        "groupWidth": 0.6,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "orientation": "vertical",
+        "showValue": "always",
+        "stacking": "none",
+        "tooltip": {
+          "mode": "all"
+        },
+        "xField": "작업",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum by (operation, outcome) (increase(pheeeew_emotion_press_query_seconds_count{job=\"pheeeew-api\",environment=\"dev\"}[$__range]))",
+          "format": "table",
+          "instant": true,
+          "interval": "1m",
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "개인 Press · DB 작업 실행 횟수",
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "outcome",
+            "emptyValue": "null",
+            "rowField": "operation",
+            "valueField": "Value"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "indexByName": {
+              "error": 2,
+              "operation\\outcome": 0,
+              "success": 1
+            },
+            "renameByName": {
+              "error": "실패",
+              "operation\\outcome": "작업",
+              "success": "성공"
+            }
+          }
+        }
+      ],
+      "type": "barchart"
     },
     {
       "type": "row",
@@ -1703,9 +1926,9 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 71
+        "y": 68
       },
-      "id": 121
+      "id": 214
     },
     {
       "id": 11,
@@ -1718,7 +1941,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 72,
+        "y": 69,
         "w": 12,
         "h": 8
       },
@@ -1868,7 +2091,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 72,
+        "y": 69,
         "w": 12,
         "h": 8
       },
@@ -1948,7 +2171,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 80,
+        "y": 77,
         "w": 12,
         "h": 8
       },
@@ -2052,7 +2275,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 80,
+        "y": 77,
         "w": 12,
         "h": 8
       },
@@ -2121,110 +2344,6 @@
       ]
     },
     {
-      "id": 141,
-      "type": "timeseries",
-      "title": "DB 연결 획득·점유 시간 · 평균",
-      "description": "풀별 획득 시도 시간과 반환된 연결의 점유 시간을 비교해요. Hikari 획득 시간에는 성공과 timeout이 포함되며, 아직 획득 중인 시도·점유 중인 연결은 반영되지 않아요. 표본이 없으면 빈 값이며 0초가 아니에요. 서로 다른 모집단이므로 두 값을 빼거나 요청별 시간으로 해석하지 않아요.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 88,
-        "w": 16,
-        "h": 8
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s",
-          "min": 0,
-          "noValue": "데이터 없음",
-          "custom": {
-            "spanNulls": false
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "last"
-          ]
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "(sum by (instance, pool) (rate(hikaricp_connections_acquire_seconds_sum{job=\"pheeeew-api\",environment=\"dev\"}[$__rate_interval])) / sum by (instance, pool) (rate(hikaricp_connections_acquire_seconds_count{job=\"pheeeew-api\",environment=\"dev\"}[$__rate_interval]))) and (sum by (instance, pool) (rate(hikaricp_connections_acquire_seconds_count{job=\"pheeeew-api\",environment=\"dev\"}[$__rate_interval])) > 0)",
-          "legendFormat": "{{instance}} · {{pool}} · 획득 시도 평균",
-          "range": true,
-          "instant": false,
-          "interval": "1m"
-        },
-        {
-          "refId": "B",
-          "expr": "(sum by (instance, pool) (rate(hikaricp_connections_usage_seconds_sum{job=\"pheeeew-api\",environment=\"dev\"}[$__rate_interval])) / sum by (instance, pool) (rate(hikaricp_connections_usage_seconds_count{job=\"pheeeew-api\",environment=\"dev\"}[$__rate_interval]))) and (sum by (instance, pool) (rate(hikaricp_connections_usage_seconds_count{job=\"pheeeew-api\",environment=\"dev\"}[$__rate_interval])) > 0)",
-          "legendFormat": "{{instance}} · {{pool}} · 반환된 연결 점유 평균",
-          "range": true,
-          "instant": false,
-          "interval": "1m"
-        }
-      ]
-    },
-    {
-      "id": 142,
-      "type": "stat",
-      "title": "DB 연결 획득 timeout · 선택 기간",
-      "description": "Hikari 연결 획득 timeout 횟수의 increase 추정치예요. HTTP 오류 수·모든 연결 실패 수가 아니에요. 경계 보간으로 소수일 수 있어요. 관측된 증가 없음은 0, 계산할 표본 없음은 데이터 없음이며 일부 기간만 수집돼도 값이 나올 수 있어요.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "gridPos": {
-        "x": 16,
-        "y": 88,
-        "w": 8,
-        "h": 8
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "min": 0,
-          "noValue": "데이터 없음"
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "last"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "orientation": "vertical",
-        "textMode": "auto",
-        "colorMode": "none",
-        "graphMode": "none"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "sum by (instance, pool) (increase(hikaricp_connections_timeout_total{job=\"pheeeew-api\",environment=\"dev\"}[$__range]))",
-          "legendFormat": "{{instance}} · {{pool}}",
-          "instant": true,
-          "range": false,
-          "interval": "1m"
-        }
-      ]
-    },
-    {
       "id": 128,
       "type": "timeseries",
       "title": "톰캣 스레드 사용 중 / 생성됨 / 최대",
@@ -2235,7 +2354,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 96,
+        "y": 85,
         "w": 12,
         "h": 8
       },
@@ -2339,7 +2458,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 96,
+        "y": 85,
         "w": 12,
         "h": 8
       },
@@ -2407,6 +2526,124 @@
       ]
     },
     {
+      "id": 141,
+      "type": "timeseries",
+      "title": "DB 연결 획득·점유 시간 · 평균",
+      "description": "풀별 획득 시도 시간과 반환된 연결의 점유 시간을 비교해요. Hikari 획득 시간에는 성공과 timeout이 포함되며, 아직 획득 중인 시도·점유 중인 연결은 반영되지 않아요. 표본이 없으면 빈 값이며 0초가 아니에요. 서로 다른 모집단이므로 두 값을 빼거나 요청별 시간으로 해석하지 않아요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 93,
+        "w": 16,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "noValue": "데이터 없음",
+          "custom": {
+            "spanNulls": false,
+            "axisBorderShow": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "showPoints": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(sum by (instance, pool) (rate(hikaricp_connections_acquire_seconds_sum{job=\"pheeeew-api\",environment=\"dev\"}[$__rate_interval])) / sum by (instance, pool) (rate(hikaricp_connections_acquire_seconds_count{job=\"pheeeew-api\",environment=\"dev\"}[$__rate_interval]))) and (sum by (instance, pool) (rate(hikaricp_connections_acquire_seconds_count{job=\"pheeeew-api\",environment=\"dev\"}[$__rate_interval])) > 0)",
+          "legendFormat": "{{instance}} · {{pool}} · 획득 시도 평균",
+          "range": true,
+          "instant": false,
+          "interval": "1m",
+          "editorMode": "code"
+        },
+        {
+          "refId": "B",
+          "expr": "(sum by (instance, pool) (rate(hikaricp_connections_usage_seconds_sum{job=\"pheeeew-api\",environment=\"dev\"}[$__rate_interval])) / sum by (instance, pool) (rate(hikaricp_connections_usage_seconds_count{job=\"pheeeew-api\",environment=\"dev\"}[$__rate_interval]))) and (sum by (instance, pool) (rate(hikaricp_connections_usage_seconds_count{job=\"pheeeew-api\",environment=\"dev\"}[$__rate_interval])) > 0)",
+          "legendFormat": "{{instance}} · {{pool}} · 반환된 연결 점유 평균",
+          "range": true,
+          "instant": false,
+          "interval": "1m",
+          "editorMode": "code"
+        }
+      ]
+    },
+    {
+      "id": 142,
+      "type": "stat",
+      "title": "DB 연결 획득 timeout · 선택 기간",
+      "description": "Hikari 연결 획득 timeout 횟수의 increase 추정치예요. HTTP 오류 수·모든 연결 실패 수가 아니에요. 경계 보간으로 소수일 수 있어요. 관측된 증가 없음은 0, 계산할 표본 없음은 데이터 없음이며 일부 기간만 수집돼도 값이 나올 수 있어요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 93,
+        "w": 8,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "noValue": "데이터 없음"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "vertical",
+        "textMode": "auto",
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (instance, pool) (increase(hikaricp_connections_timeout_total{job=\"pheeeew-api\",environment=\"dev\"}[$__range]))",
+          "legendFormat": "{{instance}} · {{pool}}",
+          "instant": true,
+          "range": false,
+          "interval": "1m",
+          "editorMode": "code"
+        }
+      ]
+    },
+    {
       "type": "row",
       "title": "04  문제 로그  /  오류와 1초 이상 느린 요청을 찾아요",
       "collapsed": false,
@@ -2415,9 +2652,9 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 104
+        "y": 101
       },
-      "id": 122
+      "id": 215
     },
     {
       "id": 105,
@@ -2426,7 +2663,7 @@
       "transparent": true,
       "gridPos": {
         "x": 0,
-        "y": 105,
+        "y": 102,
         "w": 24,
         "h": 3
       },
@@ -2439,21 +2676,21 @@
       "id": 15,
       "type": "logs",
       "title": "최근 오류와 느린 요청",
-      "description": "검토된 두 HTTP 이벤트만 수집해요. 오류·느린 요청이 없으면 비어 있을 수 있어요. correlationId는 JSON 본문에서 찾아요. verification=true 검증 로그는 제외해요. 상세 내용을 펼쳐 JSON 필드를 확인해요.",
+      "description": "HTTP 오류·느린 요청과 스케줄 작업 실패만 보여요. 해당 로그가 없으면 비어 있을 수 있어요. correlationId는 JSON 본문에서 찾아요. verification=true 검증 로그는 제외해요. 상세 내용을 펼쳐 JSON 필드를 확인해요.",
       "datasource": {
         "type": "loki",
         "uid": "${DS_LOKI}"
       },
       "gridPos": {
         "x": 0,
-        "y": 108,
+        "y": 105,
         "w": 24,
         "h": 11
       },
       "targets": [
         {
           "refId": "A",
-          "expr": "{job=\"pheeeew-api\",environment=\"dev\",event=~\"http_request_failed|http_request_slow\"} | json | verification != \"true\"",
+          "expr": "{job=\"pheeeew-api\", environment=\"dev\", event=~\"http_request_failed|http_request_slow|scheduled_task_failed\"}\n  | json\n  | verification != \"true\"\n  | json cause=\"errorMessages[0]\"\n  | line_format `{{ if .route }}{{ .method }} {{ .route }}  {{ .status }}  {{ .durationMs }}ms{{ else }}{{ .event }}{{ end }}{{ if .exceptionType }}  {{ .exceptionType }}{{ end }}{{ if .origin }} at {{ .origin }}{{ end }}{{ if .sqlState }}  SQL {{ .sqlState }}{{ end }}{{ if .cause }}  {{ .cause }}{{ end }}`",
           "datasource": {
             "type": "loki",
             "uid": "${DS_LOKI}"
@@ -2471,7 +2708,10 @@
         "prettifyLogMessage": true,
         "enableLogDetails": true,
         "sortOrder": "Descending",
-        "dedupStrategy": "none"
+        "dedupStrategy": "none",
+        "enableInfiniteScrolling": false,
+        "showControls": false,
+        "timestampResolution": "ms"
       }
     },
     {
@@ -2481,7 +2721,7 @@
       "transparent": true,
       "gridPos": {
         "x": 0,
-        "y": 119,
+        "y": 116,
         "w": 24,
         "h": 4
       },
@@ -2499,9 +2739,9 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 132
+        "y": 120
       },
-      "id": 125
+      "id": 216
     },
     {
       "type": "timeseries",
@@ -2515,7 +2755,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 133
+        "y": 121
       },
       "fieldConfig": {
         "defaults": {
@@ -2616,7 +2856,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 133
+        "y": 121
       },
       "fieldConfig": {
         "defaults": {
@@ -2688,12 +2928,191 @@
       "id": 127
     },
     {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 129
+      },
+      "id": 217,
+      "title": "07 지도 캐시 / 후보 수와 재집계 비용 (실패·지연·잠금은 알림)",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "보유 후보: 메모리에 있는 핀 후보 수(상한 10만 초과·미준비 시 0). 탐색: 조회 한 번에 검사한 후보 수의 평균·최대예요.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "axisBorderShow": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 9,
+            "gradientMode": "opacity",
+            "lineWidth": 2,
+            "pointSize": 3,
+            "showPoints": "auto",
+            "spanNulls": false
+          },
+          "min": 0,
+          "noValue": "데이터 없음",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 130
+      },
+      "id": 202,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "pheeeew_map_cache_candidates{job=\"pheeeew-api\",environment=\"dev\",instance=~\"pheeeew-dev-(blue|green)\"}",
+          "instant": false,
+          "interval": "1m",
+          "legendFormat": "{{instance}} · 보유",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "editorMode": "code",
+          "expr": "(sum (rate(pheeeew_map_cache_pin_scanned_sum{job=\"pheeeew-api\",environment=\"dev\",instance=~\"pheeeew-dev-(blue|green)\"}[$__rate_interval])) / sum (rate(pheeeew_map_cache_pin_scanned_count{job=\"pheeeew-api\",environment=\"dev\",instance=~\"pheeeew-dev-(blue|green)\"}[$__rate_interval]))) and (sum (rate(pheeeew_map_cache_pin_scanned_count{job=\"pheeeew-api\",environment=\"dev\",instance=~\"pheeeew-dev-(blue|green)\"}[$__rate_interval])) > 0)",
+          "instant": false,
+          "interval": "1m",
+          "legendFormat": "탐색 평균",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "editorMode": "code",
+          "expr": "pheeeew_map_cache_pin_scanned_max{job=\"pheeeew-api\",environment=\"dev\",instance=~\"pheeeew-dev-(blue|green)\"}",
+          "instant": false,
+          "interval": "1m",
+          "legendFormat": "{{instance}} · 탐색 최대",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "핀 캐시 · 보유·탐색 후보 수",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "평균은 관측 구간 sum/count, 최대는 Micrometer 시간 창 최대값의 수집값입니다. p95/p99 또는 선택 기간 전체 최대값이 아닙니다. 미호출 시 최대값이 0으로 만료될 수 있습니다. 재집계 측정 구간은 실패한 실행도 포함합니다. 개발 앱 한 대, 수집 1분. 미수집·미발생 시계열은 0으로 채우지 않습니다.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "axisBorderShow": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 9,
+            "gradientMode": "opacity",
+            "lineWidth": 2,
+            "pointSize": 3,
+            "showPoints": "auto",
+            "spanNulls": false
+          },
+          "min": 0,
+          "noValue": "데이터 없음",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "s"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 130
+      },
+      "id": 205,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "(sum by (cache) (rate(pheeeew_map_cache_rebuild_seconds_sum{job=\"pheeeew-api\",environment=\"dev\",instance=~\"pheeeew-dev-(blue|green)\"}[$__rate_interval])) / sum by (cache) (rate(pheeeew_map_cache_rebuild_seconds_count{job=\"pheeeew-api\",environment=\"dev\",instance=~\"pheeeew-dev-(blue|green)\"}[$__rate_interval]))) and (sum by (cache) (rate(pheeeew_map_cache_rebuild_seconds_count{job=\"pheeeew-api\",environment=\"dev\",instance=~\"pheeeew-dev-(blue|green)\"}[$__rate_interval])) > 0)",
+          "instant": false,
+          "interval": "1m",
+          "legendFormat": "{{cache}} 평균",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "editorMode": "code",
+          "expr": "pheeeew_map_cache_rebuild_seconds_max{job=\"pheeeew-api\",environment=\"dev\",instance=~\"pheeeew-dev-(blue|green)\"}",
+          "instant": false,
+          "interval": "1m",
+          "legendFormat": "{{cache}} 수집된 최대",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "지도 캐시 · 재집계 시간",
+      "type": "timeseries"
+    },
+    {
       "id": 160,
       "type": "row",
-      "title": "07  v4 지도 진단  /  기간·캐시 경로와 요청 단계",
+      "title": "08  v4 지도 진단  /  기간·캐시 경로와 요청 단계",
       "gridPos": {
         "x": 0,
-        "y": 141,
+        "y": 138,
         "w": 24,
         "h": 1
       },
@@ -2704,14 +3123,14 @@
       "id": 161,
       "type": "table",
       "title": "v4 지도 · 조건·경로별 요청 수",
-      "description": "요청 종료 시 한 번 기록한 카운터의 선택 기간 increase 추정치예요. query가 unclassified이면 인증·입력·커서 등의 이유로 검증된 조회 조건을 얻지 못한 요청이에요. 알려진 query에는 이후 DB·기기 오류도 포함돼요. decision은 경로 선택, outcome은 최종 HTTP 결과이며 cache_hit도 응답 성공을 뜻하지 않아요. 표본 로그 횟수와는 달라요. 일부 기간 수집으로도 값이 나올 수 있어요. scope(all·my·group)와 content_type(all·memo·audio)은 요청한 지도 필터예요.",
+      "description": "요청 종료 시 한 번 기록한 카운터의 선택 기간 increase 추정치예요. query가 unclassified이면 인증·입력·커서 등의 이유로 검증된 조회 조건을 얻지 못한 요청이에요. 알려진 query에는 이후 DB·기기 오류도 포함돼요. decision은 경로 선택, outcome은 최종 HTTP 결과이며 cache_hit도 응답 성공을 뜻하지 않아요. 표본 로그 횟수와는 달라요. 일부 기간 수집으로도 값이 나올 수 있어요.",
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
       "gridPos": {
         "x": 0,
-        "y": 142,
+        "y": 139,
         "w": 24,
         "h": 8
       },
@@ -2743,84 +3162,6 @@
       ]
     },
     {
-      "id": 162,
-      "type": "stat",
-      "title": "v4 지도 · 선택 기간 기본 한 달·캐시 우회 비중",
-      "description": "기본 한 달 비중과 전체 우회율의 분모는 query!=unclassified인 검증된 조회 조건의 요청이에요(HTTP 성공만이 아님). 한 달 우회율은 month_current_default 요청이 분모예요. 월 조건은 KST 날짜 형태가 앱 기본값과 같다는 뜻이며 기본 버튼 사용을 증명하지 않아요. bypass_*는 캐시 미시도이며 cache_fallback은 별도예요. 분모가 0·없음·표본 부족이면 빈 값이고, 관측된 분모가 양수인데 해당 분자가 없으면 0%예요.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 150,
-        "w": 24,
-        "h": 6
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent",
-          "min": 0,
-          "noValue": "데이터 없음"
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "last"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "orientation": "vertical",
-        "textMode": "auto",
-        "colorMode": "none",
-        "graphMode": "none"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "((( sum by (instance, route) (increase(pheeeew_map_read_requests_total{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\",query=\"month_current_default\"}[$__range])) ) or on (instance, route) (( sum by (instance, route) (increase(pheeeew_map_read_requests_total{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\",query!=\"unclassified\"}[$__range])) ) * 0)) / (sum by (instance, route) (increase(pheeeew_map_read_requests_total{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\",query!=\"unclassified\"}[$__range]))) * 100) and on (instance, route) ((sum by (instance, route) (increase(pheeeew_map_read_requests_total{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\",query!=\"unclassified\"}[$__range]))) > 0)",
-          "legendFormat": "{{instance}} · {{route}} · 기본 한 달 / 검증된 조회",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "range": false,
-          "instant": true,
-          "interval": "1m"
-        },
-        {
-          "refId": "B",
-          "expr": "((( sum by (instance, route) (increase(pheeeew_map_read_requests_total{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\",query!=\"unclassified\",decision=~\"bypass_.*\"}[$__range])) ) or on (instance, route) (( sum by (instance, route) (increase(pheeeew_map_read_requests_total{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\",query!=\"unclassified\"}[$__range])) ) * 0)) / (sum by (instance, route) (increase(pheeeew_map_read_requests_total{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\",query!=\"unclassified\"}[$__range]))) * 100) and on (instance, route) ((sum by (instance, route) (increase(pheeeew_map_read_requests_total{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\",query!=\"unclassified\"}[$__range]))) > 0)",
-          "legendFormat": "{{instance}} · {{route}} · 캐시 우회 / 검증된 조회",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "range": false,
-          "instant": true,
-          "interval": "1m"
-        },
-        {
-          "refId": "C",
-          "expr": "((( sum by (instance, route) (increase(pheeeew_map_read_requests_total{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\",query=\"month_current_default\",decision=~\"bypass_.*\"}[$__range])) ) or on (instance, route) (( sum by (instance, route) (increase(pheeeew_map_read_requests_total{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\",query=\"month_current_default\"}[$__range])) ) * 0)) / (sum by (instance, route) (increase(pheeeew_map_read_requests_total{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\",query=\"month_current_default\"}[$__range]))) * 100) and on (instance, route) ((sum by (instance, route) (increase(pheeeew_map_read_requests_total{job=\"pheeeew-api\",environment=\"dev\",api_version=\"v4\",query=\"month_current_default\"}[$__range]))) > 0)",
-          "legendFormat": "{{instance}} · {{route}} · 한 달 우회 / 한 달 조회",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "range": false,
-          "instant": true,
-          "interval": "1m"
-        }
-      ]
-    },
-    {
       "id": 169,
       "type": "stat",
       "title": "v4 지도 · 필터별 캐시 응답률",
@@ -2831,7 +3172,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 156,
+        "y": 147,
         "w": 24,
         "h": 6
       },
@@ -2883,7 +3224,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 162,
+        "y": 153,
         "w": 12,
         "h": 8
       },
@@ -2937,7 +3278,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 162,
+        "y": 153,
         "w": 12,
         "h": 8
       },
@@ -2991,7 +3332,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 170,
+        "y": 161,
         "w": 12,
         "h": 8
       },
@@ -3058,7 +3399,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 170,
+        "y": 161,
         "w": 12,
         "h": 8
       },
@@ -3110,7 +3451,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 178,
+        "y": 169,
         "w": 24,
         "h": 8
       },
@@ -3137,84 +3478,6 @@
         "sortOrder": "Descending",
         "dedupStrategy": "none"
       }
-    },
-    {
-      "id": 168,
-      "type": "stat",
-      "title": "지도 지역 요약 · 기간 결과 캐시 적중률",
-      "description": "기간을 지정한 SIDO·SIGUNGU 요약 결과(Caffeine)의 재사용 비율이에요. 분모는 같은 기간 결과 조회 수(cache_gets)이며 전체 기간 요약과 SQL로 우회한 요청은 포함하지 않아요. 집계가 바뀌면 새 결과를 계산하므로 miss가 함께 늘어요. 분모가 0이거나 수집 자료가 없으면 빈 값이고, 관측된 분모가 양수인데 적중이 없으면 0%예요.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 186,
-        "w": 24,
-        "h": 6
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent",
-          "min": 0,
-          "noValue": "데이터 없음"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byFrameRefID",
-              "options": "B"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "short"
-              }
-            ]
-          }
-        ]
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "last"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "orientation": "vertical",
-        "textMode": "auto",
-        "colorMode": "none",
-        "graphMode": "none"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "(((sum by (instance) (increase(cache_gets_total{job=\"pheeeew-api\",environment=\"dev\",cache=\"map_region_periods\",result=\"hit\"}[$__range]))) or on (instance) ((sum by (instance) (increase(cache_gets_total{job=\"pheeeew-api\",environment=\"dev\",cache=\"map_region_periods\"}[$__range]))) * 0)) / (sum by (instance) (increase(cache_gets_total{job=\"pheeeew-api\",environment=\"dev\",cache=\"map_region_periods\"}[$__range]))) * 100) and on (instance) ((sum by (instance) (increase(cache_gets_total{job=\"pheeeew-api\",environment=\"dev\",cache=\"map_region_periods\"}[$__range]))) > 0)",
-          "legendFormat": "{{instance}} · 적중 / 기간 결과 조회",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "range": false,
-          "instant": true,
-          "interval": "1m"
-        },
-        {
-          "refId": "B",
-          "expr": "sum by (instance) (increase(cache_gets_total{job=\"pheeeew-api\",environment=\"dev\",cache=\"map_region_periods\"}[$__range]))",
-          "legendFormat": "{{instance}} · 기간 결과 조회 수",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "range": false,
-          "instant": true,
-          "interval": "1m"
-        }
-      ]
     }
   ]
 }

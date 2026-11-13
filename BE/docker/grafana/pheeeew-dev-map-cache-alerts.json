@@ -1,0 +1,268 @@
+{
+  "apiVersion": 1,
+  "groups": [
+    {
+      "orgId": 1,
+      "name": "pheeeew-discord",
+      "folder": "Pheeeew",
+      "interval": "1m",
+      "rules": [
+        {
+          "uid": "eg3yackgk9q0wc",
+          "title": "히유 개발 지도 캐시 갱신 실패",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {
+                "editorMode": "code",
+                "expr": "(sum(increase(pheeeew_map_cache_failures_total{job=\"pheeeew-api\",environment=\"dev\"}[10m])) or vector(0)) + (sum(increase(pheeeew_map_cache_maintenance_seconds_count{job=\"pheeeew-api\",environment=\"dev\",result=\"failed\"}[10m])) or vector(0))",
+                "instant": true,
+                "intervalMs": 1000,
+                "legendFormat": "__auto",
+                "maxDataPoints": 43200,
+                "range": false,
+                "refId": "A"
+              }
+            },
+            {
+              "refId": "C",
+              "queryType": "expression",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "params": [
+                        0
+                      ],
+                      "type": "gt"
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": [
+                        "C"
+                      ]
+                    },
+                    "reducer": {
+                      "params": [],
+                      "type": "last"
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "expression": "A",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C",
+                "type": "threshold"
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "for": "0s",
+          "annotations": {
+            "description": "최근 10분에 지도 캐시 재생성 실패 또는 보정 실패(result=failed)가 있었습니다. 캐시를 쓸 수 없는 동안 지도는 SQL로 응답합니다. Explore에서 pheeeew_map_cache_failures_total과 앱 로그를 확인하세요.",
+            "summary": "지도 캐시 재생성 또는 정기 보정이 실패했습니다."
+          },
+          "labels": {
+            "environment": "dev",
+            "service": "pheeeew",
+            "severity": "warning"
+          },
+          "isPaused": false,
+          "notification_settings": {
+            "receiver": "pheeeew-dev-alerts"
+          }
+        },
+        {
+          "uid": "eg3yacktlqn0ge",
+          "title": "히유 개발 지도 캐시 등록 반영 지연",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {
+                "editorMode": "code",
+                "expr": "max(pheeeew_map_cache_pending_age_seconds{job=\"pheeeew-api\",environment=\"dev\"}) or vector(0)",
+                "instant": true,
+                "intervalMs": 1000,
+                "legendFormat": "__auto",
+                "maxDataPoints": 43200,
+                "range": false,
+                "refId": "A"
+              }
+            },
+            {
+              "refId": "C",
+              "queryType": "expression",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "params": [
+                        3
+                      ],
+                      "type": "gt"
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": [
+                        "C"
+                      ]
+                    },
+                    "reducer": {
+                      "params": [],
+                      "type": "last"
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "expression": "A",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C",
+                "type": "threshold"
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "for": "1m",
+          "annotations": {
+            "description": "미게시 등록 배치의 나이가 3초를 넘었습니다(등록 반영 계약 3초). 이 동안 지도 조회는 SQL로 대체됩니다. 캐시 게시 스케줄러와 쓰기 잠금 대기를 확인하세요.",
+            "summary": "지도 캐시에 등록 반영이 3초 넘게 밀려 있습니다."
+          },
+          "labels": {
+            "environment": "dev",
+            "service": "pheeeew",
+            "severity": "warning"
+          },
+          "isPaused": false,
+          "notification_settings": {
+            "receiver": "pheeeew-dev-alerts"
+          }
+        },
+        {
+          "uid": "ag3yacl9z2olcc",
+          "title": "히유 개발 지도 쓰기 잠금 대기",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "queryType": "",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {
+                "editorMode": "code",
+                "expr": "max(pheeeew_map_cache_lock_wait_seconds_max{job=\"pheeeew-api\",environment=\"dev\"}) or vector(0)",
+                "instant": true,
+                "intervalMs": 1000,
+                "legendFormat": "__auto",
+                "maxDataPoints": 43200,
+                "range": false,
+                "refId": "A"
+              }
+            },
+            {
+              "refId": "C",
+              "queryType": "expression",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "params": [
+                        1
+                      ],
+                      "type": "gt"
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": [
+                        "C"
+                      ]
+                    },
+                    "reducer": {
+                      "params": [],
+                      "type": "last"
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "expression": "A",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C",
+                "type": "threshold"
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "for": "0s",
+          "annotations": {
+            "description": "감정 등록·수정·삭제가 지도 캐시 쓰기 잠금을 1초 넘게 기다렸습니다. 대시보드 07 지도 캐시의 재집계 시간이 길어졌는지 확인하세요.",
+            "summary": "지도 쓰기 전역 잠금 대기가 1초를 넘었습니다."
+          },
+          "labels": {
+            "environment": "dev",
+            "service": "pheeeew",
+            "severity": "warning"
+          },
+          "isPaused": false,
+          "notification_settings": {
+            "receiver": "pheeeew-dev-alerts"
+          }
+        }
+      ]
+    }
+  ]
+}
