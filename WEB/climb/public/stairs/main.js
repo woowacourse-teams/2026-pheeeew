@@ -148,7 +148,7 @@ function finish(now) {
   }
   $('nickname').value = lastNickname;
   $('result-best').textContent = '';
-  renderBoard(); saveStatus();
+  renderBoard(); saveStatus(); refreshBoard();
 }
 $('start').onclick = () => mode === 'error' ? initialize() : start();
 $('retry').onclick = start;
@@ -173,7 +173,12 @@ addEventListener('pointerdown', e => {
 }, { passive: false });
 addEventListener('contextmenu', e => { if (mode === 'play' || mode === 'fall') e.preventDefault(); });
 // 숨겨진 탭도 시계가 흐른다. 복귀 때 tick이 만료를 처리한다.
-addEventListener('visibilitychange', () => { if (!document.hidden && mode === 'play') { game.tick(performance.now()); if (game.ended) finish(performance.now()); } });
+addEventListener('visibilitychange', () => {
+  if (!document.hidden && mode === 'play') { game.tick(performance.now()); if (game.ended) finish(performance.now()); }
+  if (!document.hidden && ['lobby', 'result'].includes(mode)) refreshBoard(); // 탭으로 돌아오면 순위를 새로 받는다
+});
+// 대기·결과 화면에 머무는 동안 10초마다 순위를 새로 받아 새 도전자가 보이게 한다(게임 중에는 받지 않는다)
+setInterval(() => { if (!document.hidden && ['lobby', 'result'].includes(mode)) refreshBoard(); }, 10000);
 function frame(now) {
   if (scene && game) {
     if (mode === 'play') { game.tick(now); if (game.ended) finish(now); }
