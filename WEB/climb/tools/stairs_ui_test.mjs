@@ -4,12 +4,14 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import { StairsGame } from '../public/stairs/game.js';
 import { direction, cap } from '../public/stairs/rules.js';
+import { rankingRows } from '../public/stairs/ranking.js';
 const source = fs.readFileSync(new URL('../public/stairs/main.js', import.meta.url), 'utf8').replace(/^import .*;\n/gm, '');
 const html = fs.readFileSync(new URL('../public/stairs.html', import.meta.url), 'utf8');
 const flush = () => new Promise(resolve => setImmediate(resolve));
 async function tab() {
   const events = {}, nodes = {}, calls = [], writes = [];
   let now = 1000, frame, drawnGame, reply = async () => ({ status: 200, body: { height: 0, timeMs: 0, rank: 7, best: { height: 4, timeMs: 300 } } });
+  let rankingReply = async () => ({ status: 200, body: { top: [{ rank: 7, nickname: '히유', character: 'angry', height: 4, timeMs: 300 }], total: 1 } });
   const document = { activeElement: null, hidden: false, getElementById: id => nodes[id], querySelectorAll: () => [] };
   class Element {
     constructor(id) { this.id = id; this.value = ''; this.hidden = false; this.textContent = ''; this.style = {}; this.parentElement = this; }
@@ -17,18 +19,22 @@ async function tab() {
     setAttribute(name, value) { this[name] = value; }
     focus() { document.activeElement = this; }
     blur() { document.activeElement = null; }
+    showModal() { this.open = true; this.opener = document.activeElement; }
+    close() { this.open = false; document.activeElement = this.opener; }
+    querySelector() { return this.innerHTML?.includes('data-mine') ? { scrollIntoView: options => this.scrolled = options } : null; }
   }
   class Input extends Element {}
-  for (const [, id] of html.matchAll(/id="([^"]+)"/g)) nodes[id] = id === 'nickname' ? new Input(id) : new Element(id);
+  class Button extends Element {}
+  for (const [, id] of html.matchAll(/id="([^"]+)"/g)) nodes[id] = id === 'nickname' ? new Input(id) : id.endsWith('-ranking-open') ? new Button(id) : new Element(id);
   nodes.result.hidden = nodes['play-hud'].hidden = true;
   const net = {
     stairsToday: async () => { calls.push('today'); return { status: 200, body: { day: new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(new Date()), seed: 123 } }; },
-    stairsRanking: async () => { calls.push('ranking'); return { status: 200, body: { top: [{ rank: 7, nickname: '히유', character: 'angry', height: 4, timeMs: 300 }] } }; },
+    stairsRanking: async () => { calls.push('ranking'); return rankingReply(); },
     stairsRun: body => { calls.push(structuredClone(body)); return reply(body); },
   };
   vm.runInNewContext(source, {
     document, location: { hostname: 'localhost' }, performance: { now: () => now }, innerWidth: 375,
-    HTMLInputElement: Input, HTMLTextAreaElement: class extends Element {}, Intl, Date, StairsGame, cap,
+    HTMLInputElement: Input, HTMLTextAreaElement: class extends Element {}, HTMLButtonElement: Button, Intl, Date, StairsGame, cap, rankingRows,
     createNet: () => net, apiForHostname: () => '/', FACE: id => id, TINT: {}, medal: () => '',
     createScene: async () => ({ reset() {}, hop() {}, draw(game) { drawnGame = game; } }),
     localStorage: { getItem: key => { assert.equal(key, 'pheeeew-stairs-character'); return null; }, setItem: (k, v) => writes.push([k, v]) },
@@ -43,7 +49,7 @@ async function tab() {
     now += 400; frame(now); await flush();
     assert.equal(nodes.result.hidden, false);
   };
-  return { nodes, calls, writes, document, key, result, events, setReply: fn => reply = fn,
+  return { nodes, calls, writes, document, key, result, events, setReply: fn => reply = fn, setRankingReply: fn => rankingReply = fn,
     advance: ms => { now += ms; frame(now); }, get game() { return drawnGame; } };
 }
 const gaugeTab = await tab();
@@ -119,4 +125,67 @@ assert.deepEqual(t.writes, [], '닉네임·신원 저장 없음');
 const fresh = await tab(); await fresh.result();
 assert.equal(fresh.nodes.nickname.value, '', '새 탭은 닉네임을 기억하지 않음');
 assert.doesNotMatch(source, /createGuest|net\.me\(|createNicknameDialog|sessionStorage|document\.cookie/);
+
+// 두 진입점, 매번 재조회, 게임 입력 차단, 등록 성공 이름만 강조, 늦은 응답 격리.
+const modal = await tab();
+modal.nodes['lobby-ranking-open'].focus();
+modal.key('Enter');
+assert.equal(modal.nodes['play-hud'].hidden, true, '순위 버튼의 Enter가 게임을 시작하지 않음');
+await modal.nodes['lobby-ranking-open'].onclick();
+assert.equal(modal.nodes['full-ranking'].open, true);
+assert.equal(modal.nodes['ranking-count'].textContent, '오늘 1명 도전');
+assert.doesNotMatch(modal.nodes['full-ranking-list'].innerHTML, /data-mine/);
+for (const code of ['ArrowLeft', 'ArrowRight', 'KeyA', 'KeyD', 'Space', 'Enter']) modal.key(code);
+modal.events.pointerdown({ pointerType: 'touch', clientX: 10, preventDefault() { throw Error('목록 스크롤을 차단함'); } });
+assert.equal(modal.nodes['play-hud'].hidden, true);
+modal.nodes['full-ranking'].click({ target: modal.nodes['full-ranking-list'] });
+assert.equal(modal.nodes['full-ranking'].open, true, '목록 클릭은 닫지 않음');
+modal.nodes['full-ranking'].click({ target: modal.nodes['full-ranking'] });
+assert.equal(modal.nodes['full-ranking'].open, false);
+assert.equal(modal.document.activeElement, modal.nodes['lobby-ranking-open']);
+modal.nodes['lobby-ranking-open'].blur();
+await modal.result();
+modal.nodes.nickname.value = '히유';
+await modal.nodes['result-ranking-open'].onclick();
+modal.key('Enter');
+assert.equal(modal.calls.filter(c => typeof c === 'object').length, 0, '창에서 Enter가 기록 등록하지 않음');
+assert.doesNotMatch(modal.nodes['full-ranking-list'].innerHTML, /data-mine/, '입력만 한 닉네임은 강조하지 않음');
+modal.nodes['full-ranking'].cancel({ preventDefault() {} });
+assert.equal(modal.nodes['full-ranking'].open, false, 'Esc의 cancel 이벤트로 닫음');
+modal.key('Enter'); await flush();
+modal.nodes.nickname.value = '다른입력'; modal.nodes.nickname.input();
+await modal.nodes['result-ranking-open'].onclick();
+assert.match(modal.nodes['full-ranking-list'].innerHTML, /my-record.*data-mine/);
+assert.equal(modal.nodes['full-ranking-list'].scrolled.block, 'center');
+modal.nodes['ranking-close'].onclick();
+let resolveRanking;
+modal.setRankingReply(() => new Promise(resolve => resolveRanking = resolve));
+const pending = modal.nodes['result-ranking-open'].onclick();
+assert.match(modal.nodes['ranking-status'].textContent, /불러오는 중/);
+assert.equal(modal.nodes['full-ranking-list']['aria-busy'], 'true');
+modal.nodes['ranking-close'].onclick();
+modal.setRankingReply(async () => ({ status: 503 }));
+await modal.nodes['result-ranking-open'].onclick();
+assert.match(modal.nodes['ranking-status'].textContent, /불러오지 못/);
+resolveRanking({ status: 200, body: { top: [], total: 999 } }); await pending;
+assert.equal(modal.nodes['ranking-count'].textContent, '', '이전 창의 응답은 무시');
+modal.nodes['ranking-close'].onclick();
+modal.setRankingReply(async () => { throw Error('offline'); });
+await modal.nodes['result-ranking-open'].onclick();
+assert.match(modal.nodes['ranking-status'].textContent, /불러오지 못/);
+assert.equal(modal.nodes['full-ranking-list']['aria-busy'], 'false');
+modal.nodes['ranking-close'].onclick();
+modal.setRankingReply(async () => ({ status: 200, body: { top: [], total: 0 } }));
+await modal.nodes['result-ranking-open'].onclick();
+assert.equal(modal.nodes['ranking-count'].textContent, '오늘 0명 도전');
+assert.match(modal.nodes['full-ranking-list'].innerHTML, /첫 기록/);
+modal.nodes['ranking-close'].onclick();
+const fullTop = Array.from({ length: 200 }, (_, i) => ({ rank: i + 1, nickname: `손님${i}`, character: 'angry', height: 200 - i, timeMs: i }));
+modal.setRankingReply(async () => ({ status: 200, body: { top: fullTop, total: 305 } }));
+await modal.nodes['result-ranking-card'].onclick();
+assert.equal(modal.nodes['ranking-count'].textContent, '오늘 305명 도전');
+assert.match(modal.nodes['ranking-status'].textContent, /상위 200명/);
+assert.equal((modal.nodes['full-ranking-list'].innerHTML.match(/class="r\b/g) ?? []).length, 200);
+assert.equal(modal.calls.filter(c => c === 'ranking').length, 10, '최초 조회·등록 후 조회·8번 열기마다 새 조회');
+console.log('stairs full ranking UI: PASS open/refetch/loading/error/empty, keyboard/touch isolation, close/backdrop/Esc, saved nickname/scroll, stale response');
 console.log('stairs UI: PASS height-based gauge/clamping, no identity, opt-in registration, nickname validation, Enter/Space/IME/touch, retry, late response, tab memory');

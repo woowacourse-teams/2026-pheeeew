@@ -2,6 +2,7 @@ package com.pheeeew.climb.stairs;
 
 import java.sql.Date;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
@@ -32,14 +33,22 @@ public class StairsRepository {
     private static final String RANKED = """
             with ranked as (
                 select row_number() over (order by height desc, time_ms, achieved_at, run_id) as rank,
-                       nickname, character, height, time_ms
+                       nickname, character, height, time_ms, count(*) over () as total
                 from climb_stairs_best where day = :day
             )
             """;
 
     public Board ranking(LocalDate day) {
-        return new Board(jdbc.sql(RANKED + "select * from ranked where rank <= 50 order by rank")
-                .param("day", Date.valueOf(day)).query(StairsRepository::item).list());
+        return jdbc.sql(RANKED + "select * from ranked where rank <= 200 order by rank")
+                .param("day", Date.valueOf(day)).query(rs -> {
+                    List<Item> top = new ArrayList<>();
+                    long total = 0;
+                    while (rs.next()) {
+                        total = rs.getLong("total");
+                        top.add(item(rs, top.size()));
+                    }
+                    return new Board(top, total);
+                });
     }
 
     public Item best(LocalDate day, String nickname) {
@@ -53,5 +62,5 @@ public class StairsRepository {
                 rs.getInt("height"), rs.getInt("time_ms"));
     }
     public record Item(int rank, String nickname, String character, int height, int timeMs) { }
-    public record Board(List<Item> top) { }
+    public record Board(List<Item> top, long total) { }
 }

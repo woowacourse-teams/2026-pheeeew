@@ -1,5 +1,5 @@
 html, body.stairs-page { touch-action: pan-y; overscroll-behavior: none; }
-body.stairs-page:has(#play-hud:not([hidden])) { touch-action: none; }
+body.stairs-page:has(#play-hud:not([hidden])):not(:has(#full-ranking[open])) { touch-action: none; }
 .stairs-page { background: #20283e url('/assets/nyc/bg.webp') center/cover no-repeat fixed; color: var(--paper); font-family: Jua, 'Apple SD Gothic Neo', sans-serif; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -21,9 +21,12 @@ p { margin: 0; text-align: center; }
 button:disabled { opacity: .6; cursor: wait; }
 .controls { font-size: 12px; line-height: 1.5; color: #d7d7e6; }
 .best { font-size: 17px; color: #ffd35a; }
-.ranking { width: 100%; padding: 12px; color: var(--ink); flex-shrink: 0; border-radius: 16px; }
+.ranking { width: 100%; padding: 12px; color: var(--ink); flex-shrink: 0; border-radius: 16px; cursor: pointer; }
 .board-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 16px; }
 .board-heading span { font-size: 11px; color: var(--dim); }
+.board-heading #day { display: block; margin-top: 3px; }
+.ranking-open { flex: none; min-height: 44px; padding: 8px; border: 2px solid var(--ink); border-radius: 10px; background: #ffd35a; color: var(--ink); font: inherit; font-size: 13px; cursor: pointer; }
+.ranking-open:focus-visible { outline: 3px solid #b554ee; outline-offset: 2px; }
 .rank-list { max-height: 230px; overflow-y: auto; touch-action: pan-y; padding: 4px; }
 .rank-list .r { display: flex; gap: 6px; min-height: 35px; margin-bottom: 5px; padding: 4px 7px; border-radius: 8px; font-size: 13px; }
 .rank-list .r .n { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -54,3 +57,22 @@ h2 { margin: 0; color: #ffd35a; font-size: 26px; font-weight: 400; }
 h2 strong { font-size: 86px; font-weight: 400; margin-right: 5px; }
 @media (max-height: 650px) { .panel { gap: 7px; } .eyebrow { margin-top: 0; } h1 { font-size: 36px; } .rank-list { max-height: 150px; } #result { justify-content: flex-start; } h2 strong { font-size: 60px; } }
 @media (orientation: landscape) and (max-height: 550px) { .panel { max-width: 700px; } #characters { max-width: 310px; } h1 br { display: none; } h1 em::before { content: " "; } .primary { max-width: 420px; } .ranking { max-width: 420px; } #characters img { max-height: 52px; } }
+
+/* top layer 전체 화면 창. 내부 목록만 스크롤하고 배경 게임은 dialog가 비활성화한다. */
+#full-ranking { position: fixed; inset: 0; width: 100%; height: 100%; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); border: 0; background: transparent; color: var(--ink); overflow: hidden; touch-action: pan-y; }
+#full-ranking[open] { display: flex; justify-content: center; }
+#full-ranking::backdrop { background: #111526db; }
+.ranking-sheet { display: flex; flex-direction: column; width: min(100%, 680px); min-height: 0; padding: 16px; background: #fff8ea; border: 3px solid var(--ink); border-radius: 20px; box-shadow: 0 6px 0 #171321; overflow: hidden; }
+.ranking-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: none; }
+.ranking-header > div { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px 12px; }
+#ranking-title { color: var(--ink); font-size: 24px; }
+#ranking-count { font-size: 14px; color: var(--dim); }
+#ranking-status { flex: none; margin: 8px 0; font-size: 14px; color: var(--dim); }
+#ranking-status:empty { margin: 6px 0; }
+#full-ranking-list { flex: 1; min-height: 0; max-height: none; overflow-y: auto; overscroll-behavior-y: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
+#full-ranking-list .r { height: auto; min-height: 55px; padding: 7px; font-size: 16px; }
+#full-ranking-list .r .v { font-size: 17px; }
+#full-ranking-list .r .v small { font-size: 12px; }
+#full-ranking-list .r.my-record { outline: 2px solid #8f42b4; outline-offset: -2px; }
+#full-ranking-list .r.my-record:not(.podium) { background: #ead9ff; }
+@media (max-width: 420px) { .ranking-sheet { padding: 10px; } #ranking-title { font-size: 21px; } #full-ranking-list .r { gap: 5px; font-size: 14px; } #full-ranking-list .r .v { font-size: 15px; } }

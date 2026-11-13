@@ -186,7 +186,7 @@
 |---|---|
 | `GET /api/v1/climb/stairs/today` | `{ day: "2026-11-13", seed: 1369517937 }` 형태. 쿠키 불필요. 날짜는 Asia/Seoul, seed는 `(int) day.toEpochDay() ^ 0x51a17e53`이다. |
 | `POST /api/v1/climb/stairs/runs` | 쿠키 불필요. `{ day, nickname, character, inputs: [{d:"L", t:0}, {d:"R", t:180}] }`. 응답 `{ height, timeMs, best:{height,timeMs}, rank }`. |
-| `GET /api/v1/climb/stairs/ranking?day=2026-11-13` | 쿠키 불필요. 날짜 생략 시 오늘. `{ top:[{rank,nickname,character,height,timeMs}] }`. top은 닉네임별 그날 최고 상위 50개이며 tag·me는 없다. 화면은 상위 10명을 보여 준다. |
+| `GET /api/v1/climb/stairs/ranking?day=2026-11-13` | 쿠키 불필요. 날짜 생략 시 오늘. `{ top:[{rank,nickname,character,height,timeMs}], total }`. top은 닉네임별 그날 최고 상위 200개이며 total은 해당 날짜의 전체 참가 닉네임 수다. tag·me는 없다. 시작·결과 화면은 상위 10명, 전체 순위 창은 최대 200명을 보여 준다. |
 
 점수는 성공한 칸 수. `timeMs`는 첫 입력부터 **마지막 성공 입력**까지다. 첫 입력의 `t`는 반드시 0이고,
 이후는 엄격히 증가하는 정수 ms다. 처음 틀린 방향에서 재생을 멈추므로 그 이후 입력은 점수에 포함하지 않는다.
@@ -245,7 +245,7 @@ Java와 JS 시험이 **같은 고정 파일**을 읽고 마지막 성공 칸·�
 높이가 같고 시간이 더 짧을 때만 갱신하므로 동시 제출이 나쁜 기록으로 덮어쓰지 않는다.
 순위는 높이 내림차순 → 시간 오름차순 → 최고 기록 저장 시각 오름차순 → 판 ID 순서이며 1부터 순번을 매긴다.
 동일 높이·동일 시간은 기존 최고와 등록 순서를 유지한다. 손님 테이블과 연결하지 않는다.
-응답 `height/timeMs`는 제출한 판, `best`와 `rank`는 해당 닉네임의 그날 최고 기록과 순위다(50위 밖도 반환).
+응답 `height/timeMs`는 제출한 판, `best`와 `rank`는 해당 닉네임의 그날 최고 기록과 순위다(200위 밖도 반환).
 닉네임은 앞뒤 공백을 정리한 뒤 한글 완성형·영문·숫자 1~10자만 허용하며, 대소문자를 구분한다.
 기존 등반의 문자 검증을 재사용하되 등반의 최소 2자 규칙은 유지한다. 같은 닉네임은 누구나 같은 순위 항목을 갱신할 수 있다.
 
@@ -270,5 +270,7 @@ IP는 기존 등반처럼 `request.getRemoteAddr()`를 사용한다. 프록시 �
 2. `http://127.0.0.1:4325/stairs`에서 감정이 선택 → 키보드 또는 좌우 터치 → 결과에서 닉네임 등록(또는 건너뛰기) → 재시작을 확인한다.
 3. `cd BE && ./gradlew :climb:test`와 `cd WEB/climb && for f in tools/*_test.mjs; do node "$f" || echo FAIL "$f"; done`으로 시험한다.
 
-저장·동시 갱신·상위 50 및 닉네임 순위 시험은 기존 프로젝트 방식인 **별도 Testcontainers PostgreSQL**을 사용한다.
+저장·동시 갱신·상위 200·전체 참가 인원 및 닉네임 순위 시험은 기존 프로젝트 방식인 **별도 Testcontainers PostgreSQL**을 사용한다.
 `climb-local-db`나 이미 실행 중인 8080·4320·4321 서버는 사용하거나 변경하지 않는다.
+
+전체 순위 창은 열 때마다 서버에서 다시 조회한다. 이 탭에서 등록에 성공한 닉네임의 해당 날짜 기록을 강조하고 그 줄로 스크롤한다(200위 밖은 목록에 표시하지 않는다). 제목 옆 참가 인원은 `total` 기준이며 한 닉네임의 여러 판은 한 명으로 센다. 닫기 버튼·바깥 영역·Esc로 닫고, 열린 동안 게임 키보드·터치 입력을 막는다.
