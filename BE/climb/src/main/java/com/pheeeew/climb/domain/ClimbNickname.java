@@ -10,9 +10,13 @@ public final class ClimbNickname {
     }
 
     public static String validate(String raw) {
+        return validate(raw, 2);
+    }
+
+    public static String validate(String raw, int minLength) {
         String nickname = raw == null ? "" : raw.strip();
         int length = nickname.codePointCount(0, nickname.length());
-        if (length < 2 || length > 10) {
+        if (length < minLength || length > 10) {
             throw new ClimbException(ClimbErrorCode.NICKNAME_LENGTH);
         }
         if (!ALLOWED.matcher(nickname).matches()) {

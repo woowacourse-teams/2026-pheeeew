@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#20283e">
+<title>감정이 계단 러시</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/ui.css">
+<link rel="stylesheet" href="/stairs.css">
+<link rel="preload" href="/assets/fonts/Jua-Regular.ttf" as="font" type="font/ttf" crossorigin>
+</head>
+<body class="stairs-page">
+<canvas id="stairs-canvas" aria-label="감정이가 오르는 구름 계단"></canvas>
+<main id="stairs-ui">
+  <section id="lobby" class="panel">
+    <a class="back-link" href="/">← 점프 대모험</a>
+    <div class="eyebrow">오늘은 어디까지 오를까?</div>
+    <h1>감정이<br><em>계단 러시</em></h1>
+    <p class="intro">다음 계단을 보고, 왼쪽! 오른쪽!</p>
+    <div id="characters" role="group" aria-label="감정이 고르기"></div>
+    <button id="start" class="btn primary" disabled>계단 준비 중…</button>
+    <p class="controls">화면 왼쪽 / 오른쪽 터치 · 키보드 ← → 또는 A / D<br>Space / Enter로 시작</p>
+    <p class="best" id="lobby-best">이 탭 최고 · 아직 기록이 없어요</p>
+    <div class="ranking card"><div class="board-heading"><b>오늘의 러시 TOP 10</b><span id="day"></span></div><div id="lobby-ranking" class="rank-list">순위 불러오는 중…</div></div>
+    <p id="lobby-status" class="status" role="status"></p>
+  </section>
+  <section id="play-hud" hidden aria-label="게임 기록">
+    <div class="hud-line"><span><b id="height">0</b> 칸</span><span id="elapsed">0.000초</span></div>
+    <div class="gauge" role="progressbar" aria-label="남은 시간 게이지" aria-valuemin="0" aria-valuemax="100"><i id="gauge-fill"></i></div>
+    <div id="ready-label">첫 방향을 누르면 출발!</div>
+    <div id="touch-guide"><span>← 왼쪽 절반<br><small>왼쪽 위 계단</small></span><span>오른쪽 절반 →<br><small>오른쪽 위 계단</small></span></div>
+    <div class="direction-labels"><span>← 왼쪽</span><span>오른쪽 →</span></div>
+  </section>
+  <section id="result" class="panel" hidden>
+    <div class="eyebrow" id="end-reason">다시 한 칸 더!</div>
+    <h2><strong id="result-height">0</strong>칸</h2>
+    <p id="result-time"></p>
+    <p class="best" id="result-best"></p>
+    <form id="registration" autocomplete="off" novalidate>
+      <label for="nickname">기록에 남길 닉네임</label>
+      <input id="nickname" type="text" minlength="1" maxlength="10" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="send" aria-describedby="nickname-help save-status">
+      <p id="nickname-help" class="controls">한글·영문·숫자 1~10자 · Enter로 등록</p>
+      <button id="register" type="submit" class="btn primary">기록 등록</button>
+      <p id="save-status" class="status" role="status"></p>
+    </form>
+    <button id="retry" class="btn primary">바로 다시 하기 ↗</button>
+    <button id="home" class="text-button">감정이 고르기</button>
+    <p class="controls">등록하지 않고 다시 해도 돼요 · Space로 다시 하기</p>
+    <div class="ranking card"><div class="board-heading"><b>오늘의 러시 TOP 10</b></div><div id="result-ranking" class="rank-list"></div></div>
+  </section>
+</main>
+<script type="module" src="/stairs/main.js"></script>
+</body>
+</html>
