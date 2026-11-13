@@ -97,19 +97,32 @@ public class ClimbRunRepository {
 
     /**
      * 손님·맵마다 첫 완주(의심 제외)를 명예의 전당에 옮긴다. 이미 있으면 그대로 둔다. 마이그레이션 V20261112_91 과 같은 규칙이다.
+     * 그다음 더 빠른 완주(의심 제외)가 있으면 best 만 바꾼다. 마이그레이션 V20261113_92 와 같은 규칙이다.
      * 완주마다, 그리고 1분마다 부른다. 배포 중 옛 서버가 받은 완주도 이렇게 뒤늦게 들어온다(순서는 finished_at 이라 그대로다).
      */
     public void syncHall() {
         jdbc.sql("""
                         insert into climb_hall (run_id, guest_id, map_version, tag, nickname, "character", finish_seconds,
-                                                falls, finished_at)
+                                                falls, finished_at, best_seconds, best_falls, best_finished_at)
                         select distinct on (r.guest_id, r.map_version)
                                r.id, r.guest_id, r.map_version, g.tag, g.nickname, r."character", r.finish_seconds,
-                               r.falls, r.finished_at
+                               r.falls, r.finished_at, r.finish_seconds, r.falls, r.finished_at
                         from climb_run r join climb_guest g on g.id = r.guest_id
                         where r.finished_at is not null and r.finish_seconds is not null and not r.suspect
                         order by r.guest_id, r.map_version, r.finished_at
                         on conflict do nothing
+                        """)
+                .update();
+        jdbc.sql("""
+                        update climb_hall h
+                        set best_seconds = f.finish_seconds, best_falls = f.falls, best_finished_at = f.finished_at
+                        from (select distinct on (guest_id, map_version) guest_id, map_version, finish_seconds, falls,
+                                     finished_at
+                              from climb_run
+                              where finished_at is not null and finish_seconds is not null and not suspect
+                              order by guest_id, map_version, finish_seconds, finished_at) f
+                        where h.guest_id = f.guest_id and h.map_version = f.map_version
+                          and (h.best_seconds is null or f.finish_seconds < h.best_seconds)
                         """)
                 .update();
     }
@@ -117,14 +130,18 @@ public class ClimbRunRepository {
     /** 먼저 도착한 순서. */
     public List<ClimbHallEntry> findHall(String mapVersion, int limit) {
         return jdbc.sql("""
-                        select tag, nickname, "character", finish_seconds, falls, finished_at from climb_hall
+                        select tag, nickname, "character", finish_seconds, falls, finished_at,
+                               coalesce(best_seconds, finish_seconds) best_seconds, coalesce(best_falls, falls) best_falls,
+                               coalesce(best_finished_at, finished_at) best_finished_at
+                        from climb_hall
                         where map_version = :map order by finished_at, run_id limit :limit
                         """)
                 .param("map", mapVersion)
                 .param("limit", limit)
                 .query((rs, row) -> new ClimbHallEntry(rs.getString("tag"), rs.getString("nickname"),
                         rs.getString("character"), rs.getInt("finish_seconds"), rs.getInt("falls"),
-                        rs.getTimestamp("finished_at").toInstant()))
+                        rs.getTimestamp("finished_at").toInstant(), rs.getInt("best_seconds"), rs.getInt("best_falls"),
+                        rs.getTimestamp("best_finished_at").toInstant()))
                 .list();
     }
 
