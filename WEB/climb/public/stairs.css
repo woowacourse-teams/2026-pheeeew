@@ -20,7 +20,6 @@ p { margin: 0; text-align: center; }
 .primary { width: 100%; flex-shrink: 0; justify-content: center; min-height: 52px; font-size: 23px; }
 button:disabled { opacity: .6; cursor: wait; }
 .controls { font-size: 12px; line-height: 1.5; color: #d7d7e6; }
-#identity { font-size: 12px; color: #dad5e5; }
 .best { font-size: 17px; color: #ffd35a; }
 .ranking { width: 100%; padding: 12px; color: var(--ink); flex-shrink: 0; border-radius: 16px; }
 .board-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 16px; }
@@ -44,14 +43,14 @@ button:disabled { opacity: .6; cursor: wait; }
 #touch-guide span + span { border-left: 2px dashed #ffffff70; }
 #touch-guide small { font-size: 12px; }
 .direction-labels { position: absolute; bottom: max(25px, env(safe-area-inset-bottom)); left: 0; right: 0; display: flex; justify-content: space-around; font-size: 20px; text-shadow: 0 2px 2px #171321; }
-#result { justify-content: center; }
+#result { justify-content: flex-start; }
+#registration { display: flex; flex-direction: column; gap: 8px; width: 100%; flex-shrink: 0; }
+#registration label { font-size: 16px; }
+#nickname { width: 100%; min-height: 48px; padding: 10px 12px; border: 2px solid #d7d7e6; border-radius: 10px; background: #fff8ea; color: #211d30; font: inherit; font-size: 20px; user-select: text; -webkit-user-select: text; }
+#nickname:focus-visible { outline: 3px solid #ffd35a; outline-offset: 2px; }
+#result > * { flex-shrink: 0; }
+#result .text-button { min-height: 44px; }
 h2 { margin: 0; color: #ffd35a; font-size: 26px; font-weight: 400; }
 h2 strong { font-size: 86px; font-weight: 400; margin-right: 5px; }
-#nickname-root { pointer-events: auto; }
-#nickname-root .screen { z-index: 10; padding: 20px; }
-#nickname-root .modal { width: min(100%, 430px); padding: 24px 18px; color: var(--ink); }
-#nickname-root .big { font-size: 26px; }
-#nickname-root .small { font-size: 14px; }
-#nickname-root .nick { width: 100%; min-width: 0; font-size: 24px; }
 @media (max-height: 650px) { .panel { gap: 7px; } .eyebrow { margin-top: 0; } h1 { font-size: 36px; } .rank-list { max-height: 150px; } #result { justify-content: flex-start; } h2 strong { font-size: 60px; } }
 @media (orientation: landscape) and (max-height: 550px) { .panel { max-width: 700px; } #characters { max-width: 310px; } h1 br { display: none; } h1 em::before { content: " "; } .primary { max-width: 420px; } .ranking { max-width: 420px; } #characters img { max-height: 52px; } }

@@ -46,7 +46,7 @@ for (const interval of [333, 200, 125]) {
 }
 const calls = [];
 const net = createNet({ base: 'http://localhost:4325', fetch: async (url, init) => { calls.push({ url, init }); return { status: 200, json: async () => ({}) }; }});
-await net.stairsToday(); await net.stairsRanking('2026-11-13'); await net.stairsRun({ day: '2026-11-13', character: 'angry', inputs: inputs(2) });
-assert.equal(BUILD, 2); assert.ok(calls.every(c => c.init.credentials === 'include'));
+await net.stairsToday(); await net.stairsRanking('2026-11-13'); await net.stairsRun({ day: '2026-11-13', nickname: '히유', character: 'angry', inputs: inputs(2) });
+assert.equal(BUILD, 2); assert.ok(calls.every(c => c.init.credentials === 'omit'));
 assert.match(calls[0].url, /\/stairs\/today$/); assert.match(calls[1].url, /\/stairs\/ranking\?day=2026-11-13$/); assert.equal(calls[2].init.method, 'POST');
 console.log('stairs: PASS shared 6 × 2000 generator fixtures, gauge, replay, patterns, timing, input model, API');

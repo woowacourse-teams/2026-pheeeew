@@ -1,5 +1,5 @@
 import { createNet } from '../net.js';
-import { createNicknameDialog, FACE, TINT, medal } from '../ui.js';
+import { FACE, TINT, medal } from '../ui.js';
 import { apiForHostname } from '../api-config.js';
 import { GAUGE_MAX } from './rules.js';
 import { StairsGame } from './game.js';
@@ -11,15 +11,12 @@ const $ = (id) => document.getElementById(id);
 const escape = (value) => String(value ?? '').replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
 const seconds = (ms) => `${(ms / 1000).toFixed(3)}초`;
 const net = createNet({ api: apiForHostname(location.hostname) });
-const nick = createNicknameDialog(); $('nickname-root').append(nick.element);
-let character = ids[0], today, guest, scene, game, mode = 'loading', board = { top: [], me: null };
-let firstGuide = true, endedAt = 0, savingGuest = false, latestRun = null, refreshing = false;
-const pending = new Set();
+let character = ids[0], today, scene, game, mode = 'loading', board = { top: [] };
+let firstGuide = true, endedAt = 0, latestRun = null, refreshing = false;
+let lastNickname = '', tabBest = null;
 try {
-  const saved = JSON.parse(localStorage.getItem('pheeeew-climb-v1') ?? 'null');
-  const preferred = localStorage.getItem('pheeeew-stairs-character') ?? saved?.id;
+  const preferred = localStorage.getItem('pheeeew-stairs-character');
   if (ids.includes(preferred)) character = preferred;
-  firstGuide = localStorage.getItem('pheeeew-stairs-played') !== 'yes';
 } catch { /* 저장 차단 브라우저에서도 플레이 가능 */ }
 function storage(key, value) { try { localStorage.setItem(key, value); } catch {} }
 function select(id) {
@@ -30,10 +27,9 @@ $('characters').innerHTML = ids.map((id, i) => `<button class="character" data-i
 $('characters').addEventListener('click', e => { const button = e.target.closest('[data-id]'); if (button) select(button.dataset.id); });
 
 function renderBoard() {
-  const markup = board.top.slice(0, 10).map(it => `<div class="r ${medal(it.rank) ? `podium ${medal(it.rank)}` : ''}"><b class="${medal(it.rank) ? 'medal' : ''}">${it.rank}</b><div class="avatar mini"><img src="${FACE(ids.includes(it.character) ? it.character : ids[0])}" alt=""></div><span class="n">${escape(it.nickname)}<small>#${escape(it.tag)}</small></span><span class="v">${it.height}칸<small>${seconds(it.timeMs)}</small></span></div>`).join('') || '<p class="none">첫 기록의 주인공이 되어 주세요!</p>';
+  const markup = board.top.slice(0, 10).map(it => `<div class="r ${medal(it.rank) ? `podium ${medal(it.rank)}` : ''}"><b class="${medal(it.rank) ? 'medal' : ''}">${it.rank}</b><div class="avatar mini"><img src="${FACE(ids.includes(it.character) ? it.character : ids[0])}" alt=""></div><span class="n">${escape(it.nickname)}</span><span class="v">${it.height}칸<small>${seconds(it.timeMs)}</small></span></div>`).join('') || '<p class="none">첫 기록의 주인공이 되어 주세요!</p>';
   $('lobby-ranking').innerHTML = $('result-ranking').innerHTML = markup;
-  const best = board.me ? `내 최고 ${board.me.height}칸 · ${seconds(board.me.timeMs)} · ${board.me.rank}위` : '내 최고 · 아직 기록이 없어요';
-  $('lobby-best').textContent = $('result-best').textContent = best;
+  $('lobby-best').textContent = tabBest ? `이 탭 최고 ${tabBest.height}칸 · ${seconds(tabBest.timeMs)}` : '이 탭 최고 · 아직 기록이 없어요';
 }
 async function refreshBoard(day = today?.day) {
   if (!day) return;
@@ -43,36 +39,24 @@ async function refreshBoard(day = today?.day) {
 }
 function showLobby() {
   mode = 'lobby'; $('lobby').hidden = false; $('result').hidden = $('play-hud').hidden = true;
-  $('identity').textContent = guest ? `${guest.nickname} #${guest.tag}` : '처음 시작할 때 닉네임을 정해요';
   $('start').disabled = false; $('start').textContent = '오르기 시작 ↗';
   renderBoard(); refreshBoard();
 }
-function askNickname() {
-  mode = 'nickname';
-  nick.show({ heading: '닉네임을 정해 주세요', ok: '정하기', alt: '취소' }, async name => {
-    if (savingGuest) return;
-    savingGuest = true;
-    const response = await net.createGuest(name);
-    savingGuest = false;
-    if (response.status !== 201) { nick.error(response.body?.message ?? '서버에 닿지 않아요. 다시 시도해 주세요.'); return; }
-    guest = response.body; nick.close(); mode = 'lobby'; start();
-  }, () => { nick.close(); showLobby(); });
-}
 async function start() {
   if (!['lobby', 'result'].includes(mode) || refreshing) return;
-  if (!guest) { askNickname(); return; }
   // 자정을 넘긴 대기 화면은 서버에서 오늘의 시드를 새로 받는다.
   const localDay = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(new Date());
   if (today.day !== localDay) {
     refreshing = true;
     const response = await net.stairsToday(); refreshing = false;
     if (response.status !== 200) { $('lobby-status').textContent = $('save-status').textContent = '오늘의 계단을 불러오지 못했어요. 다시 눌러 주세요.'; return; }
-    today = response.body; board = { top: [], me: null }; $('day').textContent = today.day;
+    today = response.body; board = { top: [] }; $('day').textContent = today.day;
   }
+  document.activeElement?.blur();
   game = new StairsGame(today.seed); scene.reset(); mode = 'play';
   $('lobby').hidden = $('result').hidden = true; $('play-hud').hidden = false;
   $('ready-label').hidden = false; $('touch-guide').hidden = !firstGuide;
-  storage('pheeeew-stairs-played', 'yes'); firstGuide = false;
+  firstGuide = false;
 }
 function input(d) {
   if (mode !== 'play') return;
@@ -83,29 +67,32 @@ function input(d) {
   if (game.ended) finish(now);
 }
 function saveStatus() {
-  const failed = [...pending].filter(run => !run.sending);
-  $('save-retry').hidden = !failed.length;
-  if (latestRun?.saved) $('save-status').textContent = `기록 저장 완료 · 내 최고 ${latestRun.saved.best.height}칸 · ${latestRun.saved.rank}위${failed.length ? ` / 미전송 ${failed.length}건` : ''}`;
-  else if (latestRun?.sending) $('save-status').textContent = '기록 저장 중… 바로 다시 시작해도 돼요.';
-  else $('save-status').textContent = latestRun?.error ?? '';
+  const run = latestRun;
+  $('register').disabled = !run || run.sending || Boolean(run.saved);
+  $('nickname').disabled = Boolean(run?.sending || run?.saved);
+  $('register').textContent = run?.saved ? '등록 완료' : run?.sending ? '등록 중…' : '기록 등록';
+  if (run?.saved) {
+    $('save-status').textContent = `등록 완료 · ${run.body.nickname} ${run.saved.rank}위`;
+    $('result-best').textContent = `이 닉네임 오늘 최고 ${run.saved.best.height}칸 · ${seconds(run.saved.best.timeMs)}`;
+  } else $('save-status').textContent = run?.sending ? '등록 중… 바로 다시 해도 돼요.' : run?.error ?? '';
 }
-async function sendRun(run) {
-  if (run.sending) return;
-  run.sending = true; saveStatus();
+async function register() {
+  if (mode !== 'result' || !latestRun || latestRun.sending || latestRun.saved) return;
+  const nickname = $('nickname').value.trim();
+  if (!/^[가-힣a-zA-Z0-9]{1,10}$/.test(nickname)) {
+    latestRun.error = nickname ? '한글, 영문, 숫자 1~10자로 입력해 주세요.' : '닉네임을 입력해 주세요.';
+    saveStatus(); $('nickname').focus(); return;
+  }
+  lastNickname = nickname;
+  const run = latestRun;
+  run.body.nickname = nickname; run.sending = true; saveStatus();
   const response = await net.stairsRun(run.body); run.sending = false;
   if (response.status === 200) {
-    run.saved = response.body; pending.delete(run);
-    if (today.day === run.body.day && (!board.me || response.body.best.height > board.me.height
-      || (response.body.best.height === board.me.height && response.body.best.timeMs <= board.me.timeMs))) {
-      board.me = { ...response.body.best, rank: response.body.rank }; renderBoard();
-    }
+    run.saved = response.body;
     await refreshBoard(run.body.day);
-  } else {
-    run.error = response.body?.message ?? '저장하지 못했어요. 기록 다시 전송을 눌러 주세요.';
-    if (response.status === 401) guest = null;
-    if (response.status >= 400 && response.status < 500 && response.status !== 429) pending.delete(run);
-  }
-  saveStatus();
+  } else run.error = response.body?.message ?? '연결하지 못했어요. 기록 등록을 다시 눌러 주세요.';
+  // 이전 판의 늦은 응답이 새 결과 화면의 입력이나 상태를 바꾸지 않는다.
+  if (latestRun === run && mode === 'result') saveStatus();
 }
 function finish(now) {
   if (mode !== 'play') return;
@@ -115,14 +102,22 @@ function finish(now) {
   $('result-height').textContent = game.height;
   $('result-time').textContent = `첫 입력 → 마지막 성공 ${seconds(game.timeMs)}`;
   latestRun = { body: { day: today.day, character, inputs: game.inputs.map(it => ({ ...it })) }, sending: false };
-  pending.add(latestRun); sendRun(latestRun);
+  if (!tabBest || game.height > tabBest.height || (game.height === tabBest.height && game.timeMs < tabBest.timeMs)) {
+    tabBest = { height: game.height, timeMs: game.timeMs };
+  }
+  $('nickname').value = lastNickname;
+  $('result-best').textContent = '';
+  renderBoard(); saveStatus();
 }
 $('start').onclick = () => mode === 'error' ? initialize() : start();
 $('retry').onclick = start;
 $('home').onclick = showLobby;
-$('save-retry').onclick = () => { for (const run of pending) if (!run.sending) sendRun(run); };
+$('nickname').addEventListener('input', () => { lastNickname = $('nickname').value; });
+$('registration').onsubmit = e => { e.preventDefault(); register(); };
 addEventListener('keydown', e => {
-  if (e.target instanceof HTMLInputElement || e.isComposing || e.repeat) return;
+  if (e.isComposing || e.keyCode === 229 || e.repeat) return;
+  if (mode === 'result' && e.code === 'Enter') { e.preventDefault(); register(); return; }
+  if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target?.isContentEditable) return;
   if (['ArrowLeft', 'ArrowRight', 'KeyA', 'KeyD', 'Space', 'Enter'].includes(e.code)) e.preventDefault();
   if (['Space', 'Enter'].includes(e.code)) { start(); return; }
   if (['ArrowLeft', 'KeyA'].includes(e.code)) input('L');
@@ -154,12 +149,9 @@ async function initialize() {
   mode = 'loading'; $('start').disabled = true; $('start').textContent = '계단 준비 중…';
   $('lobby-status').textContent = '';
   try {
-    const [day, me, art] = await Promise.all([net.stairsToday(), net.me(), scene ?? createScene($('stairs-canvas'), ids)]);
+    const [day, art] = await Promise.all([net.stairsToday(), scene ?? createScene($('stairs-canvas'), ids)]);
     if (day.status !== 200 || !Number.isInteger(day.body?.seed)) throw new Error('오늘의 계단을 불러오지 못했어요. 서버 연결을 확인해 주세요.');
-    if (me.status !== 200 && me.status !== 401) throw new Error('닉네임을 확인하지 못했어요. 서버 연결을 확인해 주세요.');
-    today = day.body; guest = me.status === 200 ? me.body : null; scene = art;
-    // 기기에 저장된 선택이 없으면 기존 등반의 서버 선택도 이어 쓴다.
-    try { if (!localStorage.getItem('pheeeew-stairs-character') && ids.includes(guest?.run?.character)) select(guest.run.character); } catch {}
+    today = day.body; scene = art;
     $('day').textContent = today.day; showLobby();
   } catch (error) {
     mode = 'error'; $('start').disabled = false; $('start').textContent = '다시 연결';

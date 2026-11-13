@@ -120,7 +120,7 @@ public class ClimbConfiguration {
                         .requestMatchers(HttpMethod.POST, "/api/v1/climb/guests").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/climb/ranking", "/api/v1/climb/hall",
                                 "/api/v1/climb/stairs/today", "/api/v1/climb/stairs/ranking").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/climb/stairs/runs").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/climb/stairs/runs").permitAll()
                         // 관리자 세션은 손님 쿠키와 따로 컨트롤러가 관리자 쿠키로 확인한다
                         .requestMatchers("/api/v1/climb/admin/session").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/climb/me", "/api/v1/climb/ws").authenticated()

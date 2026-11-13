@@ -27,5 +27,6 @@ for (const url of ['/stairs', '/stairs/', '/stairs.html', '/stairs?event=today']
 const headers = fs.readFileSync(new URL('../public/_headers', import.meta.url), 'utf8');
 for (const route of ['/stairs', '/stairs/', '/stairs.html', '/stairs/*']) assert.ok(headers.includes(`${route}\n  Cache-Control: private, no-cache`));
 const redirects = fs.readFileSync(new URL('../public/_redirects', import.meta.url), 'utf8');
-assert.match(redirects, /\/stairs\s+\/stairs.html\s+200/);
+// Pages 가 /stairs 로 stairs.html 을 준다. .html 로 다시 쓰는 규칙은 돌림 위험이 있어 두지 않는다
+assert.doesNotMatch(redirects, /\/stairs/);
 console.log('stairs routes: PASS /stairs, /stairs/, query, HTML and Pages cache/rewrite');

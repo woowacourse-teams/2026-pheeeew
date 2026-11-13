@@ -179,14 +179,14 @@
 
 ## 감정이 계단 러시 (`/stairs`)
 
-기존 등반과 같은 `climb_guest` 쿠키·닉네임을 사용한다. 캐릭터 식별자 5종도 같다.
+손님 쿠키·`/me`·`/guests` 없이 플레이하며, 매 판 결과 화면에서 닉네임을 입력해 선택적으로 등록한다. 캐릭터 식별자 5종은 기존 등반과 같다.
 기존 등반 기록이나 웹소켓에는 영향을 주지 않는다. 웹의 `net.js` BUILD는 그대로다.
 
 | 요청 | 응답·조건 |
 |---|---|
 | `GET /api/v1/climb/stairs/today` | `{ day: "2026-11-13", seed: 1369517937 }` 형태. 쿠키 불필요. 날짜는 Asia/Seoul, seed는 `(int) day.toEpochDay() ^ 0x51a17e53`이다. |
-| `POST /api/v1/climb/stairs/runs` | 손님 쿠키 필수. `{ day, character, inputs: [{d:"L", t:0}, {d:"R", t:180}] }`. 응답 `{ height, timeMs, best:{height,timeMs}, rank }`. |
-| `GET /api/v1/climb/stairs/ranking?day=2026-11-13` | 쿠키 불필요. 날짜 생략 시 오늘. `{ top:[{rank,tag,nickname,character,height,timeMs}], me }`. top은 상위 50명, me는 같은 항목 또는 null(50위 밖도 조회). 화면은 상위 10명을 보여 준다. |
+| `POST /api/v1/climb/stairs/runs` | 쿠키 불필요. `{ day, nickname, character, inputs: [{d:"L", t:0}, {d:"R", t:180}] }`. 응답 `{ height, timeMs, best:{height,timeMs}, rank }`. |
+| `GET /api/v1/climb/stairs/ranking?day=2026-11-13` | 쿠키 불필요. 날짜 생략 시 오늘. `{ top:[{rank,nickname,character,height,timeMs}] }`. top은 닉네임별 그날 최고 상위 50개이며 tag·me는 없다. 화면은 상위 10명을 보여 준다. |
 
 점수는 성공한 칸 수. `timeMs`는 첫 입력부터 **마지막 성공 입력**까지다. 첫 입력의 `t`는 반드시 0이고,
 이후는 엄격히 증가하는 정수 ms다. 처음 틀린 방향에서 재생을 멈추므로 그 이후 입력은 점수에 포함하지 않는다.
@@ -218,22 +218,35 @@ Java와 JS 시험이 **같은 고정 파일**을 읽는다. 일정한 333/200/12
 
 ### 저장·정렬·오류
 
-새 마이그레이션 `V20261113_92__create_climb_stairs.sql` 하나로 판 기록 `climb_stairs_run`, 일일 최고 `climb_stairs_best`를 만든다.
-판 저장과 최고 갱신은 PostgreSQL 단일 CTE 문이다. `(guest_id, day)` 충돌 시 높이가 더 크거나,
+새 마이그레이션 `V20261113_93__create_climb_stairs.sql` 하나로 판 기록 `climb_stairs_run`, 일일 최고 `climb_stairs_best`를 만든다.
+판 저장과 최고 갱신은 PostgreSQL 단일 CTE 문이다. `(nickname, day)` 충돌 시 높이가 더 크거나,
 높이가 같고 시간이 더 짧을 때만 갱신하므로 동시 제출이 나쁜 기록으로 덮어쓰지 않는다.
-순위는 높이 내림차순 → 시간 오름차순 → 최고 기록 저장 시각 오름차순 → guest UUID 순서이며 1부터 순번을 매긴다.
-동일 높이·동일 시간은 기존 최고를 유지한다. 손님 정리 시 새 두 테이블은 FK cascade로 함께 정리된다.
+순위는 높이 내림차순 → 시간 오름차순 → 최고 기록 저장 시각 오름차순 → 판 ID 순서이며 1부터 순번을 매긴다.
+동일 높이·동일 시간은 기존 최고와 등록 순서를 유지한다. 손님 테이블과 연결하지 않는다.
+응답 `height/timeMs`는 제출한 판, `best`와 `rank`는 해당 닉네임의 그날 최고 기록과 순위다(50위 밖도 반환).
+닉네임은 앞뒤 공백을 정리한 뒤 한글 완성형·영문·숫자 1~10자만 허용하며, 대소문자를 구분한다.
+기존 등반의 문자 검증을 재사용하되 등반의 최소 2자 규칙은 유지한다. 같은 닉네임은 누구나 같은 순위 항목을 갱신할 수 있다.
+
+등록은 기존 `ClimbRateLimit`으로 IP당 고정 1분 창에 30회까지 허용한다(실패 요청 포함, 프로세스별 메모리).
+IP는 기존 등반처럼 `request.getRemoteAddr()`를 사용한다. 프록시 설정이 처리한 주소를 쓰며 원시 전달 헤더를 직접 신뢰하지 않는다.
+본문·입력 상한은 그대로이며, 전용 보안 체인에서 POST를 permitAll로 허용하고 기존 CSRF 비활성화를 유지한다.
+계단 API에서는 손님 쿠키 필터를 건너뛰며 웹 요청은 `credentials: omit`으로 쿠키 전송·갱신을 하지 않는다.
 
 오류는 기존처럼 `{code,message}`다. `400 INVALID_INPUTS`, `400 GAUGE_EXPIRED`, `400 TOO_FAST`,
-`400 INVALID_DAY`, `413 BODY_TOO_LARGE`, 손님 쿠키 없음 `401 UNAUTHORIZED`를 반환한다.
-제출 응답을 기다리는 중에도 재시작할 수 있다. 통신 실패 기록은 열린 탭 메모리에 보관하며 결과 화면의 ‘기록 다시 전송’으로 재시도한다.
-탭을 닫으면 미전송 기록은 사라진다. 재전송은 판 이력에 중복으로 남을 수 있으나 일일 최고·순위는 변하지 않는다.
+`400 INVALID_DAY`, `400 NICKNAME_LENGTH`, `400 NICKNAME_CHARACTERS`, `413 BODY_TOO_LARGE`, `429 RATE_LIMITED`를 반환한다.
+결과 화면에서 Enter로 등록하고, 빈 닉네임이면 입력칸에 포커스한다. 입력 중 Space·방향키는 게임을 조작하지 않는다.
+결과 화면은 좌우 터치 게임 입력을 받지 않는다. 입력칸 밖의 Space 또는 ‘바로 다시 하기’로 등록을 건너뛸 수 있다.
+제출 중에도 재시작할 수 있으며 이전 판의 응답은 새 결과 화면을 덮어쓰지 않는다.
+실패 시 같은 결과 화면에서 닉네임을 수정하거나 ‘기록 등록’을 다시 눌러 재시도한다. 재시작하면 미등록 판은 버린다.
+직전 입력 닉네임과 ‘이 탭 최고’는 메모리만 사용하므로 새로고침·탭 닫기 때 사라진다.
+닉네임·신원을 쿠키·localStorage·sessionStorage에 저장하지 않는다. 고른 감정이만 localStorage에 저장한다.
+재전송은 판 이력에 중복으로 남을 수 있으나 일일 최고·순위는 변하지 않는다.
 
 ### 로컬 확인
 
 1. 기존 백엔드를 준비한 환경에서 `cd WEB/climb && PORT=4325 node server.mjs`로 웹만 실행한다.
-2. `http://127.0.0.1:4325/stairs`에서 닉네임 → 감정이 선택 → 키보드 또는 좌우 터치 → 결과 → 재시작을 확인한다.
+2. `http://127.0.0.1:4325/stairs`에서 감정이 선택 → 키보드 또는 좌우 터치 → 결과에서 닉네임 등록(또는 건너뛰기) → 재시작을 확인한다.
 3. `cd BE && ./gradlew :climb:test`와 `cd WEB/climb && for f in tools/*_test.mjs; do node "$f" || echo FAIL "$f"; done`으로 시험한다.
 
-저장·동시 갱신·상위 50 및 내 순위 시험은 기존 프로젝트 방식인 **별도 Testcontainers PostgreSQL**을 사용한다.
+저장·동시 갱신·상위 50 및 닉네임 순위 시험은 기존 프로젝트 방식인 **별도 Testcontainers PostgreSQL**을 사용한다.
 `climb-local-db`나 이미 실행 중인 8080·4320·4321 서버는 사용하거나 변경하지 않는다.

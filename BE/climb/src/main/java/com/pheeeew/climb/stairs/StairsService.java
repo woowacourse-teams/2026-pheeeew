@@ -1,12 +1,12 @@
 package com.pheeeew.climb.stairs;
 
+import com.pheeeew.climb.domain.ClimbNickname;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 
 public class StairsService {
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
@@ -24,20 +24,21 @@ public class StairsService {
         return new Today(day, StairsRules.seed(day));
     }
 
-    public Result submit(UUID guest, LocalDate day, String character, List<StairsRules.Input> inputs) {
-        if (guest == null || character == null || !CHARACTERS.contains(character)) {
+    public Result submit(String nickname, LocalDate day, String character, List<StairsRules.Input> inputs) {
+        nickname = ClimbNickname.validate(nickname, 1);
+        if (character == null || !CHARACTERS.contains(character)) {
             throw new IllegalArgumentException("INVALID_REQUEST");
         }
         requireDay(day);
         StairsRules.Score score = StairsRules.replay(StairsRules.seed(day), inputs);
-        repository.save(guest, day, character, score);
-        StairsRepository.Item best = repository.ranking(day, guest).me();
+        repository.save(nickname, day, character, score);
+        StairsRepository.Item best = repository.best(day, nickname);
         return new Result(score.height(), score.timeMs(), new StairsRules.Score(best.height(), best.timeMs()), best.rank());
     }
 
-    public StairsRepository.Board ranking(LocalDate day, UUID guest) {
+    public StairsRepository.Board ranking(LocalDate day) {
         if (day == null) throw new IllegalArgumentException("INVALID_DAY");
-        return repository.ranking(day, guest);
+        return repository.ranking(day);
     }
 
     public void requireDay(LocalDate day) {
