@@ -10,7 +10,7 @@ const html = fs.readFileSync(new URL('../public/stairs.html', import.meta.url), 
 const flush = () => new Promise(resolve => setImmediate(resolve));
 async function tab() {
   const events = {}, nodes = {}, calls = [], writes = [];
-  let now = 1000, frame, drawnGame, reply = async () => ({ status: 200, body: { height: 0, timeMs: 0, rank: 7, best: { height: 4, timeMs: 300 } } });
+  let now = 1000, frame, boardTimer, drawnGame, reply = async () => ({ status: 200, body: { height: 0, timeMs: 0, rank: 7, best: { height: 4, timeMs: 300 } } });
   let rankingReply = async () => ({ status: 200, body: { top: [{ rank: 7, nickname: '히유', character: 'angry', height: 4, timeMs: 300 }], total: 1 } });
   const document = { activeElement: null, hidden: false, getElementById: id => nodes[id], querySelectorAll: () => [] };
   class Element {
@@ -39,6 +39,7 @@ async function tab() {
     createScene: async () => ({ reset() {}, hop() {}, draw(game) { drawnGame = game; } }),
     localStorage: { getItem: key => { assert.equal(key, 'pheeeew-stairs-character'); return null; }, setItem: (k, v) => writes.push([k, v]) },
     addEventListener: (name, fn) => events[name] = fn, requestAnimationFrame: fn => frame = fn,
+    setInterval: fn => { boardTimer = fn; },
   });
   await flush();
   const key = (code, extra = {}) => events.keydown({ code, target: document.activeElement ?? nodes.result, preventDefault() {}, ...extra });
@@ -49,7 +50,7 @@ async function tab() {
     now += 400; frame(now); await flush();
     assert.equal(nodes.result.hidden, false);
   };
-  return { nodes, calls, writes, document, key, result, events, setReply: fn => reply = fn, setRankingReply: fn => rankingReply = fn,
+  return { nodes, calls, writes, document, key, result, events, boardTick: () => boardTimer(), setReply: fn => reply = fn, setRankingReply: fn => rankingReply = fn,
     advance: ms => { now += ms; frame(now); }, get game() { return drawnGame; } };
 }
 const gaugeTab = await tab();
@@ -76,6 +77,10 @@ assert.equal(gaugeTab.nodes['gauge-fill'].style.width, '0%');
 const t = await tab();
 assert.equal(t.nodes.start.disabled, false);
 assert.deepEqual(t.calls, ['today', 'ranking']);
+// 대기 화면에 머무는 동안 주기적으로 순위를 새로 받는다
+t.boardTick(); await flush();
+assert.deepEqual(t.calls, ['today', 'ranking', 'ranking']);
+t.calls.length = 0; t.calls.push('today', 'ranking');
 await t.result();
 t.nodes.nickname.value = '건너뜀'; t.nodes.nickname.input();
 await t.result();
@@ -187,6 +192,6 @@ await modal.nodes['result-ranking-card'].onclick();
 assert.equal(modal.nodes['ranking-count'].textContent, '오늘 305명 도전');
 assert.match(modal.nodes['ranking-status'].textContent, /상위 200명/);
 assert.equal((modal.nodes['full-ranking-list'].innerHTML.match(/class="r\b/g) ?? []).length, 200);
-assert.equal(modal.calls.filter(c => c === 'ranking').length, 10, '최초 조회·등록 후 조회·8번 열기마다 새 조회');
+assert.equal(modal.calls.filter(c => c === 'ranking').length, 11, '최초 조회·판이 끝날 때 조회·등록 후 조회·8번 열기마다 새 조회');
 console.log('stairs full ranking UI: PASS open/refetch/loading/error/empty, keyboard/touch isolation, close/backdrop/Esc, saved nickname/scroll, stale response');
 console.log('stairs UI: PASS height-based gauge/clamping, no identity, opt-in registration, nickname validation, Enter/Space/IME/touch, retry, late response, tab memory');
