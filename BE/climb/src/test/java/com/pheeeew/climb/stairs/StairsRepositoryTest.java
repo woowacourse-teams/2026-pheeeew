@@ -62,10 +62,11 @@ class StairsRepositoryTest {
     @Test void serviceReplaysBeforeSavingAndReturnsBestRank() {
         String nickname = "손님";
         var service = new StairsService(repository, Clock.fixed(Instant.parse("2026-11-13T00:00:00Z"), ZoneOffset.UTC));
-        var score = service.submit(nickname, DAY, "angry", StairsRulesTest.inputs(StairsRules.seed(DAY), 30, 100));
+        var today = service.today();
+        var score = service.submit(nickname, DAY, "angry", today.seed(), today.ticket(), StairsRulesTest.inputs(today.seed(), 30, 100));
         assertThat(score.height()).isEqualTo(30); assertThat(score.timeMs()).isEqualTo(2900);
         assertThat(score.best()).isEqualTo(new StairsRules.Score(30, 2900)); assertThat(score.rank()).isEqualTo(1);
-        assertThatThrownBy(() -> service.submit(nickname, DAY, "angry", StairsRulesTest.inputs(StairsRules.seed(DAY), 4, 1)))
+        assertThatThrownBy(() -> service.submit(nickname, DAY, "angry", today.seed(), today.ticket(), StairsRulesTest.inputs(today.seed(), 4, 1)))
                 .hasMessage("TOO_FAST");
         assertThat(jdbc.sql("select count(*) from climb_stairs_run").query(Integer.class).single()).isEqualTo(1);
     }

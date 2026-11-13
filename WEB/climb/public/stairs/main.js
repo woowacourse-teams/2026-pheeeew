@@ -78,18 +78,22 @@ function showLobby() {
   $('start').disabled = false; $('start').textContent = '오르기 시작 ↗';
   renderBoard(); refreshBoard();
 }
+// 판마다 서버가 새 무작위 계단(seed)과 표(ticket)를 준다. 다음 판 것은 미리 받아 두어 다시 하기가 바로 된다.
+const fetchRun = () => net.stairsToday()
+  .then(r => (r.status === 200 && Number.isInteger(r.body?.seed) && r.body?.ticket ? { ...r.body, at: Date.now() } : null))
+  .catch(() => null);
+let nextRun = null, currentRun = null;
 async function start() {
   if (rankingDialog.open || !['lobby', 'result'].includes(mode) || refreshing) return;
-  // 자정을 넘긴 대기 화면은 서버에서 오늘의 시드를 새로 받는다.
-  const localDay = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(new Date());
-  if (today.day !== localDay) {
-    refreshing = true;
-    const response = await net.stairsToday(); refreshing = false;
-    if (response.status !== 200) { $('lobby-status').textContent = $('save-status').textContent = '오늘의 계단을 불러오지 못했어요. 다시 눌러 주세요.'; return; }
-    today = response.body; board = { top: [] }; $('day').textContent = today.day;
-  }
+  refreshing = true;
+  let run = await (nextRun ?? fetchRun()); nextRun = null;
+  if (!run || Date.now() - run.at > 10 * 60 * 1000) run = await fetchRun(); // 오래 기다린 표는 서버가 받지 않는다
+  refreshing = false;
+  if (!run) { $('lobby-status').textContent = $('save-status').textContent = '새 계단을 불러오지 못했어요. 다시 눌러 주세요.'; return; }
+  if (run.day !== today.day) { today = run; board = { top: [] }; $('day').textContent = today.day; }
+  currentRun = run; nextRun = fetchRun();
   document.activeElement?.blur();
-  game = new StairsGame(today.seed); scene.reset(); mode = 'play';
+  game = new StairsGame(run.seed); scene.reset(); mode = 'play';
   $('lobby').hidden = $('result').hidden = true; $('play-hud').hidden = false;
   $('ready-label').hidden = false; $('touch-guide').hidden = !firstGuide;
   firstGuide = false;
@@ -138,7 +142,7 @@ function finish(now) {
   $('end-reason').textContent = game.reason;
   $('result-height').textContent = game.height;
   $('result-time').textContent = `첫 입력 → 마지막 성공 ${seconds(game.timeMs)}`;
-  latestRun = { body: { day: today.day, character, inputs: game.inputs.map(it => ({ ...it })) }, sending: false };
+  latestRun = { body: { day: currentRun.day, seed: currentRun.seed, ticket: currentRun.ticket, character, inputs: game.inputs.map(it => ({ ...it })) }, sending: false };
   if (!tabBest || game.height > tabBest.height || (game.height === tabBest.height && game.timeMs < tabBest.timeMs)) {
     tabBest = { height: game.height, timeMs: game.timeMs };
   }
@@ -191,7 +195,7 @@ async function initialize() {
   try {
     const [day, art] = await Promise.all([net.stairsToday(), scene ?? createScene($('stairs-canvas'), ids)]);
     if (day.status !== 200 || !Number.isInteger(day.body?.seed)) throw new Error('오늘의 계단을 불러오지 못했어요. 서버 연결을 확인해 주세요.');
-    today = day.body; scene = art;
+    today = day.body; scene = art; nextRun = Promise.resolve({ ...day.body, at: Date.now() });
     $('day').textContent = today.day; showLobby();
   } catch (error) {
     mode = 'error'; $('start').disabled = false; $('start').textContent = '다시 연결';
