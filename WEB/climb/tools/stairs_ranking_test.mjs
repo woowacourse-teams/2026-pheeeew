@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';
+import { findMyRow, rankingRows } from '../public/stairs/ranking.js';
+
+const items = Array.from({ length: 200 }, (_, i) => ({ rank: i + 1, nickname: `손님${i + 1}`, character: 'angry', height: 200 - i, timeMs: 12345 }));
+assert.equal(findMyRow(items, '손님200'), 199);
+assert.equal(findMyRow(items, '손님1'), 0);
+assert.equal(findMyRow(items, '손님201'), -1);
+assert.equal(findMyRow(items, ''), -1);
+assert.equal(findMyRow([], '손님1'), -1);
+assert.equal(findMyRow([{ nickname: 'Abc' }], 'abc'), -1, '닉네임은 정확하게 일치');
+const html = rankingRows(items, '손님200');
+assert.equal((html.match(/class="r\b/g) ?? []).length, 200);
+assert.equal((html.match(/data-mine/g) ?? []).length, 1);
+assert.equal((html.match(/class="medal"/g) ?? []).length, 3);
+for (const color of ['gold', 'silver', 'bronze']) assert.ok(html.includes(`podium ${color}`));
+assert.match(html, /200<\/b>.*손님200.*1칸.*12\.345초/);
+assert.match(html, /\/assets\/characters\/angry\/front.webp/);
+assert.doesNotMatch(rankingRows(items, '없음'), /my-record|data-mine/);
+const unsafe = rankingRows([{ rank: 1, nickname: '<img src=x onerror="x">&\'', character: '__proto__', height: 0, timeMs: 0 }]);
+assert.doesNotMatch(unsafe, /<img src=x/);
+assert.match(unsafe, /&#60;img/);
+assert.match(unsafe, /\/defeated\/front.webp/);
+assert.match(unsafe, /0칸.*0\.000초/);
+assert.match(rankingRows([{ ...items[0], timeMs: 1 }]), /0\.001초/);
+assert.match(rankingRows([]), /첫 기록/);
+console.log('stairs ranking: PASS 200 rows, exact own row/missing/empty, medals, escaped nickname, face fallback, millisecond precision');

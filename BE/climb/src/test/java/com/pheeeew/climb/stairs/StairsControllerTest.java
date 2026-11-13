@@ -32,6 +32,7 @@ class StairsControllerTest {
         var board = mvc.perform(get("/api/v1/climb/stairs/ranking").param("day", DAY.toString()))
                 .andReturn().getResponse();
         assertThat(board.getContentAsString()).contains("nickname").doesNotContain("\"me\"", "\"tag\"");
+        assertThat(json.readTree(board.getContentAsString()).path("total").longValue()).isEqualTo(1);
     }
 
     @Test void rejectsInvalidNicknameWithShortMessageAndDoesNotSave() throws Exception {
@@ -122,6 +123,6 @@ class StairsControllerTest {
             }
         }
         @Override public Item best(LocalDate day, String nickname) { return best.get(nickname); }
-        @Override public Board ranking(LocalDate day) { return new Board(List.copyOf(best.values())); }
+        @Override public Board ranking(LocalDate day) { return new Board(List.copyOf(best.values()), best.size()); }
     }
 }
