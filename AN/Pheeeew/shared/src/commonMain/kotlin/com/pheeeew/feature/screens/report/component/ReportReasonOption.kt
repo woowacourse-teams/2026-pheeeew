@@ -1,0 +1,117 @@
+package com.pheeeew.feature.screens.report.component
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.component.raisedPressEffect
+import com.pheeeew.core.designsystem.theme.AppBorders
+import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appBackground
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appInk
+
+@Composable
+fun ReportReasonOption(
+    reason: String,
+    selected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val shape = RoundedCornerShape(15.dp)
+    Box(
+        modifier =
+            modifier.fillMaxWidth().padding(
+                end = AppSpacing.xs.copy(value = 3.dp).dp,
+                bottom = AppSpacing.xs.copy(value = 3.dp).dp,
+            ),
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .matchParentSize()
+                    .offset(x = 3.dp, y = 3.dp)
+                    .background(MaterialTheme.colorScheme.appInk, shape),
+        )
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(54.dp)
+                    .raisedPressEffect(interactionSource, enabled = enabled)
+                    .clip(shape)
+                    .background(
+                        if (selected) {
+                            MaterialTheme.appColors.report.selectedSurface
+                        } else {
+                            MaterialTheme.colorScheme.appBackground
+                        },
+                    ).border(AppBorders.Standard, MaterialTheme.colorScheme.appInk, shape)
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null,
+                        enabled = enabled,
+                        role = Role.RadioButton,
+                        onClick = onClick,
+                    ).semantics { this.selected = selected }
+                    .padding(horizontal = AppSpacing.md.copy(value = 14.dp).dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ReportRadioButton(selected = selected)
+            Spacer(Modifier.width(AppSpacing.md.dp))
+            Text(
+                text = reason,
+                color = MaterialTheme.colorScheme.appInk,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+    }
+}
+
+@Preview(name = "선택된 신고 사유")
+@Composable
+private fun ReportReasonOptionSelectedPreview() {
+    ReportReasonOption(
+        reason = "명예훼손 및 허위사실 유포",
+        selected = true,
+        enabled = true,
+        onClick = {},
+    )
+}
+
+@Preview(name = "선택되지 않은 신고 사유")
+@Composable
+private fun ReportReasonOptionUnselectedPreview() {
+    ReportReasonOption(
+        reason = "사이버 괴롭힘",
+        selected = false,
+        enabled = true,
+        onClick = {},
+    )
+}

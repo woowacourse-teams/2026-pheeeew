@@ -1,0 +1,171 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+plugins {
+    alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.androidMultiplatformLibrary)
+    alias(libs.plugins.composeMultiplatform)
+    alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.metro)
+}
+
+kotlin {
+    listOf(
+        iosArm64(),
+        iosSimulatorArm64(),
+    ).forEach { iosTarget ->
+        iosTarget.binaries.framework {
+            baseName = "Shared"
+            isStatic = true
+        }
+    }
+
+    android {
+        namespace = "com.pheeeew.shared"
+        compileSdk =
+            libs.versions.android.compileSdk
+                .get()
+                .toInt()
+        minSdk =
+            libs.versions.android.minSdk
+                .get()
+                .toInt()
+
+        compilerOptions {
+            jvmTarget = JvmTarget.JVM_11
+        }
+        androidResources {
+            enable = true
+        }
+        withHostTest {
+            isIncludeAndroidResources = true
+        }
+        withDeviceTestBuilder {
+            // Keep device-only UI profiles separate: commonTest uses display names with spaces, which D8 cannot encode below dex v040.
+            sourceSetTreeName = "androidDeviceTest"
+        }.configure {
+            instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        }
+    }
+
+    sourceSets {
+        androidMain.dependencies {
+            implementation(libs.androidx.activity.compose)
+            implementation(libs.androidx.security.crypto)
+            implementation(libs.compose.uiToolingPreview)
+            implementation(libs.ktor.client.okhttp)
+            implementation(libs.kotlinx.coroutines.android)
+            implementation(libs.maplibre.android)
+            implementation(libs.play.services.location)
+            implementation(libs.play.integrity)
+        }
+        iosMain.dependencies {
+            implementation(libs.ktor.client.darwin)
+        }
+        commonMain.dependencies {
+            implementation(libs.metro.viewmodel.compose)
+            implementation(libs.sentry)
+            implementation(libs.posthog)
+            implementation(libs.compose.runtime)
+            implementation(libs.compose.foundation)
+            implementation(libs.compose.material3)
+            implementation(libs.compose.ui)
+            implementation(libs.compose.components.resources)
+            implementation(libs.compose.uiToolingPreview)
+            implementation(libs.coil.compose)
+            implementation(libs.coil.network.ktor3)
+            implementation(libs.androidx.lifecycle.viewmodelCompose)
+            implementation(libs.androidx.lifecycle.runtimeCompose)
+            implementation(libs.androidx.navigation.compose)
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.websockets)
+            implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.serialization.json)
+            implementation(libs.kotlinx.coroutines.core)
+        }
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
+            implementation(libs.kotlinx.coroutines.test)
+            implementation(libs.ktor.client.mock)
+        }
+    }
+    sourceSets.named("androidDeviceTest") {
+        dependencies {
+            implementation(libs.kotlin.test)
+            implementation(libs.kotlinx.coroutines.test)
+            implementation(libs.androidx.testExt.junit)
+            implementation(libs.androidx.test.runner)
+            implementation(libs.androidx.uiautomator)
+        }
+    }
+}
+
+dependencies {
+    androidRuntimeClasspath(libs.compose.uiTooling)
+}
+
+// Resolve both graphs without relying on dead-code elimination or stripped symbols.
+val verifyDeveloperToolsIsolation by tasks.registering {
+    group = "verification"
+    description = "Verify product sources and shared iOS graphs exclude developer tooling."
+    inputs
+        .files(
+            kotlin.targets
+                .flatMap { target ->
+                    target.compilations.filter { it.name == "main" }.flatMap { it.allKotlinSourceSets }
+                }.distinct()
+                .map { it.kotlin },
+        ).withPropertyName("productSources")
+    kotlin.targets.withType<org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget>().forEach { target ->
+        listOf("main").forEach { name ->
+            val compilation = target.compilations.getByName(name)
+            val graph =
+                configurations
+                    .named(compilation.compileDependencyConfigurationName)
+                    .flatMap { it.incoming.resolutionResult.rootComponent }
+                    .map { root ->
+                        val visited = mutableSetOf<String>()
+
+                        fun visit(component: org.gradle.api.artifacts.result.ResolvedComponentResult) {
+                            if (!visited.add(component.id.displayName)) return
+                            component.dependencies
+                                .filterIsInstance<org.gradle.api.artifacts.result.ResolvedDependencyResult>()
+                                .forEach { visit(it.selected) }
+                        }
+                        visit(root)
+                        visited.sorted()
+                    }
+            inputs.property("${target.name}.$name", graph)
+        }
+        target.binaries.withType<org.jetbrains.kotlin.gradle.plugin.mpp.Framework>().forEach { binary ->
+            inputs.property("${target.name}.${binary.name}.compilation", binary.compilation.name)
+        }
+    }
+    doLast {
+        val forbidden =
+            Regex(
+                "DeveloperTools|DebugLocationProvider|DebugNetworkEngine|DebugAppServiceFactory|DeveloperToolsMapStyleOverride|NetworkRecoveryController|NetworkRecoveryRun|SimulationDraft|ErrorSimulation|LocationSimulation|NetworkRequestConditions|SimulatedLocation|com\\.pheeeew\\.developertools",
+            )
+        val leaks =
+            inputs.files.files.filter {
+                it.isFile && it.extension == "kt" &&
+                    forbidden.containsMatchIn(it.readText())
+            }
+        check(leaks.isEmpty()) { "Developer reproduction code in product compilation inputs: ${leaks.joinToString()}" }
+        inputs.properties.toSortedMap().forEach { (name, value) ->
+            if (name.endsWith(".compilation")) {
+                val expected = "main"
+                check(value == expected) { "Unexpected framework compilation: $name = $value" }
+            } else {
+                val components = value as List<*>
+                val includesTools = components.contains("project :developerTools")
+                check(!includesTools) { "Developer tools isolation failed: $name" }
+                println("$name developerTools=$includesTools")
+            }
+        }
+    }
+}
+
+tasks.matching { it.name.startsWith("link") && it.name.contains("FrameworkIos") }.configureEach {
+    dependsOn(verifyDeveloperToolsIsolation)
+}

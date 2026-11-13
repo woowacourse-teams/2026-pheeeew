@@ -1,0 +1,365 @@
+package com.pheeeew.core.di
+
+import android.app.Application
+import android.content.Context
+import android.content.SharedPreferences
+import androidx.activity.ComponentActivity
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import com.pheeeew.core.audio.AndroidAudioPlayback
+import com.pheeeew.core.audio.AndroidAudioPlayer
+import com.pheeeew.core.audio.AndroidVoiceRecorder
+import com.pheeeew.core.audio.AudioFactories
+import com.pheeeew.core.di.device.DeviceSessionBuildConfig
+import com.pheeeew.core.location.PlatformLocationProvider
+import com.pheeeew.core.monitoring.Monitoring
+import com.pheeeew.core.monitoring.MonitoringConfig
+import com.pheeeew.core.monitoring.StateDecoder
+import com.pheeeew.core.monitoring.createAndroidMonitoring
+import com.pheeeew.core.network.ApiConfig
+import com.pheeeew.core.network.ConnectivityObserver
+import com.pheeeew.core.notification.AndroidNotificationPermissionController
+import com.pheeeew.core.notification.NotificationPermissionController
+import com.pheeeew.core.permission.AndroidAppSettingsLauncher
+import com.pheeeew.core.permission.AppSettingsLauncher
+import com.pheeeew.data.local.config.AndroidAppConfigStore
+import com.pheeeew.data.local.config.AppConfigStore
+import com.pheeeew.data.local.device.AndroidDeviceCredentialStorage
+import com.pheeeew.data.local.device.DeviceCredentialStorage
+import com.pheeeew.data.location.platform.android.AndroidLocationPermissionController
+import com.pheeeew.data.location.platform.android.AndroidPlatformLocationProvider
+import com.pheeeew.data.remote.attestation.AndroidPlayIntegrityProofProvider
+import com.pheeeew.data.remote.attestation.DeviceAttestationPolicy
+import com.pheeeew.data.repository.AppVersionCacheStorage
+import com.pheeeew.data.repository.AppVersionRepositoryImpl
+import com.pheeeew.data.repository.CachedAppVersionRepository
+import com.pheeeew.data.repository.EmotionMapRepositoryImpl
+import com.pheeeew.data.repository.EmotionRegionMapRepositoryImpl
+import com.pheeeew.domain.model.device.DevicePlatform
+import com.pheeeew.domain.permission.LocationPermissionController
+import com.pheeeew.domain.repository.AppVersionRepository
+import com.pheeeew.domain.repository.OnboardingStore
+import com.pheeeew.domain.repository.RecordAnonymityStore
+import com.pheeeew.feature.guide.FeatureGuide
+import dev.zacsweers.metro.DependencyGraph
+import dev.zacsweers.metro.GraphExtension
+import dev.zacsweers.metro.Provides
+import dev.zacsweers.metro.SingleIn
+import dev.zacsweers.metro.createGraphFactory
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+data class AndroidAppConfig(
+    val device: DeviceSessionBuildConfig,
+    val applicationId: String,
+    val cloudProjectNumber: Long,
+    val monitoring: MonitoringConfig,
+    val version: String,
+    val versionRepositoryDecorator: ((AppVersionRepository) -> AppVersionRepository)? = null,
+) {
+    init {
+        require(device.isDebug || versionRepositoryDecorator == null)
+    }
+}
+
+@DependencyGraph(AppScope::class)
+internal interface AndroidAppGraph :
+    AppGraph,
+    ApiBindings {
+    val retainedFactory: ActivityRetainedGraph.Factory
+    val permissionFactory: AndroidLocationPermissionController.Factory
+
+    @DependencyGraph.Factory
+    interface Factory {
+        fun create(
+            @Provides context: Context,
+            @Provides config: AndroidAppConfig,
+            @Provides services: AppServiceFactory,
+        ): AndroidAppGraph
+    }
+
+    @Provides fun build(config: AndroidAppConfig): DeviceSessionBuildConfig {
+        require(config.device.isDebug || config.applicationId == "com.pheeeew")
+        require(config.device.attestationMode != "required" || config.cloudProjectNumber > 0)
+        return config.device
+    }
+
+    @Provides @AppVersion
+    fun version(config: AndroidAppConfig): String = config.version
+
+    @Provides @PlatformName
+    fun platformName(): String = "android"
+
+    @Provides fun platform(): DevicePlatform = DevicePlatform.ANDROID
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun monitoringOwner(
+        context: Context,
+        config: AndroidAppConfig,
+    ): AppMonitoring =
+        AppMonitoring(
+            createAndroidMonitoring(
+                context as Application,
+                config.monitoring,
+                appMonitoringRegistry(),
+                StateDecoder(::decodeAppMonitoringState),
+            ),
+            config.monitoring,
+        )
+
+    @Provides fun monitoring(owner: AppMonitoring): Monitoring = owner.runtime
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun connectivity(services: AppServiceFactory): ConnectivityObserver = services.createConnectivityObserver()
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun storage(
+        context: Context,
+        build: DeviceSessionBuildConfig,
+    ): DeviceCredentialStorage =
+        AndroidDeviceCredentialStorage(
+            context,
+            ApiConfig(build.baseUrl).deviceStorageEnvironment(),
+            build.legacyCredentialPolicy,
+        )
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun attestation(
+        context: Context,
+        config: AndroidAppConfig,
+        build: DeviceSessionBuildConfig,
+    ): DeviceAttestationPolicy = build.policy { AndroidPlayIntegrityProofProvider(context, config.cloudProjectNumber) }
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun recordAnonymity(context: Context): RecordAnonymityStore = AndroidRecordAnonymityStore(context)
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun onboarding(context: Context): OnboardingStore = AndroidOnboardingStore(context)
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun settings(context: Context): AppSettingsLauncher = AndroidAppSettingsLauncher(context)
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun configStore(
+        context: Context,
+        build: DeviceSessionBuildConfig,
+    ): AppConfigStore =
+        AndroidAppConfigStore(
+            context,
+            ApiConfig(build.baseUrl).deviceStorageEnvironment(),
+        )
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun versions(
+        impl: AppVersionRepositoryImpl,
+        context: Context,
+        build: DeviceSessionBuildConfig,
+        config: AndroidAppConfig,
+    ): AppVersionRepository {
+        val preferences = context.getSharedPreferences("app_version_policy", Context.MODE_PRIVATE)
+        val key = "android:${build.baseUrl}"
+        val storage =
+            object : AppVersionCacheStorage {
+                override fun read(): String? = preferences.getString(key, null)
+
+                override fun write(value: String) {
+                    preferences.edit().putString(key, value).apply()
+                }
+            }
+        val cached = CachedAppVersionRepository(impl, storage, "android", build.baseUrl)
+        return config.versionRepositoryDecorator?.invoke(cached) ?: cached
+    }
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun audio(
+        recorder: () -> AndroidVoiceRecorder,
+        player: () -> AndroidAudioPlayer,
+        playback: () -> AndroidAudioPlayback,
+    ): AudioFactories = AudioFactories({ recorder() }, { player() }, { playback() })
+}
+
+@GraphExtension(ActivityRetainedScope::class)
+internal interface ActivityRetainedGraph :
+    UiGraph,
+    UiBindings {
+    val permissionOwner: AttachedLocationPermission
+    val notificationPermissionOwner: AttachedNotificationPermission
+
+    @GraphExtension.Factory
+    interface Factory {
+        fun create(
+            @Provides permission: AttachedLocationPermission,
+            @Provides notificationPermission: AttachedNotificationPermission,
+        ): ActivityRetainedGraph
+    }
+
+    @Provides
+    @SingleIn(ActivityRetainedScope::class)
+    fun services(
+        map: EmotionMapRepositoryImpl,
+        regions: EmotionRegionMapRepositoryImpl,
+    ): UiServices =
+        UiServices(
+            map,
+            regions,
+        )
+
+    @Provides fun permission(owner: AttachedLocationPermission): LocationPermissionController = owner.controller
+
+    @Provides fun provider(impl: AndroidPlatformLocationProvider): PlatformLocationProvider = impl
+
+    @Provides
+    @SingleIn(ActivityRetainedScope::class)
+    fun location(
+        owner: AttachedLocationPermission,
+        permission: LocationPermissionController,
+        provider: PlatformLocationProvider,
+        services: AppServiceFactory,
+    ): LocationDependencies = services.createLocationDependencies(permission, provider, owner.controller::close)
+}
+
+fun createAndroidAppGraph(
+    context: Context,
+    config: AndroidAppConfig,
+    services: AppServiceFactory = AndroidAppServiceFactory(context),
+): AppGraph = createGraphFactory<AndroidAppGraph.Factory>().create(context.applicationContext, config, services)
+
+/** The only retained Android owner; it retains no Activity or View. */
+class ActivityRetainedGraphOwner private constructor(
+    private val app: AndroidAppGraph,
+) : ViewModel() {
+    private var retained: ActivityRetainedGraph? = null
+    val notificationPermissionController: NotificationPermissionController
+        get() = requireNotNull(retained).notificationPermissionOwner.controller
+    var uiSession = AppUiSession()
+        private set
+
+    /** Called only after the previous UI composition has been removed. */
+    fun clearUiSession() {
+        uiSession.close()
+        retained?.permissionOwner?.controller?.close()
+        retained?.notificationPermissionOwner?.controller?.close()
+        retained = null
+        uiSession = AppUiSession()
+    }
+
+    fun attach(activity: ComponentActivity): UiGraph {
+        val existing = retained
+        if (existing != null) {
+            existing.permissionOwner.controller.attach(activity)
+            existing.notificationPermissionOwner.controller.attach(activity)
+            return existing
+        }
+        val graph =
+            app.retainedFactory.create(
+                AttachedLocationPermission(app.permissionFactory.create(activity)),
+                AttachedNotificationPermission(
+                    AndroidNotificationPermissionController(
+                        activity,
+                        app.appSettingsLauncher,
+                    ),
+                ),
+            )
+        retained = graph
+        return graph
+    }
+
+    override fun onCleared() {
+        uiSession.close()
+        retained?.permissionOwner?.controller?.close()
+        retained?.notificationPermissionOwner?.controller?.close()
+        retained = null
+    }
+
+    companion object {
+        fun get(
+            activity: ComponentActivity,
+            app: AppGraph,
+        ): ActivityRetainedGraphOwner {
+            val factory = viewModelFactory { initializer { ActivityRetainedGraphOwner(app as AndroidAppGraph) } }
+            return ViewModelProvider(activity, factory)[ActivityRetainedGraphOwner::class.java]
+        }
+    }
+}
+
+private class AndroidRecordAnonymityStore(
+    context: Context,
+) : RecordAnonymityStore {
+    private val preferences = context.getSharedPreferences("pheeeew_preferences", Context.MODE_PRIVATE)
+
+    override fun read(): Boolean? = if (preferences.contains(KEY)) preferences.getBoolean(KEY, true) else null
+
+    override suspend fun save(isAnonymous: Boolean) {
+        withContext(Dispatchers.IO) {
+            preferences.edit().putBoolean(KEY, isAnonymous).commit()
+        }
+    }
+
+    private companion object {
+        const val KEY = "last_record_anonymous"
+    }
+}
+
+private class AndroidOnboardingStore(
+    context: Context,
+) : OnboardingStore {
+    private val preferences = context.getSharedPreferences("pheeeew_preferences", Context.MODE_PRIVATE)
+
+    override fun isCompleted(): Boolean = preferences.getBoolean("onboarding_completed", false)
+
+    override fun complete() {
+        preferences
+            .edit()
+            .putBoolean("onboarding_completed", true)
+            .apply()
+    }
+
+    override fun isFeatureGuideCompleted(guideId: String): Boolean =
+        preferences.getBoolean(featureGuideKey(guideId), false)
+
+    override fun completeFeatureGuide(guideId: String) {
+        preferences.edit().putBoolean(featureGuideKey(guideId), true).apply()
+    }
+
+    override fun resetFeatureGuideHistory() {
+        preferences
+            .edit()
+            .removeFeatureGuideHistory()
+            .apply()
+    }
+
+    override fun resetCompletion() {
+        preferences
+            .edit()
+            .remove("onboarding_completed")
+            .removeFeatureGuideHistory()
+            .apply()
+    }
+
+    private fun SharedPreferences.Editor.removeFeatureGuideHistory(): SharedPreferences.Editor =
+        apply {
+            FeatureGuide.storageIds.forEach { guideId -> remove(featureGuideKey(guideId)) }
+        }
+
+    private fun featureGuideKey(guideId: String) = "feature_guide_${guideId}_completed"
+}
+
+internal class AttachedLocationPermission(
+    val controller: AndroidLocationPermissionController,
+)
+
+internal class AttachedNotificationPermission(
+    val controller: AndroidNotificationPermissionController,
+)

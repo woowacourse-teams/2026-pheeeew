@@ -1,0 +1,47 @@
+(lldb) command source -s 0 'boot-capture.lldb'
+Executing commands in 'boot-capture.lldb'.
+(lldb) script lldb.debugger.SetAsync(False)
+(lldb) device select <DEVICE_IDENTIFIER>
+(lldb) device process attach -p 88715
+(lldb) script exec("import time\np = lldb.debugger.GetSelectedTarget().GetProcess()\nfor _ in range(25):\n if p.GetState() in (lldb.eStateStopped, lldb.eStateCrashed, lldb.eStateExited): break\n time.sleep(1)\nprint(\"attach state:\",p.GetState())")
+Process 88715 stopped
+* thread #1, stop reason = signal SIGSTOP
+    frame #0: 0x000000010269b0f0 dyld`_dyld_start
+dyld`_dyld_start:
+->  0x10269b0f0 <+0>:  mov    x0, sp
+    0x10269b0f4 <+4>:  and    sp, x0, #0xfffffffffffffff0
+    0x10269b0f8 <+8>:  mov    x29, #0x0                 ; =0
+    0x10269b0fc <+12>: mov    x30, #0x0                 ; =0
+Target 0: (Pheeeew) stopped.
+attach state: 5
+(lldb) process status
+Process 88715 stopped
+* thread #1, stop reason = signal SIGSTOP
+    frame #0: 0x000000010269b0f0 dyld`_dyld_start
+dyld`_dyld_start:
+->  0x10269b0f0 <+0>:  mov    x0, sp
+    0x10269b0f4 <+4>:  and    sp, x0, #0xfffffffffffffff0
+    0x10269b0f8 <+8>:  mov    x29, #0x0                 ; =0
+    0x10269b0fc <+12>: mov    x30, #0x0                 ; =0
+(lldb) target list
+Current targets:
+* target #0: /private/var/containers/Bundle/Application/BA00AF9B-9F4C-41A4-A84E-5702CE70C033/Pheeeew.app/Pheeeew ( arch=arm64-apple-ios, platform=remote-ios, pid=88715, state=stopped )
+(lldb) breakpoint set --func-regex "CHHapticEngine.*init" --one-shot true
+Breakpoint 1: no locations (pending).
+WARNING:  Unable to resolve breakpoint to any actual locations.
+(lldb) continue
+10 locations added to breakpoint 1
+Process 88715 resuming
+Process 88715 stopped
+* thread #1, queue = 'com.apple.main-thread', stop reason = one-shot breakpoint 1
+    frame #0: 0x000000021b83f150 CoreHaptics`+[CHHapticEngine initialize]
+CoreHaptics`+[CHHapticEngine initialize]:
+->  0x21b83f150 <+0>:  pacibsp
+    0x21b83f154 <+4>:  stp    x29, x30, [sp, #-0x10]!
+    0x21b83f158 <+8>:  mov    x29, sp
+    0x21b83f15c <+12>: mov    x1, #0x61dd               ; =25053
+Target 0: (Pheeeew) stopped.
+(lldb) command script import ${PROJECT_ROOT}/AN/Pheeeew/scripts/haptic_channel_exact_1060.py
+[HapticChannelFailure] Exact error branch breakpoint 2 0x21a25efb4
+Only the error branch stops; ordinary log calls are not intercepted.
+(lldb) continue

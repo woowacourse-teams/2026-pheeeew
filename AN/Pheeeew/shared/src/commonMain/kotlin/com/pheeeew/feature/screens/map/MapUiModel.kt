@@ -1,0 +1,43 @@
+package com.pheeeew.feature.screens.map
+
+import com.pheeeew.domain.model.GeoCoordinate
+import com.pheeeew.domain.model.LocationError
+import com.pheeeew.domain.model.LocationState
+import com.pheeeew.domain.model.emotion.EmotionRegionLevel
+import com.pheeeew.feature.screens.map.monitoring.ContentLoad
+
+data class MapUiModel(
+    val hiddenEmotionIds: Set<Long> = emptySet(),
+    val locationState: LocationState = LocationState.Loading,
+    val mapError: MapErrorUiModel? = null,
+    val isRetryingMap: Boolean = false,
+    val isOffline: Boolean = false,
+    val isFilterApplied: Boolean = false,
+    val locationError: LocationError? = null,
+    val mapRevision: Int = 0,
+    val cameraCommand: MapCameraCommandUiModel? = null,
+    val isRequestingLocation: Boolean = false,
+    val showLocationPermissionDialog: Boolean = false,
+    val isEmotionSelectorExpanded: Boolean = false,
+    val isRecordLocationPicking: Boolean = false,
+    val highlightedEmotionId: Long? = null,
+    val pressedEmotionId: Long? = null,
+    val pressedEmotionScale: Float = 1f,
+    val focusedEmotionId: Long? = null,
+    val recordPreviewPin: EmotionPinUiModel? = null,
+    val recordPreviewScale: Float = 1f,
+    val recordOrigin: GeoCoordinate? = null,
+    val emotionPins: List<EmotionPinUiModel> = emptyList(),
+    val emotionPinSymbolImages: List<EmotionPinSymbolImage> = emptyList(),
+    val regionClusters: List<RegionClusterUiModel> = emptyList(),
+    val displayedRegionLevel: EmotionRegionLevel? = null,
+    val regionClusterSymbolImages: List<EmotionPinSymbolImage> = emptyList(),
+    val isLoadingRegionClusters: Boolean = false,
+    val regionClustersError: String? = null,
+    val isLoadingEmotionPins: Boolean = false,
+    val isLoadingMoreEmotionPins: Boolean = false,
+    val hasPartialEmotionPins: Boolean = false,
+    val invalidEmotionPinCount: Int = 0,
+    val emotionPinsError: String? = null,
+    val emotionContentLoad: ContentLoad? = null,
+)

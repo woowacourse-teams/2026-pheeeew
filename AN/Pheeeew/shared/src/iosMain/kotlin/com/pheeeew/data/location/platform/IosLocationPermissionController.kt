@@ -1,0 +1,129 @@
+package com.pheeeew.data.location.platform.ios
+
+import com.pheeeew.domain.permission.LocationPermissionController
+import com.pheeeew.domain.permission.LocationPermissionStatus
+import dev.zacsweers.metro.Inject
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
+import platform.CoreLocation.CLAuthorizationStatus
+import platform.CoreLocation.CLLocationManager
+import platform.CoreLocation.CLLocationManagerDelegateProtocol
+import platform.CoreLocation.kCLAuthorizationStatusAuthorizedAlways
+import platform.CoreLocation.kCLAuthorizationStatusAuthorizedWhenInUse
+import platform.CoreLocation.kCLAuthorizationStatusDenied
+import platform.CoreLocation.kCLAuthorizationStatusNotDetermined
+import platform.CoreLocation.kCLAuthorizationStatusRestricted
+import platform.darwin.NSObject
+import platform.darwin.dispatch_async
+import platform.darwin.dispatch_get_main_queue
+import kotlin.coroutines.resume
+
+@OptIn(ExperimentalForeignApi::class)
+@Inject
+class IosLocationPermissionController(
+    private val locationManager: CLLocationManager = CLLocationManager(),
+) : LocationPermissionController,
+    AutoCloseable {
+    private val delegate = PermissionDelegate(locationManager)
+
+    override fun close() = delegate.close()
+
+    override suspend fun currentStatus(): LocationPermissionStatus =
+        withContext(Dispatchers.Main) {
+            locationManager.authorizationStatus.toLocationPermissionStatus(
+                CLLocationManager.locationServicesEnabled(),
+            )
+        }
+
+    override suspend fun requestPermission(): LocationPermissionStatus =
+        withContext(Dispatchers.Main) {
+            delegate.requestPermission()
+        }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private class PermissionDelegate(
+    private val locationManager: CLLocationManager,
+) : NSObject(),
+    CLLocationManagerDelegateProtocol {
+    private var continuation: CancellableContinuation<LocationPermissionStatus>? = null
+
+    fun close() {
+        continuation?.cancel()
+        continuation = null
+        if (locationManager.delegate === this) locationManager.delegate = null
+        locationManager.stopUpdatingLocation()
+    }
+
+    suspend fun requestPermission(): LocationPermissionStatus {
+        val status = locationManager.authorizationStatus
+        if (status != kCLAuthorizationStatusNotDetermined) {
+            if (status == kCLAuthorizationStatusDenied || status == kCLAuthorizationStatusRestricted) {
+                // The OS may suppress the prompt after denial; still attempt the system request first.
+                locationManager.requestWhenInUseAuthorization()
+            }
+            return locationManager.authorizationStatus.toLocationPermissionStatus(
+                CLLocationManager.locationServicesEnabled(),
+            )
+        }
+        return suspendCancellableCoroutine { requestContinuation ->
+            continuation?.cancel()
+            continuation = requestContinuation
+            locationManager.delegate = this
+            requestContinuation.invokeOnCancellation {
+                dispatch_async(dispatch_get_main_queue()) {
+                    if (continuation === requestContinuation) {
+                        continuation = null
+                        locationManager.delegate = null
+                    }
+                }
+            }
+            locationManager.requestWhenInUseAuthorization()
+        }
+    }
+
+    override fun locationManagerDidChangeAuthorization(manager: CLLocationManager) {
+        finish(manager.authorizationStatus)
+    }
+
+    @Suppress("DEPRECATION")
+    override fun locationManager(
+        manager: CLLocationManager,
+        didChangeAuthorizationStatus: CLAuthorizationStatus,
+    ) {
+        finish(didChangeAuthorizationStatus)
+    }
+
+    private fun finish(status: CLAuthorizationStatus) {
+        if (status == kCLAuthorizationStatusNotDetermined) return
+        val requestContinuation = continuation ?: return
+        continuation = null
+        locationManager.delegate = null
+        if (requestContinuation.isActive) {
+            requestContinuation.resume(
+                status.toLocationPermissionStatus(CLLocationManager.locationServicesEnabled()),
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private fun CLAuthorizationStatus.toLocationPermissionStatus(
+    locationServicesEnabled: Boolean,
+): LocationPermissionStatus {
+    if (!locationServicesEnabled) return LocationPermissionStatus.ServicesDisabled
+    return when (this) {
+        kCLAuthorizationStatusAuthorizedAlways,
+        kCLAuthorizationStatusAuthorizedWhenInUse,
+        -> LocationPermissionStatus.Granted
+
+        kCLAuthorizationStatusDenied,
+        kCLAuthorizationStatusRestricted,
+        -> LocationPermissionStatus.PermanentlyDenied
+
+        else -> LocationPermissionStatus.Denied
+    }
+}

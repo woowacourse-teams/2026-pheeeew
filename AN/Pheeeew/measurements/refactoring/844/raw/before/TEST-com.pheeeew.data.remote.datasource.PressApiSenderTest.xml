@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.pheeeew.data.remote.datasource.PressApiSenderTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-20T13:43:36.478Z" hostname="MacBook-Pro.local" time="0.027">
+  <properties/>
+  <testcase name="replays the same batch once after recoverable authentication failure" classname="com.pheeeew.data.remote.datasource.PressApiSenderTest" time="0.013"/>
+  <testcase name="treats malformed successful write response as unknown" classname="com.pheeeew.data.remote.datasource.PressApiSenderTest" time="0.004"/>
+  <testcase name="treats server errors as unknown writes" classname="com.pheeeew.data.remote.datasource.PressApiSenderTest" time="0.003"/>
+  <testcase name="maps valid POST response to accepted daily personal totals without idempotency support" classname="com.pheeeew.data.remote.datasource.PressApiSenderTest" time="0.003"/>
+  <testcase name="maps validation rejection to rejected and auth failure to safely retryable" classname="com.pheeeew.data.remote.datasource.PressApiSenderTest" time="0.004"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

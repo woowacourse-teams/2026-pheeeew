@@ -1,0 +1,11 @@
+Base: 1d4de90f
+Branch: feat/820-ranking-group-loading
+Command: ./gradlew :shared:testAndroidHostTest :shared:ktlintCheck :shared:compileKotlinIosArm64 :androidApp:assembleDebug
+BUILD SUCCESSFUL
+{'tests': 604, 'failures': 0, 'errors': 0, 'skipped': 0}
+Final probe records match saved after XML.
+python3 measurements/loading/820/analyze.py: 156 paired observations verified, source call counts unchanged.
+baseline-probes.patch: git apply --cached --check against 1d4de90f in a temporary isolated index passed.
+No real device, network HTTP, or rendered-frame measurement.
+
+iOS device distribution check: Xcode Debug build succeeded; installed and launched com.itda.pheeeew on connected iPhone 17 Pro. No timing measurement or user-confirmed UI QA was collected on this device.

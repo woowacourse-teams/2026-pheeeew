@@ -1,0 +1,26 @@
+{
+  "base": "40f08321281c7a5fc61a6e079c393540b37a22d2",
+  "branch": "feat/844-press-responsibility-refactor",
+  "baseline_press_tests": 67,
+  "stages": {
+    "screen_extraction": 67,
+    "package_move": 67,
+    "reconciliation_extraction": 73,
+    "flush_policy_extraction": 77
+  },
+  "unchanged_probe_rows_each_stage": 14,
+  "final_all_tests": {
+    "tests": 614,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "passed_tasks": [
+    ":shared:testAndroidHostTest",
+    "ktlintCheck",
+    ":androidApp:lintDebug",
+    ":androidApp:assembleDebug",
+    ":shared:compileKotlinIosArm64"
+  ],
+  "ui_validation": "No device UI or frame measurement; summary renderer bodies matched baseline excluding declaration visibility and whitespace."
+}

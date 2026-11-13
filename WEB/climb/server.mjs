@@ -29,7 +29,7 @@ const server = http.createServer((req, res) => {
     return;
   }
   const p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
-  const file = path.join(ROOT, ['/', '/admin', '/admin/'].includes(p) ? 'index.html' : p); // /admin 은 관리자 키 창부터 띄운다
+  const file = path.join(ROOT, ['/', '/admin', '/admin/'].includes(p) ? 'index.html' : ['/stairs', '/stairs/'].includes(p) ? 'stairs.html' : p); // /admin 은 관리자 키 창부터 띄운다
   if (!file.startsWith(ROOT)) { res.writeHead(403).end(); return; }
   fs.readFile(file, (err, data) => {
     if (err) { res.writeHead(404).end('not found'); return; }

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:aapt="http://schemas.android.com/aapt" xmlns:android="http://schemas.android.com/apk/res/android" android:width="105dp" android:height="107dp" android:viewportWidth="105" android:viewportHeight="107">
+    <path android:pathData="M52.5 107C81.4949 107 105 83.4949 105 54.5C105 25.5051 81.4949 2 52.5 2C23.5051 2 0 25.5051 0 54.5C0 83.4949 23.5051 107 52.5 107Z" android:fillColor="#7B818B" />
+    <path android:pathData="M52.5 104.25C81.0807 104.25 104.25 81.0807 104.25 52.5C104.25 23.9193 81.0807 0.75 52.5 0.75C23.9193 0.75 0.75 23.9193 0.75 52.5C0.75 81.0807 23.9193 104.25 52.5 104.25Z" android:strokeColor="#252725" android:strokeWidth="1.5">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="11.1621" android:startY="-6.5364" android:endX="93.8379" android:endY="111.536">
+                <item android:offset="0" android:color="#F6F7F8" />
+                <item android:offset="0.32" android:color="#DFE3E8" />
+                <item android:offset="0.62" android:color="#BDC3CB" />
+                <item android:offset="1" android:color="#E9ECF0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:pathData="M52.5002 96.7797C77.6524 96.7797 98.0424 76.3897 98.0424 51.2375C98.0424 26.0852 77.6524 5.69531 52.5002 5.69531C27.3479 5.69531 6.95801 26.0852 6.95801 51.2375C6.95801 76.3897 27.3479 96.7797 52.5002 96.7797Z" android:fillColor="#292B2A" />
+</vector>

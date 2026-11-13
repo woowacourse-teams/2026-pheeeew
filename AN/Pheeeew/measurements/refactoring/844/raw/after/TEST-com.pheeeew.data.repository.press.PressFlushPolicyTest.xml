@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.pheeeew.data.repository.press.PressFlushPolicyTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T13:50:56.521Z" hostname="MacBook-Pro.local" time="0.0">
+  <properties/>
+  <testcase name="deadline saturates near the clock maximum without turning into an immediate retry" classname="com.pheeeew.data.repository.press.PressFlushPolicyTest" time="0.0"/>
+  <testcase name="new input keeps first deadline across a read while an existing write can resume immediately" classname="com.pheeeew.data.repository.press.PressFlushPolicyTest" time="0.0"/>
+  <testcase name="a threshold skips batching delay and zero-delay configuration stays immediate" classname="com.pheeeew.data.repository.press.PressFlushPolicyTest" time="0.0"/>
+  <testcase name="expired or absent batch deadlines do not create another wait" classname="com.pheeeew.data.repository.press.PressFlushPolicyTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

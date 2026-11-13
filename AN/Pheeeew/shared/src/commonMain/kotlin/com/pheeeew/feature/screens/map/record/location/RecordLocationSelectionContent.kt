@@ -1,0 +1,335 @@
+package com.pheeeew.feature.screens.map.record.location
+
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.component.BasicTopBar
+import com.pheeeew.core.designsystem.component.SheetDragHandle
+import com.pheeeew.core.designsystem.component.raisedButtonBorder
+import com.pheeeew.core.designsystem.theme.AppBorders
+import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appInk
+import com.pheeeew.core.designsystem.theme.appPrimary
+import com.pheeeew.core.designsystem.theme.appSurface
+import com.pheeeew.core.designsystem.theme.appSurfaceDisabled
+import com.pheeeew.core.designsystem.theme.appTextPrimary
+import com.pheeeew.core.designsystem.theme.appTextSecondary
+import com.pheeeew.domain.model.GeoCoordinate
+import com.pheeeew.feature.screens.map.overlay.MapControlButton
+import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
+import com.pheeeew.feature.screens.map.record.noRippleClickable
+import org.jetbrains.compose.resources.stringResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.ic_my_location
+import pheeeew.shared.generated.resources.map_current_location
+import pheeeew.shared.generated.resources.record_choose_stamp_title
+import pheeeew.shared.generated.resources.record_location_confirm
+import pheeeew.shared.generated.resources.record_location_limit
+import pheeeew.shared.generated.resources.record_location_submit
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.roundToInt
+import kotlin.math.sin
+
+@Composable
+fun RecordLocationSelectionContent(
+    origin: GeoCoordinate?,
+    selectedCoordinate: GeoCoordinate?,
+    viewport: RecordMapViewport?,
+    selectedEmotion: EmotionTypeUiModel,
+    isSubmitting: Boolean,
+    canConfirm: Boolean,
+    onCoordinateSelected: (Double, Double) -> Unit,
+    onConfirm: () -> Unit,
+    onBack: () -> Unit,
+    modifier: Modifier,
+    onMyLocationClick: () -> Unit = {},
+    isRequestingLocation: Boolean = false,
+    showDragGuide: Boolean = true,
+    onStampScaleChanged: (Float) -> Unit = {},
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val selectedEmotionLabel = stringResource(selectedEmotion.label)
+    val stampDescription = selectedEmotionLabel
+    val density = LocalDensity.current.density
+    val latestOnSelected by rememberUpdatedState(onCoordinateSelected)
+    val latestCanMove by rememberUpdatedState(!isSubmitting)
+    val latestViewport by rememberUpdatedState(viewport)
+    val latestCoordinate by rememberUpdatedState(selectedCoordinate ?: origin)
+    Box(modifier = modifier.fillMaxSize()) {
+        // The native map renders the geographic range and dim in the same frame as its tiles.
+        if (origin != null && viewport != null && viewport.radius > 0f) {
+            val center = Offset(viewport.centerX * density, viewport.centerY * density)
+            val radius = viewport.radius * density
+            Box(modifier = Modifier.fillMaxSize()) {
+                val selected = selectedCoordinate ?: origin
+                val meters = distance(origin, selected)
+                val angle = bearing(origin, selected)
+                val offsetX = (sin(angle) * meters / RECORD_RADIUS_METERS * radius).toFloat()
+                val offsetY = (-cos(angle) * meters / RECORD_RADIUS_METERS * radius).toFloat()
+                var isStampPressed by remember(origin) { mutableStateOf(false) }
+                val stampScale by animateFloatAsState(
+                    targetValue = if (isStampPressed && !isSubmitting) 1.2f else 1f,
+                    animationSpec = tween(durationMillis = 150),
+                    label = "recordStampPressScale",
+                )
+                SideEffect { onStampScaleChanged(stampScale) }
+                DisposableEffect(Unit) { onDispose { onStampScaleChanged(1f) } }
+                if (showDragGuide) {
+                    RecordStampDragGuide(
+                        modifier =
+                            Modifier.offset {
+                                IntOffset(
+                                    (center.x + offsetX - 58.dp.toPx()).roundToInt(),
+                                    (center.y + offsetY - 76.dp.toPx()).roundToInt(),
+                                )
+                            },
+                    )
+                }
+                Box(
+                    modifier =
+                        Modifier
+                            .size(62.dp)
+                            .semantics {
+                                contentDescription = stampDescription
+                            }.offset {
+                                IntOffset(
+                                    (center.x + offsetX - 31.dp.toPx()).roundToInt(),
+                                    (center.y + offsetY - 31.dp.toPx()).roundToInt(),
+                                )
+                            }.pointerInput(origin, isSubmitting) {
+                                // Observe the press without consuming the stamp's drag events.
+                                awaitEachGesture {
+                                    awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                                    try {
+                                        isStampPressed = latestCanMove
+                                        do {
+                                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                                        } while (event.changes.any { it.pressed })
+                                    } finally {
+                                        isStampPressed = false
+                                    }
+                                }
+                            }.pointerInput(origin, density) {
+                                var draggedCenter = Offset.Zero
+                                detectDragGestures(
+                                    onDragStart = {
+                                        val currentViewport = latestViewport ?: return@detectDragGestures
+                                        val coordinate = latestCoordinate ?: origin
+                                        val angle = bearing(origin, coordinate)
+                                        val scale = currentViewport.radius * density / RECORD_RADIUS_METERS
+                                        val meters = distance(origin, coordinate)
+                                        draggedCenter =
+                                            Offset(
+                                                currentViewport.centerX * density +
+                                                    (sin(angle) * meters * scale).toFloat(),
+                                                currentViewport.centerY * density -
+                                                    (cos(angle) * meters * scale).toFloat(),
+                                            )
+                                    },
+                                ) { change, dragAmount ->
+                                    change.consume()
+                                    if (!latestCanMove) return@detectDragGestures
+                                    val currentViewport = latestViewport ?: return@detectDragGestures
+                                    val currentCenter =
+                                        Offset(
+                                            currentViewport.centerX * density,
+                                            currentViewport.centerY * density,
+                                        )
+                                    val currentRadius = currentViewport.radius * density
+                                    draggedCenter += dragAmount
+                                    val delta = draggedCenter - currentCenter
+                                    val meters =
+                                        (delta.getDistance() / currentRadius * RECORD_RADIUS_METERS)
+                                            .coerceAtMost(RECORD_RADIUS_METERS - 0.001)
+                                    val coordinate =
+                                        destination(origin, meters, atan2(delta.x.toDouble(), -delta.y.toDouble()))
+                                    latestOnSelected(coordinate.latitude, coordinate.longitude)
+                                }
+                            },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    // Transparent drag target; the native map draws the stamp.
+                }
+            }
+        }
+        Column(
+            modifier =
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.appSurface)
+                    .noRippleClickable {}
+                    .statusBarsPadding(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            BasicTopBar(
+                title = stringResource(Res.string.record_choose_stamp_title),
+                onBack = onBack,
+                enabled = !isSubmitting,
+            )
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(start = AppSpacing.xxl.dp, end = AppSpacing.xxl.dp, bottom = AppSpacing.md.dp)
+                        .border(
+                            AppBorders.Thin,
+                            MaterialTheme.colorScheme.appTextSecondary.copy(alpha = 0.35f),
+                            AppShapes.Pill,
+                        ).padding(horizontal = AppSpacing.md.dp, vertical = AppSpacing.xs.copy(value = 6.dp).dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = stringResource(Res.string.record_location_limit),
+                    color = MaterialTheme.colorScheme.appTextPrimary,
+                    fontSize = 12.sp,
+                )
+            }
+        }
+        if (isSubmitting) {
+            CircularProgressIndicator(
+                modifier = Modifier.align(Alignment.Center),
+                color = MaterialTheme.colorScheme.appPrimary,
+            )
+        }
+        // A fixed panel, with no dismiss or swipe behavior.
+        Column(
+            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
+            horizontalAlignment = Alignment.End,
+        ) {
+            MapControlButton(
+                icon = Res.drawable.ic_my_location,
+                contentDescription = stringResource(Res.string.map_current_location),
+                onClick = onMyLocationClick,
+                enabled = !isRequestingLocation && !isSubmitting,
+                modifier = Modifier.padding(end = AppSpacing.xl.dp, bottom = AppSpacing.md.dp),
+            )
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.appSurface, AppShapes.BottomSheet)
+                        .noRippleClickable {}
+                        .navigationBarsPadding()
+                        .padding(horizontal = AppSpacing.screen.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                SheetDragHandle()
+                Text(
+                    text = stringResource(Res.string.record_location_confirm),
+                    modifier = Modifier.fillMaxWidth().padding(top = AppSpacing.xxl.dp, bottom = AppSpacing.xxl.dp),
+                    color = MaterialTheme.colorScheme.appInk,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .raisedButtonBorder(
+                                AppShapes.Button,
+                                interactionSource = interactionSource,
+                                elevated =
+                                    canConfirm && !isSubmitting,
+                            ).background(
+                                if (canConfirm &&
+                                    !isSubmitting
+                                ) {
+                                    MaterialTheme.colorScheme.appPrimary
+                                } else {
+                                    MaterialTheme.colorScheme.appSurfaceDisabled
+                                },
+                                AppShapes.Button,
+                            ).noRippleClickable(
+                                enabled = canConfirm && !isSubmitting,
+                                interactionSource = interactionSource,
+                                onClick = onConfirm,
+                            ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        stringResource(Res.string.record_location_submit),
+                        color = MaterialTheme.colorScheme.appTextPrimary,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                Spacer(Modifier.height(AppSpacing.xxl.dp))
+            }
+        }
+    }
+}
+
+@Preview(name = "위치 선택 · 현재 위치", widthDp = 402, heightDp = 874, showBackground = true)
+@Composable
+private fun RecordLocationSelectionPreview() {
+    RecordLocationPreview(GeoCoordinate(37.5665, 126.9780))
+}
+
+@Preview(name = "위치 선택 · 이동한 스탬프", widthDp = 402, heightDp = 874, showBackground = true)
+@Composable
+private fun RecordLocationMovedPreview() {
+    RecordLocationPreview(destination(GeoCoordinate(37.5665, 126.9780), 300.0, -2.0))
+}
+
+@Composable
+private fun RecordLocationPreview(selected: GeoCoordinate) {
+    Box(Modifier.fillMaxSize().background(MaterialTheme.appColors.map.background)) {
+        RecordLocationSelectionContent(
+            origin = GeoCoordinate(37.5665, 126.9780),
+            selectedCoordinate = selected,
+            viewport = RecordMapViewport(201f, 437f, 153f),
+            selectedEmotion = EmotionTypeUiModel.FRUSTRATED,
+            isSubmitting = false,
+            canConfirm = true,
+            onCoordinateSelected = { _, _ -> },
+            onConfirm = {},
+            onBack = {},
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+}

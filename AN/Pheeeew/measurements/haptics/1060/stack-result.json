@@ -1,0 +1,12 @@
+{
+  "condition": "prepare=true; dedicated stack-capture mode, not timing-comparison run",
+  "device": "iPhone 17 Pro / iOS 26.6 (23G71)",
+  "coreHapticsUUID": "8796BB8E-BECE-32AA-A5D4-ACB646121F9D",
+  "stoppedAt": "-[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:] + 208 (verified channel-error logging branch)",
+  "thread": 9,
+  "queue": "com.apple.UIKit.FeedbackCoreHapticsEngineInternal",
+  "lastLoggedImpactIndexBeforeDetach": 259,
+  "stackFile": "capture-stack.log",
+  "consoleFile": "capture-console.log",
+  "limit": "Asynchronous internal playback stack; does not establish channel ownership/lifetime or a direct prepare call."
+}

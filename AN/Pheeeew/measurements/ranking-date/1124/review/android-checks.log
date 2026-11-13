@@ -1,0 +1,388 @@
+Reusing configuration cache.
+> Task :developerTools:generateExpectResourceCollectorsForCommonMain SKIPPED
+> Task :developerTools:generateComposeResClass SKIPPED
+> Task :developerTools:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :developerTools:copyNonXmlValueResourcesForAppleTest NO-SOURCE
+> Task :developerTools:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :developerTools:copyNonXmlValueResourcesForCommonTest NO-SOURCE
+> Task :developerTools:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :developerTools:convertXmlValueResourcesForCommonTest NO-SOURCE
+> Task :developerTools:convertXmlValueResourcesForAppleTest NO-SOURCE
+> Task :developerTools:convertXmlValueResourcesForIosArm64Main NO-SOURCE
+> Task :developerTools:convertXmlValueResourcesForAppleMain NO-SOURCE
+> Task :developerTools:convertXmlValueResourcesForIosMain NO-SOURCE
+> Task :developerTools:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :developerTools:copyNonXmlValueResourcesForNativeMain NO-SOURCE
+> Task :developerTools:copyNonXmlValueResourcesForIosArm64Main NO-SOURCE
+> Task :developerTools:copyNonXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :developerTools:convertXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :androidApp:loadKtlintReporters UP-TO-DATE
+> Task :developerTools:loadKtlintReporters UP-TO-DATE
+> Task :developerTools:convertXmlValueResourcesForIosArm64Test NO-SOURCE
+> Task :developerTools:copyNonXmlValueResourcesForIosMain NO-SOURCE
+> Task :developerTools:convertXmlValueResourcesForNativeMain NO-SOURCE
+> Task :developerTools:copyNonXmlValueResourcesForAppleMain NO-SOURCE
+> Task :developerTools:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+> Task :developerTools:generateResourceAccessorsForCommonMain SKIPPED
+> Task :developerTools:copyNonXmlValueResourcesForIosArm64Test NO-SOURCE
+> Task :developerTools:prepareComposeResourcesTaskForAppleMain NO-SOURCE
+> Task :developerTools:prepareComposeResourcesTaskForCommonTest NO-SOURCE
+> Task :developerTools:prepareComposeResourcesTaskForAndroidHostTest NO-SOURCE
+> Task :developerTools:prepareComposeResourcesTaskForIosMain NO-SOURCE
+> Task :developerTools:prepareComposeResourcesTaskForNativeMain NO-SOURCE
+> Task :developerTools:prepareComposeResourcesTaskForIosArm64Main NO-SOURCE
+> Task :developerTools:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :developerTools:generateResourceAccessorsForAppleMain SKIPPED
+> Task :developerTools:generateResourceAccessorsForAndroidHostTest SKIPPED
+> Task :developerTools:prepareComposeResourcesTaskForAppleTest NO-SOURCE
+> Task :developerTools:generateResourceAccessorsForCommonTest SKIPPED
+> Task :developerTools:generateResourceAccessorsForIosMain SKIPPED
+> Task :developerTools:convertXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :developerTools:generateResourceAccessorsForAndroidMain SKIPPED
+> Task :developerTools:generateResourceAccessorsForIosArm64Main SKIPPED
+> Task :developerTools:generateActualResourceCollectorsForAndroidMain SKIPPED
+> Task :developerTools:generateResourceAccessorsForAppleTest SKIPPED
+> Task :developerTools:generateResourceAccessorsForNativeMain SKIPPED
+> Task :developerTools:prepareComposeResourcesTaskForIosArm64Test NO-SOURCE
+> Task :developerTools:generateResourceAccessorsForIosArm64Test SKIPPED
+> Task :developerTools:copyNonXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :developerTools:copyNonXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :developerTools:copyNonXmlValueResourcesForIosTest NO-SOURCE
+> Task :developerTools:convertXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :developerTools:generateActualResourceCollectorsForIosArm64Main SKIPPED
+> Task :developerTools:copyNonXmlValueResourcesForNativeTest NO-SOURCE
+> Task :developerTools:convertXmlValueResourcesForIosTest NO-SOURCE
+> Task :developerTools:prepareComposeResourcesTaskForIosSimulatorArm64Main NO-SOURCE
+> Task :developerTools:prepareComposeResourcesTaskForIosSimulatorArm64Test NO-SOURCE
+> Task :developerTools:generateResourceAccessorsForIosSimulatorArm64Main SKIPPED
+> Task :shared:copyNonXmlValueResourcesForAndroidDeviceTest NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :developerTools:prepareComposeResourcesTaskForIosTest NO-SOURCE
+> Task :developerTools:generateResourceAccessorsForIosSimulatorArm64Test SKIPPED
+> Task :shared:copyNonXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :developerTools:convertXmlValueResourcesForNativeTest NO-SOURCE
+> Task :developerTools:generateActualResourceCollectorsForIosSimulatorArm64Main SKIPPED
+> Task :developerTools:generateResourceAccessorsForIosTest SKIPPED
+> Task :developerTools:prepareComposeResourcesTaskForNativeTest NO-SOURCE
+> Task :shared:generateComposeResClass UP-TO-DATE
+> Task :developerTools:generateResourceAccessorsForNativeTest SKIPPED
+> Task :shared:generateExpectResourceCollectorsForCommonMain UP-TO-DATE
+> Task :shared:convertXmlValueResourcesForCommonTest NO-SOURCE
+> Task :shared:convertXmlValueResourcesForIosArm64Main NO-SOURCE
+> Task :shared:convertXmlValueResourcesForAppleTest NO-SOURCE
+> Task :shared:convertXmlValueResourcesForAppleMain NO-SOURCE
+> Task :shared:convertXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :shared:convertXmlValueResourcesForAndroidDeviceTest NO-SOURCE
+> Task :shared:loadKtlintReporters UP-TO-DATE
+> Task :shared:copyNonXmlValueResourcesForIosArm64Main NO-SOURCE
+> Task :shared:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :shared:convertXmlValueResourcesForIosMain NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForAppleTest NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForCommonTest NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForAppleMain NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForAndroidHostTest NO-SOURCE
+> Task :shared:convertXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :shared:copyNonXmlValueResourcesForIosMain NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForAndroidDeviceTest NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForAppleMain NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForIosArm64Main NO-SOURCE
+> Task :shared:generateResourceAccessorsForAndroidDeviceTest NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForAppleTest NO-SOURCE
+> Task :shared:generateResourceAccessorsForAndroidHostTest NO-SOURCE
+> Task :shared:generateResourceAccessorsForAndroidMain NO-SOURCE
+> Task :shared:generateResourceAccessorsForIosArm64Main NO-SOURCE
+> Task :shared:generateResourceAccessorsForAppleMain NO-SOURCE
+> Task :shared:generateResourceAccessorsForAppleTest NO-SOURCE
+> Task :developerTools:runKtlintFormatOverKotlinScripts UP-TO-DATE
+> Task :shared:prepareComposeResourcesTaskForIosMain NO-SOURCE
+> Task :androidApp:runKtlintFormatOverKotlinScripts UP-TO-DATE
+> Task :shared:convertXmlValueResourcesForNativeMain NO-SOURCE
+> Task :developerTools:runKtlintFormatOverAndroidMainSourceSet NO-SOURCE
+> Task :androidApp:runKtlintFormatOverAndroidTestDebugSourceSet NO-SOURCE
+> Task :androidApp:runKtlintFormatOverAndroidTestReleaseSourceSet NO-SOURCE
+> Task :androidApp:runKtlintFormatOverTestFixturesReleaseSourceSet NO-SOURCE
+> Task :androidApp:ktlintAndroidTestDebugSourceSetFormat SKIPPED
+> Task :androidApp:ktlintAndroidTestReleaseSourceSetFormat SKIPPED
+> Task :androidApp:ktlintTestFixturesReleaseSourceSetFormat SKIPPED
+> Task :shared:runKtlintFormatOverKotlinScripts UP-TO-DATE
+> Task :androidApp:ktlintKotlinScriptFormat UP-TO-DATE
+> Task :developerTools:ktlintAndroidMainSourceSetFormat SKIPPED
+> Task :androidApp:runKtlintFormatOverReleaseSourceSet UP-TO-DATE
+> Task :androidApp:runKtlintFormatOverTestFixturesDebugSourceSet NO-SOURCE
+> Task :androidApp:ktlintTestFixturesDebugSourceSetFormat SKIPPED
+> Task :androidApp:runKtlintFormatOverTestSourceSet NO-SOURCE
+> Task :developerTools:runKtlintFormatOverAndroidHostTestSourceSet NO-SOURCE
+> Task :androidApp:ktlintTestSourceSetFormat SKIPPED
+> Task :androidApp:runKtlintFormatOverDebugSourceSet UP-TO-DATE
+> Task :androidApp:runKtlintFormatOverTestReleaseSourceSet NO-SOURCE
+> Task :developerTools:runKtlintFormatOverAppleMainSourceSet NO-SOURCE
+> Task :androidApp:runKtlintFormatOverTestDebugSourceSet NO-SOURCE
+> Task :developerTools:runKtlintFormatOverAppleTestSourceSet NO-SOURCE
+> Task :androidApp:runKtlintFormatOverTestFixturesSourceSet NO-SOURCE
+> Task :developerTools:ktlintAndroidHostTestSourceSetFormat SKIPPED
+> Task :developerTools:ktlintAppleTestSourceSetFormat SKIPPED
+> Task :androidApp:ktlintTestFixturesSourceSetFormat SKIPPED
+> Task :developerTools:ktlintAppleMainSourceSetFormat SKIPPED
+> Task :androidApp:ktlintTestDebugSourceSetFormat SKIPPED
+> Task :androidApp:runKtlintFormatOverMainSourceSet UP-TO-DATE
+> Task :androidApp:ktlintTestReleaseSourceSetFormat SKIPPED
+> Task :androidApp:runKtlintFormatOverAndroidTestSourceSet UP-TO-DATE
+> Task :androidApp:ktlintReleaseSourceSetFormat UP-TO-DATE
+> Task :shared:copyNonXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :developerTools:runKtlintFormatOverIosArm64MainSourceSet NO-SOURCE
+> Task :developerTools:runKtlintFormatOverIosArm64TestSourceSet NO-SOURCE
+> Task :developerTools:ktlintIosArm64MainSourceSetFormat SKIPPED
+> Task :developerTools:ktlintIosArm64TestSourceSetFormat SKIPPED
+> Task :developerTools:runKtlintFormatOverIosSimulatorArm64MainSourceSet NO-SOURCE
+> Task :androidApp:ktlintDebugSourceSetFormat UP-TO-DATE
+> Task :developerTools:ktlintIosSimulatorArm64MainSourceSetFormat SKIPPED
+> Task :developerTools:runKtlintFormatOverIosTestSourceSet NO-SOURCE
+> Task :developerTools:runKtlintFormatOverIosMainSourceSet UP-TO-DATE
+> Task :developerTools:runKtlintFormatOverNativeMainSourceSet NO-SOURCE
+> Task :developerTools:ktlintIosTestSourceSetFormat SKIPPED
+> Task :developerTools:ktlintNativeMainSourceSetFormat SKIPPED
+> Task :developerTools:runKtlintFormatOverIosSimulatorArm64TestSourceSet NO-SOURCE
+> Task :developerTools:runKtlintFormatOverCommonTestSourceSet UP-TO-DATE
+> Task :developerTools:ktlintIosSimulatorArm64TestSourceSetFormat SKIPPED
+> Task :developerTools:runKtlintFormatOverNativeTestSourceSet NO-SOURCE
+> Task :developerTools:ktlintNativeTestSourceSetFormat SKIPPED
+> Task :shared:runKtlintFormatOverAppleMainSourceSet NO-SOURCE
+> Task :androidApp:ktlintMainSourceSetFormat UP-TO-DATE
+> Task :shared:ktlintAppleMainSourceSetFormat SKIPPED
+> Task :shared:prepareComposeResourcesTaskForCommonTest NO-SOURCE
+> Task :shared:generateResourceAccessorsForIosMain NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForCommonMain UP-TO-DATE
+> Task :shared:convertXmlValueResourcesForIosArm64Test NO-SOURCE
+> Task :androidApp:ktlintAndroidTestSourceSetFormat UP-TO-DATE
+> Task :developerTools:ktlintKotlinScriptFormat UP-TO-DATE
+> Task :shared:generateResourceAccessorsForCommonTest NO-SOURCE
+> Task :shared:runKtlintFormatOverAndroidHostTestSourceSet UP-TO-DATE
+> Task :shared:generateResourceAccessorsForCommonMain UP-TO-DATE
+> Task :developerTools:runKtlintFormatOverCommonMainSourceSet UP-TO-DATE
+> Task :developerTools:ktlintIosMainSourceSetFormat UP-TO-DATE
+> Task :shared:copyNonXmlValueResourcesForNativeMain NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForIosArm64Test NO-SOURCE
+> Task :shared:runKtlintFormatOverAndroidDeviceTestSourceSet UP-TO-DATE
+> Task :shared:runKtlintFormatOverAppleTestSourceSet NO-SOURCE
+> Task :developerTools:ktlintCommonTestSourceSetFormat UP-TO-DATE
+> Task :shared:generateActualResourceCollectorsForAndroidMain UP-TO-DATE
+> Task :androidApp:ktlintFormat UP-TO-DATE
+> Task :shared:prepareComposeResourcesTaskForNativeMain NO-SOURCE
+> Task :shared:convertXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :shared:convertXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForIosArm64Test NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :shared:ktlintAppleTestSourceSetFormat SKIPPED
+> Task :shared:generateResourceAccessorsForIosArm64Test NO-SOURCE
+> Task :shared:convertXmlValueResourcesForIosTest NO-SOURCE
+> Task :shared:generateResourceAccessorsForNativeMain NO-SOURCE
+> Task :shared:ktlintAndroidDeviceTestSourceSetFormat UP-TO-DATE
+> Task :shared:generateActualResourceCollectorsForIosArm64Main UP-TO-DATE
+> Task :shared:copyNonXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForIosTest NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForIosSimulatorArm64Main NO-SOURCE
+> Task :shared:generateResourceAccessorsForIosSimulatorArm64Main NO-SOURCE
+> Task :shared:ktlintAndroidHostTestSourceSetFormat UP-TO-DATE
+> Task :shared:prepareComposeResourcesTaskForIosTest NO-SOURCE
+> Task :shared:runKtlintFormatOverIosArm64TestSourceSet NO-SOURCE
+> Task :shared:generateResourceAccessorsForIosTest NO-SOURCE
+> Task :shared:runKtlintFormatOverIosArm64MainSourceSet NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForIosSimulatorArm64Test NO-SOURCE
+> Task :shared:generateActualResourceCollectorsForIosSimulatorArm64Main UP-TO-DATE
+> Task :shared:generateResourceAccessorsForIosSimulatorArm64Test NO-SOURCE
+> Task :shared:ktlintIosArm64TestSourceSetFormat SKIPPED
+> Task :shared:ktlintIosArm64MainSourceSetFormat SKIPPED
+> Task :shared:convertXmlValueResourcesForNativeTest NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForNativeTest NO-SOURCE
+> Task :shared:kmpPartiallyResolvedDependenciesChecker
+> Task :shared:prepareComposeResourcesTaskForNativeTest NO-SOURCE
+> Task :shared:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :shared:androidPreBuild UP-TO-DATE
+> Task :developerTools:ktlintCommonMainSourceSetFormat UP-TO-DATE
+> Task :developerTools:ktlintFormat UP-TO-DATE
+> Task :shared:preAndroidMainBuild UP-TO-DATE
+> Task :shared:generateResourceAccessorsForNativeTest NO-SOURCE
+> Task :shared:ktlintKotlinScriptFormat UP-TO-DATE
+> Task :shared:runKtlintFormatOverNativeMainSourceSet NO-SOURCE
+> Task :shared:runKtlintFormatOverIosSimulatorArm64TestSourceSet NO-SOURCE
+> Task :shared:ktlintIosSimulatorArm64TestSourceSetFormat SKIPPED
+> Task :shared:generateAndroidHostTestAssets UP-TO-DATE
+> Task :shared:ktlintNativeMainSourceSetFormat SKIPPED
+> Task :shared:runKtlintFormatOverAndroidMainSourceSet UP-TO-DATE
+> Task :shared:generateAndroidMainAssets UP-TO-DATE
+> Task :shared:runKtlintFormatOverIosSimulatorArm64MainSourceSet NO-SOURCE
+> Task :shared:preAndroidHostTestBuild UP-TO-DATE
+> Task :shared:ktlintIosSimulatorArm64MainSourceSetFormat SKIPPED
+> Task :shared:runKtlintFormatOverIosMainSourceSet UP-TO-DATE
+> Task :shared:runKtlintFormatOverIosTestSourceSet UP-TO-DATE
+> Task :shared:runKtlintFormatOverNativeTestSourceSet NO-SOURCE
+> Task :shared:ktlintNativeTestSourceSetFormat SKIPPED
+> Task :shared:generateAndroidMainEmptyResourceFiles UP-TO-DATE
+> Task :developerTools:androidPreBuild UP-TO-DATE
+> Task :shared:ktlintAndroidMainSourceSetFormat UP-TO-DATE
+> Task :developerTools:preAndroidMainBuild UP-TO-DATE
+> Task :shared:writeAndroidMainAarMetadata UP-TO-DATE
+> Task :shared:generateAndroidHostTestResources UP-TO-DATE
+> Task :shared:ktlintIosMainSourceSetFormat UP-TO-DATE
+> Task :shared:processAndroidHostTestJavaRes NO-SOURCE
+> Task :developerTools:kmpPartiallyResolvedDependenciesChecker
+> Task :developerTools:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :shared:ktlintIosTestSourceSetFormat UP-TO-DATE
+> Task :androidApp:preBuild UP-TO-DATE
+> Task :androidApp:validateDebugDeviceSession
+> Task :developerTools:writeAndroidMainAarMetadata UP-TO-DATE
+> Task :developerTools:generateAndroidMainEmptyResourceFiles UP-TO-DATE
+> Task :androidApp:preDebugAndroidTestBuild SKIPPED
+> Task :developerTools:prepareLintJarForPublish UP-TO-DATE
+> Task :shared:prepareLintJarForPublish UP-TO-DATE
+> Task :androidApp:processDebugGoogleServices UP-TO-DATE
+> Task :androidApp:preDebugUnitTestBuild UP-TO-DATE
+> Task :developerTools:preAndroidHostTestBuild UP-TO-DATE
+> Task :androidApp:collectExternalDebugDependenciesForSentry UP-TO-DATE
+> Task :androidApp:extractProguardFiles UP-TO-DATE
+> Task :androidApp:generateDebugAssets UP-TO-DATE
+> Task :shared:mergeAndroidMainJniLibFolders UP-TO-DATE
+> Task :developerTools:mergeAndroidMainJniLibFolders UP-TO-DATE
+> Task :developerTools:mergeAndroidMainNativeLibs NO-SOURCE
+> Task :shared:mergeAndroidMainNativeLibs NO-SOURCE
+> Task :shared:copyAndroidMainJniLibsProjectOnly UP-TO-DATE
+> Task :developerTools:copyAndroidMainJniLibsProjectOnly UP-TO-DATE
+> Task :shared:copyAndroidMainComposeResourcesToAndroidAssets UP-TO-DATE
+> Task :shared:androidJar UP-TO-DATE
+> Task :shared:processAndroidMainManifest UP-TO-DATE
+> Task :developerTools:processAndroidMainManifest UP-TO-DATE
+> Task :shared:packageAndroidMainResources UP-TO-DATE
+> Task :shared:parseAndroidMainLocalResources UP-TO-DATE
+> Task :shared:generateAndroidMainRFile UP-TO-DATE
+> Task :shared:mergeAndroidMainAssets UP-TO-DATE
+> Task :shared:compileAndroidMainLibraryResources UP-TO-DATE
+> Task :developerTools:checkAndroidMainAarMetadata UP-TO-DATE
+> Task :shared:mergeAndroidHostTestAssets UP-TO-DATE
+> Task :shared:checkAndroidHostTestAarMetadata UP-TO-DATE
+> Task :shared:checkAndroidMainAarMetadata UP-TO-DATE
+> Task :shared:mapAndroidHostTestSourceSetPaths UP-TO-DATE
+> Task :shared:processAndroidHostTestManifest UP-TO-DATE
+> Task :shared:extractAndroidMainAnnotations UP-TO-DATE
+> Task :shared:mergeAndroidHostTestResources UP-TO-DATE
+> Task :shared:processAndroidHostTestResources UP-TO-DATE
+> Task :shared:packageAndroidHostTestForUnitTest UP-TO-DATE
+> Task :shared:generateAndroidHostTestConfig UP-TO-DATE
+
+> Task :shared:verifyDeveloperToolsIsolation
+iosArm64.main developerTools=false
+iosSimulatorArm64.main developerTools=false
+
+> Task :androidApp:verifyDeveloperToolsIsolation
+debug developerTools=true
+debug.compile developerTools=true
+release developerTools=false
+release.compile developerTools=false
+
+> Task :androidApp:preDebugBuild
+> Task :androidApp:generateDebugBuildConfig UP-TO-DATE
+> Task :androidApp:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :androidApp:javaPreCompileDebug UP-TO-DATE
+> Task :androidApp:extractDeepLinksDebug UP-TO-DATE
+> Task :androidApp:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :androidApp:desugarDebugFileDependencies UP-TO-DATE
+> Task :androidApp:mergeDebugJniLibFolders UP-TO-DATE
+> Task :androidApp:generateDebugResources UP-TO-DATE
+> Task :androidApp:validateSigningDebug UP-TO-DATE
+> Task :androidApp:packageDebugResources UP-TO-DATE
+> Task :androidApp:writeDebugAppMetadata UP-TO-DATE
+> Task :androidApp:writeDebugSigningConfigVersions UP-TO-DATE
+> Task :androidApp:mergeDebugAssets UP-TO-DATE
+> Task :androidApp:mapDebugSourceSetPaths UP-TO-DATE
+> Task :androidApp:processDebugNavigationResources UP-TO-DATE
+> Task :androidApp:checkDebugDuplicateClasses UP-TO-DATE
+> Task :androidApp:checkDebugAarMetadata UP-TO-DATE
+> Task :androidApp:mergeDebugResources UP-TO-DATE
+> Task :androidApp:parseDebugLocalResources UP-TO-DATE
+> Task :androidApp:compileDebugNavigationResources UP-TO-DATE
+> Task :androidApp:processDebugMainManifest UP-TO-DATE
+> Task :androidApp:generateDebugRFile UP-TO-DATE
+> Task :androidApp:mergeDebugNativeLibs UP-TO-DATE
+> Task :androidApp:processDebugManifest UP-TO-DATE
+> Task :androidApp:processDebugManifestForPackage UP-TO-DATE
+> Task :androidApp:stripDebugDebugSymbols UP-TO-DATE
+> Task :androidApp:injectSentryDebugMetaPropertiesIntoAssetsDebug UP-TO-DATE
+> Task :androidApp:mergeExtDexDebug UP-TO-DATE
+> Task :androidApp:processDebugResources UP-TO-DATE
+> Task :androidApp:compressDebugAssets UP-TO-DATE
+> Task :shared:runKtlintFormatOverCommonTestSourceSet
+> Task :shared:runKtlintFormatOverCommonMainSourceSet
+> Task :shared:ktlintCommonTestSourceSetFormat
+> Task :shared:ktlintCommonMainSourceSetFormat
+> Task :shared:ktlintFormat
+> Task :ktlintFormat
+
+> Task :shared:compileAndroidMain
+w: file:///private/tmp/pheeeew-1124-ranking-date/AN/Pheeeew/shared/src/androidMain/kotlin/com/pheeeew/feature/screens/map/renderer/NativeMap.android.kt:169:30 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+w: file:///private/tmp/pheeeew-1124-ranking-date/AN/Pheeeew/shared/src/androidMain/kotlin/com/pheeeew/feature/screens/map/renderer/NativeMap.android.kt:174:75 'static field TRIM_MEMORY_RUNNING_LOW: Int' is deprecated. Deprecated in Java.
+w: file:///private/tmp/pheeeew-1124-ranking-date/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/App.kt:1006:37 Expression is unused.
+w: file:///private/tmp/pheeeew-1124-ranking-date/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/data/press/race/PressRaceRankings.kt:33:57 Unnecessary safe call on a non-null receiver of type 'PressRaceReady'.
+w: file:///private/tmp/pheeeew-1124-ranking-date/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/data/press/race/PressRaceSession.kt:164:37 Expression is unused.
+w: file:///private/tmp/pheeeew-1124-ranking-date/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/data/press/race/PressRaceSession.kt:318:65 Unnecessary non-null assertion (!!) on a non-null receiver of type 'PressRaceConnection'.
+w: file:///private/tmp/pheeeew-1124-ranking-date/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/data/press/race/PressRaceSessionState.kt:36:53 Unnecessary safe call on a non-null receiver of type 'PressRaceReady'.
+w: file:///private/tmp/pheeeew-1124-ranking-date/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/data/repository/EmotionRegistrationRepositoryImpl.kt:106:37 Expression is unused.
+w: file:///private/tmp/pheeeew-1124-ranking-date/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/map/MapScreen.kt:224:21 Expression is unused.
+w: file:///private/tmp/pheeeew-1124-ranking-date/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/map/detail/EmotionDetailCard.kt:236:13 Expression is unused.
+w: file:///private/tmp/pheeeew-1124-ranking-date/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/map/detail/EmotionDetailOverlay.kt:54:13 Expression is unused.
+w: file:///private/tmp/pheeeew-1124-ranking-date/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/map/detail/EmotionDetailOverlay.kt:76:13 Expression is unused.
+w: file:///private/tmp/pheeeew-1124-ranking-date/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/ranking/press/RankingDate.kt:16:77 Redundant call of conversion method.
+w: file:///private/tmp/pheeeew-1124-ranking-date/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/settings/AppEntryGate.kt:111:13 Expression is unused.
+w: file:///private/tmp/pheeeew-1124-ranking-date/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/feature/screens/settings/AppEntryViewModel.kt:69:29 Expression is unused.
+
+> Task :shared:processAndroidMainJavaRes UP-TO-DATE
+> Task :shared:mergeAndroidMainJavaResource UP-TO-DATE
+> Task :shared:bundleLibRuntimeToDirAndroidMain
+> Task :shared:bundleAndroidMainClassesToRuntimeJar
+> Task :shared:bundleAndroidMainClassesToCompileJar
+> Task :shared:createFullJarAndroidMain
+> Task :developerTools:extractAndroidMainAnnotations
+> Task :shared:syncAndroidMainLibJars
+> Task :shared:bundleAndroidMainLocalLintAar
+> Task :developerTools:compileAndroidMain
+> Task :developerTools:bundleAndroidMainClassesToRuntimeJar UP-TO-DATE
+> Task :developerTools:processAndroidMainJavaRes UP-TO-DATE
+> Task :developerTools:bundleAndroidMainClassesToCompileJar UP-TO-DATE
+> Task :developerTools:createFullJarAndroidMain UP-TO-DATE
+> Task :developerTools:mergeAndroidMainJavaResource UP-TO-DATE
+> Task :developerTools:syncAndroidMainLibJars UP-TO-DATE
+> Task :developerTools:bundleAndroidMainLocalLintAar UP-TO-DATE
+> Task :developerTools:bundleLibRuntimeToDirAndroidMain UP-TO-DATE
+> Task :androidApp:compileDebugKotlin
+> Task :androidApp:processDebugJavaRes UP-TO-DATE
+> Task :androidApp:mergeDebugJavaResource UP-TO-DATE
+> Task :developerTools:generateAndroidHostTestLintModel
+> Task :shared:generateAndroidHostTestLintModel
+> Task :shared:compileAndroidHostTest
+> Task :androidApp:compileDebugJavaWithJavac UP-TO-DATE
+> Task :androidApp:bundleDebugClassesToCompileJar UP-TO-DATE
+> Task :androidApp:dexBuilderDebug UP-TO-DATE
+> Task :androidApp:mergeProjectDexDebug UP-TO-DATE
+> Task :androidApp:generateDebugAndroidTestLintModel
+> Task :androidApp:generateDebugUnitTestLintModel
+> Task :androidApp:generateDebugLintReportModel
+> Task :androidApp:lintAnalyzeDebugUnitTest
+> Task :androidApp:mergeLibDexDebug
+> Task :androidApp:packageDebug
+> Task :androidApp:assembleDebug
+> Task :androidApp:createDebugApkListingFileRedirect UP-TO-DATE
+> Task :developerTools:lintAnalyzeAndroidHostTest
+> Task :androidApp:lintAnalyzeDebugAndroidTest
+> Task :shared:testAndroidHostTest
+> Task :androidApp:lintAnalyzeDebug
+> Task :shared:lintAnalyzeAndroidHostTest
+
+> Task :androidApp:lintReportDebug
+Wrote HTML report to file:///private/tmp/pheeeew-1124-ranking-date/AN/Pheeeew/androidApp/build/reports/lint-results-debug.html
+
+> Task :androidApp:lintDebug
+
+[Incubating] Problems report is available at: file:///private/tmp/pheeeew-1124-ranking-date/AN/Pheeeew/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 53s
+157 actionable tasks: 35 executed, 122 up-to-date
+Configuration cache entry reused.

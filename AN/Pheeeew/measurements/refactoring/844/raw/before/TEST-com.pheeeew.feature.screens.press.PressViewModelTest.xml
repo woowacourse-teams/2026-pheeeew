@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.pheeeew.feature.screens.press.PressViewModelTest" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-10-20T13:43:36.887Z" hostname="MacBook-Pro.local" time="0.032">
+  <properties/>
+  <testcase name="retains last successful aggregates when a refresh fails" classname="com.pheeeew.feature.screens.press.PressViewModelTest" time="0.006"/>
+  <testcase name="screen view model recreation reads the same session repository state" classname="com.pheeeew.feature.screens.press.PressViewModelTest" time="0.01"/>
+  <testcase name="keeps input when sender pauses for a contract issue" classname="com.pheeeew.feature.screens.press.PressViewModelTest" time="0.002"/>
+  <testcase name="total refresh absorbs acknowledged taps but preserves taps made during the request" classname="com.pheeeew.feature.screens.press.PressViewModelTest" time="0.002"/>
+  <testcase name="keeps accepted local press in all total until total endpoint confirms it" classname="com.pheeeew.feature.screens.press.PressViewModelTest" time="0.001"/>
+  <testcase name="keeps not sent input and honors backoff before retry" classname="com.pheeeew.feature.screens.press.PressViewModelTest" time="0.002"/>
+  <testcase name="rolls back only a batch explicitly rejected by sender" classname="com.pheeeew.feature.screens.press.PressViewModelTest" time="0.001"/>
+  <testcase name="uses the accepted write snapshot without another personal aggregate read" classname="com.pheeeew.feature.screens.press.PressViewModelTest" time="0.002"/>
+  <testcase name="loads a baseline and applies a tap accepted before the first refresh" classname="com.pheeeew.feature.screens.press.PressViewModelTest" time="0.002"/>
+  <testcase name="reconciles an applied outcome unknown write without replay" classname="com.pheeeew.feature.screens.press.PressViewModelTest" time="0.002"/>
+  <testcase name="accepts taps optimistically and reconciles successful fake send" classname="com.pheeeew.feature.screens.press.PressViewModelTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

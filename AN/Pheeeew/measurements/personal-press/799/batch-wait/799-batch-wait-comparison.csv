@@ -1,0 +1,5 @@
+version,pattern,accepted,post_delay_ms,all_get_delay_ms,sender_calls,single_input_batches,mean_batch_size,confirmation_p50_ms,confirmation_p95_ms,max_pending,drain_after_window_ms,batch_sizes
+before,same,100,40,50,32,18,3.12,280,680,7,180,5/7/1/1/1/5/7/1/1/1/5/7/1/1/1/5/7/1/1/1/5/7/1/1/1/5/7/1/1/1/5/5
+before,mixed,100,40,50,32,18,3.12,280,680,7,180,5/7/1/1/1/5/7/1/1/1/5/7/1/1/1/5/7/1/1/1/5/7/1/1/1/5/7/1/1/1/5/5
+after,same,100,40,50,17,0,5.88,340,680,7,140,5/7/5/7/5/7/5/7/5/7/5/7/5/7/5/7/4
+after,mixed,100,40,50,17,0,5.88,340,680,7,140,5/7/5/7/5/7/5/7/5/7/5/7/5/7/5/7/4

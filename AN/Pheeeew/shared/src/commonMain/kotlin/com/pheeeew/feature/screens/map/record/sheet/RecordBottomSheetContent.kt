@@ -1,0 +1,625 @@
+package com.pheeeew.feature.screens.map.record.sheet
+
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.pheeeew.core.audio.VoiceRecorder
+import com.pheeeew.core.audio.VoiceRecordingState
+import com.pheeeew.core.designsystem.component.AppNavigableBottomSheet
+import com.pheeeew.core.designsystem.component.ConfirmDialog
+import com.pheeeew.core.designsystem.component.SheetDragHandle
+import com.pheeeew.core.designsystem.component.raisedButtonBorder
+import com.pheeeew.core.designsystem.input.NativeTextEditor
+import com.pheeeew.core.designsystem.input.dismissNativeTextKeyboard
+import com.pheeeew.core.designsystem.input.limitMemoValue
+import com.pheeeew.core.designsystem.input.rememberTextEditor
+import com.pheeeew.core.designsystem.input.usesNativeTextEditor
+import com.pheeeew.core.designsystem.theme.AppBorders
+import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appBorder
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appOnAccent
+import com.pheeeew.core.designsystem.theme.appPrimary
+import com.pheeeew.core.designsystem.theme.appScrim
+import com.pheeeew.core.designsystem.theme.appSurface
+import com.pheeeew.core.designsystem.theme.appSurfaceDisabled
+import com.pheeeew.core.designsystem.theme.appTextPrimary
+import com.pheeeew.core.designsystem.theme.appTextSecondary
+import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
+import com.pheeeew.feature.screens.map.record.noRippleClickable
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.record_anonymous
+import pheeeew.shared.generated.resources.record_audio
+import pheeeew.shared.generated.resources.record_continue_editing
+import pheeeew.shared.generated.resources.record_discard_title
+import pheeeew.shared.generated.resources.record_emotion_prompt
+import pheeeew.shared.generated.resources.record_excluded_input_dialog
+import pheeeew.shared.generated.resources.record_memo
+import pheeeew.shared.generated.resources.record_memo_prompt
+import pheeeew.shared.generated.resources.record_next
+import pheeeew.shared.generated.resources.record_single_attachment_hint
+import pheeeew.shared.generated.resources.record_submit_selected_input
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RecordBottomSheet(
+    selectedEmotion: EmotionTypeUiModel,
+    inputMode: RecordInputModeUiModel,
+    memo: String,
+    isAnonymous: Boolean,
+    onAnonymousChange: (Boolean) -> Unit,
+    onDismissRequest: () -> Unit,
+    onInputModeChange: (RecordInputModeUiModel) -> Unit,
+    onMemoChange: (String) -> Unit,
+    onNext: () -> Unit,
+    modifier: Modifier = Modifier,
+    voiceRecorder: VoiceRecorder? = null,
+    feedbackContent: @Composable () -> Unit = {},
+    isDismissConfirmationVisible: Boolean = false,
+    dismissConfirmationContent: @Composable () -> Unit = {},
+) {
+    var showOtherInputDialog by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val requestDismiss = { if (!isDismissConfirmationVisible) onDismissRequest() }
+    AppNavigableBottomSheet(
+        onDismissRequest = requestDismiss,
+        onBackOrOutsideClick = requestDismiss,
+        outsideContentDescription = stringResource(Res.string.record_discard_title),
+        sheetState = sheetState,
+        modifier = modifier,
+        dismissKeyboardBeforeNavigation = true,
+        dragFromContent = true,
+        restoreOnSwipeDismissRequest = true,
+        shape = AppShapes.BottomSheet,
+        containerColor = MaterialTheme.colorScheme.appSurface,
+        scrimColor = MaterialTheme.colorScheme.appScrim.copy(alpha = 0.3f),
+        dragHandle = { SheetDragHandle() },
+    ) {
+        dismissConfirmationContent()
+        feedbackContent()
+        RecordBottomSheetContent(
+            selectedEmotion = selectedEmotion,
+            inputMode = inputMode,
+            memo = memo,
+            isAnonymous = isAnonymous,
+            onAnonymousChange = onAnonymousChange,
+            onInputModeChange = onInputModeChange,
+            onMemoChange = onMemoChange,
+            onNext = {
+                val hasOtherInput =
+                    when (inputMode) {
+                        RecordInputModeUiModel.Memo -> voiceRecorder?.state?.value?.filePath != null
+                        RecordInputModeUiModel.Recording -> memo.isNotBlank()
+                    }
+                if (hasOtherInput) showOtherInputDialog = true else onNext()
+            },
+            modifier = Modifier,
+            voiceRecorder = voiceRecorder,
+        )
+    }
+    if (showOtherInputDialog) {
+        val selectedInput =
+            stringResource(
+                if (inputMode ==
+                    RecordInputModeUiModel.Memo
+                ) {
+                    Res.string.record_memo
+                } else {
+                    Res.string.record_audio
+                },
+            )
+        val excludedInput =
+            stringResource(
+                if (inputMode ==
+                    RecordInputModeUiModel.Memo
+                ) {
+                    Res.string.record_audio
+                } else {
+                    Res.string.record_memo
+                },
+            )
+        val excludedParticle = if (inputMode == RecordInputModeUiModel.Memo) "은" else "는"
+        ConfirmDialog(
+            title = stringResource(Res.string.record_discard_title),
+            content =
+                stringResource(
+                    Res.string.record_excluded_input_dialog,
+                    selectedInput,
+                    excludedInput,
+                    excludedParticle,
+                ),
+            confirmText = stringResource(Res.string.record_submit_selected_input, selectedInput),
+            cancelText = stringResource(Res.string.record_continue_editing),
+            onConfirm = {
+                showOtherInputDialog = false
+                onNext()
+            },
+            onCancel = { showOtherInputDialog = false },
+        )
+    }
+}
+
+@Composable
+private fun RecordBottomSheetContent(
+    selectedEmotion: EmotionTypeUiModel,
+    inputMode: RecordInputModeUiModel,
+    memo: String,
+    isAnonymous: Boolean,
+    onAnonymousChange: (Boolean) -> Unit,
+    onInputModeChange: (RecordInputModeUiModel) -> Unit,
+    onMemoChange: (String) -> Unit,
+    onNext: () -> Unit,
+    modifier: Modifier,
+    voiceRecorder: VoiceRecorder? = null,
+) {
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    var sheetPosition by remember { mutableStateOf(Offset.Zero) }
+    var memoBounds by remember { mutableStateOf(Rect.Zero) }
+    val recordingReady =
+        if (inputMode == RecordInputModeUiModel.Recording) {
+            rememberRecordingReady(voiceRecorder)
+        } else {
+            false
+        }
+    Column(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .clip(AppShapes.BottomSheet)
+                .background(MaterialTheme.colorScheme.appSurface)
+                .onGloballyPositioned { sheetPosition = it.positionInRoot() }
+                .pointerInput(focusManager, keyboardController, inputMode) {
+                    awaitEachGesture {
+                        // Observe before child buttons consume the touch, without consuming it ourselves.
+                        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                        val touchedMemo =
+                            inputMode == RecordInputModeUiModel.Memo &&
+                                memoBounds.contains(down.position + sheetPosition)
+                        if (!touchedMemo) {
+                            dismissNativeTextKeyboard()
+                            focusManager.clearFocus()
+                            keyboardController?.hide()
+                        }
+                    }
+                }.padding(start = AppSpacing.xl.dp, end = AppSpacing.xl.dp, bottom = AppSpacing.xs.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.Start,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Image(
+                    painter = painterResource(selectedEmotion.icon),
+                    contentDescription = stringResource(selectedEmotion.label),
+                    modifier = Modifier.size(44.dp),
+                )
+                Spacer(modifier = Modifier.width(AppSpacing.sm.dp))
+                Text(
+                    text =
+                        stringResource(
+                            Res.string.record_emotion_prompt,
+                            stringResource(selectedEmotion.recordPhrase),
+                            stringResource(selectedEmotion.recordPrompt),
+                        ),
+                    modifier = Modifier.weight(1f),
+                    lineHeight = 22.sp,
+                    color = MaterialTheme.colorScheme.appTextPrimary,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(AppSpacing.xs.dp))
+
+        Text(
+            text = stringResource(Res.string.record_single_attachment_hint),
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.appTextSecondary,
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(AppSpacing.xl.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            RecordInputModeToggle(
+                inputMode = inputMode,
+                onInputModeChange = onInputModeChange,
+                modifier = Modifier.weight(1f),
+            )
+            Row(
+                modifier =
+                    Modifier.toggleable(
+                        value = isAnonymous,
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        role = Role.Checkbox,
+                        onValueChange = onAnonymousChange,
+                    ),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(Res.string.record_anonymous),
+                    color = MaterialTheme.colorScheme.appTextPrimary,
+                    fontSize = 12.sp,
+                )
+                Checkbox(
+                    checked = isAnonymous,
+                    onCheckedChange = null,
+                    colors =
+                        CheckboxDefaults.colors(
+                            checkedColor = MaterialTheme.appColors.recordSheet.action,
+                            uncheckedColor = MaterialTheme.colorScheme.appTextSecondary,
+                            checkmarkColor = MaterialTheme.colorScheme.appOnAccent,
+                        ),
+                    modifier = Modifier.padding(start = AppSpacing.xs.dp),
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(AppSpacing.xs.dp))
+
+        if (inputMode == RecordInputModeUiModel.Memo) {
+            MemoPanel(
+                memo = memo,
+                onMemoChange = onMemoChange,
+                modifier = Modifier.fillMaxWidth().onGloballyPositioned { memoBounds = it.boundsInRoot() },
+            )
+        } else {
+            RecordAudioSection(voiceRecorder = voiceRecorder)
+        }
+        Spacer(modifier = Modifier.height(AppSpacing.xs.dp))
+
+        RecordSheetActions(
+            onNext = onNext,
+            enabled =
+                when (inputMode) {
+                    RecordInputModeUiModel.Memo -> {
+                        memo.isNotBlank()
+                    }
+
+                    RecordInputModeUiModel.Recording -> {
+                        recordingReady
+                    }
+                },
+        )
+    }
+}
+
+@Composable
+private fun RecordAudioSection(voiceRecorder: VoiceRecorder?) {
+    if (voiceRecorder == null) {
+        RecordAudioContent(
+            audio = VoiceRecordingState(),
+            onStartRecording = {},
+            onStopRecording = {},
+            onPlayback = {},
+            onClearRecording = {},
+        )
+    } else {
+        val audio = voiceRecorder.state.collectAsState().value
+        RecordAudioContent(
+            audio = audio,
+            onStartRecording = { voiceRecorder.start() },
+            onStopRecording = { voiceRecorder.stop() },
+            onPlayback = { voiceRecorder.togglePlayback() },
+            onClearRecording = { voiceRecorder.clear() },
+        )
+    }
+}
+
+@Composable
+private fun rememberRecordingReady(voiceRecorder: VoiceRecorder?): Boolean {
+    if (voiceRecorder == null) return false
+    val recordingReadyFlow =
+        remember(voiceRecorder) {
+            voiceRecorder.state
+                .map { audio -> audio.filePath != null && !audio.recording && !audio.requestingPermission }
+                .distinctUntilChanged()
+        }
+    val initialRecordingReady =
+        voiceRecorder.state.value.let { audio ->
+            audio.filePath != null && !audio.recording && !audio.requestingPermission
+        }
+    return recordingReadyFlow.collectAsState(initial = initialRecordingReady).value
+}
+
+@Composable
+private fun RecordSheetActions(
+    onNext: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .height(48.dp)
+                    .raisedButtonBorder(
+                        AppShapes.Pill,
+                        interactionSource = interactionSource,
+                        elevated = enabled,
+                    ).clip(AppShapes.Pill)
+                    .background(
+                        if (enabled) {
+                            MaterialTheme.colorScheme.appPrimary
+                        } else {
+                            MaterialTheme.colorScheme.appSurfaceDisabled
+                        },
+                    ).noRippleClickable(
+                        enabled = enabled,
+                        interactionSource = interactionSource,
+                        onClick = onNext,
+                    ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = stringResource(Res.string.record_next),
+                color = MaterialTheme.colorScheme.appTextPrimary,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+    }
+}
+
+@Composable
+private fun MemoPanel(
+    memo: String,
+    onMemoChange: (String) -> Unit,
+    modifier: Modifier,
+) {
+    Column {
+        if (usesNativeTextEditor) {
+            Box(
+                modifier =
+                    modifier
+                        .fillMaxWidth()
+                        .height(105.dp)
+                        .clip(AppShapes.Input)
+                        .border(AppBorders.Standard, MaterialTheme.colorScheme.appBorder, AppShapes.Input)
+                        .padding(AppSpacing.lg.dp),
+            ) {
+                NativeTextEditor(
+                    memo,
+                    onMemoChange,
+                    Modifier.fillMaxSize(),
+                    stringResource(Res.string.record_memo_prompt),
+                    normalizeText = { it.limitMemoValue() },
+                )
+            }
+        } else {
+            val editor = rememberTextEditor(memo, onMemoChange)
+            BasicTextField(
+                state = editor.state,
+                inputTransformation = { if (length > 50) revertAllChanges() },
+                keyboardOptions =
+                    KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                    ),
+                modifier =
+                    modifier
+                        .fillMaxWidth()
+                        .height(105.dp)
+                        .clip(AppShapes.Input)
+                        .border(
+                            width = AppBorders.Standard,
+                            color = MaterialTheme.colorScheme.appBorder,
+                            shape = AppShapes.Input,
+                        ).padding(AppSpacing.lg.dp),
+                textStyle =
+                    LocalTextStyle.current.copy(
+                        color = MaterialTheme.colorScheme.appTextPrimary,
+                        fontSize = 14.sp,
+                        lineHeight = 22.sp,
+                    ),
+                decorator = { innerTextField ->
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        if (memo.isEmpty()) {
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = AppSpacing.xl.dp),
+                            ) {
+                                Text(
+                                    text = stringResource(Res.string.record_memo_prompt),
+                                    color = MaterialTheme.colorScheme.appBorder.copy(alpha = 0.45f),
+                                    fontSize = 16.sp,
+                                )
+                            }
+                        }
+                        Box(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth(),
+                        ) {
+                            innerTextField()
+                        }
+                    }
+                },
+            )
+        }
+        RecordInputSupportingText(
+            text = "${memo.length}/50",
+            textAlign = TextAlign.End,
+        )
+    }
+}
+
+@Composable
+private fun RecordInputModeToggle(
+    inputMode: RecordInputModeUiModel,
+    onInputModeChange: (RecordInputModeUiModel) -> Unit,
+    modifier: Modifier,
+) {
+    BoxWithConstraints(
+        modifier =
+            modifier
+                .height(42.dp)
+                .clip(AppShapes.Pill)
+                .background(MaterialTheme.colorScheme.appSurface)
+                .border(AppBorders.Standard, MaterialTheme.colorScheme.appBorder, AppShapes.Pill),
+    ) {
+        val tabWidth = maxWidth / 2
+        val indicatorOffset by animateDpAsState(
+            targetValue = if (inputMode == RecordInputModeUiModel.Memo) 0.dp else tabWidth,
+            animationSpec = tween(durationMillis = 220),
+            label = "recordInputModeIndicator",
+        )
+        Box(
+            modifier =
+                Modifier
+                    .offset(x = indicatorOffset)
+                    .width(tabWidth)
+                    .fillMaxHeight()
+                    .clip(AppShapes.Pill)
+                    .background(MaterialTheme.colorScheme.appPrimary)
+                    .border(AppBorders.Standard, MaterialTheme.colorScheme.appBorder, AppShapes.Pill),
+        )
+        Row(modifier = Modifier.fillMaxSize()) {
+            RecordInputModeTab(
+                label = stringResource(Res.string.record_memo),
+                selected = inputMode == RecordInputModeUiModel.Memo,
+                onClick = { onInputModeChange(RecordInputModeUiModel.Memo) },
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+            )
+            RecordInputModeTab(
+                label = stringResource(Res.string.record_audio),
+                selected = inputMode == RecordInputModeUiModel.Recording,
+                onClick = { onInputModeChange(RecordInputModeUiModel.Recording) },
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+            )
+        }
+    }
+}
+
+@Composable
+private fun RecordInputModeTab(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier,
+) {
+    Box(
+        modifier =
+            modifier
+                .clip(AppShapes.Pill)
+                .semantics { this.selected = selected }
+                .noRippleClickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            color = MaterialTheme.colorScheme.appTextPrimary,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Preview(name = "감정 기록 바텀시트", widthDp = 402, heightDp = 430)
+@Composable
+private fun RecordBottomSheetContentPreview() {
+    RecordBottomSheetContent(
+        selectedEmotion = EmotionTypeUiModel.ANGRY,
+        inputMode = RecordInputModeUiModel.Memo,
+        memo = "",
+        isAnonymous = false,
+        onAnonymousChange = {},
+        onInputModeChange = {},
+        onMemoChange = {},
+        onNext = {},
+        modifier = Modifier,
+    )
+}
+
+@Preview(name = "녹음 탭", widthDp = 402, heightDp = 430)
+@Composable
+private fun RecordBottomSheetRecordingPreview() {
+    RecordBottomSheetContent(
+        selectedEmotion = EmotionTypeUiModel.EXHAUSTED,
+        inputMode = RecordInputModeUiModel.Recording,
+        memo = "",
+        isAnonymous = false,
+        onAnonymousChange = {},
+        onInputModeChange = {},
+        onMemoChange = {},
+        onNext = {},
+        modifier = Modifier,
+    )
+}

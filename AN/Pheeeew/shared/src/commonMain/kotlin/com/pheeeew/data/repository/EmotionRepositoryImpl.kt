@@ -1,0 +1,86 @@
+package com.pheeeew.data.repository
+
+import com.pheeeew.core.network.ApiResult
+import com.pheeeew.core.network.NetworkFailure
+import com.pheeeew.data.remote.api.EmotionApi
+import com.pheeeew.data.remote.mapper.EmotionResponseMapper
+import com.pheeeew.data.remote.mapper.toModerationResult
+import com.pheeeew.data.remote.mapper.toQueryParameters
+import com.pheeeew.domain.model.emotion.EmotionBounds
+import com.pheeeew.domain.model.emotion.EmotionReactionType
+import com.pheeeew.domain.model.emotion.EmotionSearchFilter
+import com.pheeeew.domain.repository.EmotionFailure
+import com.pheeeew.domain.repository.EmotionRepository
+import com.pheeeew.domain.repository.EmotionResult
+import dev.zacsweers.metro.Inject
+import kotlinx.coroutines.CancellationException
+
+@Inject
+internal class EmotionRepositoryImpl(
+    private val api: EmotionApi,
+) : EmotionRepository {
+    override suspend fun firstPage(bounds: EmotionBounds) =
+        api.listWithoutBounds(emptyMap()).mapped(EmotionResponseMapper::page)
+
+    override suspend fun filteredFirstPage(filter: EmotionSearchFilter) =
+        api.listWithoutBounds(filter.toQueryParameters()).mapped(EmotionResponseMapper::feedPage)
+
+    override suspend fun nextPage(cursor: String) =
+        api.listWithoutBounds(mapOf("cursor" to cursor)).mapped(EmotionResponseMapper::feedPage)
+
+    override suspend fun nextFilteredPage(cursor: String) =
+        api.listWithoutBounds(mapOf("cursor" to cursor)).mapped(EmotionResponseMapper::feedPage)
+
+    override suspend fun detail(id: Long) = api.findById(id).mapped(EmotionResponseMapper::emotion)
+
+    override suspend fun react(
+        id: Long,
+        type: EmotionReactionType,
+        selected: Boolean,
+        expectedSessionGeneration: Long?,
+    ) = api.react(id, type, selected, expectedSessionGeneration).mapped {
+        it
+    }
+
+    override suspend fun delete(
+        emotionId: Long,
+        expectedSessionGeneration: Long?,
+    ) = api.delete(emotionId, expectedSessionGeneration).toModerationResult()
+}
+
+private inline fun <T, R> ApiResult<T>.mapped(transform: (T) -> R): EmotionResult<R> =
+    when (this) {
+        is ApiResult.Success -> {
+            try {
+                EmotionResult.Success(transform(value))
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                EmotionResult.Failure(EmotionFailure.UNAVAILABLE)
+            }
+        }
+
+        is ApiResult.Failure -> {
+            EmotionResult.Failure(
+                when (val failure = reason) {
+                    is NetworkFailure.SessionUnavailable, is NetworkFailure.SessionProviderFailed -> {
+                        EmotionFailure.AUTHENTICATION
+                    }
+
+                    is NetworkFailure.HttpStatus -> {
+                        when (failure.statusCode) {
+                            404 -> EmotionFailure.NOT_FOUND
+                            400 -> EmotionFailure.INVALID_REQUEST
+                            401 -> EmotionFailure.AUTHENTICATION
+                            403, 409 -> EmotionFailure.FORBIDDEN
+                            else -> EmotionFailure.UNAVAILABLE
+                        }
+                    }
+
+                    else -> {
+                        EmotionFailure.UNAVAILABLE
+                    }
+                },
+            )
+        }
+    }

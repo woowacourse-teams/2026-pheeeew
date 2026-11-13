@@ -1,0 +1,42 @@
+[
+  {
+    "prepare": false,
+    "boundToView": false,
+    "status": "complete",
+    "impacts": 600,
+    "channelErrorLogCount": 4,
+    "firstErrorAfterLoggedIndex": 250,
+    "medianIntervalMs": 19,
+    "log": "native-prepare0-bound0.log"
+  },
+  {
+    "prepare": true,
+    "boundToView": false,
+    "status": "complete",
+    "impacts": 600,
+    "channelErrorLogCount": 351,
+    "firstErrorAfterLoggedIndex": 250,
+    "medianIntervalMs": 19,
+    "log": "native-prepare1-bound0.log"
+  },
+  {
+    "prepare": false,
+    "boundToView": true,
+    "status": "complete",
+    "impacts": 600,
+    "channelErrorLogCount": 7,
+    "firstErrorAfterLoggedIndex": 250,
+    "medianIntervalMs": 19,
+    "log": "native-prepare0-bound1.log"
+  },
+  {
+    "prepare": true,
+    "boundToView": true,
+    "status": "complete",
+    "impacts": 600,
+    "channelErrorLogCount": 351,
+    "firstErrorAfterLoggedIndex": 250,
+    "medianIntervalMs": 19,
+    "log": "native-prepare1-bound1.log"
+  }
+]

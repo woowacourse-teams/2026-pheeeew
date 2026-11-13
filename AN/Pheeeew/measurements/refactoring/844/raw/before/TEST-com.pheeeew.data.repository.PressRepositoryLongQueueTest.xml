@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.pheeeew.data.repository.PressRepositoryLongQueueTest" tests="18" skipped="0" failures="0" errors="0" timestamp="2026-10-20T13:43:36.690Z" hostname="MacBook-Pro.local" time="0.096">
+  <properties/>
+  <testcase name="new input survives an in flight batch rejection" classname="com.pheeeew.data.repository.PressRepositoryLongQueueTest" time="0.007"/>
+  <testcase name="later snapshot confirms an unknown batch and sends queued input" classname="com.pheeeew.data.repository.PressRepositoryLongQueueTest" time="0.003"/>
+  <testcase name="failed reads do not exhaust unknown reconciliation and background reads recover" classname="com.pheeeew.data.repository.PressRepositoryLongQueueTest" time="0.002"/>
+  <testcase name="accepted batch response replaces the cached baseline without double adding optimism" classname="com.pheeeew.data.repository.PressRepositoryLongQueueTest" time="0.001"/>
+  <testcase name="unconfirmed batch retires after three successful reads without guessing or replay" classname="com.pheeeew.data.repository.PressRepositoryLongQueueTest" time="0.002"/>
+  <testcase name="ten thousand offline taps drain exactly once after reconnect without concurrent writes" classname="com.pheeeew.data.repository.PressRepositoryLongQueueTest" time="0.02"/>
+  <testcase name="lost response retries identical id inside server window and applies the batch once" classname="com.pheeeew.data.repository.PressRepositoryLongQueueTest" time="0.002"/>
+  <testcase name="unknown batch is not replayed after server id retention expires" classname="com.pheeeew.data.repository.PressRepositoryLongQueueTest" time="0.002"/>
+  <testcase name="unconfirmed batch retires without replay and drains later input" classname="com.pheeeew.data.repository.PressRepositoryLongQueueTest" time="0.023"/>
+  <testcase name="aggregate reconciliation of unknown writes does not claim activity success" classname="com.pheeeew.data.repository.PressRepositoryLongQueueTest" time="0.005"/>
+  <testcase name="full batch wakes the initial flush timer without waiting five hundred millis" classname="com.pheeeew.data.repository.PressRepositoryLongQueueTest" time="0.002"/>
+  <testcase name="failed aggregate read retries the read without replaying an accepted write" classname="com.pheeeew.data.repository.PressRepositoryLongQueueTest" time="0.002"/>
+  <testcase name="cancellation after server apply is unknown rather than requeued under a new id" classname="com.pheeeew.data.repository.PressRepositoryLongQueueTest" time="0.001"/>
+  <testcase name="retry after keeps the batch identity and new taps separate even with repeated wakeups" classname="com.pheeeew.data.repository.PressRepositoryLongQueueTest" time="0.002"/>
+  <testcase name="numeric range overflow rejects only the overflowing tap" classname="com.pheeeew.data.repository.PressRepositoryLongQueueTest" time="0.002"/>
+  <testcase name="new server date retires only the unknown batch and resumes queued input" classname="com.pheeeew.data.repository.PressRepositoryLongQueueTest" time="0.001"/>
+  <testcase name="contract pending retains ten thousand inputs without repeated sender calls" classname="com.pheeeew.data.repository.PressRepositoryLongQueueTest" time="0.016"/>
+  <testcase name="only acknowledged batches report original input time" classname="com.pheeeew.data.repository.PressRepositoryLongQueueTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

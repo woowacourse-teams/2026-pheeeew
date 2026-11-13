@@ -1,0 +1,179 @@
+package com.pheeeew.core.notification
+
+import android.Manifest
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.ComponentActivity
+import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.By
+import androidx.test.uiautomator.UiDevice
+import androidx.test.uiautomator.Until
+import com.pheeeew.core.permission.AppSettingsLauncher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import org.junit.Assume.assumeTrue
+import org.junit.Test
+import java.util.regex.Pattern
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
+
+/** Run on an emulator with POST_NOTIFICATIONS revoked and its user-set/user-fixed flags cleared. */
+class AndroidNotificationPermissionControllerTest {
+    @Test
+    fun resetClearsAppHistoryAndDefersGrantedHistoryUntilPermissionIsRevoked() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val preferences = context.getSharedPreferences("foundation-notification-permission", 0)
+        val rationaleKey = "has-observed-notification-rationale"
+        val authorizedKey = "has-been-authorized"
+        val resetPendingKey = "notification-permission-reset-pending"
+        val store = AndroidNotificationPermissionStore(context)
+        try {
+            preferences
+                .edit()
+                .putBoolean("has-requested-post-notifications", true)
+                .putBoolean(rationaleKey, true)
+                .putBoolean(authorizedKey, true)
+                .apply()
+
+            store.reset(permissionGranted = true)
+
+            assertFalse(preferences.contains("has-requested-post-notifications"))
+            assertFalse(preferences.contains(rationaleKey))
+            assertFalse(preferences.contains(authorizedKey))
+            assertTrue(preferences.getBoolean(resetPendingKey, false))
+
+            store.update(permissionGranted = true) { it.onResult(granted = true, showsRationale = false) }
+            assertFalse(preferences.getBoolean(authorizedKey, false))
+
+            store.update(permissionGranted = false) { it.authorization(granted = false, showsRationale = false) }
+            assertFalse(preferences.getBoolean(resetPendingKey, false))
+            assertFalse(preferences.getBoolean(authorizedKey, false))
+        } finally {
+            store.reset(permissionGranted = false)
+        }
+    }
+
+    /** Run separately after granting POST_NOTIFICATIONS to the isolated test package. */
+    @Test
+    fun blockedRemoteChannelDoesNotChangeAppAuthorization() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        val granted =
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        assumeTrue(
+            "Requires the granted notification permission test profile",
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || granted,
+        )
+        val manager = context.getSystemService(NotificationManager::class.java)
+        val channelId = "pheeeew.remote.v1"
+        manager.createNotificationChannel(
+            NotificationChannel(channelId, "Test remote channel", NotificationManager.IMPORTANCE_NONE),
+        )
+        val activity =
+            instrumentation.startActivitySync(
+                Intent(context, ComponentActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            ) as ComponentActivity
+        lateinit var controller: AndroidNotificationPermissionController
+        instrumentation.runOnMainSync {
+            controller = AndroidNotificationPermissionController(activity, UnavailableSettingsFallback)
+        }
+        try {
+            assertEquals(NotificationManager.IMPORTANCE_NONE, manager.getNotificationChannel(channelId).importance)
+            assertEquals(NotificationAuthorization.AUTHORIZED, runBlocking { controller.authorization() })
+        } finally {
+            manager.deleteNotificationChannel(channelId)
+            instrumentation.runOnMainSync {
+                controller.close()
+                activity.finish()
+            }
+        }
+    }
+
+    @Test
+    fun dismissalRemainsRequestableButRepeatedDenialOpensSettings() {
+        assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val device = UiDevice.getInstance(instrumentation)
+        val context = instrumentation.targetContext
+        val permissionGranted =
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        assumeTrue("Requires revoked notification permission", !permissionGranted)
+        AndroidNotificationPermissionController.resetRequestHistory(context)
+        val denySelector = By.res(Pattern.compile(".*:id/permission_deny.*_button"))
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+        val activity =
+            instrumentation.startActivitySync(
+                Intent(instrumentation.targetContext, ComponentActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            ) as ComponentActivity
+        lateinit var controller: AndroidNotificationPermissionController
+        instrumentation.runOnMainSync {
+            controller = AndroidNotificationPermissionController(activity, UnavailableSettingsFallback)
+        }
+        try {
+            assumeTrue(
+                "Requires revoked notification permission with denial history and flags cleared",
+                runBlocking { controller.canRequestAuthorization() },
+            )
+            device.wakeUp()
+            val dismissed = scope.async { controller.requestAuthorization() }
+            assertNotNull(device.wait(Until.findObject(denySelector), 5_000))
+            device.pressBack()
+            runBlocking { withTimeout(10_000) { dismissed.await() } }
+            assertTrue(runBlocking { controller.canRequestAuthorization() })
+            assertEquals(NotificationAuthorization.NOT_DETERMINED, runBlocking { controller.authorization() })
+            instrumentation.runOnMainSync {
+                controller.close()
+                controller = AndroidNotificationPermissionController(activity, UnavailableSettingsFallback)
+            }
+            assertEquals(NotificationAuthorization.NOT_DETERMINED, runBlocking { controller.authorization() })
+            val reader = AndroidNotificationPermissionReader(instrumentation.targetContext)
+            assertEquals(NotificationAuthorization.NOT_DETERMINED, runBlocking { reader.authorization() })
+
+            repeat(2) { attempt ->
+                val denied =
+                    scope.async {
+                        if (attempt == 0) {
+                            InitialNotificationPermissionRequest().requestIfNeeded(controller)
+                        } else {
+                            controller.requestAuthorization()
+                        }
+                    }
+                val deny =
+                    device.wait(Until.findObject(denySelector), 5_000)
+                val visibleResources = device.findObjects(By.clickable(true)).map { it.resourceName }
+                assertNotNull(deny, "attempt=$attempt: $visibleResources").click()
+                runBlocking { withTimeout(10_000) { denied.await() } }
+                assertEquals(NotificationAuthorization.DENIED, runBlocking { controller.authorization() })
+                assertEquals(NotificationAuthorization.DENIED, runBlocking { reader.authorization() })
+                if (attempt == 0) assertTrue(runBlocking { controller.canRequestAuthorization() })
+            }
+            assertFalse(runBlocking { controller.canRequestAuthorization() })
+            assertTrue(runBlocking { controller.openSettings() })
+            assertTrue(device.wait(Until.hasObject(By.pkg("com.android.settings")), 5_000))
+            device.pressBack()
+        } finally {
+            scope.cancel()
+            instrumentation.runOnMainSync {
+                controller.close()
+                activity.finish()
+            }
+        }
+    }
+
+    private object UnavailableSettingsFallback : AppSettingsLauncher {
+        override suspend fun openAppSettings(): Boolean = false
+
+        override suspend fun openLocationSettings(): Boolean = false
+    }
+}

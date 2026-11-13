@@ -1,0 +1,472 @@
+package com.pheeeew.feature.screens.map.record.sheet
+
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.pheeeew.core.audio.VoiceRecordingState
+import com.pheeeew.core.designsystem.component.raisedButtonBorder
+import com.pheeeew.core.designsystem.theme.AppBorders
+import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appBorder
+import com.pheeeew.core.designsystem.theme.appColors
+import com.pheeeew.core.designsystem.theme.appOnAccent
+import com.pheeeew.core.designsystem.theme.appPrimary
+import com.pheeeew.core.designsystem.theme.appSurface
+import com.pheeeew.core.designsystem.theme.appTextPrimary
+import com.pheeeew.feature.screens.map.drawPlaybackWaveform
+import com.pheeeew.feature.screens.map.record.noRippleClickable
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.ic_mic
+import pheeeew.shared.generated.resources.ic_refresh
+import pheeeew.shared.generated.resources.record_again
+import pheeeew.shared.generated.resources.record_recording
+import pheeeew.shared.generated.resources.record_start
+
+@Composable
+internal fun RecordAudioContent(
+    audio: VoiceRecordingState,
+    onStartRecording: () -> Unit,
+    onStopRecording: () -> Unit,
+    onPlayback: () -> Unit,
+    onClearRecording: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val panelState =
+        when {
+            audio.recording -> AudioPanelUiState.Recording
+            audio.filePath != null -> AudioPanelUiState.Completed
+            else -> AudioPanelUiState.Ready
+        }
+    Column(modifier = modifier) {
+        RecordAudioPanel(
+            panelState = panelState,
+            audio = audio,
+            onPlayback = onPlayback,
+            onClearRecording = onClearRecording,
+            onStartRecording = onStartRecording,
+            onStopRecording = onStopRecording,
+        )
+        RecordInputSupportingText(
+            text = audio.error.orEmpty(),
+            color = MaterialTheme.appColors.recordSheet.recording,
+        )
+    }
+}
+
+@Composable
+private fun RecordAudioPanel(
+    panelState: AudioPanelUiState,
+    audio: VoiceRecordingState,
+    onPlayback: () -> Unit,
+    onClearRecording: () -> Unit,
+    onStartRecording: () -> Unit,
+    onStopRecording: () -> Unit,
+) {
+    Box(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .height(105.dp)
+                .clip(AppShapes.Input)
+                .border(
+                    width = AppBorders.Standard,
+                    color = MaterialTheme.colorScheme.appBorder,
+                    shape = AppShapes.Input,
+                ).padding(horizontal = AppSpacing.lg.dp, vertical = AppSpacing.md.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        when (panelState) {
+            AudioPanelUiState.Ready -> {
+                AudioReadyPanel(
+                    audio = audio,
+                    onStartRecording = onStartRecording,
+                )
+            }
+
+            AudioPanelUiState.Recording -> {
+                AdioRecordingPanel(
+                    audio = audio,
+                    onStopRecording = onStopRecording,
+                )
+            }
+
+            AudioPanelUiState.Completed -> {
+                AdioCompletedPanel(
+                    audio = audio,
+                    onPlayback = onPlayback,
+                    onClearRecording = onClearRecording,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AudioReadyPanel(
+    audio: VoiceRecordingState,
+    onStartRecording: () -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    Column(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .noRippleClickable(
+                    enabled = !audio.requestingPermission,
+                    interactionSource = interactionSource,
+                    onClick = onStartRecording,
+                ),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .size(52.dp)
+                    .raisedButtonBorder(
+                        CircleShape,
+                        interactionSource = interactionSource,
+                        elevated = !audio.requestingPermission,
+                    ).clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.appPrimary),
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                painter = painterResource(Res.drawable.ic_mic),
+                contentDescription = stringResource(Res.string.record_start),
+                modifier = Modifier.size(24.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun AdioRecordingPanel(
+    audio: VoiceRecordingState,
+    onStopRecording: () -> Unit,
+) {
+    Column(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .noRippleClickable(onClick = onStopRecording),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.sm.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier =
+                    Modifier
+                        .size(14.dp)
+                        .background(MaterialTheme.appColors.recordSheet.recording, CircleShape),
+            )
+            Spacer(modifier = Modifier.width(AppSpacing.xs.copy(value = 6.dp).dp))
+            Text(
+                text = stringResource(Res.string.record_recording),
+                color = MaterialTheme.appColors.recordSheet.recording,
+                fontSize = 14.sp,
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            Text(
+                text = formatAudioTime(audio.elapsedSeconds),
+                color = MaterialTheme.colorScheme.appTextPrimary,
+                fontSize = 14.sp,
+            )
+        }
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            AudioWaveform(
+                isRecording = true,
+                samples = audio.samples,
+                playbackProgress = 0f,
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+            )
+            Spacer(modifier = Modifier.width(AppSpacing.lg.dp))
+            Box(
+                modifier =
+                    Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .border(
+                            width = AppBorders.Standard,
+                            color = MaterialTheme.colorScheme.appTextPrimary,
+                            shape = CircleShape,
+                        ).background(MaterialTheme.colorScheme.appSurface)
+                        .padding(AppSpacing.md.dp),
+            ) {
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(MaterialTheme.appColors.recordSheet.recording),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AdioCompletedPanel(
+    audio: VoiceRecordingState,
+    onPlayback: () -> Unit,
+    onClearRecording: () -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.sm.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier =
+                    Modifier
+                        .size(14.dp)
+                        .background(MaterialTheme.colorScheme.appTextPrimary, CircleShape),
+            )
+            Spacer(modifier = Modifier.width(AppSpacing.xs.copy(value = 6.dp).dp))
+            Text(
+                text =
+                    formatAudioTime(
+                        if (audio.playing) {
+                            (audio.playbackPositionMillis / 1000).toInt()
+                        } else {
+                            (audio.durationMillis / 1000).toInt().takeIf { it > 0 } ?: audio.elapsedSeconds
+                        },
+                    ),
+                color = MaterialTheme.colorScheme.appTextPrimary,
+                fontSize = 14.sp,
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            Row(
+                modifier =
+                    Modifier
+                        .noRippleClickable(onClick = onClearRecording),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    painter = painterResource(Res.drawable.ic_refresh),
+                    contentDescription = stringResource(Res.string.record_again),
+                    tint = MaterialTheme.colorScheme.appTextPrimary,
+                    modifier = Modifier.size(16.dp),
+                )
+                Spacer(modifier = Modifier.width(AppSpacing.xs.dp))
+                Text(
+                    text = stringResource(Res.string.record_again),
+                    color = MaterialTheme.colorScheme.appTextPrimary,
+                    fontSize = 14.sp,
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            PlaybackButton(
+                isPlaying = audio.playing,
+                onClick = onPlayback,
+            )
+            Spacer(modifier = Modifier.width(AppSpacing.lg.dp))
+            AudioWaveform(
+                samples = audio.samples,
+                isRecording = false,
+                playbackProgress = audio.playbackProgress(),
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .height(48.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun AudioWaveform(
+    samples: List<Float>,
+    isRecording: Boolean,
+    playbackProgress: Float,
+    modifier: Modifier = Modifier,
+) {
+    val recordingColor = MaterialTheme.appColors.recordSheet.recording
+    val inactiveColor = MaterialTheme.appColors.map.audioInactive
+    Canvas(modifier = modifier) {
+        val waveform =
+            if (isRecording) {
+                List((64 - samples.size).coerceAtLeast(0)) { 0f } + samples.takeLast(64)
+            } else {
+                samples
+            }
+        drawPlaybackWaveform(
+            waveform = waveform,
+            progress = if (isRecording) 1f else playbackProgress,
+            inactiveColor = if (isRecording) recordingColor else inactiveColor,
+            activeColor = recordingColor,
+        )
+    }
+}
+
+private fun VoiceRecordingState.playbackProgress(): Float {
+    val recordedDurationMillis = durationMillis.takeIf { it > 0 } ?: elapsedSeconds * 1000L
+    if (recordedDurationMillis <= 0) return 0f
+    return (playbackPositionMillis.toFloat() / recordedDurationMillis).coerceIn(0f, 1f)
+}
+
+@Composable
+private fun PlaybackButton(
+    isPlaying: Boolean,
+    onClick: () -> Unit,
+) {
+    val playbackIconColor = MaterialTheme.colorScheme.appOnAccent
+    Box(
+        modifier =
+            Modifier
+                .size(50.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.appTextPrimary)
+                .noRippleClickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(modifier = Modifier.size(22.dp)) {
+            if (isPlaying) {
+                drawRect(
+                    color = playbackIconColor,
+                    topLeft = Offset(size.width * 0.28f, size.height * 0.18f),
+                    size =
+                        Size(size.width * 0.16f, size.height * 0.64f),
+                )
+                drawRect(
+                    color = playbackIconColor,
+                    topLeft = Offset(size.width * 0.56f, size.height * 0.18f),
+                    size =
+                        Size(size.width * 0.16f, size.height * 0.64f),
+                )
+            } else {
+                val playPath =
+                    Path().apply {
+                        moveTo(size.width * 0.35f, size.height * 0.2f)
+                        lineTo(size.width * 0.78f, size.height * 0.5f)
+                        lineTo(size.width * 0.35f, size.height * 0.8f)
+                        close()
+                    }
+                drawPath(path = playPath, color = playbackIconColor)
+            }
+        }
+    }
+}
+
+private fun formatAudioTime(totalSeconds: Int): String {
+    val minutes = (totalSeconds / 60).toString().padStart(2, '0')
+    val seconds = (totalSeconds % 60).toString().padStart(2, '0')
+    return "$minutes:$seconds"
+}
+
+private val previewSamples =
+    List(128) { index ->
+        val phase = index % 32
+        when (phase) {
+            in 0..5 -> 0.02f
+            in 6..12 -> (phase - 5) / 8f
+            in 13..20 -> (21 - phase) / 9f
+            else -> 0.04f
+        }
+    }
+
+@Composable
+private fun RecordAudioPreview(audio: VoiceRecordingState) {
+    RecordAudioContent(
+        audio = audio,
+        onStartRecording = {},
+        onStopRecording = {},
+        onPlayback = {},
+        onClearRecording = {},
+        modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.appSurface).padding(AppSpacing.xl.dp),
+    )
+}
+
+@Preview(name = "녹음 전", widthDp = 402, showBackground = true)
+@Composable
+private fun RecordAudioReadyPreview() {
+    RecordAudioPreview(VoiceRecordingState())
+}
+
+@Preview(name = "마이크 권한 요청 중", widthDp = 402, showBackground = true)
+@Composable
+private fun RecordAudioPermissionPreview() {
+    RecordAudioPreview(VoiceRecordingState(requestingPermission = true))
+}
+
+@Preview(name = "녹음 중", widthDp = 402, showBackground = true)
+@Composable
+private fun RecordAudioRecordingPreview() {
+    RecordAudioPreview(VoiceRecordingState(recording = true, elapsedSeconds = 12, samples = previewSamples))
+}
+
+@Preview(name = "녹음 완료", widthDp = 402, showBackground = true)
+@Composable
+private fun RecordAudioCompletedPreview() {
+    RecordAudioPreview(VoiceRecordingState(filePath = "preview.m4a", elapsedSeconds = 12, samples = previewSamples))
+}
+
+@Preview(name = "녹음 재생 중", widthDp = 402, showBackground = true)
+@Composable
+private fun RecordAudioPlayingPreview() {
+    RecordAudioPreview(
+        VoiceRecordingState(filePath = "preview.m4a", playing = true, elapsedSeconds = 12, samples = previewSamples),
+    )
+}
+
+@Preview(name = "녹음 오류", widthDp = 402, showBackground = true)
+@Composable
+private fun RecordAudioErrorPreview() {
+    RecordAudioPreview(VoiceRecordingState(error = "설정에서 마이크 권한을 허용해주세요"))
+}
+
+@Preview(name = "무음 녹음 중", widthDp = 402, showBackground = true)
+@Composable
+private fun RecordAudioSilentPreview() {
+    RecordAudioPreview(VoiceRecordingState(recording = true, elapsedSeconds = 3, samples = List(64) { 0f }))
+}

@@ -1,0 +1,77 @@
+Calculating task graph as no cached configuration is available for tasks: :shared:connectedAndroidDeviceTest
+> Task :shared:androidPreBuild UP-TO-DATE
+> Task :shared:preAndroidMainBuild UP-TO-DATE
+> Task :shared:kmpPartiallyResolvedDependenciesChecker
+> Task :shared:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :shared:preAndroidDeviceTestBuild UP-TO-DATE
+> Task :shared:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :shared:generateAndroidMainAssets UP-TO-DATE
+> Task :shared:generateAndroidDeviceTestResources UP-TO-DATE
+> Task :shared:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :shared:generateAndroidDeviceTestAssets UP-TO-DATE
+> Task :shared:convertXmlValueResourcesForAndroidDeviceTest NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForAndroidDeviceTest NO-SOURCE
+> Task :shared:processAndroidDeviceTestJavaRes NO-SOURCE
+> Task :shared:generateExpectResourceCollectorsForCommonMain UP-TO-DATE
+> Task :shared:generateComposeResClass UP-TO-DATE
+> Task :shared:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :shared:desugarAndroidDeviceTestFileDependencies UP-TO-DATE
+> Task :shared:androidJar UP-TO-DATE
+> Task :shared:prepareComposeResourcesTaskForAndroidDeviceTest NO-SOURCE
+> Task :shared:processAndroidDeviceTestNavigationResources UP-TO-DATE
+> Task :shared:writeAndroidMainAarMetadata UP-TO-DATE
+> Task :shared:generateResourceAccessorsForAndroidMain NO-SOURCE
+> Task :shared:generateAndroidMainEmptyResourceFiles UP-TO-DATE
+> Task :shared:processAndroidMainManifest UP-TO-DATE
+> Task :shared:mergeAndroidDeviceTestJniLibFolders UP-TO-DATE
+> Task :shared:mergeAndroidMainJniLibFolders UP-TO-DATE
+> Task :shared:mergeAndroidMainNativeLibs NO-SOURCE
+> Task :shared:writeAndroidDeviceTestSigningConfigVersions UP-TO-DATE
+> Task :shared:validateSigningAndroidDeviceTest UP-TO-DATE
+> Task :shared:convertXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :shared:generateResourceAccessorsForAndroidDeviceTest NO-SOURCE
+> Task :shared:copyAndroidMainJniLibsProjectOnly UP-TO-DATE
+> Task :shared:compileAndroidDeviceTestNavigationResources UP-TO-DATE
+> Task :shared:copyAndroidDeviceTestComposeResourcesToAndroidAssets UP-TO-DATE
+> Task :shared:packageAndroidDeviceTestResources UP-TO-DATE
+> Task :shared:checkAndroidDeviceTestDuplicateClasses UP-TO-DATE
+> Task :shared:checkAndroidDeviceTestAarMetadata UP-TO-DATE
+> Task :shared:parseAndroidDeviceTestLocalResources UP-TO-DATE
+> Task :shared:mergeAndroidDeviceTestNativeLibs UP-TO-DATE
+> Task :shared:generateAndroidDeviceTestRFile UP-TO-DATE
+> Task :shared:stripAndroidDeviceTestDebugSymbols UP-TO-DATE
+> Task :shared:copyNonXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :shared:processAndroidDeviceTestManifest UP-TO-DATE
+> Task :shared:prepareComposeResourcesTaskForCommonMain UP-TO-DATE
+> Task :shared:mergeExtDexAndroidDeviceTest UP-TO-DATE
+> Task :shared:generateResourceAccessorsForCommonMain UP-TO-DATE
+> Task :shared:generateActualResourceCollectorsForAndroidMain UP-TO-DATE
+> Task :shared:copyAndroidMainComposeResourcesToAndroidAssets UP-TO-DATE
+> Task :shared:mergeAndroidMainAssets UP-TO-DATE
+> Task :shared:packageAndroidMainResources UP-TO-DATE
+> Task :shared:parseAndroidMainLocalResources UP-TO-DATE
+> Task :shared:compileAndroidMainLibraryResources UP-TO-DATE
+> Task :shared:generateAndroidMainRFile UP-TO-DATE
+> Task :shared:mergeAndroidDeviceTestAssets UP-TO-DATE
+> Task :shared:mapAndroidDeviceTestSourceSetPaths UP-TO-DATE
+> Task :shared:mergeAndroidDeviceTestResources UP-TO-DATE
+> Task :shared:compressAndroidDeviceTestAssets UP-TO-DATE
+> Task :shared:processAndroidDeviceTestResources UP-TO-DATE
+> Task :shared:compileAndroidMain UP-TO-DATE
+> Task :shared:bundleLibRuntimeToDirAndroidMain UP-TO-DATE
+> Task :shared:bundleAndroidMainClassesToCompileJar UP-TO-DATE
+> Task :shared:processAndroidMainJavaRes UP-TO-DATE
+> Task :shared:mergeAndroidDeviceTestJavaResource UP-TO-DATE
+> Task :shared:mergeLibDexAndroidDeviceTest UP-TO-DATE
+> Task :shared:compileAndroidDeviceTest
+> Task :shared:dexBuilderAndroidDeviceTest UP-TO-DATE
+> Task :shared:mergeProjectDexAndroidDeviceTest UP-TO-DATE
+> Task :shared:packageAndroidDeviceTest UP-TO-DATE
+> Task :shared:createAndroidDeviceTestApkListingFileRedirect UP-TO-DATE
+Starting 1 tests on SM-G977N - 12
+Finished 1 tests on SM-G977N - 12
+> Task :shared:connectedAndroidDeviceTest
+
+BUILD SUCCESSFUL in 31s
+54 actionable tasks: 3 executed, 51 up-to-date
+Configuration cache entry stored.

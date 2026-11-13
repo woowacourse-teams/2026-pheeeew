@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.pheeeew.feature.screens.ranking.DailyPressRankingViewModelTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-11-06T04:38:23.549Z" hostname="MacBook-Pro.local" time="0.013">
+  <properties/>
+  <testcase name="응답 날짜 불일치는 실패다" classname="com.pheeeew.feature.screens.ranking.DailyPressRankingViewModelTest" time="0.001"/>
+  <testcase name="날짜 변경 뒤 늦은 응답은 무시한다" classname="com.pheeeew.feature.screens.ranking.DailyPressRankingViewModelTest" time="0.001"/>
+  <testcase name="내 기록 없음과 전체 기록 없음을 정상 조회로 구분한다" classname="com.pheeeew.feature.screens.ranking.DailyPressRankingViewModelTest" time="0.001"/>
+  <testcase name="items와 목록 밖 me의 대표 감정을 UI에 전달한다" classname="com.pheeeew.feature.screens.ranking.DailyPressRankingViewModelTest" time="0.0"/>
+  <testcase name="즉시 취소되는 세션 제거는 대기 알림 조회를 시작하지 않는다" classname="com.pheeeew.feature.screens.ranking.DailyPressRankingViewModelTest" time="0.004"/>
+  <testcase name="일별 빈 결과와 100위 밖 내 순위를 표시한다" classname="com.pheeeew.feature.screens.ranking.DailyPressRankingViewModelTest" time="0.002"/>
+  <testcase name="세션이 바뀌면 이전 세션 응답을 화면에 적용하지 않는다" classname="com.pheeeew.feature.screens.ranking.DailyPressRankingViewModelTest" time="0.002"/>
+  <testcase name="자동 복귀 조회는 표시 없이 갱신하고 수동 조회만 표시한다" classname="com.pheeeew.feature.screens.ranking.DailyPressRankingViewModelTest" time="0.001"/>
+  <testcase name="즉시 취소되는 세션 교체는 새 세대로 한 번만 조회한다" classname="com.pheeeew.feature.screens.ranking.DailyPressRankingViewModelTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

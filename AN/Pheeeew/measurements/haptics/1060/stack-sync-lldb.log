@@ -1,0 +1,23 @@
+(lldb) command source -s 0 'capture-live.lldb'
+Executing commands in 'capture-live.lldb'.
+(lldb) script lldb.debugger.SetAsync(False)
+(lldb) device select <DEVICE_IDENTIFIER>
+(lldb) device process attach -n Pheeeew
+(lldb) script exec("import time\np = lldb.debugger.GetSelectedTarget().GetProcess()\nfor _ in range(25):\n if p.GetState() in (lldb.eStateStopped, lldb.eStateCrashed, lldb.eStateExited): break\n time.sleep(1)\nprint(\"attach state:\",p.GetState())")
+attach state: 5
+(lldb) process status
+Process 88693 stopped
+* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGSTOP
+    frame #0: 0x00000001059c8b24 Pheeeew.debug.dylib`kfun:org.jetbrains.skia.impl.Stats#<get-$instance>#static(){}org.jetbrains.skia.impl.Stats at Stats.native.kt:1:1
+Target 0: (Pheeeew) stopped.
+Process 88693 stopped
+* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGSTOP
+    frame #0: 0x00000001059c8b24 Pheeeew.debug.dylib`kfun:org.jetbrains.skia.impl.Stats#<get-$instance>#static(){}org.jetbrains.skia.impl.Stats at Stats.native.kt:1:1
+(lldb) target list
+Current targets:
+* target #0: /private/var/containers/Bundle/Application/BA00AF9B-9F4C-41A4-A84E-5702CE70C033/Pheeeew.app/Pheeeew ( arch=arm64-apple-ios, platform=remote-ios, pid=88693, state=stopped )
+(lldb) command script import ${PROJECT_ROOT}/AN/Pheeeew/scripts/haptic_channel_breakpoint_1060.py
+[HapticChannelFailure] breakpoint 1 _os_log_error_impl locations= 1
+[HapticChannelFailure] breakpoint 2 _os_log_fault_impl locations= 1
+First matching error stops. Other logs auto-continue. Delete these breakpoints for timing-only trials.
+(lldb) continue

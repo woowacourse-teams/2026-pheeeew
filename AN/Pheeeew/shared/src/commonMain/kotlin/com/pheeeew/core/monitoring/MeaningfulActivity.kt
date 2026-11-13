@@ -1,0 +1,99 @@
+package com.pheeeew.core.monitoring
+
+import com.pheeeew.core.time.koreaCalendarDate
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlin.time.Instant
+
+enum class ActivityType(
+    val wireValue: String,
+) {
+    APP_OPEN("app_open"),
+    EMOTION_RECORD("emotion_record"),
+    PERSONAL_PRESS("personal_press"),
+}
+
+internal const val DAY_MILLIS = 86_400_000L
+internal const val ACTIVITY_MAX_AGE = 35 * DAY_MILLIS
+internal const val ACTIVITY_KEY_RETENTION = 42 * DAY_MILLIS
+
+/** Keeps the monitoring package API while sharing the timezone conversion with other core features. */
+fun activityDate(timestamp: Long): String = koreaCalendarDate(timestamp)
+
+object MeaningfulActivity {
+    const val NAME = "meaningful_activity_day"
+    const val VERSION = "user_report_v1"
+    val definition =
+        EventDefinition(
+            NAME,
+            properties =
+                mapOf(
+                    "activity_date" to PropertyRule(ValueType.TEXT, required = true, maxLength = 10),
+                    "activity_type" to
+                        PropertyRule(
+                            ValueType.TEXT,
+                            required = true,
+                            allowed =
+                                setOf(
+                                    ActivityType.EMOTION_RECORD.wireValue,
+                                    ActivityType.PERSONAL_PRESS.wireValue,
+                                ),
+                        ),
+                    "audience" to
+                        PropertyRule(
+                            ValueType.TEXT,
+                            required = true,
+                            allowed = setOf("external", "internal", "test", "unknown"),
+                        ),
+                    "measurement_version" to PropertyRule(ValueType.TEXT, required = true, allowed = setOf(VERSION)),
+                ),
+            preserveOnOverflow = true,
+        )
+    private val common =
+        setOf("anonymous_id", "event_id", "event_schema_version", "environment", "platform", "app_version")
+
+    internal fun sanitize(fields: JsonObject): JsonObject? {
+        for (key in listOf("environment", "platform", "app_version")) {
+            val value = fields[key] as? JsonPrimitive ?: return null
+            if (!value.isString || value.content.isBlank()) return null
+        }
+        if ((fields["environment"] as JsonPrimitive).content !in setOf("prod", "dev")) return null
+        val date = (fields["activity_date"] as? JsonPrimitive)?.content ?: return null
+        if (!date.matches(Regex("[0-9]{4}-[0-9]{2}-[0-9]{2}")) ||
+            runCatching { Instant.parse("${date}T00:00:00Z") }.isFailure
+        ) {
+            return null
+        }
+        return JsonObject(fields.filterKeys { it in common || it in definition.properties })
+    }
+}
+
+/** Split daily product metrics; legacy envelopes keep their original definition while draining. */
+object DailyActivity {
+    const val VERSION = "activity_split_v1"
+    const val PRESS_TARGET = 100
+    private val names =
+        mapOf(
+            ActivityType.APP_OPEN to "app_open_day",
+            ActivityType.EMOTION_RECORD to "emotion_record_day",
+            ActivityType.PERSONAL_PRESS to "press_100_day",
+        )
+    val definitions =
+        names.map { (type, name) ->
+            MeaningfulActivity.definition.copy(
+                name = name,
+                properties =
+                    MeaningfulActivity.definition.properties +
+                        mapOf(
+                            "activity_type" to
+                                PropertyRule(ValueType.TEXT, required = true, allowed = setOf(type.wireValue)),
+                            "measurement_version" to
+                                PropertyRule(ValueType.TEXT, required = true, allowed = setOf(VERSION)),
+                        ),
+            )
+        }
+
+    fun definition(type: ActivityType): EventDefinition = definitions.single { it.name == names.getValue(type) }
+
+    fun isDaily(name: String): Boolean = name == MeaningfulActivity.NAME || definitions.any { it.name == name }
+}

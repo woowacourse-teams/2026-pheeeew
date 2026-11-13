@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.pheeeew.data.repository.press.PressBatchWaitTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-10-18T12:52:49.530Z" hostname="MacBook-Pro.local" time="0.077">
+  <properties/>
+  <testcase name="inputs during post use remaining deadline after request interval" classname="com.pheeeew.data.repository.press.PressBatchWaitTest" time="0.011"/>
+  <testcase name="both batch thresholds during read preserve early send" classname="com.pheeeew.data.repository.press.PressBatchWaitTest" time="0.004"/>
+  <testcase name="deferred statistics refresh also preserves the input deadline" classname="com.pheeeew.data.repository.press.PressBatchWaitTest" time="0.001"/>
+  <testcase name="input during all statistics read waits until original deadline" classname="com.pheeeew.data.repository.press.PressBatchWaitTest" time="0.002"/>
+  <testcase name="threshold wakes the remaining wait after statistics completes" classname="com.pheeeew.data.repository.press.PressBatchWaitTest" time="0.001"/>
+  <testcase name="compare post and statistics latency combinations" classname="com.pheeeew.data.repository.press.PressBatchWaitTest" time="0.033"/>
+  <testcase name="retry resumes fixed write at retry deadline without extra batch wait" classname="com.pheeeew.data.repository.press.PressBatchWaitTest" time="0.002"/>
+  <testcase name="expired deadline does not add another full wait after read" classname="com.pheeeew.data.repository.press.PressBatchWaitTest" time="0.001"/>
+  <testcase name="compare spaced bursts with aggregate read latency" classname="com.pheeeew.data.repository.press.PressBatchWaitTest" time="0.008"/>
+  <testcase name="compare continuous inputs with delayed statistics reads" classname="com.pheeeew.data.repository.press.PressBatchWaitTest" time="0.01"/>
+  <testcase name="additional inputs do not reset first input deadline" classname="com.pheeeew.data.repository.press.PressBatchWaitTest" time="0.002"/>
+  <testcase name="reconnect resumes offline inputs without another batch wait" classname="com.pheeeew.data.repository.press.PressBatchWaitTest" time="0.002"/>
+  <system-out><![CDATA[LATENCY_PROBE,post=40,get=50,posts=20,gets=1,p50=340,p95=540,peak=6
+LATENCY_PROBE,post=40,get=500,posts=20,gets=1,p50=340,p95=540,peak=6
+LATENCY_PROBE,post=40,get=3000,posts=20,gets=1,p50=340,p95=540,peak=6
+LATENCY_PROBE,post=500,get=50,posts=17,gets=1,p50=800,p95=1100,peak=11
+LATENCY_PROBE,post=500,get=500,posts=17,gets=1,p50=800,p95=1100,peak=11
+LATENCY_PROBE,post=500,get=3000,posts=17,gets=1,p50=800,p95=1100,peak=11
+LATENCY_PROBE,post=1000,get=50,posts=10,gets=1,p50=1600,p95=2100,peak=21
+LATENCY_PROBE,post=1000,get=500,posts=10,gets=1,p50=1600,p95=2100,peak=21
+LATENCY_PROBE,post=1000,get=3000,posts=10,gets=1,p50=1600,p95=2100,peak=21
+BURST_PROBE,get=50,posts=10,gets=10,p50=440,p95=540,peak=5
+BURST_PROBE,get=500,posts=10,gets=10,p50=440,p95=540,peak=5
+BURST_PROBE,get=3000,posts=4,gets=4,p50=1470,p95=2610,peak=15
+BATCH_WAIT_PROBE,mixed=false,sends=20,sizes=5/5/5/5/5/5/5/5/5/5/5/5/5/5/5/5/5/5/5/5,p50=340,p95=540,peak=6,drain=40
+BATCH_WAIT_PROBE,mixed=true,sends=20,sizes=5/5/5/5/5/5/5/5/5/5/5/5/5/5/5/5/5/5/5/5,p50=340,p95=540,peak=6,drain=40
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

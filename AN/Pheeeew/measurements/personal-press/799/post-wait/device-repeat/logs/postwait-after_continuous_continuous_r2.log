@@ -1,0 +1,1000 @@
+1792332366.095 0 0 I PressMeasurement: config flush_delay_ms=500 batch_max_total=100 background_flush=true
+1792332366.900 0 0 I PressMeasurement: probe_start variant=postwait-after repetition=2 driver=viewmodel low_power=false thermal=android_unmeasured
+1792332367.098 0 0 I PressMeasurement: http_start endpoint=device_refresh method=POST
+1792332367.385 0 0 I PressMeasurement: http_end endpoint=device_refresh method=POST outcome=RESPONSE status=200 duration=286
+1792332367.403 0 0 I PressMeasurement: http_start endpoint=emotion_press_me_daily method=GET
+1792332367.426 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332367.455 0 0 I PressMeasurement: http_end endpoint=emotion_press_me_daily method=GET outcome=RESPONSE status=200 duration=51
+1792332367.463 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=37
+1792332367.466 0 0 I PressMeasurement: state pending=0 unknown=false my=3364 counts=FRUSTRATED:2084;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332367.858 0 0 I PressMeasurement: http_start endpoint=emotion_press_me_daily method=GET
+1792332367.864 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332367.907 0 0 I PressMeasurement: http_end endpoint=emotion_press_me_daily method=GET outcome=RESPONSE status=200 duration=49
+1792332367.921 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=56
+1792332367.923 0 0 I PressMeasurement: state pending=0 unknown=false my=3364 counts=FRUSTRATED:2084;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332368.243 0 0 I PressMeasurement: run_start pattern=single repetition=2 requested=1
+1792332368.251 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=1
+1792332368.252 0 0 I PressMeasurement: state pending=1 unknown=false my=3364 counts=FRUSTRATED:2084;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332368.260 0 0 I PressMeasurement: local_state pattern=single repetition=2 index=0 elapsed_us=16311 optimistic=1
+1792332368.345 0 0 I PressMeasurement: input_end pattern=single repetition=2 elapsed=102
+1792332368.766 0 0 I PressMeasurement: state pending=1 unknown=false my=3364 counts=FRUSTRATED:2084;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332368.767 0 0 I PressMeasurement: send sequence=1 counts=FRUSTRATED:1
+1792332368.771 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332368.849 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=77
+1792332368.855 0 0 I PressMeasurement: result sequence=1 outcome=Accepted
+1792332368.855 0 0 I PressMeasurement: state pending=0 unknown=false my=3365 counts=FRUSTRATED:2085;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332368.857 0 0 I PressMeasurement: state pending=0 unknown=false my=3365 counts=FRUSTRATED:2085;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332368.858 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332368.916 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=58
+1792332368.918 0 0 I PressMeasurement: state pending=0 unknown=false my=3365 counts=FRUSTRATED:2085;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332369.274 0 0 I PressMeasurement: http_start endpoint=emotion_press_me_daily method=GET
+1792332369.290 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332369.351 0 0 I PressMeasurement: http_end endpoint=emotion_press_me_daily method=GET outcome=RESPONSE status=200 duration=76
+1792332369.364 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=73
+1792332369.367 0 0 I PressMeasurement: state pending=0 unknown=false my=3365 counts=FRUSTRATED:2085;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332369.729 0 0 I PressMeasurement: verification pattern=single repetition=2 baseline=3364 total=3365 delta=1
+1792332369.729 0 0 I PressMeasurement: run_end pattern=single repetition=2
+1792332370.739 0 0 I PressMeasurement: http_start endpoint=emotion_press_me_daily method=GET
+1792332370.759 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332370.812 0 0 I PressMeasurement: http_end endpoint=emotion_press_me_daily method=GET outcome=RESPONSE status=200 duration=72
+1792332370.823 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=63
+1792332370.826 0 0 I PressMeasurement: state pending=0 unknown=false my=3365 counts=FRUSTRATED:2085;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332371.145 0 0 I PressMeasurement: run_start pattern=burst5 repetition=2 requested=5
+1792332371.147 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=1
+1792332371.148 0 0 I PressMeasurement: state pending=1 unknown=false my=3365 counts=FRUSTRATED:2085;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332371.153 0 0 I PressMeasurement: local_state pattern=burst5 repetition=2 index=0 elapsed_us=7804 optimistic=1
+1792332371.248 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=2
+1792332371.248 0 0 I PressMeasurement: state pending=2 unknown=false my=3365 counts=FRUSTRATED:2085;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332371.249 0 0 I PressMeasurement: local_state pattern=burst5 repetition=2 index=1 elapsed_us=1855 optimistic=2
+1792332371.352 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=3
+1792332371.352 0 0 I PressMeasurement: state pending=3 unknown=false my=3365 counts=FRUSTRATED:2085;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332371.354 0 0 I PressMeasurement: local_state pattern=burst5 repetition=2 index=2 elapsed_us=1883 optimistic=3
+1792332371.449 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=4
+1792332371.450 0 0 I PressMeasurement: state pending=4 unknown=false my=3365 counts=FRUSTRATED:2085;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332371.452 0 0 I PressMeasurement: local_state pattern=burst5 repetition=2 index=3 elapsed_us=4058 optimistic=4
+1792332371.550 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=5
+1792332371.551 0 0 I PressMeasurement: state pending=5 unknown=false my=3365 counts=FRUSTRATED:2085;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332371.552 0 0 I PressMeasurement: local_state pattern=burst5 repetition=2 index=4 elapsed_us=3600 optimistic=5
+1792332371.647 0 0 I PressMeasurement: input_end pattern=burst5 repetition=2 elapsed=502
+1792332371.653 0 0 I PressMeasurement: state pending=5 unknown=false my=3365 counts=FRUSTRATED:2085;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332371.653 0 0 I PressMeasurement: send sequence=2 counts=FRUSTRATED:5
+1792332371.654 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332371.722 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=68
+1792332371.726 0 0 I PressMeasurement: result sequence=2 outcome=Accepted
+1792332371.727 0 0 I PressMeasurement: state pending=0 unknown=false my=3370 counts=FRUSTRATED:2090;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332371.728 0 0 I PressMeasurement: state pending=0 unknown=false my=3370 counts=FRUSTRATED:2090;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332371.729 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332371.784 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=55
+1792332371.787 0 0 I PressMeasurement: state pending=0 unknown=false my=3370 counts=FRUSTRATED:2090;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332372.134 0 0 I PressMeasurement: http_start endpoint=emotion_press_me_daily method=GET
+1792332372.150 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332372.200 0 0 I PressMeasurement: http_end endpoint=emotion_press_me_daily method=GET outcome=RESPONSE status=200 duration=65
+1792332372.213 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=61
+1792332372.216 0 0 I PressMeasurement: state pending=0 unknown=false my=3370 counts=FRUSTRATED:2090;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332372.532 0 0 I PressMeasurement: verification pattern=burst5 repetition=2 baseline=3365 total=3370 delta=5
+1792332372.532 0 0 I PressMeasurement: run_end pattern=burst5 repetition=2
+1792332373.542 0 0 I PressMeasurement: http_start endpoint=emotion_press_me_daily method=GET
+1792332373.560 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332373.614 0 0 I PressMeasurement: http_end endpoint=emotion_press_me_daily method=GET outcome=RESPONSE status=200 duration=72
+1792332373.623 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=62
+1792332373.626 0 0 I PressMeasurement: state pending=0 unknown=false my=3370 counts=FRUSTRATED:2090;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332373.943 0 0 I PressMeasurement: run_start pattern=same repetition=2 requested=100
+1792332373.946 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=1
+1792332373.947 0 0 I PressMeasurement: state pending=1 unknown=false my=3370 counts=FRUSTRATED:2090;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332373.952 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=0 elapsed_us=7757 optimistic=1
+1792332374.046 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=2
+1792332374.046 0 0 I PressMeasurement: state pending=2 unknown=false my=3370 counts=FRUSTRATED:2090;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332374.047 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=1 elapsed_us=1842 optimistic=2
+1792332374.148 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=3
+1792332374.148 0 0 I PressMeasurement: state pending=3 unknown=false my=3370 counts=FRUSTRATED:2090;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332374.151 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=2 elapsed_us=4414 optimistic=3
+1792332374.247 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=4
+1792332374.247 0 0 I PressMeasurement: state pending=4 unknown=false my=3370 counts=FRUSTRATED:2090;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332374.250 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=3 elapsed_us=3397 optimistic=4
+1792332374.347 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=5
+1792332374.347 0 0 I PressMeasurement: state pending=5 unknown=false my=3370 counts=FRUSTRATED:2090;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332374.348 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=4 elapsed_us=1862 optimistic=5
+1792332374.446 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=6
+1792332374.446 0 0 I PressMeasurement: state pending=6 unknown=false my=3370 counts=FRUSTRATED:2090;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332374.448 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=5 elapsed_us=1722 optimistic=6
+1792332374.451 0 0 I PressMeasurement: state pending=6 unknown=false my=3370 counts=FRUSTRATED:2090;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332374.451 0 0 I PressMeasurement: send sequence=3 counts=FRUSTRATED:6
+1792332374.452 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332374.531 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=78
+1792332374.533 0 0 I PressMeasurement: result sequence=3 outcome=Accepted
+1792332374.533 0 0 I PressMeasurement: state pending=0 unknown=false my=3376 counts=FRUSTRATED:2096;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332374.533 0 0 I PressMeasurement: state pending=0 unknown=false my=3376 counts=FRUSTRATED:2096;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332374.534 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332374.551 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=1
+1792332374.551 0 0 I PressMeasurement: state pending=1 unknown=false my=3376 counts=FRUSTRATED:2096;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332374.551 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=6 elapsed_us=876 optimistic=1
+1792332374.595 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=61
+1792332374.596 0 0 I PressMeasurement: state pending=1 unknown=false my=3376 counts=FRUSTRATED:2096;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332374.647 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=2
+1792332374.647 0 0 I PressMeasurement: state pending=2 unknown=false my=3376 counts=FRUSTRATED:2096;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332374.648 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=7 elapsed_us=1554 optimistic=2
+1792332374.747 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=3
+1792332374.747 0 0 I PressMeasurement: state pending=3 unknown=false my=3376 counts=FRUSTRATED:2096;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332374.748 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=8 elapsed_us=1811 optimistic=3
+1792332374.847 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=4
+1792332374.847 0 0 I PressMeasurement: state pending=4 unknown=false my=3376 counts=FRUSTRATED:2096;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332374.849 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=9 elapsed_us=2653 optimistic=4
+1792332374.947 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=5
+1792332374.947 0 0 I PressMeasurement: state pending=5 unknown=false my=3376 counts=FRUSTRATED:2096;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332374.949 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=10 elapsed_us=2485 optimistic=5
+1792332375.047 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=6
+1792332375.048 0 0 I PressMeasurement: state pending=6 unknown=false my=3376 counts=FRUSTRATED:2096;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332375.052 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=11 elapsed_us=5260 optimistic=6
+1792332375.057 0 0 I PressMeasurement: state pending=6 unknown=false my=3376 counts=FRUSTRATED:2096;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332375.058 0 0 I PressMeasurement: send sequence=4 counts=FRUSTRATED:6
+1792332375.058 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332375.121 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=62
+1792332375.123 0 0 I PressMeasurement: result sequence=4 outcome=Accepted
+1792332375.123 0 0 I PressMeasurement: state pending=0 unknown=false my=3382 counts=FRUSTRATED:2102;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332375.123 0 0 I PressMeasurement: state pending=0 unknown=false my=3382 counts=FRUSTRATED:2102;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332375.124 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332375.154 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=1
+1792332375.154 0 0 I PressMeasurement: state pending=1 unknown=false my=3382 counts=FRUSTRATED:2102;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332375.155 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=12 elapsed_us=1013 optimistic=1
+1792332375.170 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=46
+1792332375.171 0 0 I PressMeasurement: state pending=1 unknown=false my=3382 counts=FRUSTRATED:2102;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332375.247 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=2
+1792332375.247 0 0 I PressMeasurement: state pending=2 unknown=false my=3382 counts=FRUSTRATED:2102;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332375.249 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=13 elapsed_us=2682 optimistic=2
+1792332375.346 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=3
+1792332375.346 0 0 I PressMeasurement: state pending=3 unknown=false my=3382 counts=FRUSTRATED:2102;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332375.347 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=14 elapsed_us=2166 optimistic=3
+1792332375.446 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=4
+1792332375.447 0 0 I PressMeasurement: state pending=4 unknown=false my=3382 counts=FRUSTRATED:2102;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332375.450 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=15 elapsed_us=3528 optimistic=4
+1792332375.546 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=5
+1792332375.546 0 0 I PressMeasurement: state pending=5 unknown=false my=3382 counts=FRUSTRATED:2102;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332375.547 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=16 elapsed_us=1621 optimistic=5
+1792332375.646 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=6
+1792332375.647 0 0 I PressMeasurement: state pending=6 unknown=false my=3382 counts=FRUSTRATED:2102;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332375.648 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=17 elapsed_us=1606 optimistic=6
+1792332375.705 0 0 I PressMeasurement: state pending=6 unknown=false my=3382 counts=FRUSTRATED:2102;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332375.705 0 0 I PressMeasurement: send sequence=5 counts=FRUSTRATED:6
+1792332375.706 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332375.747 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=7
+1792332375.747 0 0 I PressMeasurement: state pending=7 unknown=false my=3382 counts=FRUSTRATED:2102;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332375.750 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=18 elapsed_us=3701 optimistic=7
+1792332375.804 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=97
+1792332375.807 0 0 I PressMeasurement: result sequence=5 outcome=Accepted
+1792332375.807 0 0 I PressMeasurement: state pending=1 unknown=false my=3388 counts=FRUSTRATED:2108;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332375.847 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=2
+1792332375.847 0 0 I PressMeasurement: state pending=2 unknown=false my=3388 counts=FRUSTRATED:2108;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332375.848 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=19 elapsed_us=1478 optimistic=2
+1792332375.947 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=3
+1792332375.947 0 0 I PressMeasurement: state pending=3 unknown=false my=3388 counts=FRUSTRATED:2108;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332375.949 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=20 elapsed_us=2433 optimistic=3
+1792332376.047 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=4
+1792332376.047 0 0 I PressMeasurement: state pending=4 unknown=false my=3388 counts=FRUSTRATED:2108;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332376.048 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=21 elapsed_us=1710 optimistic=4
+1792332376.146 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=5
+1792332376.147 0 0 I PressMeasurement: state pending=5 unknown=false my=3388 counts=FRUSTRATED:2108;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332376.148 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=22 elapsed_us=1656 optimistic=5
+1792332376.247 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=6
+1792332376.247 0 0 I PressMeasurement: state pending=6 unknown=false my=3388 counts=FRUSTRATED:2108;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332376.248 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=23 elapsed_us=1697 optimistic=6
+1792332376.252 0 0 I PressMeasurement: state pending=6 unknown=false my=3388 counts=FRUSTRATED:2108;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332376.252 0 0 I PressMeasurement: send sequence=6 counts=FRUSTRATED:6
+1792332376.252 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332376.327 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=74
+1792332376.330 0 0 I PressMeasurement: result sequence=6 outcome=Accepted
+1792332376.330 0 0 I PressMeasurement: state pending=0 unknown=false my=3394 counts=FRUSTRATED:2114;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332376.331 0 0 I PressMeasurement: state pending=0 unknown=false my=3394 counts=FRUSTRATED:2114;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332376.331 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332376.359 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=1
+1792332376.359 0 0 I PressMeasurement: state pending=1 unknown=false my=3394 counts=FRUSTRATED:2114;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332376.360 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=24 elapsed_us=1622 optimistic=1
+1792332376.406 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=74
+1792332376.407 0 0 I PressMeasurement: state pending=1 unknown=false my=3394 counts=FRUSTRATED:2114;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332376.447 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=2
+1792332376.448 0 0 I PressMeasurement: state pending=2 unknown=false my=3394 counts=FRUSTRATED:2114;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332376.451 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=25 elapsed_us=4423 optimistic=2
+1792332376.547 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=3
+1792332376.547 0 0 I PressMeasurement: state pending=3 unknown=false my=3394 counts=FRUSTRATED:2114;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332376.548 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=26 elapsed_us=1552 optimistic=3
+1792332376.647 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=4
+1792332376.647 0 0 I PressMeasurement: state pending=4 unknown=false my=3394 counts=FRUSTRATED:2114;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332376.648 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=27 elapsed_us=1584 optimistic=4
+1792332376.747 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=5
+1792332376.747 0 0 I PressMeasurement: state pending=5 unknown=false my=3394 counts=FRUSTRATED:2114;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332376.748 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=28 elapsed_us=1701 optimistic=5
+1792332376.846 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=6
+1792332376.846 0 0 I PressMeasurement: state pending=6 unknown=false my=3394 counts=FRUSTRATED:2114;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332376.847 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=29 elapsed_us=1666 optimistic=6
+1792332376.911 0 0 I PressMeasurement: state pending=6 unknown=false my=3394 counts=FRUSTRATED:2114;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332376.911 0 0 I PressMeasurement: send sequence=7 counts=FRUSTRATED:6
+1792332376.911 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332376.945 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=7
+1792332376.946 0 0 I PressMeasurement: state pending=7 unknown=false my=3394 counts=FRUSTRATED:2114;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332376.946 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=30 elapsed_us=1589 optimistic=7
+1792332377.009 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=97
+1792332377.012 0 0 I PressMeasurement: result sequence=7 outcome=Accepted
+1792332377.012 0 0 I PressMeasurement: state pending=1 unknown=false my=3400 counts=FRUSTRATED:2120;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332377.045 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=2
+1792332377.045 0 0 I PressMeasurement: state pending=2 unknown=false my=3400 counts=FRUSTRATED:2120;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332377.047 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=31 elapsed_us=2145 optimistic=2
+1792332377.147 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=3
+1792332377.147 0 0 I PressMeasurement: state pending=3 unknown=false my=3400 counts=FRUSTRATED:2120;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332377.149 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=32 elapsed_us=2225 optimistic=3
+1792332377.246 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=4
+1792332377.246 0 0 I PressMeasurement: state pending=4 unknown=false my=3400 counts=FRUSTRATED:2120;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332377.247 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=33 elapsed_us=1576 optimistic=4
+1792332377.347 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=5
+1792332377.347 0 0 I PressMeasurement: state pending=5 unknown=false my=3400 counts=FRUSTRATED:2120;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332377.348 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=34 elapsed_us=1706 optimistic=5
+1792332377.447 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=6
+1792332377.447 0 0 I PressMeasurement: state pending=6 unknown=false my=3400 counts=FRUSTRATED:2120;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332377.448 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=35 elapsed_us=1595 optimistic=6
+1792332377.451 0 0 I PressMeasurement: state pending=6 unknown=false my=3400 counts=FRUSTRATED:2120;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332377.451 0 0 I PressMeasurement: send sequence=8 counts=FRUSTRATED:6
+1792332377.452 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332377.520 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=68
+1792332377.523 0 0 I PressMeasurement: result sequence=8 outcome=Accepted
+1792332377.524 0 0 I PressMeasurement: state pending=0 unknown=false my=3406 counts=FRUSTRATED:2126;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332377.524 0 0 I PressMeasurement: state pending=0 unknown=false my=3406 counts=FRUSTRATED:2126;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332377.525 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332377.552 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=1
+1792332377.552 0 0 I PressMeasurement: state pending=1 unknown=false my=3406 counts=FRUSTRATED:2126;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332377.553 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=36 elapsed_us=1244 optimistic=1
+1792332377.589 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=64
+1792332377.590 0 0 I PressMeasurement: state pending=1 unknown=false my=3406 counts=FRUSTRATED:2126;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332377.647 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=2
+1792332377.648 0 0 I PressMeasurement: state pending=2 unknown=false my=3406 counts=FRUSTRATED:2126;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332377.648 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=37 elapsed_us=1863 optimistic=2
+1792332377.747 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=3
+1792332377.747 0 0 I PressMeasurement: state pending=3 unknown=false my=3406 counts=FRUSTRATED:2126;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332377.749 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=38 elapsed_us=2330 optimistic=3
+1792332377.846 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=4
+1792332377.846 0 0 I PressMeasurement: state pending=4 unknown=false my=3406 counts=FRUSTRATED:2126;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332377.847 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=39 elapsed_us=1555 optimistic=4
+1792332377.946 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=5
+1792332377.947 0 0 I PressMeasurement: state pending=5 unknown=false my=3406 counts=FRUSTRATED:2126;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332377.948 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=40 elapsed_us=1742 optimistic=5
+1792332378.046 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=6
+1792332378.047 0 0 I PressMeasurement: state pending=6 unknown=false my=3406 counts=FRUSTRATED:2126;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332378.048 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=41 elapsed_us=1607 optimistic=6
+1792332378.053 0 0 I PressMeasurement: state pending=6 unknown=false my=3406 counts=FRUSTRATED:2126;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332378.053 0 0 I PressMeasurement: send sequence=9 counts=FRUSTRATED:6
+1792332378.054 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332378.115 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=61
+1792332378.118 0 0 I PressMeasurement: result sequence=9 outcome=Accepted
+1792332378.119 0 0 I PressMeasurement: state pending=0 unknown=false my=3412 counts=FRUSTRATED:2132;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332378.119 0 0 I PressMeasurement: state pending=0 unknown=false my=3412 counts=FRUSTRATED:2132;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332378.120 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332378.145 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=1
+1792332378.145 0 0 I PressMeasurement: state pending=1 unknown=false my=3412 counts=FRUSTRATED:2132;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332378.146 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=42 elapsed_us=919 optimistic=1
+1792332378.170 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=50
+1792332378.171 0 0 I PressMeasurement: state pending=1 unknown=false my=3412 counts=FRUSTRATED:2132;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332378.248 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=2
+1792332378.248 0 0 I PressMeasurement: state pending=2 unknown=false my=3412 counts=FRUSTRATED:2132;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332378.249 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=43 elapsed_us=1486 optimistic=2
+1792332378.347 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=3
+1792332378.347 0 0 I PressMeasurement: state pending=3 unknown=false my=3412 counts=FRUSTRATED:2132;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332378.349 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=44 elapsed_us=2425 optimistic=3
+1792332378.446 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=4
+1792332378.446 0 0 I PressMeasurement: state pending=4 unknown=false my=3412 counts=FRUSTRATED:2132;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332378.447 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=45 elapsed_us=1446 optimistic=4
+1792332378.547 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=5
+1792332378.547 0 0 I PressMeasurement: state pending=5 unknown=false my=3412 counts=FRUSTRATED:2132;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332378.548 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=46 elapsed_us=1624 optimistic=5
+1792332378.648 0 0 I PressMeasurement: state pending=5 unknown=false my=3412 counts=FRUSTRATED:2132;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332378.648 0 0 I PressMeasurement: send sequence=10 counts=FRUSTRATED:5
+1792332378.649 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332378.656 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=6
+1792332378.656 0 0 I PressMeasurement: state pending=6 unknown=false my=3412 counts=FRUSTRATED:2132;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332378.657 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=47 elapsed_us=1341 optimistic=6
+1792332378.711 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=62
+1792332378.713 0 0 I PressMeasurement: result sequence=10 outcome=Accepted
+1792332378.713 0 0 I PressMeasurement: state pending=1 unknown=false my=3417 counts=FRUSTRATED:2137;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332378.745 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=2
+1792332378.746 0 0 I PressMeasurement: state pending=2 unknown=false my=3417 counts=FRUSTRATED:2137;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332378.747 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=48 elapsed_us=2294 optimistic=2
+1792332378.847 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=3
+1792332378.848 0 0 I PressMeasurement: state pending=3 unknown=false my=3417 counts=FRUSTRATED:2137;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332378.850 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=49 elapsed_us=2865 optimistic=3
+1792332378.946 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=4
+1792332378.946 0 0 I PressMeasurement: state pending=4 unknown=false my=3417 counts=FRUSTRATED:2137;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332378.947 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=50 elapsed_us=1435 optimistic=4
+1792332379.047 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=5
+1792332379.047 0 0 I PressMeasurement: state pending=5 unknown=false my=3417 counts=FRUSTRATED:2137;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332379.048 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=51 elapsed_us=1512 optimistic=5
+1792332379.147 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=6
+1792332379.147 0 0 I PressMeasurement: state pending=6 unknown=false my=3417 counts=FRUSTRATED:2137;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332379.148 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=52 elapsed_us=1514 optimistic=6
+1792332379.198 0 0 I PressMeasurement: state pending=6 unknown=false my=3417 counts=FRUSTRATED:2137;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332379.199 0 0 I PressMeasurement: send sequence=11 counts=FRUSTRATED:6
+1792332379.199 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332379.247 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=7
+1792332379.247 0 0 I PressMeasurement: state pending=7 unknown=false my=3417 counts=FRUSTRATED:2137;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332379.248 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=53 elapsed_us=1583 optimistic=7
+1792332379.299 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=99
+1792332379.302 0 0 I PressMeasurement: result sequence=11 outcome=Accepted
+1792332379.302 0 0 I PressMeasurement: state pending=1 unknown=false my=3423 counts=FRUSTRATED:2143;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332379.347 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=2
+1792332379.347 0 0 I PressMeasurement: state pending=2 unknown=false my=3423 counts=FRUSTRATED:2143;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332379.348 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=54 elapsed_us=1637 optimistic=2
+1792332379.447 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=3
+1792332379.448 0 0 I PressMeasurement: state pending=3 unknown=false my=3423 counts=FRUSTRATED:2143;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332379.449 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=55 elapsed_us=2115 optimistic=3
+1792332379.546 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=4
+1792332379.547 0 0 I PressMeasurement: state pending=4 unknown=false my=3423 counts=FRUSTRATED:2143;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332379.548 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=56 elapsed_us=1566 optimistic=4
+1792332379.646 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=5
+1792332379.647 0 0 I PressMeasurement: state pending=5 unknown=false my=3423 counts=FRUSTRATED:2143;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332379.648 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=57 elapsed_us=1489 optimistic=5
+1792332379.746 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=6
+1792332379.746 0 0 I PressMeasurement: state pending=6 unknown=false my=3423 counts=FRUSTRATED:2143;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332379.747 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=58 elapsed_us=1451 optimistic=6
+1792332379.750 0 0 I PressMeasurement: state pending=6 unknown=false my=3423 counts=FRUSTRATED:2143;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332379.750 0 0 I PressMeasurement: send sequence=12 counts=FRUSTRATED:6
+1792332379.750 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332379.804 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=53
+1792332379.806 0 0 I PressMeasurement: result sequence=12 outcome=Accepted
+1792332379.806 0 0 I PressMeasurement: state pending=0 unknown=false my=3429 counts=FRUSTRATED:2149;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332379.806 0 0 I PressMeasurement: state pending=0 unknown=false my=3429 counts=FRUSTRATED:2149;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332379.806 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332379.842 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=35
+1792332379.843 0 0 I PressMeasurement: state pending=0 unknown=false my=3429 counts=FRUSTRATED:2149;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332379.845 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=1
+1792332379.845 0 0 I PressMeasurement: state pending=1 unknown=false my=3429 counts=FRUSTRATED:2149;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332379.846 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=59 elapsed_us=1114 optimistic=1
+1792332379.947 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=2
+1792332379.947 0 0 I PressMeasurement: state pending=2 unknown=false my=3429 counts=FRUSTRATED:2149;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332379.949 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=60 elapsed_us=2310 optimistic=2
+1792332380.047 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=3
+1792332380.047 0 0 I PressMeasurement: state pending=3 unknown=false my=3429 counts=FRUSTRATED:2149;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332380.048 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=61 elapsed_us=1473 optimistic=3
+1792332380.146 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=4
+1792332380.146 0 0 I PressMeasurement: state pending=4 unknown=false my=3429 counts=FRUSTRATED:2149;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332380.148 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=62 elapsed_us=1461 optimistic=4
+1792332380.246 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=5
+1792332380.246 0 0 I PressMeasurement: state pending=5 unknown=false my=3429 counts=FRUSTRATED:2149;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332380.247 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=63 elapsed_us=1343 optimistic=5
+1792332380.346 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=6
+1792332380.347 0 0 I PressMeasurement: state pending=6 unknown=false my=3429 counts=FRUSTRATED:2149;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332380.348 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=64 elapsed_us=1322 optimistic=6
+1792332380.350 0 0 I PressMeasurement: state pending=6 unknown=false my=3429 counts=FRUSTRATED:2149;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332380.351 0 0 I PressMeasurement: send sequence=13 counts=FRUSTRATED:6
+1792332380.351 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332380.420 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=68
+1792332380.423 0 0 I PressMeasurement: result sequence=13 outcome=Accepted
+1792332380.423 0 0 I PressMeasurement: state pending=0 unknown=false my=3435 counts=FRUSTRATED:2155;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332380.424 0 0 I PressMeasurement: state pending=0 unknown=false my=3435 counts=FRUSTRATED:2155;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332380.424 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332380.459 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=1
+1792332380.460 0 0 I PressMeasurement: state pending=1 unknown=false my=3435 counts=FRUSTRATED:2155;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332380.460 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=65 elapsed_us=1470 optimistic=1
+1792332380.466 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=41
+1792332380.468 0 0 I PressMeasurement: state pending=1 unknown=false my=3435 counts=FRUSTRATED:2155;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332380.546 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=2
+1792332380.546 0 0 I PressMeasurement: state pending=2 unknown=false my=3435 counts=FRUSTRATED:2155;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332380.547 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=66 elapsed_us=2236 optimistic=2
+1792332380.646 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=3
+1792332380.647 0 0 I PressMeasurement: state pending=3 unknown=false my=3435 counts=FRUSTRATED:2155;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332380.648 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=67 elapsed_us=1448 optimistic=3
+1792332380.747 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=4
+1792332380.747 0 0 I PressMeasurement: state pending=4 unknown=false my=3435 counts=FRUSTRATED:2155;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332380.748 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=68 elapsed_us=1443 optimistic=4
+1792332380.846 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=5
+1792332380.846 0 0 I PressMeasurement: state pending=5 unknown=false my=3435 counts=FRUSTRATED:2155;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332380.847 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=69 elapsed_us=1463 optimistic=5
+1792332380.946 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=6
+1792332380.946 0 0 I PressMeasurement: state pending=6 unknown=false my=3435 counts=FRUSTRATED:2155;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332380.947 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=70 elapsed_us=1629 optimistic=6
+1792332381.005 0 0 I PressMeasurement: state pending=6 unknown=false my=3435 counts=FRUSTRATED:2155;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332381.005 0 0 I PressMeasurement: send sequence=14 counts=FRUSTRATED:6
+1792332381.006 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332381.046 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=7
+1792332381.046 0 0 I PressMeasurement: state pending=7 unknown=false my=3435 counts=FRUSTRATED:2155;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332381.047 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=71 elapsed_us=1643 optimistic=7
+1792332381.103 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=97
+1792332381.107 0 0 I PressMeasurement: result sequence=14 outcome=Accepted
+1792332381.107 0 0 I PressMeasurement: state pending=1 unknown=false my=3441 counts=FRUSTRATED:2161;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332381.146 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=2
+1792332381.146 0 0 I PressMeasurement: state pending=2 unknown=false my=3441 counts=FRUSTRATED:2161;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332381.147 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=72 elapsed_us=1367 optimistic=2
+1792332381.246 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=3
+1792332381.247 0 0 I PressMeasurement: state pending=3 unknown=false my=3441 counts=FRUSTRATED:2161;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332381.248 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=73 elapsed_us=1441 optimistic=3
+1792332381.346 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=4
+1792332381.346 0 0 I PressMeasurement: state pending=4 unknown=false my=3441 counts=FRUSTRATED:2161;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332381.347 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=74 elapsed_us=1331 optimistic=4
+1792332381.446 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=5
+1792332381.446 0 0 I PressMeasurement: state pending=5 unknown=false my=3441 counts=FRUSTRATED:2161;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332381.447 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=75 elapsed_us=1440 optimistic=5
+1792332381.546 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=6
+1792332381.546 0 0 I PressMeasurement: state pending=6 unknown=false my=3441 counts=FRUSTRATED:2161;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332381.547 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=76 elapsed_us=1340 optimistic=6
+1792332381.550 0 0 I PressMeasurement: state pending=6 unknown=false my=3441 counts=FRUSTRATED:2161;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332381.550 0 0 I PressMeasurement: send sequence=15 counts=FRUSTRATED:6
+1792332381.551 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332381.645 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=7
+1792332381.646 0 0 I PressMeasurement: state pending=7 unknown=false my=3441 counts=FRUSTRATED:2161;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332381.647 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=77 elapsed_us=1659 optimistic=7
+1792332381.703 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=152
+1792332381.706 0 0 I PressMeasurement: result sequence=15 outcome=Accepted
+1792332381.706 0 0 I PressMeasurement: state pending=1 unknown=false my=3447 counts=FRUSTRATED:2167;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332381.746 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=2
+1792332381.747 0 0 I PressMeasurement: state pending=2 unknown=false my=3447 counts=FRUSTRATED:2167;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332381.748 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=78 elapsed_us=2204 optimistic=2
+1792332381.846 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=3
+1792332381.846 0 0 I PressMeasurement: state pending=3 unknown=false my=3447 counts=FRUSTRATED:2167;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332381.847 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=79 elapsed_us=1434 optimistic=3
+1792332381.946 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=4
+1792332381.946 0 0 I PressMeasurement: state pending=4 unknown=false my=3447 counts=FRUSTRATED:2167;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332381.947 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=80 elapsed_us=1419 optimistic=4
+1792332382.046 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=5
+1792332382.046 0 0 I PressMeasurement: state pending=5 unknown=false my=3447 counts=FRUSTRATED:2167;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332382.047 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=81 elapsed_us=1472 optimistic=5
+1792332382.147 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=6
+1792332382.147 0 0 I PressMeasurement: state pending=6 unknown=false my=3447 counts=FRUSTRATED:2167;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332382.148 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=82 elapsed_us=1416 optimistic=6
+1792332382.151 0 0 I PressMeasurement: state pending=6 unknown=false my=3447 counts=FRUSTRATED:2167;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332382.151 0 0 I PressMeasurement: send sequence=16 counts=FRUSTRATED:6
+1792332382.151 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332382.217 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=65
+1792332382.219 0 0 I PressMeasurement: result sequence=16 outcome=Accepted
+1792332382.220 0 0 I PressMeasurement: state pending=0 unknown=false my=3453 counts=FRUSTRATED:2173;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332382.220 0 0 I PressMeasurement: state pending=0 unknown=false my=3453 counts=FRUSTRATED:2173;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332382.221 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332382.245 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=1
+1792332382.246 0 0 I PressMeasurement: state pending=1 unknown=false my=3453 counts=FRUSTRATED:2173;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332382.246 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=83 elapsed_us=1431 optimistic=1
+1792332382.302 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=80
+1792332382.303 0 0 I PressMeasurement: state pending=1 unknown=false my=3453 counts=FRUSTRATED:2173;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332382.347 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=2
+1792332382.347 0 0 I PressMeasurement: state pending=2 unknown=false my=3453 counts=FRUSTRATED:2173;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332382.348 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=84 elapsed_us=1443 optimistic=2
+1792332382.446 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=3
+1792332382.446 0 0 I PressMeasurement: state pending=3 unknown=false my=3453 counts=FRUSTRATED:2173;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332382.447 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=85 elapsed_us=1418 optimistic=3
+1792332382.546 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=4
+1792332382.546 0 0 I PressMeasurement: state pending=4 unknown=false my=3453 counts=FRUSTRATED:2173;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332382.547 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=86 elapsed_us=1402 optimistic=4
+1792332382.646 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=5
+1792332382.647 0 0 I PressMeasurement: state pending=5 unknown=false my=3453 counts=FRUSTRATED:2173;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332382.648 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=87 elapsed_us=1534 optimistic=5
+1792332382.747 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=6
+1792332382.747 0 0 I PressMeasurement: state pending=6 unknown=false my=3453 counts=FRUSTRATED:2173;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332382.748 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=88 elapsed_us=1404 optimistic=6
+1792332382.751 0 0 I PressMeasurement: state pending=6 unknown=false my=3453 counts=FRUSTRATED:2173;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332382.751 0 0 I PressMeasurement: send sequence=17 counts=FRUSTRATED:6
+1792332382.751 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332382.813 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=61
+1792332382.816 0 0 I PressMeasurement: result sequence=17 outcome=Accepted
+1792332382.816 0 0 I PressMeasurement: state pending=0 unknown=false my=3459 counts=FRUSTRATED:2179;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332382.817 0 0 I PressMeasurement: state pending=0 unknown=false my=3459 counts=FRUSTRATED:2179;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332382.817 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332382.846 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=1
+1792332382.846 0 0 I PressMeasurement: state pending=1 unknown=false my=3459 counts=FRUSTRATED:2179;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332382.847 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=89 elapsed_us=1047 optimistic=1
+1792332382.872 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=54
+1792332382.873 0 0 I PressMeasurement: state pending=1 unknown=false my=3459 counts=FRUSTRATED:2179;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332382.946 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=2
+1792332382.947 0 0 I PressMeasurement: state pending=2 unknown=false my=3459 counts=FRUSTRATED:2179;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332382.948 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=90 elapsed_us=1810 optimistic=2
+1792332383.047 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=3
+1792332383.047 0 0 I PressMeasurement: state pending=3 unknown=false my=3459 counts=FRUSTRATED:2179;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332383.048 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=91 elapsed_us=1494 optimistic=3
+1792332383.147 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=4
+1792332383.147 0 0 I PressMeasurement: state pending=4 unknown=false my=3459 counts=FRUSTRATED:2179;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332383.148 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=92 elapsed_us=1333 optimistic=4
+1792332383.247 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=5
+1792332383.247 0 0 I PressMeasurement: state pending=5 unknown=false my=3459 counts=FRUSTRATED:2179;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332383.248 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=93 elapsed_us=1365 optimistic=5
+1792332383.347 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=6
+1792332383.347 0 0 I PressMeasurement: state pending=6 unknown=false my=3459 counts=FRUSTRATED:2179;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332383.348 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=94 elapsed_us=1312 optimistic=6
+1792332383.351 0 0 I PressMeasurement: state pending=6 unknown=false my=3459 counts=FRUSTRATED:2179;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332383.351 0 0 I PressMeasurement: send sequence=18 counts=FRUSTRATED:6
+1792332383.352 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332383.415 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=62
+1792332383.417 0 0 I PressMeasurement: result sequence=18 outcome=Accepted
+1792332383.417 0 0 I PressMeasurement: state pending=0 unknown=false my=3465 counts=FRUSTRATED:2185;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332383.418 0 0 I PressMeasurement: state pending=0 unknown=false my=3465 counts=FRUSTRATED:2185;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332383.418 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332383.446 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=1
+1792332383.446 0 0 I PressMeasurement: state pending=1 unknown=false my=3465 counts=FRUSTRATED:2185;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332383.447 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=95 elapsed_us=1319 optimistic=1
+1792332383.485 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=66
+1792332383.486 0 0 I PressMeasurement: state pending=1 unknown=false my=3465 counts=FRUSTRATED:2185;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332383.547 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=2
+1792332383.547 0 0 I PressMeasurement: state pending=2 unknown=false my=3465 counts=FRUSTRATED:2185;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332383.548 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=96 elapsed_us=2017 optimistic=2
+1792332383.646 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=3
+1792332383.647 0 0 I PressMeasurement: state pending=3 unknown=false my=3465 counts=FRUSTRATED:2185;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332383.648 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=97 elapsed_us=1508 optimistic=3
+1792332383.746 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=4
+1792332383.746 0 0 I PressMeasurement: state pending=4 unknown=false my=3465 counts=FRUSTRATED:2185;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332383.747 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=98 elapsed_us=1430 optimistic=4
+1792332383.846 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=5
+1792332383.846 0 0 I PressMeasurement: state pending=5 unknown=false my=3465 counts=FRUSTRATED:2185;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332383.847 0 0 I PressMeasurement: local_state pattern=same repetition=2 index=99 elapsed_us=1372 optimistic=5
+1792332383.945 0 0 I PressMeasurement: input_end pattern=same repetition=2 elapsed=10001
+1792332383.947 0 0 I PressMeasurement: state pending=5 unknown=false my=3465 counts=FRUSTRATED:2185;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332383.948 0 0 I PressMeasurement: send sequence=19 counts=FRUSTRATED:5
+1792332383.948 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332384.007 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=59
+1792332384.011 0 0 I PressMeasurement: result sequence=19 outcome=Accepted
+1792332384.011 0 0 I PressMeasurement: state pending=0 unknown=false my=3470 counts=FRUSTRATED:2190;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332384.012 0 0 I PressMeasurement: state pending=0 unknown=false my=3470 counts=FRUSTRATED:2190;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332384.012 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332384.081 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=68
+1792332384.083 0 0 I PressMeasurement: state pending=0 unknown=false my=3470 counts=FRUSTRATED:2190;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332384.419 0 0 I PressMeasurement: http_start endpoint=emotion_press_me_daily method=GET
+1792332384.433 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332384.561 0 0 I PressMeasurement: http_end endpoint=emotion_press_me_daily method=GET outcome=RESPONSE status=200 duration=141
+1792332384.573 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=139
+1792332384.579 0 0 I PressMeasurement: state pending=0 unknown=false my=3470 counts=FRUSTRATED:2190;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332384.914 0 0 I PressMeasurement: verification pattern=same repetition=2 baseline=3370 total=3470 delta=100
+1792332384.914 0 0 I PressMeasurement: run_end pattern=same repetition=2
+1792332385.921 0 0 I PressMeasurement: http_start endpoint=emotion_press_me_daily method=GET
+1792332385.935 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332386.023 0 0 I PressMeasurement: http_end endpoint=emotion_press_me_daily method=GET outcome=RESPONSE status=200 duration=101
+1792332386.035 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=99
+1792332386.039 0 0 I PressMeasurement: state pending=0 unknown=false my=3470 counts=FRUSTRATED:2190;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332386.367 0 0 I PressMeasurement: run_start pattern=mixed repetition=2 requested=100
+1792332386.369 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=1
+1792332386.369 0 0 I PressMeasurement: state pending=1 unknown=false my=3470 counts=FRUSTRATED:2190;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332386.373 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=0 elapsed_us=6080 optimistic=1
+1792332386.470 0 0 I PressMeasurement: input emotion=IRRITATED pending=2
+1792332386.470 0 0 I PressMeasurement: state pending=2 unknown=false my=3470 counts=FRUSTRATED:2190;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332386.471 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=1 elapsed_us=1390 optimistic=2
+1792332386.571 0 0 I PressMeasurement: input emotion=EXHAUSTED pending=3
+1792332386.571 0 0 I PressMeasurement: state pending=3 unknown=false my=3470 counts=FRUSTRATED:2190;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332386.572 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=2 elapsed_us=2134 optimistic=3
+1792332386.671 0 0 I PressMeasurement: input emotion=DISCOURAGED pending=4
+1792332386.671 0 0 I PressMeasurement: state pending=4 unknown=false my=3470 counts=FRUSTRATED:2190;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332386.672 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=3 elapsed_us=1398 optimistic=4
+1792332386.770 0 0 I PressMeasurement: input emotion=ANGRY pending=5
+1792332386.771 0 0 I PressMeasurement: state pending=5 unknown=false my=3470 counts=FRUSTRATED:2190;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332386.771 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=4 elapsed_us=1375 optimistic=5
+1792332386.870 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=6
+1792332386.870 0 0 I PressMeasurement: state pending=6 unknown=false my=3470 counts=FRUSTRATED:2190;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332386.872 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=5 elapsed_us=1833 optimistic=6
+1792332386.875 0 0 I PressMeasurement: state pending=6 unknown=false my=3470 counts=FRUSTRATED:2190;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332386.876 0 0 I PressMeasurement: send sequence=20 counts=ANGRY:1;FRUSTRATED:2;IRRITATED:1;EXHAUSTED:1;DISCOURAGED:1
+1792332386.876 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332386.970 0 0 I PressMeasurement: input emotion=IRRITATED pending=7
+1792332386.970 0 0 I PressMeasurement: state pending=7 unknown=false my=3470 counts=FRUSTRATED:2190;IRRITATED:320;EXHAUSTED:320;DISCOURAGED:320;ANGRY:320
+1792332386.971 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=6 elapsed_us=1473 optimistic=7
+1792332386.974 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=98
+1792332386.977 0 0 I PressMeasurement: result sequence=20 outcome=Accepted
+1792332386.977 0 0 I PressMeasurement: state pending=1 unknown=false my=3476 counts=FRUSTRATED:2192;IRRITATED:321;EXHAUSTED:321;DISCOURAGED:321;ANGRY:321
+1792332387.071 0 0 I PressMeasurement: input emotion=EXHAUSTED pending=2
+1792332387.071 0 0 I PressMeasurement: state pending=2 unknown=false my=3476 counts=FRUSTRATED:2192;IRRITATED:321;EXHAUSTED:321;DISCOURAGED:321;ANGRY:321
+1792332387.072 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=7 elapsed_us=1369 optimistic=2
+1792332387.171 0 0 I PressMeasurement: input emotion=DISCOURAGED pending=3
+1792332387.171 0 0 I PressMeasurement: state pending=3 unknown=false my=3476 counts=FRUSTRATED:2192;IRRITATED:321;EXHAUSTED:321;DISCOURAGED:321;ANGRY:321
+1792332387.172 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=8 elapsed_us=1586 optimistic=3
+1792332387.270 0 0 I PressMeasurement: input emotion=ANGRY pending=4
+1792332387.270 0 0 I PressMeasurement: state pending=4 unknown=false my=3476 counts=FRUSTRATED:2192;IRRITATED:321;EXHAUSTED:321;DISCOURAGED:321;ANGRY:321
+1792332387.271 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=9 elapsed_us=1400 optimistic=4
+1792332387.370 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=5
+1792332387.370 0 0 I PressMeasurement: state pending=5 unknown=false my=3476 counts=FRUSTRATED:2192;IRRITATED:321;EXHAUSTED:321;DISCOURAGED:321;ANGRY:321
+1792332387.371 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=10 elapsed_us=1344 optimistic=5
+1792332387.470 0 0 I PressMeasurement: input emotion=IRRITATED pending=6
+1792332387.470 0 0 I PressMeasurement: state pending=6 unknown=false my=3476 counts=FRUSTRATED:2192;IRRITATED:321;EXHAUSTED:321;DISCOURAGED:321;ANGRY:321
+1792332387.471 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=11 elapsed_us=1368 optimistic=6
+1792332387.474 0 0 I PressMeasurement: state pending=6 unknown=false my=3476 counts=FRUSTRATED:2192;IRRITATED:321;EXHAUSTED:321;DISCOURAGED:321;ANGRY:321
+1792332387.474 0 0 I PressMeasurement: send sequence=21 counts=FRUSTRATED:1;IRRITATED:2;EXHAUSTED:1;DISCOURAGED:1;ANGRY:1
+1792332387.475 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332387.555 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=80
+1792332387.558 0 0 I PressMeasurement: result sequence=21 outcome=Accepted
+1792332387.558 0 0 I PressMeasurement: state pending=0 unknown=false my=3482 counts=FRUSTRATED:2193;IRRITATED:323;EXHAUSTED:322;DISCOURAGED:322;ANGRY:322
+1792332387.559 0 0 I PressMeasurement: state pending=0 unknown=false my=3482 counts=FRUSTRATED:2193;IRRITATED:323;EXHAUSTED:322;DISCOURAGED:322;ANGRY:322
+1792332387.560 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332387.584 0 0 I PressMeasurement: input emotion=EXHAUSTED pending=1
+1792332387.584 0 0 I PressMeasurement: state pending=1 unknown=false my=3482 counts=FRUSTRATED:2193;IRRITATED:323;EXHAUSTED:322;DISCOURAGED:322;ANGRY:322
+1792332387.585 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=12 elapsed_us=1500 optimistic=1
+1792332387.643 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=83
+1792332387.646 0 0 I PressMeasurement: state pending=1 unknown=false my=3482 counts=FRUSTRATED:2193;IRRITATED:323;EXHAUSTED:322;DISCOURAGED:322;ANGRY:322
+1792332387.669 0 0 I PressMeasurement: input emotion=DISCOURAGED pending=2
+1792332387.670 0 0 I PressMeasurement: state pending=2 unknown=false my=3482 counts=FRUSTRATED:2193;IRRITATED:323;EXHAUSTED:322;DISCOURAGED:322;ANGRY:322
+1792332387.670 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=13 elapsed_us=1256 optimistic=2
+1792332387.770 0 0 I PressMeasurement: input emotion=ANGRY pending=3
+1792332387.771 0 0 I PressMeasurement: state pending=3 unknown=false my=3482 counts=FRUSTRATED:2193;IRRITATED:323;EXHAUSTED:322;DISCOURAGED:322;ANGRY:322
+1792332387.771 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=14 elapsed_us=1234 optimistic=3
+1792332387.871 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=4
+1792332387.871 0 0 I PressMeasurement: state pending=4 unknown=false my=3482 counts=FRUSTRATED:2193;IRRITATED:323;EXHAUSTED:322;DISCOURAGED:322;ANGRY:322
+1792332387.872 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=15 elapsed_us=1346 optimistic=4
+1792332387.970 0 0 I PressMeasurement: input emotion=IRRITATED pending=5
+1792332387.970 0 0 I PressMeasurement: state pending=5 unknown=false my=3482 counts=FRUSTRATED:2193;IRRITATED:323;EXHAUSTED:322;DISCOURAGED:322;ANGRY:322
+1792332387.971 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=16 elapsed_us=1364 optimistic=5
+1792332388.070 0 0 I PressMeasurement: input emotion=EXHAUSTED pending=6
+1792332388.070 0 0 I PressMeasurement: state pending=6 unknown=false my=3482 counts=FRUSTRATED:2193;IRRITATED:323;EXHAUSTED:322;DISCOURAGED:322;ANGRY:322
+1792332388.071 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=17 elapsed_us=1369 optimistic=6
+1792332388.125 0 0 I PressMeasurement: state pending=6 unknown=false my=3482 counts=FRUSTRATED:2193;IRRITATED:323;EXHAUSTED:322;DISCOURAGED:322;ANGRY:322
+1792332388.126 0 0 I PressMeasurement: send sequence=22 counts=IRRITATED:1;EXHAUSTED:2;DISCOURAGED:1;ANGRY:1;FRUSTRATED:1
+1792332388.126 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332388.171 0 0 I PressMeasurement: input emotion=DISCOURAGED pending=7
+1792332388.171 0 0 I PressMeasurement: state pending=7 unknown=false my=3482 counts=FRUSTRATED:2193;IRRITATED:323;EXHAUSTED:322;DISCOURAGED:322;ANGRY:322
+1792332388.172 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=18 elapsed_us=1823 optimistic=7
+1792332388.227 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=100
+1792332388.230 0 0 I PressMeasurement: result sequence=22 outcome=Accepted
+1792332388.230 0 0 I PressMeasurement: state pending=1 unknown=false my=3488 counts=FRUSTRATED:2194;IRRITATED:324;EXHAUSTED:324;DISCOURAGED:323;ANGRY:323
+1792332388.270 0 0 I PressMeasurement: input emotion=ANGRY pending=2
+1792332388.271 0 0 I PressMeasurement: state pending=2 unknown=false my=3488 counts=FRUSTRATED:2194;IRRITATED:324;EXHAUSTED:324;DISCOURAGED:323;ANGRY:323
+1792332388.271 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=19 elapsed_us=1264 optimistic=2
+1792332388.370 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=3
+1792332388.370 0 0 I PressMeasurement: state pending=3 unknown=false my=3488 counts=FRUSTRATED:2194;IRRITATED:324;EXHAUSTED:324;DISCOURAGED:323;ANGRY:323
+1792332388.371 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=20 elapsed_us=1374 optimistic=3
+1792332388.470 0 0 I PressMeasurement: input emotion=IRRITATED pending=4
+1792332388.470 0 0 I PressMeasurement: state pending=4 unknown=false my=3488 counts=FRUSTRATED:2194;IRRITATED:324;EXHAUSTED:324;DISCOURAGED:323;ANGRY:323
+1792332388.471 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=21 elapsed_us=1370 optimistic=4
+1792332388.570 0 0 I PressMeasurement: input emotion=EXHAUSTED pending=5
+1792332388.570 0 0 I PressMeasurement: state pending=5 unknown=false my=3488 counts=FRUSTRATED:2194;IRRITATED:324;EXHAUSTED:324;DISCOURAGED:323;ANGRY:323
+1792332388.571 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=22 elapsed_us=1354 optimistic=5
+1792332388.670 0 0 I PressMeasurement: input emotion=DISCOURAGED pending=6
+1792332388.670 0 0 I PressMeasurement: state pending=6 unknown=false my=3488 counts=FRUSTRATED:2194;IRRITATED:324;EXHAUSTED:324;DISCOURAGED:323;ANGRY:323
+1792332388.671 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=23 elapsed_us=1307 optimistic=6
+1792332388.674 0 0 I PressMeasurement: state pending=6 unknown=false my=3488 counts=FRUSTRATED:2194;IRRITATED:324;EXHAUSTED:324;DISCOURAGED:323;ANGRY:323
+1792332388.674 0 0 I PressMeasurement: send sequence=23 counts=EXHAUSTED:1;DISCOURAGED:2;ANGRY:1;FRUSTRATED:1;IRRITATED:1
+1792332388.674 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332388.736 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=61
+1792332388.738 0 0 I PressMeasurement: result sequence=23 outcome=Accepted
+1792332388.739 0 0 I PressMeasurement: state pending=0 unknown=false my=3494 counts=FRUSTRATED:2195;IRRITATED:325;EXHAUSTED:325;DISCOURAGED:325;ANGRY:324
+1792332388.739 0 0 I PressMeasurement: state pending=0 unknown=false my=3494 counts=FRUSTRATED:2195;IRRITATED:325;EXHAUSTED:325;DISCOURAGED:325;ANGRY:324
+1792332388.740 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332388.770 0 0 I PressMeasurement: input emotion=ANGRY pending=1
+1792332388.770 0 0 I PressMeasurement: state pending=1 unknown=false my=3494 counts=FRUSTRATED:2195;IRRITATED:325;EXHAUSTED:325;DISCOURAGED:325;ANGRY:324
+1792332388.771 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=24 elapsed_us=1357 optimistic=1
+1792332388.802 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=62
+1792332388.803 0 0 I PressMeasurement: state pending=1 unknown=false my=3494 counts=FRUSTRATED:2195;IRRITATED:325;EXHAUSTED:325;DISCOURAGED:325;ANGRY:324
+1792332388.871 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=2
+1792332388.871 0 0 I PressMeasurement: state pending=2 unknown=false my=3494 counts=FRUSTRATED:2195;IRRITATED:325;EXHAUSTED:325;DISCOURAGED:325;ANGRY:324
+1792332388.872 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=25 elapsed_us=1325 optimistic=2
+1792332388.970 0 0 I PressMeasurement: input emotion=IRRITATED pending=3
+1792332388.971 0 0 I PressMeasurement: state pending=3 unknown=false my=3494 counts=FRUSTRATED:2195;IRRITATED:325;EXHAUSTED:325;DISCOURAGED:325;ANGRY:324
+1792332388.971 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=26 elapsed_us=1442 optimistic=3
+1792332389.070 0 0 I PressMeasurement: input emotion=EXHAUSTED pending=4
+1792332389.070 0 0 I PressMeasurement: state pending=4 unknown=false my=3494 counts=FRUSTRATED:2195;IRRITATED:325;EXHAUSTED:325;DISCOURAGED:325;ANGRY:324
+1792332389.071 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=27 elapsed_us=1446 optimistic=4
+1792332389.170 0 0 I PressMeasurement: input emotion=DISCOURAGED pending=5
+1792332389.171 0 0 I PressMeasurement: state pending=5 unknown=false my=3494 counts=FRUSTRATED:2195;IRRITATED:325;EXHAUSTED:325;DISCOURAGED:325;ANGRY:324
+1792332389.172 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=28 elapsed_us=2238 optimistic=5
+1792332389.270 0 0 I PressMeasurement: input emotion=ANGRY pending=6
+1792332389.270 0 0 I PressMeasurement: state pending=6 unknown=false my=3494 counts=FRUSTRATED:2195;IRRITATED:325;EXHAUSTED:325;DISCOURAGED:325;ANGRY:324
+1792332389.271 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=29 elapsed_us=1415 optimistic=6
+1792332389.274 0 0 I PressMeasurement: state pending=6 unknown=false my=3494 counts=FRUSTRATED:2195;IRRITATED:325;EXHAUSTED:325;DISCOURAGED:325;ANGRY:324
+1792332389.274 0 0 I PressMeasurement: send sequence=24 counts=DISCOURAGED:1;ANGRY:2;FRUSTRATED:1;IRRITATED:1;EXHAUSTED:1
+1792332389.275 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332389.337 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=62
+1792332389.340 0 0 I PressMeasurement: result sequence=24 outcome=Accepted
+1792332389.340 0 0 I PressMeasurement: state pending=0 unknown=false my=3500 counts=FRUSTRATED:2196;IRRITATED:326;EXHAUSTED:326;DISCOURAGED:326;ANGRY:326
+1792332389.341 0 0 I PressMeasurement: state pending=0 unknown=false my=3500 counts=FRUSTRATED:2196;IRRITATED:326;EXHAUSTED:326;DISCOURAGED:326;ANGRY:326
+1792332389.341 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332389.370 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=1
+1792332389.370 0 0 I PressMeasurement: state pending=1 unknown=false my=3500 counts=FRUSTRATED:2196;IRRITATED:326;EXHAUSTED:326;DISCOURAGED:326;ANGRY:326
+1792332389.371 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=30 elapsed_us=1417 optimistic=1
+1792332389.405 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=63
+1792332389.410 0 0 I PressMeasurement: state pending=1 unknown=false my=3500 counts=FRUSTRATED:2196;IRRITATED:326;EXHAUSTED:326;DISCOURAGED:326;ANGRY:326
+1792332389.471 0 0 I PressMeasurement: input emotion=IRRITATED pending=2
+1792332389.471 0 0 I PressMeasurement: state pending=2 unknown=false my=3500 counts=FRUSTRATED:2196;IRRITATED:326;EXHAUSTED:326;DISCOURAGED:326;ANGRY:326
+1792332389.472 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=31 elapsed_us=1340 optimistic=2
+1792332389.571 0 0 I PressMeasurement: input emotion=EXHAUSTED pending=3
+1792332389.571 0 0 I PressMeasurement: state pending=3 unknown=false my=3500 counts=FRUSTRATED:2196;IRRITATED:326;EXHAUSTED:326;DISCOURAGED:326;ANGRY:326
+1792332389.572 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=32 elapsed_us=1360 optimistic=3
+1792332389.670 0 0 I PressMeasurement: input emotion=DISCOURAGED pending=4
+1792332389.671 0 0 I PressMeasurement: state pending=4 unknown=false my=3500 counts=FRUSTRATED:2196;IRRITATED:326;EXHAUSTED:326;DISCOURAGED:326;ANGRY:326
+1792332389.672 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=33 elapsed_us=1395 optimistic=4
+1792332389.771 0 0 I PressMeasurement: input emotion=ANGRY pending=5
+1792332389.771 0 0 I PressMeasurement: state pending=5 unknown=false my=3500 counts=FRUSTRATED:2196;IRRITATED:326;EXHAUSTED:326;DISCOURAGED:326;ANGRY:326
+1792332389.773 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=34 elapsed_us=2014 optimistic=5
+1792332389.870 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=6
+1792332389.870 0 0 I PressMeasurement: state pending=6 unknown=false my=3500 counts=FRUSTRATED:2196;IRRITATED:326;EXHAUSTED:326;DISCOURAGED:326;ANGRY:326
+1792332389.871 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=35 elapsed_us=1354 optimistic=6
+1792332389.874 0 0 I PressMeasurement: state pending=6 unknown=false my=3500 counts=FRUSTRATED:2196;IRRITATED:326;EXHAUSTED:326;DISCOURAGED:326;ANGRY:326
+1792332389.874 0 0 I PressMeasurement: send sequence=25 counts=ANGRY:1;FRUSTRATED:2;IRRITATED:1;EXHAUSTED:1;DISCOURAGED:1
+1792332389.875 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332389.944 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=69
+1792332389.947 0 0 I PressMeasurement: result sequence=25 outcome=Accepted
+1792332389.947 0 0 I PressMeasurement: state pending=0 unknown=false my=3506 counts=FRUSTRATED:2198;IRRITATED:327;EXHAUSTED:327;DISCOURAGED:327;ANGRY:327
+1792332389.948 0 0 I PressMeasurement: state pending=0 unknown=false my=3506 counts=FRUSTRATED:2198;IRRITATED:327;EXHAUSTED:327;DISCOURAGED:327;ANGRY:327
+1792332389.948 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332389.971 0 0 I PressMeasurement: input emotion=IRRITATED pending=1
+1792332389.971 0 0 I PressMeasurement: state pending=1 unknown=false my=3506 counts=FRUSTRATED:2198;IRRITATED:327;EXHAUSTED:327;DISCOURAGED:327;ANGRY:327
+1792332389.972 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=36 elapsed_us=1240 optimistic=1
+1792332389.988 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=39
+1792332389.990 0 0 I PressMeasurement: state pending=1 unknown=false my=3506 counts=FRUSTRATED:2198;IRRITATED:327;EXHAUSTED:327;DISCOURAGED:327;ANGRY:327
+1792332390.070 0 0 I PressMeasurement: input emotion=EXHAUSTED pending=2
+1792332390.070 0 0 I PressMeasurement: state pending=2 unknown=false my=3506 counts=FRUSTRATED:2198;IRRITATED:327;EXHAUSTED:327;DISCOURAGED:327;ANGRY:327
+1792332390.071 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=37 elapsed_us=1255 optimistic=2
+1792332390.170 0 0 I PressMeasurement: input emotion=DISCOURAGED pending=3
+1792332390.171 0 0 I PressMeasurement: state pending=3 unknown=false my=3506 counts=FRUSTRATED:2198;IRRITATED:327;EXHAUSTED:327;DISCOURAGED:327;ANGRY:327
+1792332390.172 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=38 elapsed_us=2964 optimistic=3
+1792332390.270 0 0 I PressMeasurement: input emotion=ANGRY pending=4
+1792332390.271 0 0 I PressMeasurement: state pending=4 unknown=false my=3506 counts=FRUSTRATED:2198;IRRITATED:327;EXHAUSTED:327;DISCOURAGED:327;ANGRY:327
+1792332390.271 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=39 elapsed_us=1346 optimistic=4
+1792332390.371 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=5
+1792332390.371 0 0 I PressMeasurement: state pending=5 unknown=false my=3506 counts=FRUSTRATED:2198;IRRITATED:327;EXHAUSTED:327;DISCOURAGED:327;ANGRY:327
+1792332390.372 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=40 elapsed_us=1333 optimistic=5
+1792332390.470 0 0 I PressMeasurement: input emotion=IRRITATED pending=6
+1792332390.471 0 0 I PressMeasurement: state pending=6 unknown=false my=3506 counts=FRUSTRATED:2198;IRRITATED:327;EXHAUSTED:327;DISCOURAGED:327;ANGRY:327
+1792332390.471 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=41 elapsed_us=1403 optimistic=6
+1792332390.475 0 0 I PressMeasurement: state pending=6 unknown=false my=3506 counts=FRUSTRATED:2198;IRRITATED:327;EXHAUSTED:327;DISCOURAGED:327;ANGRY:327
+1792332390.475 0 0 I PressMeasurement: send sequence=26 counts=FRUSTRATED:1;IRRITATED:2;EXHAUSTED:1;DISCOURAGED:1;ANGRY:1
+1792332390.475 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332390.540 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=64
+1792332390.543 0 0 I PressMeasurement: result sequence=26 outcome=Accepted
+1792332390.543 0 0 I PressMeasurement: state pending=0 unknown=false my=3512 counts=FRUSTRATED:2199;IRRITATED:329;EXHAUSTED:328;DISCOURAGED:328;ANGRY:328
+1792332390.544 0 0 I PressMeasurement: state pending=0 unknown=false my=3512 counts=FRUSTRATED:2199;IRRITATED:329;EXHAUSTED:328;DISCOURAGED:328;ANGRY:328
+1792332390.544 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332390.569 0 0 I PressMeasurement: input emotion=EXHAUSTED pending=1
+1792332390.569 0 0 I PressMeasurement: state pending=1 unknown=false my=3512 counts=FRUSTRATED:2199;IRRITATED:329;EXHAUSTED:328;DISCOURAGED:328;ANGRY:328
+1792332390.570 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=42 elapsed_us=1244 optimistic=1
+1792332390.611 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=66
+1792332390.613 0 0 I PressMeasurement: state pending=1 unknown=false my=3512 counts=FRUSTRATED:2199;IRRITATED:329;EXHAUSTED:328;DISCOURAGED:328;ANGRY:328
+1792332390.669 0 0 I PressMeasurement: input emotion=DISCOURAGED pending=2
+1792332390.669 0 0 I PressMeasurement: state pending=2 unknown=false my=3512 counts=FRUSTRATED:2199;IRRITATED:329;EXHAUSTED:328;DISCOURAGED:328;ANGRY:328
+1792332390.670 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=43 elapsed_us=1171 optimistic=2
+1792332390.770 0 0 I PressMeasurement: input emotion=ANGRY pending=3
+1792332390.770 0 0 I PressMeasurement: state pending=3 unknown=false my=3512 counts=FRUSTRATED:2199;IRRITATED:329;EXHAUSTED:328;DISCOURAGED:328;ANGRY:328
+1792332390.771 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=44 elapsed_us=1333 optimistic=3
+1792332390.870 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=4
+1792332390.870 0 0 I PressMeasurement: state pending=4 unknown=false my=3512 counts=FRUSTRATED:2199;IRRITATED:329;EXHAUSTED:328;DISCOURAGED:328;ANGRY:328
+1792332390.871 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=45 elapsed_us=1815 optimistic=4
+1792332390.969 0 0 I PressMeasurement: input emotion=IRRITATED pending=5
+1792332390.970 0 0 I PressMeasurement: state pending=5 unknown=false my=3512 counts=FRUSTRATED:2199;IRRITATED:329;EXHAUSTED:328;DISCOURAGED:328;ANGRY:328
+1792332390.971 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=46 elapsed_us=2509 optimistic=5
+1792332391.070 0 0 I PressMeasurement: input emotion=EXHAUSTED pending=6
+1792332391.070 0 0 I PressMeasurement: state pending=6 unknown=false my=3512 counts=FRUSTRATED:2199;IRRITATED:329;EXHAUSTED:328;DISCOURAGED:328;ANGRY:328
+1792332391.071 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=47 elapsed_us=1337 optimistic=6
+1792332391.074 0 0 I PressMeasurement: state pending=6 unknown=false my=3512 counts=FRUSTRATED:2199;IRRITATED:329;EXHAUSTED:328;DISCOURAGED:328;ANGRY:328
+1792332391.074 0 0 I PressMeasurement: send sequence=27 counts=IRRITATED:1;EXHAUSTED:2;DISCOURAGED:1;ANGRY:1;FRUSTRATED:1
+1792332391.074 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332391.130 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=55
+1792332391.133 0 0 I PressMeasurement: result sequence=27 outcome=Accepted
+1792332391.133 0 0 I PressMeasurement: state pending=0 unknown=false my=3518 counts=FRUSTRATED:2200;IRRITATED:330;EXHAUSTED:330;DISCOURAGED:329;ANGRY:329
+1792332391.134 0 0 I PressMeasurement: state pending=0 unknown=false my=3518 counts=FRUSTRATED:2200;IRRITATED:330;EXHAUSTED:330;DISCOURAGED:329;ANGRY:329
+1792332391.134 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332391.169 0 0 I PressMeasurement: input emotion=DISCOURAGED pending=1
+1792332391.169 0 0 I PressMeasurement: state pending=1 unknown=false my=3518 counts=FRUSTRATED:2200;IRRITATED:330;EXHAUSTED:330;DISCOURAGED:329;ANGRY:329
+1792332391.170 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=48 elapsed_us=1314 optimistic=1
+1792332391.173 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=39
+1792332391.176 0 0 I PressMeasurement: state pending=1 unknown=false my=3518 counts=FRUSTRATED:2200;IRRITATED:330;EXHAUSTED:330;DISCOURAGED:329;ANGRY:329
+1792332391.271 0 0 I PressMeasurement: input emotion=ANGRY pending=2
+1792332391.271 0 0 I PressMeasurement: state pending=2 unknown=false my=3518 counts=FRUSTRATED:2200;IRRITATED:330;EXHAUSTED:330;DISCOURAGED:329;ANGRY:329
+1792332391.272 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=49 elapsed_us=1260 optimistic=2
+1792332391.370 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=3
+1792332391.370 0 0 I PressMeasurement: state pending=3 unknown=false my=3518 counts=FRUSTRATED:2200;IRRITATED:330;EXHAUSTED:330;DISCOURAGED:329;ANGRY:329
+1792332391.371 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=50 elapsed_us=1277 optimistic=3
+1792332391.471 0 0 I PressMeasurement: input emotion=IRRITATED pending=4
+1792332391.471 0 0 I PressMeasurement: state pending=4 unknown=false my=3518 counts=FRUSTRATED:2200;IRRITATED:330;EXHAUSTED:330;DISCOURAGED:329;ANGRY:329
+1792332391.472 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=51 elapsed_us=1394 optimistic=4
+1792332391.570 0 0 I PressMeasurement: input emotion=EXHAUSTED pending=5
+1792332391.571 0 0 I PressMeasurement: state pending=5 unknown=false my=3518 counts=FRUSTRATED:2200;IRRITATED:330;EXHAUSTED:330;DISCOURAGED:329;ANGRY:329
+1792332391.572 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=52 elapsed_us=2133 optimistic=5
+1792332391.671 0 0 I PressMeasurement: state pending=5 unknown=false my=3518 counts=FRUSTRATED:2200;IRRITATED:330;EXHAUSTED:330;DISCOURAGED:329;ANGRY:329
+1792332391.672 0 0 I PressMeasurement: send sequence=28 counts=EXHAUSTED:1;DISCOURAGED:1;ANGRY:1;FRUSTRATED:1;IRRITATED:1
+1792332391.672 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332391.680 0 0 I PressMeasurement: input emotion=DISCOURAGED pending=6
+1792332391.680 0 0 I PressMeasurement: state pending=6 unknown=false my=3518 counts=FRUSTRATED:2200;IRRITATED:330;EXHAUSTED:330;DISCOURAGED:329;ANGRY:329
+1792332391.681 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=53 elapsed_us=1290 optimistic=6
+1792332391.770 0 0 I PressMeasurement: input emotion=ANGRY pending=7
+1792332391.770 0 0 I PressMeasurement: state pending=7 unknown=false my=3518 counts=FRUSTRATED:2200;IRRITATED:330;EXHAUSTED:330;DISCOURAGED:329;ANGRY:329
+1792332391.771 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=54 elapsed_us=1326 optimistic=7
+1792332391.869 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=8
+1792332391.870 0 0 I PressMeasurement: state pending=8 unknown=false my=3518 counts=FRUSTRATED:2200;IRRITATED:330;EXHAUSTED:330;DISCOURAGED:329;ANGRY:329
+1792332391.871 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=55 elapsed_us=2757 optimistic=8
+1792332391.925 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=253
+1792332391.929 0 0 I PressMeasurement: result sequence=28 outcome=Accepted
+1792332391.929 0 0 I PressMeasurement: state pending=3 unknown=false my=3523 counts=FRUSTRATED:2201;IRRITATED:331;EXHAUSTED:331;DISCOURAGED:330;ANGRY:330
+1792332391.969 0 0 I PressMeasurement: input emotion=IRRITATED pending=4
+1792332391.970 0 0 I PressMeasurement: state pending=4 unknown=false my=3523 counts=FRUSTRATED:2201;IRRITATED:331;EXHAUSTED:331;DISCOURAGED:330;ANGRY:330
+1792332391.970 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=56 elapsed_us=1431 optimistic=4
+1792332392.070 0 0 I PressMeasurement: input emotion=EXHAUSTED pending=5
+1792332392.070 0 0 I PressMeasurement: state pending=5 unknown=false my=3523 counts=FRUSTRATED:2201;IRRITATED:331;EXHAUSTED:331;DISCOURAGED:330;ANGRY:330
+1792332392.071 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=57 elapsed_us=2121 optimistic=5
+1792332392.171 0 0 I PressMeasurement: input emotion=DISCOURAGED pending=6
+1792332392.171 0 0 I PressMeasurement: state pending=6 unknown=false my=3523 counts=FRUSTRATED:2201;IRRITATED:331;EXHAUSTED:331;DISCOURAGED:330;ANGRY:330
+1792332392.172 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=58 elapsed_us=1387 optimistic=6
+1792332392.182 0 0 I PressMeasurement: state pending=6 unknown=false my=3523 counts=FRUSTRATED:2201;IRRITATED:331;EXHAUSTED:331;DISCOURAGED:330;ANGRY:330
+1792332392.183 0 0 I PressMeasurement: send sequence=29 counts=DISCOURAGED:2;ANGRY:1;FRUSTRATED:1;IRRITATED:1;EXHAUSTED:1
+1792332392.183 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332392.241 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=58
+1792332392.244 0 0 I PressMeasurement: result sequence=29 outcome=Accepted
+1792332392.244 0 0 I PressMeasurement: state pending=0 unknown=false my=3529 counts=FRUSTRATED:2202;IRRITATED:332;EXHAUSTED:332;DISCOURAGED:332;ANGRY:331
+1792332392.244 0 0 I PressMeasurement: state pending=0 unknown=false my=3529 counts=FRUSTRATED:2202;IRRITATED:332;EXHAUSTED:332;DISCOURAGED:332;ANGRY:331
+1792332392.245 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332392.270 0 0 I PressMeasurement: input emotion=ANGRY pending=1
+1792332392.270 0 0 I PressMeasurement: state pending=1 unknown=false my=3529 counts=FRUSTRATED:2202;IRRITATED:332;EXHAUSTED:332;DISCOURAGED:332;ANGRY:331
+1792332392.270 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=59 elapsed_us=1146 optimistic=1
+1792332392.315 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=69
+1792332392.317 0 0 I PressMeasurement: state pending=1 unknown=false my=3529 counts=FRUSTRATED:2202;IRRITATED:332;EXHAUSTED:332;DISCOURAGED:332;ANGRY:331
+1792332392.370 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=2
+1792332392.370 0 0 I PressMeasurement: state pending=2 unknown=false my=3529 counts=FRUSTRATED:2202;IRRITATED:332;EXHAUSTED:332;DISCOURAGED:332;ANGRY:331
+1792332392.370 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=60 elapsed_us=1094 optimistic=2
+1792332392.470 0 0 I PressMeasurement: input emotion=IRRITATED pending=3
+1792332392.470 0 0 I PressMeasurement: state pending=3 unknown=false my=3529 counts=FRUSTRATED:2202;IRRITATED:332;EXHAUSTED:332;DISCOURAGED:332;ANGRY:331
+1792332392.471 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=61 elapsed_us=1311 optimistic=3
+1792332392.570 0 0 I PressMeasurement: input emotion=EXHAUSTED pending=4
+1792332392.570 0 0 I PressMeasurement: state pending=4 unknown=false my=3529 counts=FRUSTRATED:2202;IRRITATED:332;EXHAUSTED:332;DISCOURAGED:332;ANGRY:331
+1792332392.571 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=62 elapsed_us=1405 optimistic=4
+1792332392.670 0 0 I PressMeasurement: input emotion=DISCOURAGED pending=5
+1792332392.670 0 0 I PressMeasurement: state pending=5 unknown=false my=3529 counts=FRUSTRATED:2202;IRRITATED:332;EXHAUSTED:332;DISCOURAGED:332;ANGRY:331
+1792332392.671 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=63 elapsed_us=1368 optimistic=5
+1792332392.771 0 0 I PressMeasurement: input emotion=ANGRY pending=6
+1792332392.771 0 0 I PressMeasurement: state pending=6 unknown=false my=3529 counts=FRUSTRATED:2202;IRRITATED:332;EXHAUSTED:332;DISCOURAGED:332;ANGRY:331
+1792332392.772 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=64 elapsed_us=1877 optimistic=6
+1792332392.776 0 0 I PressMeasurement: state pending=6 unknown=false my=3529 counts=FRUSTRATED:2202;IRRITATED:332;EXHAUSTED:332;DISCOURAGED:332;ANGRY:331
+1792332392.776 0 0 I PressMeasurement: send sequence=30 counts=ANGRY:2;FRUSTRATED:1;IRRITATED:1;EXHAUSTED:1;DISCOURAGED:1
+1792332392.776 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332392.837 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=60
+1792332392.840 0 0 I PressMeasurement: result sequence=30 outcome=Accepted
+1792332392.840 0 0 I PressMeasurement: state pending=0 unknown=false my=3535 counts=FRUSTRATED:2203;IRRITATED:333;EXHAUSTED:333;DISCOURAGED:333;ANGRY:333
+1792332392.841 0 0 I PressMeasurement: state pending=0 unknown=false my=3535 counts=FRUSTRATED:2203;IRRITATED:333;EXHAUSTED:333;DISCOURAGED:333;ANGRY:333
+1792332392.841 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332392.869 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=1
+1792332392.869 0 0 I PressMeasurement: state pending=1 unknown=false my=3535 counts=FRUSTRATED:2203;IRRITATED:333;EXHAUSTED:333;DISCOURAGED:333;ANGRY:333
+1792332392.870 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=65 elapsed_us=1342 optimistic=1
+1792332392.904 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=62
+1792332392.905 0 0 I PressMeasurement: state pending=1 unknown=false my=3535 counts=FRUSTRATED:2203;IRRITATED:333;EXHAUSTED:333;DISCOURAGED:333;ANGRY:333
+1792332392.970 0 0 I PressMeasurement: input emotion=IRRITATED pending=2
+1792332392.970 0 0 I PressMeasurement: state pending=2 unknown=false my=3535 counts=FRUSTRATED:2203;IRRITATED:333;EXHAUSTED:333;DISCOURAGED:333;ANGRY:333
+1792332392.971 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=66 elapsed_us=1755 optimistic=2
+1792332393.069 0 0 I PressMeasurement: input emotion=EXHAUSTED pending=3
+1792332393.070 0 0 I PressMeasurement: state pending=3 unknown=false my=3535 counts=FRUSTRATED:2203;IRRITATED:333;EXHAUSTED:333;DISCOURAGED:333;ANGRY:333
+1792332393.070 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=67 elapsed_us=1350 optimistic=3
+1792332393.170 0 0 I PressMeasurement: input emotion=DISCOURAGED pending=4
+1792332393.170 0 0 I PressMeasurement: state pending=4 unknown=false my=3535 counts=FRUSTRATED:2203;IRRITATED:333;EXHAUSTED:333;DISCOURAGED:333;ANGRY:333
+1792332393.171 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=68 elapsed_us=1385 optimistic=4
+1792332393.270 0 0 I PressMeasurement: input emotion=ANGRY pending=5
+1792332393.270 0 0 I PressMeasurement: state pending=5 unknown=false my=3535 counts=FRUSTRATED:2203;IRRITATED:333;EXHAUSTED:333;DISCOURAGED:333;ANGRY:333
+1792332393.271 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=69 elapsed_us=1447 optimistic=5
+1792332393.371 0 0 I PressMeasurement: state pending=5 unknown=false my=3535 counts=FRUSTRATED:2203;IRRITATED:333;EXHAUSTED:333;DISCOURAGED:333;ANGRY:333
+1792332393.372 0 0 I PressMeasurement: send sequence=31 counts=FRUSTRATED:1;IRRITATED:1;EXHAUSTED:1;DISCOURAGED:1;ANGRY:1
+1792332393.372 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332393.379 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=6
+1792332393.379 0 0 I PressMeasurement: state pending=6 unknown=false my=3535 counts=FRUSTRATED:2203;IRRITATED:333;EXHAUSTED:333;DISCOURAGED:333;ANGRY:333
+1792332393.380 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=70 elapsed_us=1197 optimistic=6
+1792332393.433 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=60
+1792332393.436 0 0 I PressMeasurement: result sequence=31 outcome=Accepted
+1792332393.436 0 0 I PressMeasurement: state pending=1 unknown=false my=3540 counts=FRUSTRATED:2204;IRRITATED:334;EXHAUSTED:334;DISCOURAGED:334;ANGRY:334
+1792332393.471 0 0 I PressMeasurement: input emotion=IRRITATED pending=2
+1792332393.471 0 0 I PressMeasurement: state pending=2 unknown=false my=3540 counts=FRUSTRATED:2204;IRRITATED:334;EXHAUSTED:334;DISCOURAGED:334;ANGRY:334
+1792332393.472 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=71 elapsed_us=2037 optimistic=2
+1792332393.570 0 0 I PressMeasurement: input emotion=EXHAUSTED pending=3
+1792332393.570 0 0 I PressMeasurement: state pending=3 unknown=false my=3540 counts=FRUSTRATED:2204;IRRITATED:334;EXHAUSTED:334;DISCOURAGED:334;ANGRY:334
+1792332393.571 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=72 elapsed_us=2262 optimistic=3
+1792332393.670 0 0 I PressMeasurement: input emotion=DISCOURAGED pending=4
+1792332393.670 0 0 I PressMeasurement: state pending=4 unknown=false my=3540 counts=FRUSTRATED:2204;IRRITATED:334;EXHAUSTED:334;DISCOURAGED:334;ANGRY:334
+1792332393.671 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=73 elapsed_us=1293 optimistic=4
+1792332393.772 0 0 I PressMeasurement: input emotion=ANGRY pending=5
+1792332393.773 0 0 I PressMeasurement: state pending=5 unknown=false my=3540 counts=FRUSTRATED:2204;IRRITATED:334;EXHAUSTED:334;DISCOURAGED:334;ANGRY:334
+1792332393.775 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=74 elapsed_us=2691 optimistic=5
+1792332393.870 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=6
+1792332393.870 0 0 I PressMeasurement: state pending=6 unknown=false my=3540 counts=FRUSTRATED:2204;IRRITATED:334;EXHAUSTED:334;DISCOURAGED:334;ANGRY:334
+1792332393.871 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=75 elapsed_us=1403 optimistic=6
+1792332393.909 0 0 I PressMeasurement: state pending=6 unknown=false my=3540 counts=FRUSTRATED:2204;IRRITATED:334;EXHAUSTED:334;DISCOURAGED:334;ANGRY:334
+1792332393.909 0 0 I PressMeasurement: send sequence=32 counts=IRRITATED:1;EXHAUSTED:1;DISCOURAGED:1;ANGRY:1;FRUSTRATED:2
+1792332393.910 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332393.966 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=56
+1792332393.969 0 0 I PressMeasurement: result sequence=32 outcome=Accepted
+1792332393.970 0 0 I PressMeasurement: state pending=0 unknown=false my=3546 counts=FRUSTRATED:2206;IRRITATED:335;EXHAUSTED:335;DISCOURAGED:335;ANGRY:335
+1792332393.970 0 0 I PressMeasurement: state pending=0 unknown=false my=3546 counts=FRUSTRATED:2206;IRRITATED:335;EXHAUSTED:335;DISCOURAGED:335;ANGRY:335
+1792332393.971 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332393.976 0 0 I PressMeasurement: input emotion=IRRITATED pending=1
+1792332393.976 0 0 I PressMeasurement: state pending=1 unknown=false my=3546 counts=FRUSTRATED:2206;IRRITATED:335;EXHAUSTED:335;DISCOURAGED:335;ANGRY:335
+1792332393.977 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=76 elapsed_us=1213 optimistic=1
+1792332394.027 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=56
+1792332394.029 0 0 I PressMeasurement: state pending=1 unknown=false my=3546 counts=FRUSTRATED:2206;IRRITATED:335;EXHAUSTED:335;DISCOURAGED:335;ANGRY:335
+1792332394.069 0 0 I PressMeasurement: input emotion=EXHAUSTED pending=2
+1792332394.069 0 0 I PressMeasurement: state pending=2 unknown=false my=3546 counts=FRUSTRATED:2206;IRRITATED:335;EXHAUSTED:335;DISCOURAGED:335;ANGRY:335
+1792332394.070 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=77 elapsed_us=1258 optimistic=2
+1792332394.170 0 0 I PressMeasurement: input emotion=DISCOURAGED pending=3
+1792332394.170 0 0 I PressMeasurement: state pending=3 unknown=false my=3546 counts=FRUSTRATED:2206;IRRITATED:335;EXHAUSTED:335;DISCOURAGED:335;ANGRY:335
+1792332394.171 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=78 elapsed_us=1331 optimistic=3
+1792332394.270 0 0 I PressMeasurement: input emotion=ANGRY pending=4
+1792332394.271 0 0 I PressMeasurement: state pending=4 unknown=false my=3546 counts=FRUSTRATED:2206;IRRITATED:335;EXHAUSTED:335;DISCOURAGED:335;ANGRY:335
+1792332394.272 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=79 elapsed_us=2781 optimistic=4
+1792332394.371 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=5
+1792332394.372 0 0 I PressMeasurement: state pending=5 unknown=false my=3546 counts=FRUSTRATED:2206;IRRITATED:335;EXHAUSTED:335;DISCOURAGED:335;ANGRY:335
+1792332394.374 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=80 elapsed_us=3383 optimistic=5
+1792332394.471 0 0 I PressMeasurement: input emotion=IRRITATED pending=6
+1792332394.471 0 0 I PressMeasurement: state pending=6 unknown=false my=3546 counts=FRUSTRATED:2206;IRRITATED:335;EXHAUSTED:335;DISCOURAGED:335;ANGRY:335
+1792332394.472 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=81 elapsed_us=1242 optimistic=6
+1792332394.511 0 0 I PressMeasurement: state pending=6 unknown=false my=3546 counts=FRUSTRATED:2206;IRRITATED:335;EXHAUSTED:335;DISCOURAGED:335;ANGRY:335
+1792332394.512 0 0 I PressMeasurement: send sequence=33 counts=EXHAUSTED:1;DISCOURAGED:1;ANGRY:1;FRUSTRATED:1;IRRITATED:2
+1792332394.512 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332394.568 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=55
+1792332394.571 0 0 I PressMeasurement: result sequence=33 outcome=Accepted
+1792332394.571 0 0 I PressMeasurement: state pending=0 unknown=false my=3552 counts=FRUSTRATED:2207;IRRITATED:337;EXHAUSTED:336;DISCOURAGED:336;ANGRY:336
+1792332394.571 0 0 I PressMeasurement: state pending=0 unknown=false my=3552 counts=FRUSTRATED:2207;IRRITATED:337;EXHAUSTED:336;DISCOURAGED:336;ANGRY:336
+1792332394.572 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332394.577 0 0 I PressMeasurement: input emotion=EXHAUSTED pending=1
+1792332394.577 0 0 I PressMeasurement: state pending=1 unknown=false my=3552 counts=FRUSTRATED:2207;IRRITATED:337;EXHAUSTED:336;DISCOURAGED:336;ANGRY:336
+1792332394.578 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=82 elapsed_us=1326 optimistic=1
+1792332394.628 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=56
+1792332394.631 0 0 I PressMeasurement: state pending=1 unknown=false my=3552 counts=FRUSTRATED:2207;IRRITATED:337;EXHAUSTED:336;DISCOURAGED:336;ANGRY:336
+1792332394.671 0 0 I PressMeasurement: input emotion=DISCOURAGED pending=2
+1792332394.671 0 0 I PressMeasurement: state pending=2 unknown=false my=3552 counts=FRUSTRATED:2207;IRRITATED:337;EXHAUSTED:336;DISCOURAGED:336;ANGRY:336
+1792332394.671 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=83 elapsed_us=1158 optimistic=2
+1792332394.770 0 0 I PressMeasurement: input emotion=ANGRY pending=3
+1792332394.770 0 0 I PressMeasurement: state pending=3 unknown=false my=3552 counts=FRUSTRATED:2207;IRRITATED:337;EXHAUSTED:336;DISCOURAGED:336;ANGRY:336
+1792332394.771 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=84 elapsed_us=2120 optimistic=3
+1792332394.870 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=4
+1792332394.870 0 0 I PressMeasurement: state pending=4 unknown=false my=3552 counts=FRUSTRATED:2207;IRRITATED:337;EXHAUSTED:336;DISCOURAGED:336;ANGRY:336
+1792332394.871 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=85 elapsed_us=2110 optimistic=4
+1792332394.970 0 0 I PressMeasurement: input emotion=IRRITATED pending=5
+1792332394.970 0 0 I PressMeasurement: state pending=5 unknown=false my=3552 counts=FRUSTRATED:2207;IRRITATED:337;EXHAUSTED:336;DISCOURAGED:336;ANGRY:336
+1792332394.971 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=86 elapsed_us=1317 optimistic=5
+1792332395.070 0 0 I PressMeasurement: input emotion=EXHAUSTED pending=6
+1792332395.070 0 0 I PressMeasurement: state pending=6 unknown=false my=3552 counts=FRUSTRATED:2207;IRRITATED:337;EXHAUSTED:336;DISCOURAGED:336;ANGRY:336
+1792332395.071 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=87 elapsed_us=2301 optimistic=6
+1792332395.117 0 0 I PressMeasurement: state pending=6 unknown=false my=3552 counts=FRUSTRATED:2207;IRRITATED:337;EXHAUSTED:336;DISCOURAGED:336;ANGRY:336
+1792332395.118 0 0 I PressMeasurement: send sequence=34 counts=DISCOURAGED:1;ANGRY:1;FRUSTRATED:1;IRRITATED:1;EXHAUSTED:2
+1792332395.119 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332395.170 0 0 I PressMeasurement: input emotion=DISCOURAGED pending=7
+1792332395.170 0 0 I PressMeasurement: state pending=7 unknown=false my=3552 counts=FRUSTRATED:2207;IRRITATED:337;EXHAUSTED:336;DISCOURAGED:336;ANGRY:336
+1792332395.171 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=88 elapsed_us=2280 optimistic=7
+1792332395.176 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=57
+1792332395.179 0 0 I PressMeasurement: result sequence=34 outcome=Accepted
+1792332395.179 0 0 I PressMeasurement: state pending=1 unknown=false my=3558 counts=FRUSTRATED:2208;IRRITATED:338;EXHAUSTED:338;DISCOURAGED:337;ANGRY:337
+1792332395.270 0 0 I PressMeasurement: input emotion=ANGRY pending=2
+1792332395.270 0 0 I PressMeasurement: state pending=2 unknown=false my=3558 counts=FRUSTRATED:2208;IRRITATED:338;EXHAUSTED:338;DISCOURAGED:337;ANGRY:337
+1792332395.271 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=89 elapsed_us=1334 optimistic=2
+1792332395.370 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=3
+1792332395.370 0 0 I PressMeasurement: state pending=3 unknown=false my=3558 counts=FRUSTRATED:2208;IRRITATED:338;EXHAUSTED:338;DISCOURAGED:337;ANGRY:337
+1792332395.372 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=90 elapsed_us=2662 optimistic=3
+1792332395.471 0 0 I PressMeasurement: input emotion=IRRITATED pending=4
+1792332395.471 0 0 I PressMeasurement: state pending=4 unknown=false my=3558 counts=FRUSTRATED:2208;IRRITATED:338;EXHAUSTED:338;DISCOURAGED:337;ANGRY:337
+1792332395.472 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=91 elapsed_us=1338 optimistic=4
+1792332395.569 0 0 I PressMeasurement: input emotion=EXHAUSTED pending=5
+1792332395.570 0 0 I PressMeasurement: state pending=5 unknown=false my=3558 counts=FRUSTRATED:2208;IRRITATED:338;EXHAUSTED:338;DISCOURAGED:337;ANGRY:337
+1792332395.571 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=92 elapsed_us=1722 optimistic=5
+1792332395.670 0 0 I PressMeasurement: input emotion=DISCOURAGED pending=6
+1792332395.671 0 0 I PressMeasurement: state pending=6 unknown=false my=3558 counts=FRUSTRATED:2208;IRRITATED:338;EXHAUSTED:338;DISCOURAGED:337;ANGRY:337
+1792332395.672 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=93 elapsed_us=1554 optimistic=6
+1792332395.674 0 0 I PressMeasurement: state pending=6 unknown=false my=3558 counts=FRUSTRATED:2208;IRRITATED:338;EXHAUSTED:338;DISCOURAGED:337;ANGRY:337
+1792332395.675 0 0 I PressMeasurement: send sequence=35 counts=ANGRY:1;FRUSTRATED:1;IRRITATED:1;EXHAUSTED:1;DISCOURAGED:2
+1792332395.675 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332395.741 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=65
+1792332395.744 0 0 I PressMeasurement: result sequence=35 outcome=Accepted
+1792332395.744 0 0 I PressMeasurement: state pending=0 unknown=false my=3564 counts=FRUSTRATED:2209;IRRITATED:339;EXHAUSTED:339;DISCOURAGED:339;ANGRY:338
+1792332395.745 0 0 I PressMeasurement: state pending=0 unknown=false my=3564 counts=FRUSTRATED:2209;IRRITATED:339;EXHAUSTED:339;DISCOURAGED:339;ANGRY:338
+1792332395.745 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332395.777 0 0 I PressMeasurement: input emotion=ANGRY pending=1
+1792332395.778 0 0 I PressMeasurement: state pending=1 unknown=false my=3564 counts=FRUSTRATED:2209;IRRITATED:339;EXHAUSTED:339;DISCOURAGED:339;ANGRY:338
+1792332395.778 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=94 elapsed_us=1394 optimistic=1
+1792332395.812 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=67
+1792332395.815 0 0 I PressMeasurement: state pending=1 unknown=false my=3564 counts=FRUSTRATED:2209;IRRITATED:339;EXHAUSTED:339;DISCOURAGED:339;ANGRY:338
+1792332395.870 0 0 I PressMeasurement: input emotion=FRUSTRATED pending=2
+1792332395.870 0 0 I PressMeasurement: state pending=2 unknown=false my=3564 counts=FRUSTRATED:2209;IRRITATED:339;EXHAUSTED:339;DISCOURAGED:339;ANGRY:338
+1792332395.871 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=95 elapsed_us=2328 optimistic=2
+1792332395.970 0 0 I PressMeasurement: input emotion=IRRITATED pending=3
+1792332395.970 0 0 I PressMeasurement: state pending=3 unknown=false my=3564 counts=FRUSTRATED:2209;IRRITATED:339;EXHAUSTED:339;DISCOURAGED:339;ANGRY:338
+1792332395.971 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=96 elapsed_us=1268 optimistic=3
+1792332396.070 0 0 I PressMeasurement: input emotion=EXHAUSTED pending=4
+1792332396.070 0 0 I PressMeasurement: state pending=4 unknown=false my=3564 counts=FRUSTRATED:2209;IRRITATED:339;EXHAUSTED:339;DISCOURAGED:339;ANGRY:338
+1792332396.071 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=97 elapsed_us=1227 optimistic=4
+1792332396.170 0 0 I PressMeasurement: input emotion=DISCOURAGED pending=5
+1792332396.170 0 0 I PressMeasurement: state pending=5 unknown=false my=3564 counts=FRUSTRATED:2209;IRRITATED:339;EXHAUSTED:339;DISCOURAGED:339;ANGRY:338
+1792332396.173 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=98 elapsed_us=3012 optimistic=5
+1792332396.270 0 0 I PressMeasurement: input emotion=ANGRY pending=6
+1792332396.271 0 0 I PressMeasurement: state pending=6 unknown=false my=3564 counts=FRUSTRATED:2209;IRRITATED:339;EXHAUSTED:339;DISCOURAGED:339;ANGRY:338
+1792332396.272 0 0 I PressMeasurement: local_state pattern=mixed repetition=2 index=99 elapsed_us=1397 optimistic=6
+1792332396.281 0 0 I PressMeasurement: state pending=6 unknown=false my=3564 counts=FRUSTRATED:2209;IRRITATED:339;EXHAUSTED:339;DISCOURAGED:339;ANGRY:338
+1792332396.281 0 0 I PressMeasurement: send sequence=36 counts=FRUSTRATED:1;IRRITATED:1;EXHAUSTED:1;DISCOURAGED:1;ANGRY:2
+1792332396.282 0 0 I PressMeasurement: http_start endpoint=emotion_press_write method=POST
+1792332396.341 0 0 I PressMeasurement: http_end endpoint=emotion_press_write method=POST outcome=RESPONSE status=200 duration=59
+1792332396.344 0 0 I PressMeasurement: result sequence=36 outcome=Accepted
+1792332396.344 0 0 I PressMeasurement: state pending=0 unknown=false my=3570 counts=FRUSTRATED:2210;IRRITATED:340;EXHAUSTED:340;DISCOURAGED:340;ANGRY:340
+1792332396.345 0 0 I PressMeasurement: state pending=0 unknown=false my=3570 counts=FRUSTRATED:2210;IRRITATED:340;EXHAUSTED:340;DISCOURAGED:340;ANGRY:340
+1792332396.346 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332396.369 0 0 I PressMeasurement: input_end pattern=mixed repetition=2 elapsed=10001
+1792332396.384 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=38
+1792332396.386 0 0 I PressMeasurement: state pending=0 unknown=false my=3570 counts=FRUSTRATED:2210;IRRITATED:340;EXHAUSTED:340;DISCOURAGED:340;ANGRY:340
+1792332396.736 0 0 I PressMeasurement: http_start endpoint=emotion_press_me_daily method=GET
+1792332396.749 0 0 I PressMeasurement: http_start endpoint=emotion_press_all_daily method=GET
+1792332396.801 0 0 I PressMeasurement: http_end endpoint=emotion_press_me_daily method=GET outcome=RESPONSE status=200 duration=65
+1792332396.807 0 0 I PressMeasurement: http_end endpoint=emotion_press_all_daily method=GET outcome=RESPONSE status=200 duration=57
+1792332396.812 0 0 I PressMeasurement: state pending=0 unknown=false my=3570 counts=FRUSTRATED:2210;IRRITATED:340;EXHAUSTED:340;DISCOURAGED:340;ANGRY:340
+1792332397.131 0 0 I PressMeasurement: verification pattern=mixed repetition=2 baseline=3470 total=3570 delta=100
+1792332397.131 0 0 I PressMeasurement: run_end pattern=mixed repetition=2
+1792332398.134 0 0 I PressMeasurement: probe_done variant=postwait-after repetition=2 low_power=false thermal=android_unmeasured

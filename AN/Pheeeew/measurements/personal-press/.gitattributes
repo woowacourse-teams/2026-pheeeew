@@ -1,0 +1,2 @@
+# Preserve measured CSV bytes and their recorded SHA256 values.
+*.csv -text

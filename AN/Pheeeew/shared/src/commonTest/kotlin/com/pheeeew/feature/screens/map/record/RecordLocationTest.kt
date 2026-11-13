@@ -1,0 +1,256 @@
+package com.pheeeew.feature.screens.map.record
+
+import com.pheeeew.domain.model.CurrentLocation
+import com.pheeeew.domain.model.GeoCoordinate
+import com.pheeeew.domain.model.emotion.EmotionRegistration
+import com.pheeeew.domain.model.emotion.EmotionRegistrationContent
+import com.pheeeew.domain.model.emotion.EmotionRegistrationResult
+import com.pheeeew.domain.repository.EmotionRegistrationRepository
+import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
+import com.pheeeew.feature.screens.map.record.location.RECORD_RADIUS_METERS
+import com.pheeeew.feature.screens.map.record.location.constrainToRecordRadius
+import com.pheeeew.feature.screens.map.record.location.destination
+import com.pheeeew.feature.screens.map.record.location.distance
+import com.pheeeew.feature.screens.map.record.location.recordCameraBounds
+import com.pheeeew.feature.screens.map.record.sheet.RecordFlowStepUiModel
+import com.pheeeew.feature.screens.map.record.sheet.RecordInputModeUiModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import kotlin.math.abs
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class RecordLocationTest {
+    private val origin = GeoCoordinate(37.5665, 126.9780)
+
+    @Test
+    fun clampsOutsideCoordinatesTo500Meters() {
+        for (angle in listOf(0.0, 1.0, -2.0, 3.0)) {
+            val outside = destination(origin, 900.0, angle)
+            val constrained = constrainToRecordRadius(origin, outside)
+            assertTrue(distance(origin, constrained) <= 500.0)
+            assertTrue(abs(distance(origin, constrained) - 500.0) < 0.01)
+            assertTrue(IsWithinEmotionRecordRadiusUseCase()(origin, constrained))
+        }
+        val inside = destination(origin, 400.0, 1.0)
+        assertEquals(inside, constrainToRecordRadius(origin, inside))
+    }
+
+    @Test
+    fun cameraBoundsRejectOutsideCoordinatesWithoutCorrectingThem() {
+        val bounds = recordCameraBounds(origin)
+        assertTrue(bounds.contains(origin))
+        for (angle in listOf(0.0, 1.5708, 3.1416, -1.5708)) {
+            assertTrue(bounds.contains(destination(origin, 499.0, angle)))
+            assertFalse(bounds.contains(destination(origin, 501.0, angle)))
+        }
+        assertTrue(bounds.contains(GeoCoordinate(bounds.north, bounds.east)))
+        assertFalse(bounds.contains(GeoCoordinate(bounds.north + 0.000001, bounds.east)))
+        assertFalse(bounds.contains(GeoCoordinate(Double.NaN, origin.longitude)))
+        assertFalse(bounds.contains(GeoCoordinate(origin.latitude, Double.NaN)))
+        val coordinate = destination(origin, 550.0, 1.0)
+        assertTrue(bounds.contains(coordinate))
+        assertTrue(distance(origin, constrainToRecordRadius(origin, coordinate)) < RECORD_RADIUS_METERS)
+    }
+
+    @Test
+    fun confirmsMemoThroughRepository() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val repository = FakeRegistrationRepository()
+                val model = initializedModel(repository)
+                advanceUntilIdle()
+                model.onMemoChange("기록")
+                model.onNext(CurrentLocation(origin.latitude, origin.longitude, 1f, 0L), null)
+                val outside = destination(origin, 800.0, 1.0)
+                model.onLocationSelected(outside.latitude, outside.longitude)
+                model.onConfirmLocation()
+                assertTrue(model.uiModel.value.isSubmitting)
+                advanceUntilIdle()
+                assertEquals("기록", (repository.lastRegistration?.content as EmotionRegistrationContent.Memo).text)
+                assertTrue(distance(origin, repository.lastRegistration!!.coordinate) <= 500.0)
+                assertEquals(RecordFlowStepUiModel.Closed, model.uiModel.value.step)
+                assertEquals("선택한 위치에 감정을 남겼어요", model.notice.value?.message)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun recordingWithoutUploadedAudioKeepsFlowOpen() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val repository = FakeRegistrationRepository()
+                val model =
+                    MapRecordViewModel(
+                        IsWithinEmotionRecordRadiusUseCase(),
+                        repository,
+                        InMemoryRecordAnonymityStore(),
+                    )
+                model.open(EmotionTypeUiModel.FRUSTRATED)
+                advanceUntilIdle()
+                model.onInputModeChange(RecordInputModeUiModel.Recording)
+                model.onNext(null, "/tmp/voice.m4a")
+                model.onConfirmLocation()
+                assertFalse(model.uiModel.value.isSubmitting)
+                model.onOriginLocationAvailable(CurrentLocation(origin.latitude, origin.longitude, 1f, 0L))
+                model.onLocationSelected(Double.NaN, 0.0)
+                model.onLocationSelected(91.0, 0.0)
+                assertEquals(origin, model.uiModel.value.selectedCoordinate)
+                model.onConfirmLocation()
+                advanceUntilIdle()
+                assertEquals(RecordFlowStepUiModel.LocationSelection, model.uiModel.value.step)
+                assertTrue(model.notice.value?.isError == true)
+                assertEquals(EmotionRegistrationContent.Audio("/tmp/voice.m4a"), repository.lastRegistration?.content)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun registrationKeepsAnonymousChoiceAndRequestIdOnUncertainRetry() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val registrations = mutableListOf<EmotionRegistration>()
+                val anonymityStore = InMemoryRecordAnonymityStore()
+                val model =
+                    initializedModel(
+                        object : EmotionRegistrationRepository {
+                            override suspend fun register(
+                                registration: EmotionRegistration,
+                            ): EmotionRegistrationResult {
+                                registrations += registration
+                                return if (registrations.size == 1) {
+                                    EmotionRegistrationResult.Unavailable
+                                } else {
+                                    EmotionRegistrationResult.Success(42)
+                                }
+                            }
+                        },
+                        anonymityStore,
+                    )
+                advanceUntilIdle()
+                assertTrue(model.uiModel.value.isAnonymous)
+                model.onAnonymousChange(false)
+                model.onMemoChange("기록")
+                model.onNext(CurrentLocation(origin.latitude, origin.longitude, 1f, 0L), null)
+                model.onConfirmLocation()
+                advanceUntilIdle()
+                assertFalse(registrations.single().anonymous)
+                assertEquals(null, anonymityStore.read())
+                assertFalse(model.uiModel.value.isSubmitting)
+                model.onConfirmLocation()
+                advanceUntilIdle()
+                assertEquals(2, registrations.size)
+                assertEquals(registrations[0], registrations[1])
+                assertEquals(RecordFlowStepUiModel.Closed, model.uiModel.value.step)
+                val reopened = initializedModel(FakeRegistrationRepository(), anonymityStore)
+                assertFalse(reopened.uiModel.value.isAnonymous)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun anonymousSelectionSurvivesLocationStepAndResetsForNewRecord() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val model = initializedModel(FakeRegistrationRepository())
+                advanceUntilIdle()
+                assertTrue(model.uiModel.value.isAnonymous)
+                model.onAnonymousChange(false)
+                model.onMemoChange("기록")
+                model.onNext(CurrentLocation(origin.latitude, origin.longitude, 1f, 0L), null)
+                assertFalse(model.uiModel.value.isAnonymous)
+                model.onAnonymousChange(true)
+                assertFalse(model.uiModel.value.isAnonymous)
+                model.onBackToInput()
+                assertFalse(model.uiModel.value.isAnonymous)
+                model.dismiss()
+                model.open(EmotionTypeUiModel.ANGRY)
+                advanceUntilIdle()
+                assertTrue(model.uiModel.value.isAnonymous)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun dragGuideResetsWheneverLocationSelectionIsEntered() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val model = initializedModel(FakeRegistrationRepository())
+                val location = CurrentLocation(origin.latitude, origin.longitude, 1f, 0L)
+                advanceUntilIdle()
+                model.onMemoChange("기록")
+                model.onNext(location, null)
+                assertFalse(model.uiModel.value.hasMovedStamp)
+                model.onLocationSelected(Double.NaN, 0.0)
+                assertFalse(model.uiModel.value.hasMovedStamp)
+
+                val moved = destination(origin, 100.0, 1.0)
+                model.onLocationSelected(moved.latitude, moved.longitude)
+                assertTrue(model.uiModel.value.hasMovedStamp)
+                model.onBackToInput()
+                model.onNext(location, null)
+                assertFalse(model.uiModel.value.hasMovedStamp)
+                model.onLocationSelected(moved.latitude, moved.longitude)
+                assertTrue(model.uiModel.value.hasMovedStamp)
+
+                model.onBackToInput()
+                model.onNext(null, null)
+                assertFalse(model.uiModel.value.hasMovedStamp)
+                model.onOriginLocationAvailable(location)
+                assertFalse(model.uiModel.value.hasMovedStamp)
+                model.onLocationSelected(moved.latitude, moved.longitude)
+                assertTrue(model.uiModel.value.hasMovedStamp)
+
+                model.dismiss()
+                model.open(EmotionTypeUiModel.FRUSTRATED)
+                advanceUntilIdle()
+                model.onMemoChange("기록")
+                model.onNext(location, null)
+                assertFalse(model.uiModel.value.hasMovedStamp)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    private fun initializedModel(
+        repository: EmotionRegistrationRepository,
+        anonymityStore: InMemoryRecordAnonymityStore = InMemoryRecordAnonymityStore(),
+    ): MapRecordViewModel =
+        MapRecordViewModel(
+            IsWithinEmotionRecordRadiusUseCase(),
+            repository,
+            anonymityStore,
+        ).also {
+            it.open(EmotionTypeUiModel.FRUSTRATED)
+        }
+
+    private class FakeRegistrationRepository : EmotionRegistrationRepository {
+        var lastRegistration: EmotionRegistration? = null
+
+        override suspend fun register(registration: EmotionRegistration): EmotionRegistrationResult {
+            lastRegistration = registration
+            return if (registration.content is EmotionRegistrationContent.Audio) {
+                EmotionRegistrationResult.AudioUnavailable
+            } else {
+                EmotionRegistrationResult.Success(42)
+            }
+        }
+    }
+}

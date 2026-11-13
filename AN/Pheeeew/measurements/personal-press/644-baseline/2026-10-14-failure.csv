@@ -1,0 +1,7 @@
+mode,baseline,personal_delta,post_attempts,http_outcomes,repository_outcomes,max_pending,observed_unknown,remaining_pending,settled_from_start_ms,recovery_after_restore_ms
+400,653,2,2,400/200,Rejected/Accepted,5,False,0,2831,
+429,655,2,2,429/200,OutcomeUnknown/Accepted,7,True,0,3307,
+500,657,2,2,500/200,OutcomeUnknown/Accepted,7,True,0,3517,
+timeout,659,2,2,TIMEOUT/200,OutcomeUnknown/Accepted,7,True,0,6216,
+lost_response,661,7,2,TIMEOUT/200,OutcomeUnknown/Accepted,5,True,0,2703,
+offline,668,10,1,200,Accepted,10,False,0,12488,6831

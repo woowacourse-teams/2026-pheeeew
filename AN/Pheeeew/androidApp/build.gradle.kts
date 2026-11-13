@@ -1,0 +1,396 @@
+import org.gradle.api.DefaultTask
+import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Internal
+import org.gradle.api.tasks.TaskAction
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.net.URI
+import java.util.Properties
+
+plugins {
+    alias(libs.plugins.androidApplication)
+    alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.sentryAndroid)
+    alias(libs.plugins.googleServices)
+}
+
+abstract class ValidateReleaseSentryUpload : DefaultTask() {
+    @get:Internal
+    abstract val authToken: Property<String>
+
+    @TaskAction
+    fun validate() {
+        check(!authToken.orNull.isNullOrBlank()) {
+            "Set SENTRY_AUTH_TOKEN in the environment or monitoring.local.properties, " +
+                "or sentryAuthToken in user Gradle properties before building release."
+        }
+    }
+}
+
+abstract class ValidateReleaseSigning : DefaultTask() {
+    @get:Internal
+    abstract val propertiesFile: RegularFileProperty
+
+    @TaskAction
+    fun validate() {
+        val local = propertiesFile.get().asFile
+        check(local.isFile) {
+            "Copy keystore.properties.example to keystore.properties and configure the Play upload keystore."
+        }
+        val settings = Properties().apply { local.inputStream().use { load(it) } }
+        listOf("storeFile", "storePassword", "keyAlias", "keyPassword").forEach { key ->
+            check(!settings.getProperty(key).isNullOrBlank()) {
+                "Set $key in keystore.properties before building release."
+            }
+        }
+        val keystore =
+            local.parentFile
+                .toPath()
+                .resolve(settings.getProperty("storeFile"))
+                .toFile()
+        check(keystore.isFile) {
+            "The storeFile in keystore.properties must point to an existing keystore."
+        }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = JvmTarget.JVM_11
+    }
+}
+dependencies {
+    implementation(project(":shared"))
+    implementation(libs.play.app.update)
+    // Play pulls an old Fragment; Activity Result requires a compatible version.
+    implementation(libs.androidx.fragment)
+    implementation(libs.play.app.update.ktx)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
+    implementation(libs.androidx.work.runtime)
+    debugImplementation(project(":developerTools"))
+    debugImplementation(libs.compose.foundation)
+    debugImplementation(libs.compose.material3)
+    implementation("androidx.lifecycle:lifecycle-process:2.10.0")
+
+    androidTestImplementation(libs.androidx.testExt.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.kotlinx.coroutines.test)
+    androidTestImplementation(libs.ktor.client.mock)
+    androidTestImplementation(libs.androidx.security.crypto)
+    androidTestImplementation(libs.maplibre.android)
+
+    implementation(libs.androidx.activity.compose)
+
+    debugImplementation(libs.compose.uiTooling)
+}
+
+val monitoringProperties =
+    Properties().apply {
+        val local = rootProject.file("monitoring.local.properties")
+        if (local.exists()) local.inputStream().use { load(it) }
+    }
+
+val signingProperties =
+    Properties().apply {
+        val local = rootProject.file("keystore.properties")
+        if (local.exists()) local.inputStream().use { load(it) }
+    }
+
+fun monitoringValue(key: String): String =
+    providers.environmentVariable(key).orNull ?: monitoringProperties.getProperty(key, "").trim()
+
+val sentryAuthToken =
+    providers
+        .environmentVariable("SENTRY_AUTH_TOKEN")
+        .orElse(providers.gradleProperty("sentryAuthToken"))
+        .orElse(providers.provider { monitoringProperties.getProperty("SENTRY_AUTH_TOKEN", "").trim() })
+
+sentry {
+    org = "pheeeew"
+    projectName = "pheeeew-client"
+    authToken = sentryAuthToken.orNull
+    includeProguardMapping = true
+    autoUploadProguardMapping = true
+    includeSourceContext = false
+    autoInstallation { enabled.set(false) }
+    tracingInstrumentation { enabled.set(false) }
+    runtimeOptimizations { enabled.set(false) }
+}
+
+fun quotedConfig(value: String): String =
+    "\"" +
+        value
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            .replace("\r", "\\r")
+            .replace("\n", "\\n") + "\""
+
+// Only Debug may opt into proof testing. Release always generates required/prod settings.
+val debugPressInputMode = providers.gradleProperty("pressDebugInputMode").orElse("http")
+val debugDeviceAttestationMode = providers.gradleProperty("deviceDebugAttestationMode").orElse("platform_only")
+val deviceCloudProjectNumber = providers.gradleProperty("deviceCloudProjectNumber").orElse("87715710427")
+val cloudProjectNumberLiteral = "${deviceCloudProjectNumber.get().toLongOrNull() ?: 0L}L"
+
+val appUpdateTestBuild = providers.gradleProperty("appUpdateTestBuild").map(String::toBoolean).orElse(false)
+val appUpdateTestVersionCode = providers.gradleProperty("appUpdateTestVersionCode").orElse("103201")
+val appUpdateTestVersionName = providers.gradleProperty("appUpdateTestVersionName").orElse("2.5.0")
+
+android {
+    namespace = "com.pheeeew"
+    compileSdk =
+        libs.versions.android.compileSdk
+            .get()
+            .toInt()
+
+    defaultConfig {
+        applicationId = "com.pheeeew"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        minSdk =
+            libs.versions.android.minSdk
+                .get()
+                .toInt()
+        targetSdk =
+            libs.versions.android.targetSdk
+                .get()
+                .toInt()
+        listOf("POSTHOG_PROJECT_TOKEN", "POSTHOG_HOST", "SENTRY_DSN").forEach { key ->
+            buildConfigField("String", key, quotedConfig(monitoringValue(key)))
+        }
+        buildConfigField("boolean", "MONITORING_ENABLED", (monitoringValue("MONITORING_ENABLED") == "true").toString())
+        versionCode = 16
+        versionName = "2.7.1"
+        manifestPlaceholders["appLabel"] = "@string/app_name"
+    }
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
+    signingConfigs {
+        create("release") {
+            storeFile =
+                signingProperties
+                    .getProperty("storeFile")
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { rootProject.file(it) }
+            storePassword = signingProperties.getProperty("storePassword")
+            keyAlias = signingProperties.getProperty("keyAlias")
+            keyPassword = signingProperties.getProperty("keyPassword")
+        }
+    }
+    buildTypes {
+        debug {
+            if (appUpdateTestBuild.get()) {
+                applicationIdSuffix = ".updatetest"
+                versionNameSuffix = "" // Server version comparison needs major.minor.patch.
+                manifestPlaceholders["appLabel"] = "히유 업데이트 테스트 A/B"
+            }
+            require(debugPressInputMode.get() in setOf("http", "ws")) { "Unknown Debug press input mode" }
+            buildConfigField("String", "PRESS_INPUT_MODE", quotedConfig(debugPressInputMode.get()))
+            buildConfigField("String", "DEVICE_ENVIRONMENT", "\"dev\"")
+            buildConfigField("String", "DEVICE_ATTESTATION_MODE", quotedConfig(debugDeviceAttestationMode.get()))
+            buildConfigField("String", "MONITORING_ENVIRONMENT", "\"dev\"")
+            buildConfigField(
+                "String",
+                "API_BASE_URL",
+                "\"https://api-dev.pheeeew.com\"",
+            )
+            buildConfigField("long", "DEVICE_CLOUD_PROJECT_NUMBER", cloudProjectNumberLiteral)
+        }
+        release {
+            signingConfig = signingConfigs.getByName("release")
+            buildConfigField("String", "PRESS_INPUT_MODE", "\"http\"")
+            buildConfigField("String", "DEVICE_ENVIRONMENT", "\"prod\"")
+            buildConfigField("String", "DEVICE_ATTESTATION_MODE", "\"required\"")
+            buildConfigField("String", "MONITORING_ENVIRONMENT", "\"prod\"")
+            isMinifyEnabled = true
+            buildConfigField(
+                "String",
+                "API_BASE_URL",
+                "\"https://api.pheeeew.com\"",
+            )
+            buildConfigField("long", "DEVICE_CLOUD_PROJECT_NUMBER", cloudProjectNumberLiteral)
+            proguardFiles(
+                getDefaultProguardFile(
+                    "proguard-android-optimize.txt",
+                ),
+                "proguard-rules.pro",
+            )
+        }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
+}
+
+// Fail before packaging an enabled production build with missing collection settings.
+val validateReleaseMonitoring by tasks.registering {
+    val settings =
+        listOf("POSTHOG_PROJECT_TOKEN", "POSTHOG_HOST", "SENTRY_DSN", "MONITORING_ENABLED")
+            .associateWith(::monitoringValue)
+    inputs.properties(settings)
+    doLast {
+        val values = inputs.properties
+        val enabled = values["MONITORING_ENABLED"] as String
+        check(enabled in setOf("true", "false")) { "Set MONITORING_ENABLED explicitly for release (true or false)." }
+        if (enabled == "true") {
+            listOf("POSTHOG_PROJECT_TOKEN", "POSTHOG_HOST", "SENTRY_DSN").forEach { key ->
+                val value = values[key] as String
+                check(
+                    value.isNotBlank() &&
+                        value.none {
+                            it == '\n' || it == '\r'
+                        },
+                ) { "Missing or invalid release monitoring setting: $key" }
+            }
+            listOf("POSTHOG_HOST", "SENTRY_DSN").forEach { key ->
+                val uri = runCatching { URI(values[key] as String) }.getOrNull()
+                check(uri?.scheme == "https" && !uri.host.isNullOrBlank()) { "Invalid HTTPS monitoring endpoint: $key" }
+            }
+        }
+    }
+}
+val validateReleaseSentryUpload by tasks.registering(ValidateReleaseSentryUpload::class) {
+    authToken.set(sentryAuthToken)
+}
+val validateReleaseSigning by tasks.registering(ValidateReleaseSigning::class) {
+    propertiesFile.set(rootProject.layout.projectDirectory.file("keystore.properties"))
+}
+tasks.matching { it.name == "preReleaseBuild" || it.name == "generateReleaseBuildConfig" }.configureEach {
+    dependsOn(validateReleaseMonitoring, validateReleaseSentryUpload, validateReleaseSigning)
+}
+
+// Inspect the actual variant fields used by BuildConfig, including flavor/plugin overrides.
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        val suffix = variant.name.replaceFirstChar { it.uppercaseChar() }
+        if (variant.buildType == "debug" && appUpdateTestBuild.get()) {
+            variant.outputs.forEach { output ->
+                output.versionCode.set(appUpdateTestVersionCode.map(String::toInt))
+                output.versionName.set(appUpdateTestVersionName)
+            }
+        }
+        val release = variant.buildType == "release"
+        val fields = checkNotNull(variant.buildConfigFields) { "Device session requires BuildConfig" }
+        val debuggable = variant.debuggable
+        val validation =
+            tasks.register("validate${suffix}DeviceSession") {
+                inputs.property("release", release)
+                inputs.property("debuggable", debuggable)
+                inputs.property("applicationId", variant.applicationId)
+                inputs.property("cloudProjectInput", deviceCloudProjectNumber)
+                listOf(
+                    "API_BASE_URL",
+                    "DEVICE_ENVIRONMENT",
+                    "DEVICE_ATTESTATION_MODE",
+                    "DEVICE_CLOUD_PROJECT_NUMBER",
+                ).forEach { key ->
+                    inputs.property(key, fields.map { it[key]?.value?.toString() ?: "" })
+                }
+                doLast {
+                    val settings = inputs.properties
+                    val isRelease = settings["release"] as Boolean
+
+                    fun field(key: String) = (settings[key] as String).removeSurrounding("\"")
+                    val mode = field("DEVICE_ATTESTATION_MODE")
+                    check(mode in setOf("platform_only", "required")) { "Unknown DEVICE_ATTESTATION_MODE" }
+                    check(field("DEVICE_ENVIRONMENT") == if (isRelease) "prod" else "dev") {
+                        "Device environment does not match build type"
+                    }
+                    val expectedUrl = if (isRelease) "https://api.pheeeew.com" else "https://api-dev.pheeeew.com"
+                    check(field("API_BASE_URL") == expectedUrl) {
+                        "Device API URL does not match build type"
+                    }
+                    if (isRelease) {
+                        check(settings["debuggable"] == false) { "Release cannot be debuggable" }
+                        check(
+                            settings["applicationId"] == "com.pheeeew",
+                        ) { "Release requires applicationId com.pheeeew" }
+                        check(mode == "required") { "Release requires device attestation" }
+                    }
+                    if (mode == "required") {
+                        val project = field("DEVICE_CLOUD_PROJECT_NUMBER").removeSuffix("L").toLongOrNull()
+                        check(
+                            project != null && project > 0,
+                        ) { "A positive Play Integrity cloud project number is required" }
+                        check((settings["cloudProjectInput"] as String).toLongOrNull() == project) {
+                            "Invalid or inconsistent Play Integrity cloud project configuration"
+                        }
+                    }
+                }
+            }
+        tasks
+            .matching {
+                it.name in
+                    setOf(
+                        "pre${suffix}Build",
+                        "generate${suffix}BuildConfig",
+                        "package$suffix",
+                        "bundle$suffix",
+                        "package${suffix}Bundle",
+                    )
+            }.configureEach { dependsOn(validation) }
+    }
+}
+
+val verifyDeveloperToolsIsolation by tasks.registering {
+    group = "verification"
+    description = "Verify developerTools is present only in Android Debug compile/runtime graphs."
+    dependsOn(":shared:verifyDeveloperToolsIsolation")
+    listOf("debug", "release").forEach { variant ->
+        listOf("RuntimeClasspath", "CompileClasspath").forEach { classpath ->
+            val graph =
+                configurations
+                    .named("$variant$classpath")
+                    .flatMap { it.incoming.resolutionResult.rootComponent }
+                    .map { root ->
+                        val visited = mutableSetOf<String>()
+
+                        fun visit(component: org.gradle.api.artifacts.result.ResolvedComponentResult) {
+                            if (!visited.add(component.id.displayName)) return
+                            component.dependencies
+                                .filterIsInstance<org.gradle.api.artifacts.result.ResolvedDependencyResult>()
+                                .forEach { visit(it.selected) }
+                        }
+                        visit(root)
+                        visited.sorted()
+                    }
+            inputs.property(if (classpath == "RuntimeClasspath") variant else "$variant.compile", graph)
+        }
+    }
+    doLast {
+        inputs.properties.toSortedMap().forEach { (variant, value) ->
+            val includesTools = (value as List<*>).contains("project :developerTools")
+            check(includesTools == variant.startsWith("debug")) { "Developer tools isolation failed: $variant" }
+            if (variant.startsWith("release")) {
+                val tooling =
+                    (value as List<*>).filter {
+                        Regex(
+                            "^(androidx|org\\.jetbrains)\\.compose\\.ui:ui-tooling(-android)?:",
+                        ).containsMatchIn(it.toString())
+                    }
+                check(tooling.isEmpty()) { "Compose runtime tooling in Release: $tooling" }
+            }
+            println("$variant developerTools=$includesTools")
+        }
+    }
+}
+
+tasks.matching { it.name == "preDebugBuild" || it.name == "preReleaseBuild" }.configureEach {
+    dependsOn(verifyDeveloperToolsIsolation)
+}
+
+// The isolated update-test package is not registered in the production Firebase project.
+if (appUpdateTestBuild.get()) {
+    tasks.matching { it.name == "processDebugGoogleServices" }.configureEach { enabled = false }
+}

@@ -1,0 +1,70 @@
+package com.pheeeew.feature.screens.report.component
+
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.appInk
+import com.pheeeew.core.designsystem.theme.appTextSecondary
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.ic_emotion_angry
+import pheeeew.shared.generated.resources.report_prompt_message
+import pheeeew.shared.generated.resources.report_prompt_title
+import pheeeew.shared.generated.resources.report_stamp_accessibility
+
+@Composable
+fun ReportStampPrompt(
+    emotionStamp: DrawableResource,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth().padding(top = AppSpacing.sm.dp, bottom = AppSpacing.xxl.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Image(
+            painter = painterResource(emotionStamp),
+            contentDescription = stringResource(Res.string.report_stamp_accessibility),
+            modifier = Modifier.size(56.dp),
+        )
+        Spacer(Modifier.width(AppSpacing.lg.dp))
+        Column {
+            Text(
+                text = stringResource(Res.string.report_prompt_title),
+                color = MaterialTheme.colorScheme.appInk,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.height(AppSpacing.xs.dp))
+            Text(
+                text = stringResource(Res.string.report_prompt_message),
+                color = MaterialTheme.colorScheme.appTextSecondary,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+            )
+        }
+    }
+}
+
+@Preview(name = "신고 감정 스탬프")
+@Composable
+private fun ReportStampPromptPreview() {
+    ReportStampPrompt(emotionStamp = Res.drawable.ic_emotion_angry)
+}

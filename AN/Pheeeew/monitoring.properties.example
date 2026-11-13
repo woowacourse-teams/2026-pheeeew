@@ -1,0 +1,6 @@
+# Copy to monitoring.local.properties (ignored by Git). No quotes around values.
+# Set true after supplying all three collection settings; false explicitly disables collection.
+POSTHOG_PROJECT_TOKEN=
+POSTHOG_HOST=https://us.i.posthog.com
+SENTRY_DSN=
+MONITORING_ENABLED=false

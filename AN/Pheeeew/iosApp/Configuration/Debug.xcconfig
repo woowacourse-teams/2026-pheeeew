@@ -1,0 +1,13 @@
+#include "Config.xcconfig"
+
+SLASH = /
+API_BASE_URL = https:$(SLASH)/api-dev.pheeeew.com
+APP_ATTEST_ENVIRONMENT = development
+
+MONITORING_ENABLED = false
+#include? "Monitoring.local.xcconfig"
+MONITORING_ENVIRONMENT = dev
+
+DEVICE_BUILD_CONFIGURATION = Debug
+DEVICE_ENVIRONMENT = dev
+DEVICE_ATTESTATION_MODE = platform_only

@@ -1,0 +1,17 @@
+#include "Config.xcconfig"
+
+SLASH = /
+API_BASE_URL = https:$(SLASH)/api.pheeeew.com
+APP_ATTEST_ENVIRONMENT = production
+
+// Release must explicitly choose true or false in local/CI configuration.
+MONITORING_ENABLED =
+#include? "Monitoring.local.xcconfig"
+MONITORING_ENVIRONMENT = prod
+
+DEVICE_BUILD_CONFIGURATION = Release
+DEVICE_ENVIRONMENT = prod
+DEVICE_ATTESTATION_MODE = required
+
+// Preserve linker inputs for developer-tools exclusion audits.
+LD_GENERATE_MAP_FILE = YES

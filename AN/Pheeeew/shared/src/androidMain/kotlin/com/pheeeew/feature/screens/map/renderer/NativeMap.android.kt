@@ -1,0 +1,845 @@
+package com.pheeeew.feature.screens.map.renderer
+
+import android.content.ComponentCallbacks2
+import android.content.res.Configuration
+import android.graphics.Color
+import android.graphics.PointF
+import android.graphics.RectF
+import android.view.Gravity
+import android.view.View
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.pheeeew.domain.model.GeoCoordinate
+import com.pheeeew.domain.model.LocationState
+import com.pheeeew.domain.model.emotion.EmotionMapBounds
+import com.pheeeew.domain.model.emotion.EmotionMapViewport
+import com.pheeeew.domain.model.emotion.enclosingEmotionMapBounds
+import com.pheeeew.feature.screens.map.HighlightedPinPosition
+import com.pheeeew.feature.screens.map.MapCameraActionUiModel
+import com.pheeeew.feature.screens.map.MapErrorUiModel
+import com.pheeeew.feature.screens.map.MapUiModel
+import com.pheeeew.feature.screens.map.record.location.RECORD_RADIUS_METERS
+import com.pheeeew.feature.screens.map.record.location.constrainToRecordRadius
+import com.pheeeew.feature.screens.map.record.location.destination
+import com.pheeeew.feature.screens.map.record.location.recordCameraBounds
+import com.pheeeew.feature.screens.map.symbolImageKey
+import org.json.JSONArray
+import org.json.JSONObject
+import org.maplibre.android.MapLibre
+import org.maplibre.android.camera.CameraPosition
+import org.maplibre.android.camera.CameraUpdateFactory
+import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.geometry.LatLngBounds
+import org.maplibre.android.maps.MapLibreMap
+import org.maplibre.android.maps.MapView
+import org.maplibre.android.maps.Style
+import org.maplibre.android.style.layers.TransitionOptions
+import kotlin.math.PI
+import kotlin.math.hypot
+import kotlin.math.roundToInt
+
+private const val OPEN_FREE_MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
+private const val MAP_FONT_REGULAR_ASSET_URL =
+    "asset://composeResources/pheeeew.shared.generated.resources/font/tap_noto_700.ttf"
+private const val MAP_FONT_BOLD_ASSET_URL =
+    "asset://composeResources/pheeeew.shared.generated.resources/font/tap_noto_900.ttf"
+private const val INITIAL_ZOOM = 11.0
+private const val MINIMUM_ZOOM = 2.0
+private const val MAXIMUM_ZOOM = 20.0
+private const val REGION_RENDER_PADDING_DP = 96f
+private const val FALLBACK_LATITUDE = 37.4409230460675
+private const val FALLBACK_LONGITUDE = 127.147538132656
+
+@Composable
+internal actual fun NativeMap(
+    state: MapUiModel,
+    isVisible: Boolean,
+    isActive: Boolean,
+    isMounted: Boolean,
+    savedCamera: MapCameraSnapshotUiModel?,
+    onCameraSaved: (MapCameraSnapshotUiModel) -> Unit,
+    onMemoryPressure: () -> Unit,
+    onMapError: (MapErrorUiModel) -> Unit,
+    onMapRecovered: () -> Unit,
+    onFirstFrameReady: () -> Unit,
+    onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
+    onViewportChanged: (EmotionMapViewport) -> Unit,
+    onCameraMovingChanged: (Boolean) -> Unit,
+    onEmotionPinClick: (Long) -> Unit,
+    onRegionClusterClick: (String) -> Unit,
+    onMapBackgroundClick: () -> Unit,
+    onHighlightedPinPositionChanged: (HighlightedPinPosition?) -> Unit,
+    onContentPresented: (String, List<String>) -> Unit,
+    styleUrlOverride: String?,
+    modifier: Modifier,
+) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val density = LocalDensity.current
+    val statusBarInset = WindowInsets.statusBars.getTop(density)
+    val navigationBarInset = WindowInsets.navigationBars.getBottom(density)
+    val currentOnCameraMovingChanged by rememberUpdatedState(onCameraMovingChanged)
+    DisposableEffect(isVisible, isActive, isMounted) {
+        if (!isVisible || !isMounted) currentOnCameraMovingChanged(false)
+        onDispose { currentOnCameraMovingChanged(false) }
+    }
+    val currentIsVisible by rememberUpdatedState(isVisible)
+    val currentOnContentPresented by rememberUpdatedState(onContentPresented)
+    val currentOnEmotionPinClick by rememberUpdatedState(onEmotionPinClick)
+    val currentOnRegionClusterClick by rememberUpdatedState(onRegionClusterClick)
+    val currentOnMapBackgroundClick by rememberUpdatedState(onMapBackgroundClick)
+    val currentOnHighlightPosition by rememberUpdatedState(onHighlightedPinPositionChanged)
+    val currentOnMapError by rememberUpdatedState(onMapError)
+    val currentOnMapRecovered by rememberUpdatedState(onMapRecovered)
+    val currentOnFirstFrameReady by rememberUpdatedState(onFirstFrameReady)
+    val currentOnCameraSaved by rememberUpdatedState(onCameraSaved)
+    val currentOnMemoryPressure by rememberUpdatedState(onMemoryPressure)
+    val currentOnViewportChanged by rememberUpdatedState(onViewportChanged)
+    var appLifecycleState by remember(lifecycleOwner) { mutableStateOf(lifecycleOwner.lifecycle.currentState) }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { owner, _ -> appLifecycleState = owner.lifecycle.currentState }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    val host =
+        remember(context, isMounted, styleUrlOverride) {
+            if (!isMounted) {
+                null
+            } else {
+                runCatching {
+                    MapLibre.getInstance(context.applicationContext)
+                    AndroidFoundationMapHost(
+                        MapView(context).apply {
+                            setBackgroundColor(Color.BLACK)
+                            onCreate(null)
+                        },
+                        onMapError = currentOnMapError,
+                        onMapRecovered = currentOnMapRecovered,
+                        onFirstFrameReady = { currentOnFirstFrameReady() },
+                        onRecordViewportChanged = onRecordViewportChanged,
+                        onViewportChanged = { currentOnViewportChanged(it) },
+                        onCameraMovingChanged = { if (currentIsVisible) currentOnCameraMovingChanged(it) },
+                        onEmotionPinClick = { currentOnEmotionPinClick(it) },
+                        onRegionClusterClick = { currentOnRegionClusterClick(it) },
+                        onMapBackgroundClick = { currentOnMapBackgroundClick() },
+                        onHighlightedPinPositionChanged = { currentOnHighlightPosition(it) },
+                        onContentPresented = { token, ids -> currentOnContentPresented(token, ids) },
+                        restoredCamera = savedCamera,
+                        onCameraSaved = { currentOnCameraSaved(it) },
+                        styleUrlOverride = styleUrlOverride,
+                    )
+                }.getOrNull()
+            }
+        }
+
+    if (!isMounted) return
+    if (host == null) {
+        LaunchedEffect(isMounted) { currentOnMapError(MapErrorUiModel.RendererUnavailable) }
+        return
+    }
+
+    SideEffect {
+        host.synchronizeLifecycle(isActive, appLifecycleState)
+    }
+    DisposableEffect(host) {
+        onDispose { host.release() }
+    }
+    DisposableEffect(context, host) {
+        val callbacks =
+            object : ComponentCallbacks2 {
+                override fun onConfigurationChanged(newConfig: Configuration) = Unit
+
+                override fun onLowMemory() {
+                    if (!currentIsVisible) currentOnMemoryPressure()
+                }
+
+                override fun onTrimMemory(level: Int) {
+                    if (!currentIsVisible && level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) {
+                        currentOnMemoryPressure()
+                    }
+                }
+            }
+        context.applicationContext.registerComponentCallbacks(callbacks)
+        onDispose { context.applicationContext.unregisterComponentCallbacks(callbacks) }
+    }
+
+    AndroidView(
+        factory = { host.mapView },
+        modifier = modifier,
+        update = { view ->
+            // Render behind the opaque splash so native first-frame callbacks can arrive.
+            view.visibility = if (isActive) View.VISIBLE else View.INVISIBLE
+            view.importantForAccessibility =
+                if (isVisible) {
+                    View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
+                } else {
+                    View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+                }
+            view.setOnTouchListener { _, _ -> !currentIsVisible }
+            if (isActive) host.render(state, statusBarInset, navigationBarInset)
+        },
+    )
+}
+
+private class AndroidFoundationMapHost(
+    val mapView: MapView,
+    private val onMapError: (MapErrorUiModel) -> Unit,
+    private val onMapRecovered: () -> Unit,
+    private val onFirstFrameReady: () -> Unit,
+    private val onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
+    private val onViewportChanged: (EmotionMapViewport) -> Unit,
+    private val onCameraMovingChanged: (Boolean) -> Unit,
+    private val onEmotionPinClick: (Long) -> Unit,
+    private val onRegionClusterClick: (String) -> Unit,
+    private val onMapBackgroundClick: () -> Unit,
+    private val onHighlightedPinPositionChanged: (HighlightedPinPosition?) -> Unit,
+    private val onContentPresented: (String, List<String>) -> Unit,
+    private val restoredCamera: MapCameraSnapshotUiModel?,
+    private val onCameraSaved: (MapCameraSnapshotUiModel) -> Unit,
+    private val styleUrlOverride: String?,
+) {
+    private val emotionPinSymbolLayer = EmotionPinSymbolLayer()
+    private val regionClusterSymbolLayer = RegionClusterSymbolLayer()
+    private val recordStampLayer = AndroidRecordStampLayer()
+    private val recordRangeLayer = AndroidRecordRangeLayer()
+    private var map: MapLibreMap? = null
+    private var style: Style? = null
+    private var released = false
+    private var started = false
+    private var resumed = false
+    private var latestState: MapUiModel? = null
+    private var styleLoaded = false
+    private var didSetInitialCamera = false
+    private var initialCameraUsedFallback = false
+    private var lastAppliedCameraCommandId = restoredCamera?.lastAppliedCameraCommandId ?: 0L
+    private var fittedOrigin: GeoCoordinate? = null
+    private var cameraBoundsInstalled = false
+    private var statusBarInsetPx = 0
+    private var navigationBarInsetPx = 0
+    private var didConfigureKoreanFontFaces = false
+    private var pendingOriginalStyleJson: String? = null
+    private var isRestoringOriginalStyle = false
+    private var lastScheduledPinLoadId: String? = null
+    private var lastSavedCamera: MapCameraSnapshotUiModel? = restoredCamera
+
+    private var firstFramePublished = false
+    private val firstFrameListener =
+        MapView.OnDidFinishRenderingFrameListener { _, _, _ ->
+            if (!released && !firstFramePublished && styleLoaded && didSetInitialCamera &&
+                mapView.width > 0 && mapView.height > 0
+            ) {
+                firstFramePublished = true
+                onFirstFrameReady()
+            }
+        }
+
+    private val idleListener = MapView.OnDidBecomeIdleListener { publishContent() }
+
+    private fun publishContent() {
+        val state = latestState ?: return
+        val currentMap = map ?: return
+        if (released || !styleLoaded || state.isRecordLocationPicking || mapView.width <= 0 ||
+            mapView.height <= 0
+        ) {
+            return
+        }
+        val token = state.emotionContentLoad?.loadId ?: return
+        if (!emotionPinSymbolLayer.isCurrentLoad(token) ||
+            !emotionPinSymbolLayer.hasImagesFor(state.emotionPins)
+        ) {
+            return
+        }
+        val features =
+            currentMap.queryRenderedFeatures(
+                RectF(0f, 0f, mapView.width.toFloat(), mapView.height.toFloat()),
+                "emotion-pin-symbol-layer",
+            )
+        // Wait until the displayed feature set reflects the current source revision.
+        if (!emotionPinSymbolLayer.isCurrentFrame(features)) return
+        style?.let { loadedStyle ->
+            emotionPinSymbolLayer.pruneObsoleteImages(
+                loadedStyle,
+                state.emotionPinSymbolImages.mapTo(mutableSetOf()) { it.key },
+            )
+        }
+        val ids = features.mapNotNull { it.id()?.takeIf { id -> id.toLongOrNull() != null } }.distinct()
+        onContentPresented(token, ids)
+    }
+
+    private val mapLoadFailureListener =
+        MapView.OnDidFailLoadingMapListener {
+            val originalStyleJson = pendingOriginalStyleJson
+            val currentMap = map
+            if (!released && originalStyleJson != null && !isRestoringOriginalStyle && currentMap != null) {
+                isRestoringOriginalStyle = true
+                currentMap.setStyle(Style.Builder().fromJson(originalStyleJson)) { restoredStyle ->
+                    if (released) return@setStyle
+                    pendingOriginalStyleJson = null
+                    isRestoringOriginalStyle = false
+                    installLoadedStyle(restoredStyle)
+                }
+            } else if (!released) {
+                pendingOriginalStyleJson = null
+                isRestoringOriginalStyle = false
+                onMapError(MapErrorUiModel.StyleLoadFailed)
+            }
+        }
+
+    init {
+        mapView.addOnDidFailLoadingMapListener(mapLoadFailureListener)
+        mapView.addOnDidBecomeIdleListener(idleListener)
+        mapView.addOnDidFinishRenderingFrameListener(firstFrameListener)
+        mapView.getMapAsync { readyMap ->
+            if (released) return@getMapAsync
+            map = readyMap
+            // MapLibre dispatches this only after confirming a single tap (not a double tap).
+            readyMap.addOnMapClickListener { coordinate ->
+                if (released || latestState?.isRecordLocationPicking == true) return@addOnMapClickListener false
+                val point = readyMap.projection.toScreenLocation(coordinate)
+                val id =
+                    readyMap
+                        .queryRenderedFeatures(point, "emotion-pin-symbol-layer")
+                        .firstOrNull()
+                        ?.id()
+                        ?.toLongOrNull()
+                val regionId =
+                    if (id == null) {
+                        readyMap.queryRenderedFeatures(point, RegionClusterSymbolLayer.LAYER_ID).firstOrNull()?.id()
+                    } else {
+                        null
+                    }
+                when {
+                    id != null -> onEmotionPinClick(id)
+                    regionId != null -> onRegionClusterClick(regionId)
+                    else -> onMapBackgroundClick()
+                }
+                true
+            }
+            readyMap.setMinZoomPreference(MINIMUM_ZOOM)
+            readyMap.setMaxZoomPreference(MAXIMUM_ZOOM)
+            readyMap.uiSettings.apply {
+                isLogoEnabled = false
+                isAttributionEnabled = true
+                attributionGravity = Gravity.BOTTOM or Gravity.START
+                setAttributionTintColor(Color.WHITE)
+                isCompassEnabled = true
+                compassGravity = Gravity.TOP or Gravity.END
+                setCompassFadeFacingNorth(false)
+            }
+            applyCompassMargins()
+            applyAttributionMargins()
+            readyMap.addOnCameraMoveStartedListener { reason ->
+                onCameraMovingChanged(true)
+                if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE && didSetInitialCamera) {
+                    initialCameraUsedFallback = false
+                }
+            }
+            // Camera persistence is handled at idle/release; per-move state writes re-render the AndroidView.
+            readyMap.addOnCameraMoveListener {
+                publishHighlightedPinPosition()
+                publishRecordViewport()
+            }
+            readyMap.addOnCameraIdleListener {
+                onCameraMovingChanged(false)
+                saveCamera()
+                publishRecordViewport()
+                publishViewport()
+            }
+            mapView.addOnLayoutChangeListener { _, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
+                val sizeChanged = right - left != oldRight - oldLeft || bottom - top != oldBottom - oldTop
+                if (sizeChanged) {
+                    if (latestState?.isRecordLocationPicking == true) fittedOrigin = null
+                    renderLatestState()
+                    publishViewport()
+                }
+            }
+            readyMap.setStyle(Style.Builder().fromUri(styleUrlOverride ?: OPEN_FREE_MAP_STYLE_URL)) { loadedStyle ->
+                if (released) return@setStyle
+                if (!didConfigureKoreanFontFaces) {
+                    didConfigureKoreanFontFaces = true
+                    val originalStyleJson = loadedStyle.json
+                    val styleJson = withKoreanFontFaces(originalStyleJson)
+                    if (styleJson != null) {
+                        pendingOriginalStyleJson = originalStyleJson
+                        isRestoringOriginalStyle = false
+                        readyMap.setStyle(Style.Builder().fromJson(styleJson)) configuredStyle@{ configuredStyle ->
+                            if (released) return@configuredStyle
+                            pendingOriginalStyleJson = null
+                            installLoadedStyle(configuredStyle)
+                        }
+                    } else {
+                        installLoadedStyle(loadedStyle)
+                    }
+                } else {
+                    installLoadedStyle(loadedStyle)
+                }
+            }
+        }
+    }
+
+    fun render(
+        state: MapUiModel,
+        statusBarInset: Int,
+        navigationBarInset: Int,
+    ) {
+        statusBarInsetPx = statusBarInset
+        navigationBarInsetPx = navigationBarInset
+        applyCompassMargins()
+        applyAttributionMargins()
+        latestState = state
+        renderLatestState()
+        publishViewport()
+    }
+
+    fun synchronizeLifecycle(
+        active: Boolean,
+        lifecycleState: Lifecycle.State,
+    ) {
+        if (released) return
+        val shouldStart = active && lifecycleState.isAtLeast(Lifecycle.State.STARTED)
+        val shouldResume = active && lifecycleState.isAtLeast(Lifecycle.State.RESUMED)
+        if (shouldStart && !started) {
+            mapView.onStart()
+            started = true
+        }
+        if (!shouldResume && resumed) {
+            mapView.onPause()
+            resumed = false
+        }
+        if (!shouldStart && started) {
+            mapView.onStop()
+            started = false
+        }
+        if (shouldResume && !resumed) {
+            mapView.onResume()
+            resumed = true
+        }
+    }
+
+    fun release() {
+        emotionPinSymbolLayer.release()
+        if (released) return
+        saveCamera()
+        mapView.removeOnDidFailLoadingMapListener(mapLoadFailureListener)
+        mapView.removeOnDidBecomeIdleListener(idleListener)
+        mapView.removeOnDidFinishRenderingFrameListener(firstFrameListener)
+        synchronizeLifecycle(active = false, lifecycleState = Lifecycle.State.DESTROYED)
+        released = true
+        mapView.onDestroy()
+        map = null
+        style = null
+    }
+
+    private fun saveCamera() {
+        if (!didSetInitialCamera || released) return
+        val camera = map?.cameraPosition ?: return
+        val target = camera.target ?: return
+        val savedCamera =
+            MapCameraSnapshotUiModel(
+                latitude = target.latitude,
+                longitude = target.longitude,
+                zoom = camera.zoom,
+                bearing = camera.bearing,
+                pitch = camera.tilt,
+                initialCameraUsedFallback = initialCameraUsedFallback,
+                lastAppliedCameraCommandId = lastAppliedCameraCommandId,
+            )
+        if (savedCamera == lastSavedCamera) return
+        lastSavedCamera = savedCamera
+        onCameraSaved(savedCamera)
+    }
+
+    private fun withKoreanFontFaces(styleJson: String): String? =
+        runCatching {
+            val style = JSONObject(styleJson)
+            val fontFaces = JSONObject()
+            mapOf(
+                "Noto Sans Regular" to MAP_FONT_REGULAR_ASSET_URL,
+                "Noto Sans Italic" to MAP_FONT_REGULAR_ASSET_URL,
+                "Noto Sans Bold" to MAP_FONT_BOLD_ASSET_URL,
+            ).forEach { (fontName, fontUrl) ->
+                val face =
+                    JSONObject()
+                        .put("url", fontUrl)
+                        .put("unicode-range", JSONArray(KOREAN_UNICODE_RANGES))
+                fontFaces.put(fontName, JSONArray().put(face))
+            }
+            style.put("font-faces", fontFaces)
+
+            val layers = style.optJSONArray("layers") ?: return@runCatching style.toString()
+            for (index in 0 until layers.length()) {
+                val layer = layers.optJSONObject(index) ?: continue
+                if (layer.optString("type") != "symbol") continue
+                val layerId = layer.optString("id")
+                val layout = layer.optJSONObject("layout") ?: continue
+                if (layerId.startsWith("highway-shield-") || layerId.startsWith("road_shield_")) {
+                    layout.put("visibility", "none")
+                }
+                val sizeScale =
+                    when {
+                        layerId.startsWith("label_country_") -> 0.76
+                        layerId in CITY_LABEL_LAYER_IDS -> 1.0
+                        layerId == "label_other" -> 1.05
+                        else -> 0.92
+                    }
+                scaleTextSize(layout, sizeScale)
+                if (layerId.startsWith("label_country_")) layer.put("maxzoom", 12)
+                if (layerId == "label_other") {
+                    layer.put("minzoom", 7)
+                    layout.remove("text-transform")
+                }
+                layout.optJSONArray("text-font")?.let { fonts ->
+                    for (fontIndex in 0 until fonts.length()) {
+                        if (fonts.optString(fontIndex) == "Noto Sans Bold" ||
+                            (layerId == "label_other" && fonts.optString(fontIndex) == "Noto Sans Italic")
+                        ) {
+                            fonts.put(fontIndex, "Noto Sans Regular")
+                        }
+                    }
+                }
+            }
+            style.toString()
+        }.getOrNull()
+
+    private fun scaleTextSize(
+        layout: JSONObject,
+        scale: Double,
+    ) {
+        when (val textSize = layout.opt("text-size")) {
+            is Number -> {
+                layout.put("text-size", textSize.toDouble() * scale)
+            }
+
+            is JSONArray -> {
+                when (textSize.optString(0)) {
+                    "interpolate", "interpolate-hcl", "interpolate-lab" -> {
+                        for (index in 4 until textSize.length() step 2) {
+                            val output = textSize.opt(index)
+                            if (output is Number) textSize.put(index, output.toDouble() * scale)
+                        }
+                    }
+
+                    "step" -> {
+                        for (index in 2 until textSize.length() step 2) {
+                            val output = textSize.opt(index)
+                            if (output is Number) textSize.put(index, output.toDouble() * scale)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun installLoadedStyle(loadedStyle: Style) {
+        style = loadedStyle
+        // Keep symbols opaque when viewport and GeoJSON updates recalculate placement.
+        loadedStyle.setTransition(TransitionOptions(0L, 0L, false))
+        AndroidMapAppearance.apply(loadedStyle)
+        emotionPinSymbolLayer.install(loadedStyle)
+        regionClusterSymbolLayer.install(loadedStyle)
+        recordRangeLayer.install(loadedStyle)
+        AndroidCurrentLocationLayer.install(loadedStyle)
+        recordStampLayer.install(loadedStyle)
+        styleLoaded = true
+        onMapRecovered()
+        renderLatestState()
+        publishViewport()
+    }
+
+    private companion object {
+        val CITY_LABEL_LAYER_IDS = setOf("label_city", "label_city_capital", "label_town", "label_village")
+        val KOREAN_UNICODE_RANGES =
+            listOf("U+1100-11FF", "U+3130-318F", "U+A960-A97F", "U+AC00-D7AF", "U+D7B0-D7FF")
+    }
+
+    private fun applyCompassMargins() {
+        map?.uiSettings?.setCompassMargins(
+            0,
+            statusBarInsetPx + (16f * mapView.resources.displayMetrics.density).roundToInt(),
+            (16f * mapView.resources.displayMetrics.density).roundToInt(),
+            0,
+        )
+    }
+
+    private fun applyAttributionMargins() {
+        map?.uiSettings?.setAttributionMargins(
+            (16f * mapView.resources.displayMetrics.density).roundToInt(),
+            0,
+            0,
+            navigationBarInsetPx + (16f * mapView.resources.displayMetrics.density).roundToInt(),
+        )
+    }
+
+    private fun renderLatestState() {
+        if (!styleLoaded || released) return
+        val currentMap = map ?: return
+        val state = latestState ?: return
+        val currentLocation = (state.locationState as? LocationState.Available)?.location
+        AndroidCurrentLocationLayer.update(style, currentLocation)
+        recordRangeLayer.update(style, state.recordOrigin.takeIf { state.isRecordLocationPicking })
+        var pinSourceUpdated = false
+        style?.let { loadedStyle ->
+            // Prepare the incoming layer before removing features from the outgoing layer.
+            if (state.displayedRegionLevel != null) {
+                regionClusterSymbolLayer.update(loadedStyle, state.regionClusters, state.regionClusterSymbolImages)
+            }
+            pinSourceUpdated =
+                emotionPinSymbolLayer.update(
+                    style = loadedStyle,
+                    pins = state.emotionPins,
+                    images = state.emotionPinSymbolImages,
+                    visible = true,
+                    monitoringLoadId = state.emotionContentLoad?.loadId,
+                    focusedId = state.focusedEmotionId,
+                )
+            emotionPinSymbolLayer.updatePress(loadedStyle, state.pressedEmotionId, state.pressedEmotionScale)
+            if (state.displayedRegionLevel == null) {
+                regionClusterSymbolLayer.update(loadedStyle, state.regionClusters, state.regionClusterSymbolImages)
+            }
+            recordStampLayer.update(loadedStyle, state.recordPreviewPin, state.recordPreviewScale)
+        }
+        val loadId = state.emotionContentLoad?.loadId
+        if (!pinSourceUpdated && loadId != null && loadId != lastScheduledPinLoadId) {
+            lastScheduledPinLoadId = loadId
+            mapView.post {
+                if (!released) publishContent()
+            }
+        }
+        val point =
+            currentLocation?.let { LatLng(it.latitude, it.longitude) }
+                ?: LatLng(FALLBACK_LATITUDE, FALLBACK_LONGITUDE)
+        if (!didSetInitialCamera && restoredCamera != null) {
+            currentMap.cameraPosition =
+                CameraPosition
+                    .Builder()
+                    .target(LatLng(restoredCamera.latitude, restoredCamera.longitude))
+                    .zoom(restoredCamera.zoom)
+                    .bearing(restoredCamera.bearing)
+                    .tilt(restoredCamera.pitch)
+                    .build()
+            didSetInitialCamera = true
+            initialCameraUsedFallback = restoredCamera.initialCameraUsedFallback
+        }
+        if (!didSetInitialCamera || (initialCameraUsedFallback && currentLocation != null)) {
+            currentMap.cameraPosition =
+                CameraPosition
+                    .Builder()
+                    .target(point)
+                    .zoom(INITIAL_ZOOM)
+                    .build()
+            didSetInitialCamera = true
+            initialCameraUsedFallback = currentLocation == null
+        }
+        val picking = state.isRecordLocationPicking
+        currentMap.uiSettings.apply {
+            isScrollGesturesEnabled = true
+            isZoomGesturesEnabled = true
+            isRotateGesturesEnabled = !picking
+            isTiltGesturesEnabled = !picking
+            isDoubleTapGesturesEnabled = true
+            isQuickZoomGesturesEnabled = true
+        }
+        if (picking) {
+            val origin = state.recordOrigin ?: return
+            if (fittedOrigin != origin && mapView.width > 0 && mapView.height > 0) {
+                fittedOrigin = origin
+                currentMap.setLatLngBoundsForCameraTarget(null)
+                cameraBoundsInstalled = false
+                state.cameraCommand?.let { lastAppliedCameraCommandId = it.id }
+                currentMap.setMinZoomPreference(MINIMUM_ZOOM)
+                val north = destination(origin, RECORD_RADIUS_METERS, 0.0)
+                val south = destination(origin, RECORD_RADIUS_METERS, PI)
+                val east = destination(origin, RECORD_RADIUS_METERS, PI / 2)
+                val west = destination(origin, RECORD_RADIUS_METERS, -PI / 2)
+                val bounds =
+                    LatLngBounds
+                        .Builder()
+                        .include(LatLng(north.latitude, east.longitude))
+                        .include(LatLng(south.latitude, west.longitude))
+                        .build()
+                currentMap.cancelTransitions()
+                currentMap.cameraPosition =
+                    CameraPosition
+                        .Builder(currentMap.cameraPosition)
+                        .bearing(0.0)
+                        .tilt(0.0)
+                        .build()
+                currentMap.moveCamera(
+                    CameraUpdateFactory.newLatLngBounds(
+                        bounds,
+                        (mapView.width * 0.12).toInt(),
+                        (mapView.height * 0.22).toInt(),
+                        (mapView.width * 0.12).toInt(),
+                        (mapView.height * 0.22).toInt(),
+                    ),
+                )
+                currentMap.setMinZoomPreference(currentMap.cameraPosition.zoom)
+                val cameraBounds = recordCameraBounds(origin)
+                currentMap.setLatLngBoundsForCameraTarget(
+                    LatLngBounds.from(cameraBounds.north, cameraBounds.east, cameraBounds.south, cameraBounds.west),
+                )
+                cameraBoundsInstalled = true
+            }
+            state.cameraCommand?.takeIf { it.id > lastAppliedCameraCommandId }?.let { command ->
+                lastAppliedCameraCommandId = command.id
+                if (command.action == MapCameraActionUiModel.MoveToCoordinate) {
+                    val target = constrainToRecordRadius(origin, GeoCoordinate(command.latitude, command.longitude))
+                    currentMap.animateCamera(
+                        CameraUpdateFactory.newLatLng(LatLng(target.latitude, target.longitude)),
+                    )
+                }
+            }
+            publishRecordViewport()
+            return
+        }
+        if (cameraBoundsInstalled) {
+            currentMap.setLatLngBoundsForCameraTarget(null)
+            currentMap.setMinZoomPreference(MINIMUM_ZOOM)
+            cameraBoundsInstalled = false
+        }
+        fittedOrigin = null
+        state.cameraCommand?.takeIf { it.id > lastAppliedCameraCommandId }?.let { command ->
+            lastAppliedCameraCommandId = command.id
+            currentMap.cancelTransitions()
+            val bottomPadding = mapView.height * (1.0 - 2.0 * command.verticalPosition).coerceIn(0.0, 1.0)
+            val update =
+                when (command.action) {
+                    MapCameraActionUiModel.MoveToCoordinate -> {
+                        CameraUpdateFactory.newCameraPosition(
+                            CameraPosition
+                                .Builder(currentMap.cameraPosition)
+                                .target(LatLng(command.latitude, command.longitude))
+                                .zoom(command.value)
+                                .padding(0.0, 0.0, 0.0, bottomPadding)
+                                .build(),
+                        )
+                    }
+
+                    MapCameraActionUiModel.ZoomBy -> {
+                        CameraUpdateFactory.zoomBy(command.value)
+                    }
+                }
+            if (command.action == MapCameraActionUiModel.MoveToCoordinate && bottomPadding > 0.0) {
+                currentMap.animateCamera(
+                    update,
+                    350,
+                    object : MapLibreMap.CancelableCallback {
+                        private var cleared = false
+
+                        override fun onFinish() = clearPaddingOnce()
+
+                        override fun onCancel() = clearPaddingOnce()
+
+                        private fun clearPaddingOnce() {
+                            if (cleared) return
+                            cleared = true
+                            clearFocusPadding(currentMap)
+                        }
+                    },
+                )
+            } else {
+                currentMap.animateCamera(update, 350)
+            }
+        }
+    }
+
+    private fun clearFocusPadding(currentMap: MapLibreMap) {
+        if (released) return
+        if (currentMap.cameraPosition.padding?.any { it != 0.0 } != true) return
+        // Preserve the visible map while removing padding from subsequent gestures and commands.
+        val center = currentMap.projection.fromScreenLocation(PointF(mapView.width / 2f, mapView.height / 2f))
+        currentMap.moveCamera(
+            CameraUpdateFactory.newCameraPosition(
+                CameraPosition
+                    .Builder(currentMap.cameraPosition)
+                    .target(center)
+                    .padding(0.0, 0.0, 0.0, 0.0)
+                    .build(),
+            ),
+        )
+    }
+
+    private fun publishHighlightedPinPosition() {
+        val state = latestState
+        val currentMap = map
+        val pin = state?.emotionPins?.firstOrNull { it.id == state.highlightedEmotionId }
+        if (!styleLoaded || released || currentMap == null || pin == null ||
+            state.isRecordLocationPicking || mapView.width == 0 ||
+            style?.getImage(pin.symbolImageKey()) == null
+        ) {
+            onHighlightedPinPositionChanged(null)
+            return
+        }
+        val point = currentMap.projection.toScreenLocation(LatLng(pin.latitude, pin.longitude))
+        val density = mapView.resources.displayMetrics.density
+        onHighlightedPinPositionChanged(HighlightedPinPosition(pin.id, point.x / density, point.y / density))
+    }
+
+    private fun publishRecordViewport() {
+        val state = latestState ?: return
+        if (!state.isRecordLocationPicking || !styleLoaded || mapView.width == 0) return
+        val origin = state.recordOrigin ?: return
+        val currentMap = map ?: return
+        val originPoint = currentMap.projection.toScreenLocation(LatLng(origin.latitude, origin.longitude))
+        val north = destination(origin, RECORD_RADIUS_METERS, 0.0)
+        val edge = currentMap.projection.toScreenLocation(LatLng(north.latitude, north.longitude))
+        val density = mapView.resources.displayMetrics.density
+        val radius = hypot(edge.x - originPoint.x, edge.y - originPoint.y) / density
+        if (radius > 0 && radius.isFinite()) {
+            onRecordViewportChanged(originPoint.x / density, originPoint.y / density, radius)
+        }
+    }
+
+    private fun publishViewport() {
+        publishHighlightedPinPosition()
+        val currentMap = map ?: return
+        if (!styleLoaded || released || mapView.width <= 0 || mapView.height <= 0) return
+        val bounds = currentMap.projection.visibleRegion.latLngBounds
+        val queryBounds =
+            EmotionMapBounds(
+                minLongitude = bounds.longitudeWest,
+                minLatitude = bounds.latitudeSouth,
+                maxLongitude = bounds.longitudeEast,
+                maxLatitude = bounds.latitudeNorth,
+            )
+        if (queryBounds.isValid()) {
+            val padding = REGION_RENDER_PADDING_DP * mapView.resources.displayMetrics.density
+            val paddedWidth = mapView.width + padding * 2
+            val paddedHeight = mapView.height + padding * 2
+            val edgeSegments = 12
+            val renderCoordinates =
+                buildList {
+                    for (step in 0..edgeSegments) {
+                        val fraction = step.toFloat() / edgeSegments
+                        val x = -padding + paddedWidth * fraction
+                        val y = -padding + paddedHeight * fraction
+                        add(PointF(x, -padding))
+                        add(PointF(mapView.width + padding, y))
+                        add(PointF(mapView.width + padding - paddedWidth * fraction, mapView.height + padding))
+                        add(PointF(-padding, mapView.height + padding - paddedHeight * fraction))
+                    }
+                }.map { point ->
+                    currentMap.projection.fromScreenLocation(point).let { GeoCoordinate(it.latitude, it.longitude) }
+                }
+            val renderBounds = enclosingEmotionMapBounds(renderCoordinates) ?: queryBounds
+            onViewportChanged(EmotionMapViewport(queryBounds, currentMap.cameraPosition.zoom, renderBounds))
+        }
+    }
+}

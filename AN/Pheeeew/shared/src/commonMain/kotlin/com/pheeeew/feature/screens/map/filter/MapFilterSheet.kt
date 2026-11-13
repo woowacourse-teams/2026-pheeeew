@@ -1,0 +1,349 @@
+package com.pheeeew.feature.screens.map.filter
+
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LocalRippleConfiguration
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RippleConfiguration
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.component.AppNavigableBottomSheet
+import com.pheeeew.core.designsystem.component.RaisedCardButton
+import com.pheeeew.core.designsystem.component.SheetDragHandle
+import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.core.designsystem.theme.AppSpacing
+import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.core.designsystem.theme.appBorderLight
+import com.pheeeew.core.designsystem.theme.appError
+import com.pheeeew.core.designsystem.theme.appInk
+import com.pheeeew.core.designsystem.theme.appPrimary
+import com.pheeeew.core.designsystem.theme.appScrim
+import com.pheeeew.core.designsystem.theme.appSurface
+import com.pheeeew.core.designsystem.theme.appSurfaceSubtle
+import com.pheeeew.core.designsystem.theme.appTextPrimary
+import com.pheeeew.core.designsystem.theme.appTextSecondary
+import kotlinx.coroutines.launch
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MapFilterSheet(
+    state: MapFilterUiModel,
+    onDismiss: () -> Unit,
+    onReset: () -> Unit,
+    onPeriod: (FilterPeriod) -> Unit,
+    onContent: (FilterContent) -> Unit,
+    onScope: (FilterScope) -> Unit,
+    onOpenDate: (Boolean) -> Unit,
+    onConfirmDate: (FilterDate) -> Unit,
+    onClosePage: () -> Unit,
+    onApply: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val coroutineScope = rememberCoroutineScope()
+    val contentScroll =
+        if (state.page == FilterPage.Filters) Modifier.verticalScroll(rememberScrollState()) else Modifier
+    AppNavigableBottomSheet(
+        onDismissRequest = onDismiss,
+        onBackOrOutsideClick = {
+            if (state.page == FilterPage.Filters) {
+                coroutineScope.launch {
+                    sheetState.hide()
+                    if (!sheetState.isVisible) onDismiss()
+                }
+            } else {
+                onClosePage()
+            }
+        },
+        outsideContentDescription = if (state.page == FilterPage.Filters) "필터 닫기" else "필터로 돌아가기",
+        sheetState = sheetState,
+        shape = AppShapes.BottomSheet,
+        containerColor = MaterialTheme.colorScheme.appSurface,
+        scrimColor = MaterialTheme.colorScheme.appScrim.copy(alpha = 0.3f),
+        dragHandle = { SheetDragHandle() },
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .animateContentSize()
+                .then(contentScroll)
+                .padding(horizontal = AppSpacing.screen.dp),
+        ) {
+            when (state.page) {
+                FilterPage.Filters -> {
+                    MapFilterContent(state, onReset, onPeriod, onContent, onScope, onOpenDate, onApply)
+                }
+
+                FilterPage.StartDate, FilterPage.EndDate -> {
+                    FilterDateContent(
+                        initial = if (state.page == FilterPage.StartDate) state.startDate else state.endDate,
+                        onConfirm = onConfirmDate,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun MapFilterContent(
+    state: MapFilterUiModel,
+    onReset: () -> Unit,
+    onPeriod: (FilterPeriod) -> Unit,
+    onContent: (FilterContent) -> Unit,
+    onScope: (FilterScope) -> Unit,
+    onOpenDate: (Boolean) -> Unit,
+    onApply: () -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text = "필터", fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+        // AppNavigableBottomSheet disables ripples; restore the default for this action only.
+        CompositionLocalProvider(LocalRippleConfiguration provides RippleConfiguration()) {
+            Box(
+                Modifier
+                    .height(32.dp)
+                    .clip(AppShapes.CompactControl)
+                    .clickable(enabled = !state.applying, role = Role.Button, onClick = onReset)
+                    .padding(horizontal = AppSpacing.chip.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "초기화",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.appTextSecondary,
+                )
+            }
+        }
+    }
+    Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.appBorderLight))
+    Spacer(Modifier.height(AppSpacing.sectionGap.dp))
+    FilterLabel(label = "조회 기간")
+    Spacer(Modifier.height(AppSpacing.sm.dp))
+    FilterChoices(
+        labels = listOf("2주", "1개월", "전체", "직접 설정"),
+        selected = state.period.ordinal,
+        onSelect = { onPeriod(FilterPeriod.entries[it]) },
+        enabled = !state.applying,
+    )
+    if (state.period == FilterPeriod.Custom) {
+        Spacer(Modifier.height(AppSpacing.sm.dp))
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(AppSpacing.sm.copy(value = 10.dp).dp),
+        ) {
+            DateField(state.startDate, "시작일", Modifier.weight(1f), enabled = !state.applying) { onOpenDate(true) }
+            Text("~", color = MaterialTheme.colorScheme.appTextSecondary)
+            DateField(state.endDate, "종료일", Modifier.weight(1f), enabled = !state.applying) { onOpenDate(false) }
+        }
+    }
+    Spacer(Modifier.height(AppSpacing.sectionGap.dp))
+    FilterLabel(label = "내용")
+    Spacer(Modifier.height(AppSpacing.sm.dp))
+    FilterChoices(
+        listOf("전체", "메모만", "녹음만"),
+        state.content.ordinal,
+        enabled = !state.applying,
+    ) { onContent(FilterContent.entries[it]) }
+    Spacer(Modifier.height(AppSpacing.sectionGap.dp))
+    FilterLabel(label = "조회 범위")
+    Spacer(Modifier.height(AppSpacing.sm.dp))
+    FilterChoices(
+        listOf("전체", "내 기록만"),
+        state.scope.ordinal,
+        enabled = !state.applying,
+    ) { onScope(FilterScope.entries[it]) }
+
+    state.applyError?.let { error ->
+        Text(
+            error,
+            modifier = Modifier.padding(top = AppSpacing.md.dp),
+            color = MaterialTheme.colorScheme.appError,
+            fontSize = 13.sp,
+        )
+    }
+    Spacer(Modifier.height(AppSpacing.xxxl.copy(value = 64.dp).dp))
+    if (state.applying) {
+        Row(
+            Modifier.fillMaxWidth().height(56.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
+            Text("조회 중…", modifier = Modifier.padding(start = AppSpacing.sm.copy(value = 10.dp).dp), fontSize = 16.sp)
+        }
+    } else {
+        FilterActionButton(label = "완료", onClick = onApply)
+    }
+}
+
+@Composable
+private fun FilterLabel(label: String) {
+    Text(label, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.appInk)
+}
+
+@Composable
+private fun FilterChoices(
+    labels: List<String>,
+    selected: Int,
+    enabled: Boolean = true,
+    onSelect: (Int) -> Unit,
+) {
+    val selectionSurface = MaterialTheme.colorScheme.appSurface
+    val selectionPosition by animateFloatAsState(
+        targetValue = selected.toFloat(),
+        animationSpec = tween(220, easing = FastOutSlowInEasing),
+        label = "FilterChoicePosition",
+    )
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(AppShapes.Card)
+            .background(MaterialTheme.colorScheme.appSurfaceSubtle)
+            .padding(AppSpacing.xs.dp)
+            .drawBehind {
+                if (labels.isNotEmpty()) {
+                    val itemWidth = size.width / labels.size
+                    drawRoundRect(
+                        color = selectionSurface,
+                        topLeft = Offset(itemWidth * selectionPosition, 0f),
+                        size = Size(itemWidth, size.height),
+                        cornerRadius = CornerRadius(12.dp.toPx()),
+                    )
+                }
+            },
+    ) {
+        labels.forEachIndexed { index, label ->
+            val active = index == selected
+            val textColor by animateColorAsState(
+                targetValue =
+                    if (active) {
+                        MaterialTheme.colorScheme.appTextPrimary
+                    } else {
+                        MaterialTheme.colorScheme.appTextSecondary
+                    },
+                animationSpec = tween(150),
+                label = "FilterChoiceTextColor",
+            )
+            Box(
+                Modifier
+                    .weight(1f)
+                    .clip(AppShapes.CompactControl)
+                    .padding(vertical = AppSpacing.sm.dp)
+                    .clickable(enabled = enabled, interactionSource = null, indication = null) { onSelect(index) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    label,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = textColor,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DateField(
+    date: FilterDate?,
+    placeholder: String,
+    modifier: Modifier,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+) {
+    val textColor = if (date == null) MaterialTheme.colorScheme.appTextSecondary else MaterialTheme.colorScheme.appInk
+    Box(
+        modifier
+            .clip(AppShapes.CompactControl)
+            .background(MaterialTheme.colorScheme.appSurfaceSubtle)
+            .padding(vertical = AppSpacing.sm.copy(value = 10.dp).dp)
+            .clickable(enabled = enabled, interactionSource = null, indication = null, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            date?.toString() ?: placeholder,
+            fontSize = 14.sp,
+            color = textColor,
+        )
+    }
+}
+
+@Composable
+internal fun FilterActionButton(
+    label: String,
+    onClick: () -> Unit,
+) {
+    RaisedCardButton(
+        backgroundColor = MaterialTheme.colorScheme.appPrimary,
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().height(56.dp),
+    ) {
+        Text(
+            label,
+            modifier = Modifier.align(Alignment.Center),
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Preview(name = "지도 필터", widthDp = 402, heightDp = 760, showBackground = true)
+@Composable
+private fun MapFilterContentPreview() {
+    AppTheme {
+        Column(Modifier.background(MaterialTheme.colorScheme.appSurface).padding(horizontal = AppSpacing.screen.dp)) {
+            MapFilterContent(
+                MapFilterUiModel(
+                    visible = true,
+                    period = FilterPeriod.Custom,
+                ),
+                onReset = {},
+                onPeriod = {},
+                onContent = {},
+                onScope = {},
+                onOpenDate = {},
+                onApply = {},
+            )
+        }
+    }
+}

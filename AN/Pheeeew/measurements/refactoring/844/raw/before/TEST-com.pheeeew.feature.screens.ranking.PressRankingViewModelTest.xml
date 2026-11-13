@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.pheeeew.feature.screens.ranking.PressRankingViewModelTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T13:43:36.923Z" hostname="MacBook-Pro.local" time="0.016">
+  <properties/>
+  <testcase name="빈 랭킹은 준비 완료 상태로 노출되고 초기 실패는 다시 시도할 수 있다" classname="com.pheeeew.feature.screens.ranking.PressRankingViewModelTest" time="0.008"/>
+  <testcase name="선택한 감정과 주로 다시 요청하고 새로고침 실패 시 기존 목록을 유지한다" classname="com.pheeeew.feature.screens.ranking.PressRankingViewModelTest" time="0.003"/>
+  <testcase name="늦게 도착한 이전 필터 응답은 현재 선택 결과를 덮지 않는다" classname="com.pheeeew.feature.screens.ranking.PressRankingViewModelTest" time="0.005"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,223 @@
+package com.pheeeew.feature.screens.ranking.press
+
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.tooling.preview.Preview
+import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.feature.emotion.model.EmotionKind
+
+private val raceSample =
+    listOf(
+        "예민한 고양이",
+        "나",
+        "조용한 오리",
+        "졸린 토끼",
+        "느긋한 곰",
+        "수줍은 복숭아",
+        "멍한 구름",
+        "씩씩한 강아지",
+        "작은 고슴도치",
+        "말랑한 두부",
+        "신중한 펭귄",
+        "웃는 감자",
+        "차분한 여우",
+    ).mapIndexed { index, name ->
+        val counts = listOf(12L, 10L, 9L, 8L, 7L, 6L, 5L, 4L, 3L, 3L, 2L, 1L, 1L)
+        PressRaceRowModel(
+            index + 1L,
+            name,
+            counts[index],
+            raceProgress(counts[index], 12L),
+            index == 1,
+            EmotionKind.entries[
+                index %
+                    EmotionKind.entries.size,
+            ],
+        )
+    }
+
+@Preview(name = "전체 순위 SVG", widthDp = 402, heightDp = 874)
+@Preview(name = "전체 순위 작은 화면", widthDp = 320, heightDp = 720)
+@Preview(name = "전체 순위 큰 글씨", widthDp = 402, heightDp = 874, fontScale = 1.5f)
+@Composable
+private fun PressRacePreview() {
+    AppTheme {
+        PressRankingScreen({}, PressRankingUiState(status = PressRankingStatus.Ready), {}, {}, rows = raceSample)
+    }
+}
+
+@Preview(name = "전체 순위 빈 목록", widthDp = 402, heightDp = 874)
+@Composable
+private fun PressRaceEmptyPreview() {
+    AppTheme {
+        PressRankingScreen({}, PressRankingUiState(status = PressRankingStatus.Ready), {}, {})
+    }
+}
+
+@Preview(name = "전체 순위 로딩", widthDp = 402, heightDp = 874)
+@Composable
+private fun PressRaceLoadingPreview() {
+    AppTheme { PressRankingScreen({}, PressRankingUiState(), {}, {}) }
+}
+
+@Preview(name = "전체 순위 실패", widthDp = 402, heightDp = 874)
+@Composable
+private fun PressRaceFailedPreview() {
+    AppTheme {
+        PressRankingScreen({}, PressRankingUiState(status = PressRankingStatus.Failed), {}, {})
+    }
+}
+
+@Preview(name = "전체 순위 긴 값과 동점", widthDp = 320, heightDp = 720)
+@Composable
+private fun PressRaceBoundaryPreview() {
+    val rows =
+        listOf(
+            PressRaceRowModel(10000, "아주아주아주아주긴중복닉네임", Long.MAX_VALUE, 1f),
+            PressRaceRowModel(10000, "아주아주아주아주긴중복닉네임", Long.MAX_VALUE, 1f, isMe = true),
+            PressRaceRowModel(10002, "0회 참여자", 0L, 0f),
+        )
+    AppTheme {
+        PressRankingScreen({}, PressRankingUiState(status = PressRankingStatus.Ready), {}, {}, rows = rows)
+    }
+}
+
+@Preview(name = "전체 순위 100명", widthDp = 402, heightDp = 874)
+@Composable
+private fun PressRaceLongListPreview() {
+    val rows =
+        List(100) { index ->
+            PressRaceRowModel(index + 1L, "참여자 ${index + 1}", (100 - index).toLong(), (100 - index) / 100f)
+        }
+    AppTheme {
+        PressRankingScreen({}, PressRankingUiState(status = PressRankingStatus.Ready), {}, {}, rows = rows)
+    }
+}
+
+@Preview(name = "전체 순위 1210회", widthDp = 320, heightDp = 720)
+@Preview(name = "전체 순위 1210회 큰 글씨", widthDp = 320, heightDp = 720, fontScale = 1.5f)
+@Composable
+private fun PressRaceFourDigitCountPreview() {
+    AppTheme {
+        PressRankingScreen(
+            {},
+            PressRankingUiState(status = PressRankingStatus.Ready),
+            {},
+            {},
+            rows =
+                listOf(
+                    PressRaceRowModel(1, "예민한 고양이", 1210L, 1f),
+                    PressRaceRowModel(2, "나", 1000L, raceProgress(1000L, 1210L), isMe = true),
+                    PressRaceRowModel(3, "조용한 오리", 999L, raceProgress(999L, 1210L)),
+                ),
+        )
+    }
+}
+
+@Preview(name = "내 레이스 1위", widthDp = 402, heightDp = 874)
+@Composable
+private fun MyRaceFirstPreview() {
+    AppTheme {
+        PressRankingScreen({
+        }, PressRankingUiState(me = PressPersonRank(1, "나", 1210), status = PressRankingStatus.Ready), {
+        }, {}, rows = raceSample)
+    }
+}
+
+@Preview(name = "내 레이스 2위", widthDp = 402, heightDp = 874)
+@Composable
+private fun MyRaceSecondPreview() {
+    AppTheme {
+        PressRankingScreen({
+        }, PressRankingUiState(me = PressPersonRank(2, "나", 1008), status = PressRankingStatus.Ready), {
+        }, {}, rows = raceSample)
+    }
+}
+
+@Preview(name = "내 레이스 일반 순위", widthDp = 320, heightDp = 720)
+@Preview(name = "내 레이스 큰 글씨", widthDp = 320, heightDp = 720, fontScale = 1.5f)
+@Composable
+private fun MyRaceLargeRankPreview() {
+    AppTheme {
+        PressRankingScreen(
+            {
+            },
+            PressRankingUiState(
+                me = PressPersonRank(10000, "나", Long.MAX_VALUE),
+                status = PressRankingStatus.Ready,
+            ),
+            {
+            },
+            {},
+            rows = raceSample,
+        )
+    }
+}
+
+@Preview(name = "일일 순위 연결 끊김과 캐시", widthDp = 320, heightDp = 720, fontScale = 1.5f)
+@Composable
+private fun PressRaceDisconnectedPreview() {
+    AppTheme {
+        PressRankingScreen(
+            {},
+            PressRankingUiState(
+                date = "2026-10-27",
+                me = PressPersonRank(101, "나", Long.MAX_VALUE),
+                status = PressRankingStatus.Ready,
+                isStale = true,
+                hasRefreshError = true,
+            ),
+            {},
+            {},
+            rows = raceSample,
+        )
+    }
+}
+
+@Preview(name = "일일 순위 상단바 날짜·최대 글씨", widthDp = 320, heightDp = 568, fontScale = 2f)
+@Composable
+private fun PressRaceDatedLargeTextPreview() {
+    AppTheme {
+        PressRankingScreen(
+            onBack = {},
+            uiState = PressRankingUiState(status = PressRankingStatus.Ready),
+            onRetry = {},
+            onRefresh = {},
+            rows = raceSample,
+            dailyDate = "2026-10-27",
+        )
+    }
+}
+
+@Preview(name = "일일 순위 목록 날짜·큰 글씨", widthDp = 320, heightDp = 568, fontScale = 2f)
+@Composable
+private fun PressRaceListDatePreview() {
+    AppTheme {
+        PressRankingScreen(
+            onBack = {},
+            uiState = PressRankingUiState(status = PressRankingStatus.Ready, date = "2026-10-27"),
+            onRetry = {},
+            onRefresh = {},
+            rows = raceSample,
+        )
+    }
+}
+
+@Preview(name = "고정 헤더 작은 화면 큰 글씨", widthDp = 320, heightDp = 568, fontScale = 2f)
+@Preview(name = "고정 헤더 일반 화면", widthDp = 402, heightDp = 874)
+@Composable
+private fun PressRaceFixedOverviewPreview() {
+    AppTheme {
+        PressRankingScreen(
+            onBack = {},
+            uiState =
+                PressRankingUiState(
+                    date = "2026-10-28",
+                    status = PressRankingStatus.Ready,
+                    me = PressPersonRank(10, "나", 12345),
+                ),
+            onRetry = {},
+            onRefresh = {},
+            rows = raceSample,
+        )
+    }
+}

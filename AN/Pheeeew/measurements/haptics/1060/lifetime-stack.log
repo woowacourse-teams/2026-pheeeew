@@ -1,0 +1,275 @@
+(lldb) command source -s 0 'boot-capture.lldb'
+Executing commands in 'boot-capture.lldb'.
+(lldb) script lldb.debugger.SetAsync(False)
+(lldb) device select <DEVICE_IDENTIFIER>
+(lldb) device process attach -p 88769
+(lldb) script exec("import time\np = lldb.debugger.GetSelectedTarget().GetProcess()\nfor _ in range(25):\n if p.GetState() in (lldb.eStateStopped, lldb.eStateCrashed, lldb.eStateExited): break\n time.sleep(1)\nprint(\"attach state:\",p.GetState())")
+Process 88769 stopped
+* thread #1, stop reason = signal SIGSTOP
+    frame #0: 0x00000001032430f0 dyld`_dyld_start
+dyld`_dyld_start:
+->  0x1032430f0 <+0>:  mov    x0, sp
+    0x1032430f4 <+4>:  and    sp, x0, #0xfffffffffffffff0
+    0x1032430f8 <+8>:  mov    x29, #0x0                 ; =0
+    0x1032430fc <+12>: mov    x30, #0x0                 ; =0
+Target 0: (Pheeeew) stopped.
+attach state: 5
+(lldb) process status
+Process 88769 stopped
+* thread #1, stop reason = signal SIGSTOP
+    frame #0: 0x00000001032430f0 dyld`_dyld_start
+dyld`_dyld_start:
+->  0x1032430f0 <+0>:  mov    x0, sp
+    0x1032430f4 <+4>:  and    sp, x0, #0xfffffffffffffff0
+    0x1032430f8 <+8>:  mov    x29, #0x0                 ; =0
+    0x1032430fc <+12>: mov    x30, #0x0                 ; =0
+(lldb) target list
+Current targets:
+* target #0: /private/var/containers/Bundle/Application/B886B16A-A69B-4264-94A3-F3B8AADA73D0/Pheeeew.app/Pheeeew ( arch=arm64-apple-ios, platform=remote-ios, pid=88769, state=stopped )
+(lldb) breakpoint set --func-regex "CHHapticEngine.*init" --one-shot true
+Breakpoint 1: no locations (pending).
+WARNING:  Unable to resolve breakpoint to any actual locations.
+(lldb) continue
+2 locations added to breakpoint 1
+10 locations added to breakpoint 1
+Process 88769 resuming
+Process 88769 stopped
+* thread #1, queue = 'com.apple.main-thread', stop reason = one-shot breakpoint 1
+    frame #0: 0x000000021b83f150 CoreHaptics`+[CHHapticEngine initialize]
+CoreHaptics`+[CHHapticEngine initialize]:
+->  0x21b83f150 <+0>:  pacibsp
+    0x21b83f154 <+4>:  stp    x29, x30, [sp, #-0x10]!
+    0x21b83f158 <+8>:  mov    x29, sp
+    0x21b83f15c <+12>: mov    x1, #0x61dd               ; =25053
+Target 0: (Pheeeew) stopped.
+(lldb) command script import ${PROJECT_ROOT}/AN/Pheeeew/scripts/haptic_channel_exact_1060.py
+[HapticChannelFailure] Exact error branch breakpoint 2 0x21a25efb4
+Only the error branch stops; ordinary log calls are not intercepted.
+(lldb) continue
+Process 88769 resuming
+Process 88769 stopped
+* thread #15, queue = 'com.apple.UIKit.FeedbackCoreHapticsEngineInternal', stop reason = one-shot breakpoint 2
+    frame #0: 0x000000021b852fb4 CoreHaptics`-[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:] + 208
+CoreHaptics`-[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:]:
+->  0x21b852fb4 <+208>: bl     0x220a3a7b0
+    0x21b852fb8 <+212>: bl     0x220a3ab00
+    0x21b852fbc <+216>: ldur   x8, [x29, #-0x18]
+    0x21b852fc0 <+220>: adrp   x9, 385534
+Target 0: (Pheeeew) stopped.
+(lldb) thread backtrace
+* thread #15, queue = 'com.apple.UIKit.FeedbackCoreHapticsEngineInternal', stop reason = one-shot breakpoint 2
+  * frame #0: 0x000000021b852fb4 CoreHaptics`-[CHHapticEngine(CHHapticEngineInternal) getAvailableChannel:] + 208
+    frame #1: 0x000000021b84cfac CoreHaptics`-[PatternPlayer initWithPlayable:engine:privileged:error:] + 876
+    frame #2: 0x000000021b889050 CoreHaptics`-[CHHapticEngine createPrivilegedPlayerWithPlayable:error:] + 252
+    frame #3: 0x000000018b797610 UIKitCore`-[_UIFeedbackCoreHapticsPlayer _internal_createPlayerWithPattern:] + 124
+    frame #4: 0x000000018b79b6fc UIKitCore`-[_UIFeedbackCoreHapticsPlayer _internal_playFeedbackData:forFeedback:atTime:] + 344
+    frame #5: 0x000000018b79ee44 UIKitCore`__121-[_UIFeedbackEngine _internal_playFeedbackData:atTime:feedback:effectiveFeedbackType:existingPlayer:withCompletionBlock:]_block_invoke + 68
+    frame #6: 0x000000018b79f078 UIKitCore`__121-[_UIFeedbackEngine _internal_playFeedbackData:atTime:feedback:effectiveFeedbackType:existingPlayer:withCompletionBlock:]_block_invoke.106 + 440
+    frame #7: 0x000000018b796524 UIKitCore`__91-[_UIFeedbackCoreHapticsEngine _internal_dequeueReusableFeedbackPlayerWithCompletionBlock:]_block_invoke + 148
+    frame #8: 0x000000018b796444 UIKitCore`-[_UIFeedbackCoreHapticsEngine _internal_dequeueReusableFeedbackPlayerWithCompletionBlock:] + 196
+    frame #9: 0x000000018b79edc8 UIKitCore`-[_UIFeedbackEngine _internal_playFeedbackData:atTime:feedback:effectiveFeedbackType:existingPlayer:withCompletionBlock:] + 960
+    frame #10: 0x000000018b79e8f4 UIKitCore`__62-[_UIFeedbackEngine _playFeedback:atTime:withCompletionBlock:]_block_invoke + 160
+    frame #11: 0x00000001bf6199a8 libdispatch.dylib`_dispatch_call_block_and_release + 32
+    frame #12: 0x00000001bf6331e4 libdispatch.dylib`_dispatch_client_callout + 16
+    frame #13: 0x00000001bf621fb0 libdispatch.dylib`_dispatch_lane_serial_drain + 740
+    frame #14: 0x00000001bf622aac libdispatch.dylib`_dispatch_lane_invoke + 392
+    frame #15: 0x00000001bf62cdac libdispatch.dylib`_dispatch_root_queue_drain_deferred_wlh + 284
+    frame #16: 0x00000001bf62c6ac libdispatch.dylib`_dispatch_workloop_worker_thread + 720
+    frame #17: 0x00000001e449b3b0 libsystem_pthread.dylib`_pthread_wqthread + 292
+(lldb) breakpoint set --name "-[CHHapticEngine(CHHapticEngineInternal) releaseChannel:]" --one-shot true
+Breakpoint 3: where = CoreHaptics`-[CHHapticEngine(CHHapticEngineInternal) releaseChannel:], address = 0x000000021b88c058
+(lldb) continue
+Process 88769 resuming
+Process 88769 stopped
+* thread #3, queue = 'com.apple.UIKit.FeedbackCoreHapticsEngineInternal', stop reason = one-shot breakpoint 3
+    frame #0: 0x000000021b88c058 CoreHaptics`-[CHHapticEngine(CHHapticEngineInternal) releaseChannel:]
+CoreHaptics`-[CHHapticEngine(CHHapticEngineInternal) releaseChannel:]:
+->  0x21b88c058 <+0>:  pacibsp
+    0x21b88c05c <+4>:  sub    sp, sp, #0x60
+    0x21b88c060 <+8>:  stp    x20, x19, [sp, #0x40]
+    0x21b88c064 <+12>: stp    x29, x30, [sp, #0x50]
+Target 0: (Pheeeew) stopped.
+(lldb) register read x2
+      x2 = 0x0000000117180940
+(lldb) thread backtrace all
+  thread #1, queue = 'com.apple.main-thread'
+    frame #0: 0x0000000234511cd4 libsystem_kernel.dylib`mach_msg2_trap + 8
+    frame #1: 0x000000023451530c libsystem_kernel.dylib`mach_msg2_internal + 76
+    frame #2: 0x000000023451522c libsystem_kernel.dylib`mach_msg_overwrite + 424
+    frame #3: 0x0000000234515078 libsystem_kernel.dylib`mach_msg + 24
+    frame #4: 0x0000000184b40344 CoreFoundation`__CFRunLoopServiceMachPort + 160
+    frame #5: 0x0000000184b0a310 CoreFoundation`__CFRunLoopRun + 1188
+    frame #6: 0x0000000184b0954c CoreFoundation`_CFRunLoopRunSpecificWithOptions + 532
+    frame #7: 0x000000022aaf1498 GraphicsServices`GSEventRunModal + 120
+    frame #8: 0x000000018a83d670 UIKitCore`-[UIApplication _run] + 796
+    frame #9: 0x000000018a7a8158 UIKitCore`UIApplicationMain + 332
+    frame #10: 0x000000018db97570 SwiftUI`closure #1 in KitRendererCommon(_:) + 168
+    frame #11: 0x000000018db940f4 SwiftUI`runApp(_:) + 112
+    frame #12: 0x000000018db93c48 SwiftUI`static App.main() + 172
+    frame #14: 0x00000001033b6980 Pheeeew.debug.dylib`main at iOSApp.swift:0
+    frame #15: 0x0000000181715c1c dyld`start + 6928
+* thread #3, queue = 'com.apple.UIKit.FeedbackCoreHapticsEngineInternal', stop reason = one-shot breakpoint 3
+  * frame #0: 0x000000021b88c058 CoreHaptics`-[CHHapticEngine(CHHapticEngineInternal) releaseChannel:]
+    frame #1: 0x000000021b859e48 CoreHaptics`-[PatternPlayer dealloc] + 308
+    frame #2: 0x000000018b79bbec UIKitCore`-[_UIFeedbackCoreHapticsPlayer .cxx_destruct] + 32
+    frame #3: 0x0000000181696660 libobjc.A.dylib`object_cxxDestructFromClass(objc_object*, objc_class*) + 116
+    frame #4: 0x0000000181692358 libobjc.A.dylib`objc_destructInstance_nonnull_realized(objc_object*) + 76
+    frame #5: 0x00000001816918a4 libobjc.A.dylib`_objc_rootDealloc + 72
+    frame #6: 0x0000000184b003d0 CoreFoundation`-[__NSSetM removeAllObjects] + 264
+    frame #7: 0x000000018b795f64 UIKitCore`__91-[_UIFeedbackCoreHapticsEngine _internal_teardownUnderlyingPlayerIfPossibleWithCompletion:]_block_invoke_2 + 300
+    frame #8: 0x00000001bf6199a8 libdispatch.dylib`_dispatch_call_block_and_release + 32
+    frame #9: 0x00000001bf6331e4 libdispatch.dylib`_dispatch_client_callout + 16
+    frame #10: 0x00000001bf621fb0 libdispatch.dylib`_dispatch_lane_serial_drain + 740
+    frame #11: 0x00000001bf622aac libdispatch.dylib`_dispatch_lane_invoke + 392
+    frame #12: 0x00000001bf62cdac libdispatch.dylib`_dispatch_root_queue_drain_deferred_wlh + 284
+    frame #13: 0x00000001bf62c6ac libdispatch.dylib`_dispatch_workloop_worker_thread + 720
+    frame #14: 0x00000001e449b3b0 libsystem_pthread.dylib`_pthread_wqthread + 292
+  thread #5, name = 'GC Timer thread'
+    frame #0: 0x00000002345175e8 libsystem_kernel.dylib`__psynch_cvwait + 8
+    frame #1: 0x00000001e449cb48 libsystem_pthread.dylib`_pthread_cond_wait + 980
+    frame #2: 0x000000019425a3dc libc++.1.dylib`std::__1::condition_variable::__do_timed_wait(std::__1::unique_lock<std::__1::mutex>&, std::__1::chrono::time_point<std::__1::chrono::system_clock, std::__1::chrono::duration<long long, std::__1::ratio<1l, 1000000000l>>>) + 104
+    frame #3: 0x00000001045d68c4 Pheeeew.debug.dylib`std::__1::cv_status std::__1::condition_variable::wait_until[abi:nqe210106]<std::__1::chrono::steady_clock, std::__1::chrono::duration<long long, std::__1::ratio<1l, 1000000000l>>>(std::__1::unique_lock<std::__1::mutex>&, std::__1::chrono::time_point<std::__1::chrono::steady_clock, std::__1::chrono::duration<long long, std::__1::ratio<1l, 1000000000l>>> const&) + 320
+    frame #4: 0x00000001045d5cc8 Pheeeew.debug.dylib`void kotlin::RepeatedTimer<kotlin::steady_clock>::Run<kotlin::gcScheduler::internal::GCSchedulerDataAdaptive<kotlin::steady_clock>::GCSchedulerDataAdaptive(kotlin::gcScheduler::GCSchedulerConfig&, std::__1::function<long long ()>)::'lambda'()>(kotlin::gcScheduler::internal::GCSchedulerDataAdaptive<kotlin::steady_clock>::GCSchedulerDataAdaptive(kotlin::gcScheduler::GCSchedulerConfig&, std::__1::function<long long ()>)::'lambda'()&&) + 296
+    frame #5: 0x00000001045d6530 Pheeeew.debug.dylib`void* std::__1::__thread_proxy[abi:nqe210106]<std::__1::tuple<std::__1::unique_ptr<std::__1::__thread_struct, std::__1::default_delete<std::__1::__thread_struct>>, void (*)(kotlin::ScopedThread::attributes, void (*&&)(void (kotlin::RepeatedTimer<kotlin::steady_clock>::*&&)(kotlin::gcScheduler::internal::GCSchedulerDataAdaptive<kotlin::steady_clock>::GCSchedulerDataAdaptive(kotlin::gcScheduler::GCSchedulerConfig&, std::__1::function<long long ()>)::'lambda'()&&) noexcept, kotlin::RepeatedTimer<kotlin::steady_clock>*&&, kotlin::gcScheduler::internal::GCSchedulerDataAdaptive<kotlin::steady_clock>::GCSchedulerDataAdaptive(kotlin::gcScheduler::GCSchedulerConfig&, std::__1::function<long long ()>)::'lambda'()&&), void (kotlin::RepeatedTimer<kotlin::steady_clock>::*&&)(kotlin::gcScheduler::internal::GCSchedulerDataAdaptive<kotlin::steady_clock>::GCSchedulerDataAdaptive(kotlin::gcScheduler::GCSchedulerConfig&, std::__1::function<long long ()>)::'lambda'()&&) noexcept, kotlin::RepeatedTimer<kotlin::steady_clock>*&&, kotlin::gcScheduler::internal::GCSchedulerDataAdaptive<kotlin::steady_clock>::GCSchedulerDataAdaptive(kotlin::gcScheduler::GCSchedulerConfig&, std::__1::function<long long ()>)::'lambda'()&&), kotlin::ScopedThread::attributes, void (*)(void (kotlin::RepeatedTimer<kotlin::steady_clock>::*&&)(kotlin::gcScheduler::internal::GCSchedulerDataAdaptive<kotlin::steady_clock>::GCSchedulerDataAdaptive(kotlin::gcScheduler::GCSchedulerConfig&, std::__1::function<long long ()>)::'lambda'()&&) noexcept, kotlin::RepeatedTimer<kotlin::steady_clock>*&&, kotlin::gcScheduler::internal::GCSchedulerDataAdaptive<kotlin::steady_clock>::GCSchedulerDataAdaptive(kotlin::gcScheduler::GCSchedulerConfig&, std::__1::function<long long ()>)::'lambda'()&&), void (kotlin::RepeatedTimer<kotlin::steady_clock>::*)(kotlin::gcScheduler::internal::GCSchedulerDataAdaptive<kotlin::steady_clock>::GCSchedulerDataAdaptive(kotlin::gcScheduler::GCSchedulerConfig&, std::__1::function<long long ()>)::'lambda'()&&) noexcept, kotlin::RepeatedTimer<kotlin::steady_clock>*, kotlin::gcScheduler::internal::GCSchedulerDataAdaptive<kotlin::steady_clock>::GCSchedulerDataAdaptive(kotlin::gcScheduler::GCSchedulerConfig&, std::__1::function<long long ()>)::'lambda'()>>(void*) + 232
+    frame #6: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #6, name = 'Main GC thread'
+    frame #0: 0x00000002345175e8 libsystem_kernel.dylib`__psynch_cvwait + 8
+    frame #1: 0x00000001e449cb48 libsystem_pthread.dylib`_pthread_cond_wait + 980
+    frame #2: 0x0000000194255bcc libc++.1.dylib`std::__1::condition_variable::wait(std::__1::unique_lock<std::__1::mutex>&) + 32
+    frame #3: 0x00000001045c9338 Pheeeew.debug.dylib`kotlin::gc::internal::MainGCThread<kotlin::gc::internal::CmsGCTraits>::body() + 180
+    frame #4: 0x00000001045c8fd8 Pheeeew.debug.dylib`void* std::__1::__thread_proxy[abi:nqe210106]<std::__1::tuple<std::__1::unique_ptr<std::__1::__thread_struct, std::__1::default_delete<std::__1::__thread_struct>>, void (*)(kotlin::ScopedThread::attributes, void (*&&)(kotlin::gc::internal::MainGCThread<kotlin::gc::internal::CmsGCTraits>::MainGCThread(GCStateHolder&, kotlin::alloc::Allocator&, kotlin::gcScheduler::GCScheduler&, kotlin::gc::mark::ConcurrentMark&)::'lambda'()&&), kotlin::gc::internal::MainGCThread<kotlin::gc::internal::CmsGCTraits>::MainGCThread(GCStateHolder&, kotlin::alloc::Allocator&, kotlin::gcScheduler::GCScheduler&, kotlin::gc::mark::ConcurrentMark&)::'lambda'()&&), kotlin::ScopedThread::attributes, void (*)(kotlin::gc::internal::MainGCThread<kotlin::gc::internal::CmsGCTraits>::MainGCThread(GCStateHolder&, kotlin::alloc::Allocator&, kotlin::gcScheduler::GCScheduler&, kotlin::gc::mark::ConcurrentMark&)::'lambda'()&&), kotlin::gc::internal::MainGCThread<kotlin::gc::internal::CmsGCTraits>::MainGCThread(GCStateHolder&, kotlin::alloc::Allocator&, kotlin::gcScheduler::GCScheduler&, kotlin::gc::mark::ConcurrentMark&)::'lambda'()>>(void*) + 208
+    frame #5: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #7
+    frame #0: 0x00000002345175e8 libsystem_kernel.dylib`__psynch_cvwait + 8
+    frame #1: 0x00000001e449cb48 libsystem_pthread.dylib`_pthread_cond_wait + 980
+    frame #2: 0x00000001045efae0 Pheeeew.debug.dylib`WaitOnCondVar(_opaque_pthread_cond_t*, _opaque_pthread_mutex_t*, unsigned long long, unsigned long long*) + 152
+    frame #3: 0x00000001045f2c8c Pheeeew.debug.dylib`(anonymous namespace)::waitInNativeState(_opaque_pthread_cond_t*, _opaque_pthread_mutex_t*, unsigned long long, unsigned long long*) + 144
+    frame #4: 0x00000001045f1bd4 Pheeeew.debug.dylib`Worker::processQueueElement(bool) + 872
+    frame #5: 0x00000001045f1708 Pheeeew.debug.dylib`(anonymous namespace)::workerRoutine(void*) + 244
+    frame #6: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #10, name = 'com.apple.uikit.eventfetch-thread'
+    frame #0: 0x0000000234511cd4 libsystem_kernel.dylib`mach_msg2_trap + 8
+    frame #1: 0x000000023451530c libsystem_kernel.dylib`mach_msg2_internal + 76
+    frame #2: 0x000000023451522c libsystem_kernel.dylib`mach_msg_overwrite + 424
+    frame #3: 0x0000000234515078 libsystem_kernel.dylib`mach_msg + 24
+    frame #4: 0x0000000184b40344 CoreFoundation`__CFRunLoopServiceMachPort + 160
+    frame #5: 0x0000000184b0a310 CoreFoundation`__CFRunLoopRun + 1188
+    frame #6: 0x0000000184b0954c CoreFoundation`_CFRunLoopRunSpecificWithOptions + 532
+    frame #7: 0x0000000181d76cf0 Foundation`-[NSRunLoop(NSRunLoop) runMode:beforeDate:] + 212
+    frame #8: 0x0000000181d76bd8 Foundation`-[NSRunLoop(NSRunLoop) runUntilDate:] + 64
+    frame #9: 0x000000018a802eac UIKitCore`-[UIEventFetcher threadMain] + 420
+    frame #10: 0x0000000181dfa904 Foundation`__NSThread__start__ + 732
+    frame #11: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #12, queue = 'CHMetricsDispatchQueue'
+    frame #0: 0x0000000181775298 dyld`DyldSharedCache::forEachRegion(void (void const*, unsigned long long, unsigned long long, unsigned int, unsigned int, unsigned long long, unsigned long long, bool&) block_pointer) const + 16
+    frame #1: 0x0000000181713834 dyld`invocation function for block in dyld4::APIs::_dyld_is_memory_immutable(void const*, unsigned long) + 116
+    frame #2: 0x00000001817128f0 dyld`DyldSharedCache::forEachCache(void (DyldSharedCache const*, bool&) block_pointer) const + 168
+    frame #3: 0x000000018171394c dyld`dyld4::APIs::_dyld_is_memory_immutable(void const*, unsigned long) + 192
+    frame #4: 0x00000001aab40100 libsystem_trace.dylib`_os_log_impl_flatten_and_send + 2456
+    frame #5: 0x00000001aab428ac libsystem_trace.dylib`_os_log + 160
+    frame #6: 0x00000001aab421f8 libsystem_trace.dylib`_os_log_impl + 28
+    frame #7: 0x000000021b86ca30 CoreHaptics`-[CHMetrics sendDetailedMetricsForPlayerID:endTime:] + 2828
+    frame #8: 0x000000021b86b44c CoreHaptics`__44-[CHMetrics handleFinishedForPlayersAtTime:]_block_invoke + 176
+    frame #9: 0x000000021b86bb6c CoreHaptics`__29-[CHMetrics dispatchOnLocal:]_block_invoke + 52
+    frame #10: 0x00000001bf6199a8 libdispatch.dylib`_dispatch_call_block_and_release + 32
+    frame #11: 0x00000001bf6331e4 libdispatch.dylib`_dispatch_client_callout + 16
+    frame #12: 0x00000001bf621fb0 libdispatch.dylib`_dispatch_lane_serial_drain + 740
+    frame #13: 0x00000001bf622aac libdispatch.dylib`_dispatch_lane_invoke + 392
+    frame #14: 0x00000001bf62cdac libdispatch.dylib`_dispatch_root_queue_drain_deferred_wlh + 284
+    frame #15: 0x00000001bf62c6ac libdispatch.dylib`_dispatch_workloop_worker_thread + 720
+    frame #16: 0x00000001e449b3b0 libsystem_pthread.dylib`_pthread_wqthread + 292
+  thread #13
+    frame #0: 0x0000000234511a80 libsystem_kernel.dylib`__workq_kernreturn + 8
+  thread #15
+    frame #0: 0x00000001e449a8b8 libsystem_pthread.dylib`start_wqthread
+  thread #18
+    frame #0: 0x0000000234517808 libsystem_kernel.dylib`__semwait_signal + 8
+    frame #1: 0x000000019066482c libsystem_c.dylib`nanosleep + 220
+    frame #2: 0x0000000190664954 libsystem_c.dylib`sleep + 52
+    frame #3: 0x00000001037a7e9c Pheeeew.debug.dylib`monitorCachedData + 660
+    frame #4: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #19, name = 'io.sentry.app-hang-tracker'
+    frame #0: 0x0000000234517808 libsystem_kernel.dylib`__semwait_signal + 8
+    frame #1: 0x000000019066482c libsystem_c.dylib`nanosleep + 220
+    frame #2: 0x00000001820814f8 Foundation`+[NSThread sleepForTimeInterval:] + 152
+    frame #3: 0x0000000103816f90 Pheeeew.debug.dylib`@objc SentryThreadWrapper.sleep(forTimeInterval:) + 36
+    frame #4: 0x000000010377a7f0 Pheeeew.debug.dylib`-[SentryANRTrackerV1 detectANRs] + 556
+    frame #5: 0x0000000181dfa904 Foundation`__NSThread__start__ + 732
+    frame #6: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #20
+    frame #0: 0x00000002345175e8 libsystem_kernel.dylib`__psynch_cvwait + 8
+    frame #1: 0x00000001e449cb48 libsystem_pthread.dylib`_pthread_cond_wait + 980
+    frame #2: 0x00000001045efae0 Pheeeew.debug.dylib`WaitOnCondVar(_opaque_pthread_cond_t*, _opaque_pthread_mutex_t*, unsigned long long, unsigned long long*) + 152
+    frame #3: 0x00000001045f2c8c Pheeeew.debug.dylib`(anonymous namespace)::waitInNativeState(_opaque_pthread_cond_t*, _opaque_pthread_mutex_t*, unsigned long long, unsigned long long*) + 144
+    frame #4: 0x00000001045f7d7c Pheeeew.debug.dylib`Worker::park(long long, bool) + 860
+    frame #5: 0x0000000104466500 Pheeeew.debug.dylib`kfun:kotlin.native.concurrent.Worker#park(kotlin.Long;kotlin.Boolean){}kotlin.Boolean + 220
+    frame #6: 0x00000001046a5bb0 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.BlockingCoroutine.joinBlocking#internal(_this=0x00000001130f8060) at Builders.kt:85:28
+    frame #7: 0x00000001046a4ee8 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlockingImpl(newContext=0x0000000113118028, eventLoop=0x0000000113118028, block=0x0000000113098028){0§<kotlin.Any?>}0:0 at Builders.kt:15:26
+    frame #8: 0x00000001046a15c4 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlocking(context=0x0000000106d66150, block=0x0000000113098028){0§<kotlin.Any?>}0:0 at Builders.concurrent.kt:172:12
+    frame #9: 0x00000001046a16e4 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlocking$default(context=0x0000000000000000, block=0x0000000113098028, $mask0=1){0§<kotlin.Any?>}0:0 at Builders.concurrent.kt:157:8
+    frame #10: 0x00000001046aa528 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.workerRunLoop#internal(_this=0x0000000103129108) at MultithreadedDispatchers.kt:102:35
+    frame #11: 0x00000001046abc74 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.MultiWorkerDispatcher$1.MultiWorkerDispatcher$1$invoke$$inlined$apply$1.invoke#internal(_this=0x0000000112cfb790) at MultithreadedDispatchers.kt:86:28
+    frame #12: 0x00000001046abccc Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.MultiWorkerDispatcher$1.MultiWorkerDispatcher$1$invoke$$inlined$apply$1.$<bridge-DN>invoke(_this=0x0000000112cfb790){}#internal at MultithreadedDispatchers.kt:86:26
+    frame #13: 0x00000001045879f8 Pheeeew.debug.dylib`kfun:kotlin.Function0#invoke(){}1:0-trampoline + 92
+    frame #14: 0x00000001044644a4 Pheeeew.debug.dylib`WorkerExecuteAfterLaunchpad + 224
+    frame #15: 0x00000001045f26dc Pheeeew.debug.dylib`Worker::processQueueElement(bool) + 3696
+    frame #16: 0x00000001045f1708 Pheeeew.debug.dylib`(anonymous namespace)::workerRoutine(void*) + 244
+    frame #17: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #21
+    frame #0: 0x00000002345175e8 libsystem_kernel.dylib`__psynch_cvwait + 8
+    frame #1: 0x00000001e449cb48 libsystem_pthread.dylib`_pthread_cond_wait + 980
+    frame #2: 0x00000001045efae0 Pheeeew.debug.dylib`WaitOnCondVar(_opaque_pthread_cond_t*, _opaque_pthread_mutex_t*, unsigned long long, unsigned long long*) + 152
+    frame #3: 0x00000001045f2c8c Pheeeew.debug.dylib`(anonymous namespace)::waitInNativeState(_opaque_pthread_cond_t*, _opaque_pthread_mutex_t*, unsigned long long, unsigned long long*) + 144
+    frame #4: 0x00000001045f7d7c Pheeeew.debug.dylib`Worker::park(long long, bool) + 860
+    frame #5: 0x0000000104466500 Pheeeew.debug.dylib`kfun:kotlin.native.concurrent.Worker#park(kotlin.Long;kotlin.Boolean){}kotlin.Boolean + 220
+    frame #6: 0x00000001046a5bb0 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.BlockingCoroutine.joinBlocking#internal(_this=0x00000001131d8060) at Builders.kt:85:28
+    frame #7: 0x00000001046a4ee8 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlockingImpl(newContext=0x00000001131f8028, eventLoop=0x00000001131f8028, block=0x0000000113178028){0§<kotlin.Any?>}0:0 at Builders.kt:15:26
+    frame #8: 0x00000001046a15c4 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlocking(context=0x0000000106d66150, block=0x0000000113178028){0§<kotlin.Any?>}0:0 at Builders.concurrent.kt:172:12
+    frame #9: 0x00000001046a16e4 Pheeeew.debug.dylib`kfun:kotlinx.coroutines#runBlocking$default(context=0x0000000000000000, block=0x0000000113178028, $mask0=1){0§<kotlin.Any?>}0:0 at Builders.concurrent.kt:157:8
+    frame #10: 0x00000001046aa528 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.workerRunLoop#internal(_this=0x0000000103129108) at MultithreadedDispatchers.kt:102:35
+    frame #11: 0x00000001046abc74 Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.MultiWorkerDispatcher$1.MultiWorkerDispatcher$1$invoke$$inlined$apply$1.invoke#internal(_this=0x0000000112cfbd48) at MultithreadedDispatchers.kt:86:28
+    frame #12: 0x00000001046abccc Pheeeew.debug.dylib`kfun:kotlinx.coroutines.MultiWorkerDispatcher.MultiWorkerDispatcher$1.MultiWorkerDispatcher$1$invoke$$inlined$apply$1.$<bridge-DN>invoke(_this=0x0000000112cfbd48){}#internal at MultithreadedDispatchers.kt:86:26
+    frame #13: 0x00000001045879f8 Pheeeew.debug.dylib`kfun:kotlin.Function0#invoke(){}1:0-trampoline + 92
+    frame #14: 0x00000001044644a4 Pheeeew.debug.dylib`WorkerExecuteAfterLaunchpad + 224
+    frame #15: 0x00000001045f26dc Pheeeew.debug.dylib`Worker::processQueueElement(bool) + 3696
+    frame #16: 0x00000001045f1708 Pheeeew.debug.dylib`(anonymous namespace)::workerRoutine(void*) + 244
+    frame #17: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #22, name = 'com.apple.NSURLConnectionLoader'
+    frame #0: 0x0000000234511cd4 libsystem_kernel.dylib`mach_msg2_trap + 8
+    frame #1: 0x000000023451530c libsystem_kernel.dylib`mach_msg2_internal + 76
+    frame #2: 0x000000023451522c libsystem_kernel.dylib`mach_msg_overwrite + 424
+    frame #3: 0x0000000234515078 libsystem_kernel.dylib`mach_msg + 24
+    frame #4: 0x0000000184b40344 CoreFoundation`__CFRunLoopServiceMachPort + 160
+    frame #5: 0x0000000184b0a310 CoreFoundation`__CFRunLoopRun + 1188
+    frame #6: 0x0000000184b0954c CoreFoundation`_CFRunLoopRunSpecificWithOptions + 532
+    frame #7: 0x000000019a019b54 CFNetwork`+[__CFN_CoreSchedulingSetRunnable _run:] + 416
+    frame #8: 0x0000000181dfa904 Foundation`__NSThread__start__ + 732
+    frame #9: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #23, name = 'caulk::deferred_logger'
+    frame #0: 0x0000000234511c50 libsystem_kernel.dylib`semaphore_wait_trap + 8
+    frame #1: 0x000000029f6bec6c caulk`caulk::semaphore::timed_wait(double) + 224
+    frame #2: 0x000000029f6becb8 caulk`caulk::concurrent::details::worker_thread::run() + 32
+    frame #3: 0x000000029f6c2f54 caulk`void* caulk::thread_proxy<std::__1::tuple<caulk::thread::attributes, void (caulk::concurrent::details::worker_thread::*)(), std::__1::tuple<caulk::concurrent::details::worker_thread*>>>(void*) + 96
+    frame #4: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #24, name = 'caulk.messenger.shared:high'
+    frame #0: 0x0000000234511c50 libsystem_kernel.dylib`semaphore_wait_trap + 8
+    frame #1: 0x000000029f6bec6c caulk`caulk::semaphore::timed_wait(double) + 224
+    frame #2: 0x000000029f6becb8 caulk`caulk::concurrent::details::worker_thread::run() + 32
+    frame #3: 0x000000029f6c2f54 caulk`void* caulk::thread_proxy<std::__1::tuple<caulk::thread::attributes, void (caulk::concurrent::details::worker_thread::*)(), std::__1::tuple<caulk::concurrent::details::worker_thread*>>>(void*) + 96
+    frame #4: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+  thread #26, name = 'GC finalizer processor'
+    frame #0: 0x0000000234511cd4 libsystem_kernel.dylib`mach_msg2_trap + 8
+    frame #1: 0x000000023451530c libsystem_kernel.dylib`mach_msg2_internal + 76
+    frame #2: 0x000000023451522c libsystem_kernel.dylib`mach_msg_overwrite + 424
+    frame #3: 0x0000000234515078 libsystem_kernel.dylib`mach_msg + 24
+    frame #4: 0x0000000184b40344 CoreFoundation`__CFRunLoopServiceMachPort + 160
+    frame #5: 0x0000000184b0a310 CoreFoundation`__CFRunLoopRun + 1188
+    frame #6: 0x0000000184b0954c CoreFoundation`_CFRunLoopRunSpecificWithOptions + 532
+    frame #7: 0x0000000184bb9d6c CoreFoundation`CFRunLoopRun + 64
+    frame #8: 0x00000001045d53bc Pheeeew.debug.dylib`kotlin::alloc::FinalizerProcessor<kotlin::alloc::AtomicStack<kotlin::alloc::ExtraObjectCell>, kotlin::alloc::FinalizerQueueTraits>::ProcessingLoopWithCFImpl::body() + 112
+    frame #9: 0x00000001045cd488 Pheeeew.debug.dylib`std::__1::__invoke_result_impl<void, kotlin::alloc::FinalizerProcessor<kotlin::alloc::AtomicStack<kotlin::alloc::ExtraObjectCell>, kotlin::alloc::FinalizerQueueTraits>::StartFinalizerThreadIfNone()::'lambda'()>::type kotlin::ScopedThread::Run<kotlin::alloc::FinalizerProcessor<kotlin::alloc::AtomicStack<kotlin::alloc::ExtraObjectCell>, kotlin::alloc::FinalizerQueueTraits>::StartFinalizerThreadIfNone()::'lambda'()>(kotlin::ScopedThread::attributes, kotlin::alloc::FinalizerProcessor<kotlin::alloc::AtomicStack<kotlin::alloc::ExtraObjectCell>, kotlin::alloc::FinalizerQueueTraits>::StartFinalizerThreadIfNone()::'lambda'()&&) + 216
+    frame #10: 0x00000001045cd790 Pheeeew.debug.dylib`void* std::__1::__thread_proxy[abi:nqe210106]<std::__1::tuple<std::__1::unique_ptr<std::__1::__thread_struct, std::__1::default_delete<std::__1::__thread_struct>>, void (*)(kotlin::ScopedThread::attributes, kotlin::alloc::FinalizerProcessor<kotlin::alloc::AtomicStack<kotlin::alloc::ExtraObjectCell>, kotlin::alloc::FinalizerQueueTraits>::StartFinalizerThreadIfNone()::'lambda'()&&), kotlin::ScopedThread::attributes, kotlin::alloc::FinalizerProcessor<kotlin::alloc::AtomicStack<kotlin::alloc::ExtraObjectCell>, kotlin::alloc::FinalizerQueueTraits>::StartFinalizerThreadIfNone()::'lambda'()>>(void*) + 196
+    frame #11: 0x00000001e449e438 libsystem_pthread.dylib`_pthread_start + 136
+(lldb) process detach
+Process 88769 detached
+(lldb) quit
