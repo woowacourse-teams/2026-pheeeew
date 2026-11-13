@@ -16,12 +16,25 @@ const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStar
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 // 순위 한 줄: 순위, 감정이 얼굴, 닉네임#꼬리표, 최고 높이(완주면 시간)
 const who = (it) => `${TINT[it.character] ? face(it.character, 'avatar mini') : '<div class="avatar mini"></div>'}<span class="n">${esc(it.nickname)}<small>#${esc(it.tag)}</small></span>`;
-const row = (it, mine) => `<div class="r${it.tag === mine ? ' me' : ''}"><b>${it.rank}</b>${who(it)}<span class="v">${it.finished ? `완주${it.time != null ? ` ${clock(it.time)}` : ''}` : `${it.best}칸`}</span></div>`;
-// 명예의 전당 한 줄: 도착 순서, 얼굴, 닉네임#꼬리표, 완주 시간과 도착한 때(이 기기 시각, 11/12 19:42)
+// 1·2·3등은 줄에 금·은·동 꾸밈(.podium.gold 등)과 숫자 대신 메달 배지
+const rowCls = (it, place, mine) => `r${it.tag === mine ? ' me' : ''}${medal(place) ? ` podium ${medal(place)}` : ''}`;
+const badge = (place) => `<b${medal(place) ? ' class="medal"' : ''}>${Number(place) || ''}</b>`;
+const row = (it, mine) => `<div class="${rowCls(it, it.rank, mine)}">${badge(it.rank)}${who(it)}<span class="v">${it.finished ? `완주${it.time != null ? ` ${clock(it.time)}` : ''}` : `${it.best}칸`}</span></div>`;
+// 명예의 전당 한 줄(hallBoard 를 거친 it): 등수, 얼굴, 닉네임#꼬리표, 완주 시간과 도착한 때(이 기기 시각, 11/12 19:42)
 const two = (n) => String(n).padStart(2, '0');
 const when = (iso) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? '' : `${d.getMonth() + 1}/${d.getDate()} ${two(d.getHours())}:${two(d.getMinutes())}`; };
-const hallRow = (it, mine) => `<div class="r${it.tag === mine ? ' me' : ''}"><b>${Number(it.order) || ''}</b>${who(it)}<span class="v">${clock(Number(it.time) || 0)}<small>${when(it.finishedAt)}</small></span></div>`;
+const hallRow = (it, mine) => `<div class="${rowCls(it, it.place, mine)}">${badge(it.place)}${who(it)}<span class="v">${clock(Number(it.time) || 0)}<small>${when(it.finishedAt)}</small></span></div>`;
+// 명예의 전당 전체 화면 한 줄: 등수, 얼굴, 닉네임#꼬리표, 완주 시간, 떨어진 횟수, 도착한 때
+const fullRow = (it, mine) => `<div class="${rowCls(it, it.place, mine)}">${badge(it.place)}${who(it)}<span class="c">${clock(Number(it.time) || 0)}</span><span class="c">${Number(it.falls) || 0}번</span><span class="c w">${when(it.finishedAt)}</span></div>`;
+const SORTS = [['order', '먼저 온 순서'], ['time', '빠른 기록 순']];
 const list = (items, render) => (!items ? '<div class="none">불러오지 못했어요</div>' : items.length ? items.map(render).join('') : '<div class="none">아직 아무도 없어요</div>');
+// 1·2·3등 메달 이름(금·은·동). 그 밖은 ''
+export const medal = (place) => ['', 'gold', 'silver', 'bronze'][Number(place)] ?? '';
+// 명예의 전당 정렬. by 'order': 먼저 온 순서(등수 = order), 'time': 빠른 기록 순(같으면 먼저 온 쪽, 등수 = 1부터). null 은 그대로
+const byOrder = (a, b) => Number(a.order) - Number(b.order);
+export const hallBoard = (items, by) => items && (by === 'time'
+  ? [...items].sort((a, b) => Number(a.time) - Number(b.time) || byOrder(a, b)).map((it, i) => ({ ...it, place: i + 1 }))
+  : [...items].sort(byOrder).map((it) => ({ ...it, place: Number(it.order) })));
 const STATUS = { connecting: '연결하는 중…', offline: '연결 끊김 · 다시 연결하는 중…', replaced: '다른 창에서 오르는 중' };
 
 export function createUI({ ids, info, zones, goal, credits = [] }) {
@@ -40,7 +53,7 @@ export function createUI({ ids, info, zones, goal, credits = [] }) {
       <button class="btn" data-continue><span class="key">Enter</span><span data-continue-label>이어서 오르기</span></button>
       <button class="btn ghost" data-new><span class="key">N</span>처음부터</button>
     </div>
-    <div class="boards" data-boards hidden>${['오늘', '역대'].map((n) => `<div class="card board"><div class="head">${n} 순위</div><div class="list"></div></div>`).join('')}<div class="card board hall"><div class="head">명예의 전당 · 먼저 온 순서</div><div class="list" data-hall></div></div></div>
+    <div class="boards" data-boards hidden>${['오늘', '역대'].map((n) => `<div class="card board"><div class="head">${n} 순위</div><div class="list"></div></div>`).join('')}<div class="card board hall" data-hall-card><div class="head">명예의 전당 · 먼저 온 순서<button class="btn ghost small" data-hall-open>전체 보기</button></div><div class="list" data-hall></div></div></div>
     <button class="btn ghost small music" data-credits>♪ 음악</button>
     <div class="guest" data-guest hidden><span data-guest-name></span><button class="btn ghost small" data-rename>닉네임 바꾸기</button></div>`;
 
@@ -77,9 +90,6 @@ export function createUI({ ids, info, zones, goal, credits = [] }) {
   const q = (sel) => hud.querySelector(sel);
   const parts = { face: q('[data-face]'), name: q('[data-name]'), h: q('[data-h]'), falls: q('[data-falls]'), time: q('[data-time]'), zoneNo: q('[data-zone-no]'), zone: q('[data-zone]'), fill: q('#tower .fill'), best: q('#tower .best'), me: q('#tower .me'), others: q('#tower .others'), ranks: q('#ranks'), ranksHead: q('[data-ranks-head]'), ranksList: q('[data-ranks-list]'), toast: q('#toast'), keys: q('.keys') };
   const shown = {}; // 바뀐 값만 다시 쓴다
-  let hall = null; // 명예의 전당 목록(null: 못 불러옴)
-  let hallOn = false; // 게임 중 순위 패널이 명예의 전당을 보여 준다
-  let ranksState = null; // 마지막 ranks(state)
   const put = (k, v) => { if (shown[k] !== v) { shown[k] = v; parts[k].textContent = v; } };
 
   // ---- 구간 완료 ----
@@ -109,6 +119,26 @@ export function createUI({ ids, info, zones, goal, credits = [] }) {
     <div class="small" data-message></div><div class="row" style="justify-content:center">
     <button class="btn" data-retry>다시 연결</button></div></div>`;
 
+  // ---- 명예의 전당 전체 화면 ----
+  const board = el('div', 'screen veil');
+  board.hidden = true;
+  board.style.pointerEvents = 'auto'; // 뒤의 제목 화면 버튼이 눌리지 않게
+  board.innerHTML = `<div class="card hallboard"><div class="head"><span class="big">명예의 전당</span>
+    <span class="tabs">${SORTS.map(([by, name]) => `<button class="btn ghost small" data-sort="${by}">${name}</button>`).join('')}</span></div>
+    <div class="r cols"><b>등수</b><span class="n">이름</span><span class="c">완주</span><span class="c">떨어짐</span><span class="c w">도착</span></div>
+    <div class="list" data-board-list></div>
+    <div class="row foot"><span class="hint"><span class="key">◀</span><span class="key">▶</span>정렬 <span class="key">▲</span><span class="key">▼</span>넘기기</span><button class="btn" data-close><span class="key">Esc</span>닫기</button></div></div>`;
+  const boardList = board.querySelector('[data-board-list]');
+  const tabs = [...board.querySelectorAll('[data-sort]')];
+  let hall = null; // 명예의 전당 목록(null: 못 불러옴)
+  let hallMine = null;
+  let sort = 0; // SORTS 의 몇 번째 정렬
+  const drawBoard = () => {
+    tabs.forEach((t, i) => t.classList.toggle('on', i === sort));
+    boardList.innerHTML = list(hallBoard(hall, SORTS[sort][0]), (it) => fullRow(it, hallMine));
+  };
+  tabs.forEach((t, i) => { t.onclick = () => api.hallSort(i - sort); });
+
   // ---- 음악 출처(CC BY 4.0) ----
   const link = (url, text) => `<a href="${url}" target="_blank" rel="noopener">${esc(text ?? url)}</a>`;
   const music = el('div', 'screen veil');
@@ -121,7 +151,7 @@ export function createUI({ ids, info, zones, goal, credits = [] }) {
     <div class="ch">변경: ${esc(c.changes)}</div></div>`).join('')}</div>
     <div class="row" style="justify-content:center"><button class="btn" data-close><span class="key">Esc</span>닫기</button></div></div>`;
 
-  root.append(hud, banner, select, title, modal, nick, music, connection);
+  root.append(hud, banner, select, title, modal, nick, music, board, connection);
 
   const api = {
     // 게임 화면과 같은 자리·배율로 맞춘다
@@ -141,8 +171,9 @@ export function createUI({ ids, info, zones, goal, credits = [] }) {
     },
     closeConnection() { connection.hidden = true; },
     // saved 가 없으면(첫 등반) 이어하기 카드 없이 "오르기 시작"만
-    title(saved, onContinue, onNew, onCredits) {
+    title(saved, onContinue, onNew, onCredits, onHall) {
       title.querySelector('[data-credits]').onclick = onCredits;
+      title.querySelector('[data-hall-card]').onclick = onHall; // 카드 아무 데나 눌러도 전체 화면
       const resume = title.querySelector('[data-resume]');
       resume.hidden = title.querySelector('[data-new]').hidden = !saved;
       title.querySelector('[data-continue-label]').textContent = saved ? '이어서 오르기' : '오르기 시작';
@@ -244,39 +275,41 @@ export function createUI({ ids, info, zones, goal, credits = [] }) {
     },
     nicknameError(text) { nick.querySelector('[data-err]').textContent = text; nickInput.focus(); },
     closeNickname() { nick.hidden = true; nickInput.blur(); },
-    // 명예의 전당(null 이면 못 불러옴): 제목 화면 카드와, 게임 중 H 로 바꾸는 순위 패널에 함께 쓴다
+    // 명예의 전당(null 이면 못 불러옴): 제목 화면 카드와 전체 화면에 함께 쓴다
     hall(items, mine) {
       hall = items;
-      title.querySelector('[data-hall]').innerHTML = list(items, (it) => hallRow(it, mine));
-      if (hallOn) api.ranks(ranksState);
+      hallMine = mine;
+      title.querySelector('[data-hall]').innerHTML = list(hallBoard(items, 'order'), (it) => hallRow(it, mine));
+      drawBoard();
     },
-    // 게임 중 순위 패널을 접속자 순위 ↔ 명예의 전당으로 바꾼다. 명예의 전당이 되면 true
-    toggleHall() {
-      hallOn = !hallOn;
-      parts.ranks.classList.toggle('hall', hallOn);
-      parts.ranks.classList.remove('folded');
-      api.ranks(ranksState);
-      return hallOn;
+    // 명예의 전당 전체 화면. onClose() 는 main 이 정한다
+    openHall(onClose) {
+      board.querySelector('[data-close]').onclick = onClose;
+      drawBoard();
+      boardList.scrollTop = 0;
+      board.hidden = false;
     },
+    closeHall() { board.hidden = true; },
+    // 정렬을 step 만큼 옆으로(◀ -1, ▶ +1). 맨 끝에서는 반대쪽 끝으로
+    hallSort(step) {
+      sort = (sort + step + SORTS.length) % SORTS.length;
+      drawBoard();
+      boardList.scrollTop = 0;
+    },
+    scrollHall(dir) { boardList.scrollBy({ top: dir * 160 }); },
     // 게임 중 순위 패널과 탑 진행 막대의 점. state 가 없으면(관리자 점검) 숨긴다
     ranks(state) {
-      ranksState = state;
       parts.ranks.hidden = !state;
       if (!state) { parts.others.innerHTML = ''; return; }
       const { rank, status, tag } = state;
       const on = status === 'online' && rank;
       let html = '';
-      if (hallOn) {
-        parts.ranksHead.textContent = '명예의 전당 · 먼저 온 순서';
-        html = list(hall, (it) => hallRow(it, tag));
-      } else {
-        parts.ranksHead.innerHTML = on ? `${rank.me ? `<b>${rank.me.rank}위</b> · ` : ''}접속 ${rank.online}명` : STATUS[status] ?? STATUS.connecting;
-        if (on) {
-          const top = rank.top.slice(0, 5);
-          html = top.map((it) => row(it, tag)).join('');
-          const mineRow = rank.me && rank.me.rank > top.length && (rank.near ?? []).find((it) => it.tag === tag);
-          if (mineRow) html += `<div class="gap"></div>${row(mineRow, tag)}`;
-        }
+      parts.ranksHead.innerHTML = on ? `${rank.me ? `<b>${rank.me.rank}위</b> · ` : ''}접속 ${rank.online}명` : STATUS[status] ?? STATUS.connecting;
+      if (on) {
+        const top = rank.top.slice(0, 5);
+        html = top.map((it) => row(it, tag)).join('');
+        const mineRow = rank.me && rank.me.rank > top.length && (rank.near ?? []).find((it) => it.tag === tag);
+        if (mineRow) html += `<div class="gap"></div>${row(mineRow, tag)}`;
       }
       if (shown.ranksList !== html) { shown.ranksList = html; parts.ranksList.innerHTML = html; } // 매초 다시 써서 굴린 자리가 돌아가지 않게
       parts.others.innerHTML = on ? rank.top.filter((it) => it.tag !== tag).slice(0, 5).map((it) => `<i style="bottom:${Math.max(0, Math.min(100, (it.best / goal) * 100))}%;--c:${TINT[it.character] ?? '#fff8ea'}"></i>`).join('') : '';
