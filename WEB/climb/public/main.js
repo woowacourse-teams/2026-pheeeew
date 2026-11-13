@@ -625,7 +625,7 @@ function updateWind(dt) {
 }
 
 // ---- 상태 ----
-let mode = 'select'; // title | select | play | confirm
+let mode = 'select'; // title | select | play | confirm | hall(명예의 전당 전체 화면)
 let id = IDS[0];
 let P = params(id);
 let p = newPlayer(START[0] * TILE, yOf(START[1]) - P.h);
@@ -697,7 +697,7 @@ const go = () => (saved ? begin(saved.id, saved) : showSelect());
 function showTitle() {
   mode = 'title';
   prefetch();
-  ui.title(saved, go, () => { forget(); showSelect(); }, showCredits);
+  ui.title(saved, go, () => { forget(); showSelect(); }, showCredits, openHall);
   ui.guest(ADMIN ? null : guest, rename);
   showBoards();
 }
@@ -705,10 +705,25 @@ async function showBoards() {
   const [today, all] = await Promise.all([net.ranking('today'), net.ranking('all'), showHall()]);
   if (mode === 'title') ui.boards(today.status === 200 ? today.body.top : null, all.status === 200 ? all.body.top : null, guest?.tag);
 }
-// 명예의 전당: 제목 화면을 열 때, 누가 완주했을 때, 게임 중 H 로 펼 때 다시 받는다
+// 명예의 전당: 제목 화면을 열 때, 누가 완주했을 때, 전체 화면을 열 때 다시 받는다
 async function showHall() {
   const r = await net.hall();
   ui.hall(r.status === 200 && Array.isArray(r.body?.hall) ? r.body.hall : null, guest?.tag);
+}
+// 명예의 전당 전체 화면(제목 화면 카드, 게임 중 H). 확인 창처럼 mode 를 바꿔 게임 입력을 막고, 닫으면 돌아간다
+let hallBack = 'title';
+function openHall() {
+  if (mode === 'hall') return;
+  hallBack = mode;
+  mode = 'hall';
+  keys.left = keys.right = keys.jump = false;
+  ui.openHall(closeHall);
+  showHall();
+}
+function closeHall() {
+  ui.closeHall();
+  mode = hallBack;
+  syncConnection();
 }
 function showCredits() {
   mode = 'credits';
@@ -831,6 +846,12 @@ addEventListener('keydown', (e) => {
     if (k === 'Space' || k === 'Enter') { begin(IDS[pick]).then(save); }
     return;
   }
+  if (mode === 'hall') {
+    if (k === 'Escape' || k === 'KeyH') closeHall();
+    if (k === 'ArrowLeft' || k === 'ArrowRight') ui.hallSort(k === 'ArrowLeft' ? -1 : 1);
+    if (k === 'ArrowUp' || k === 'ArrowDown') ui.scrollHall(k === 'ArrowUp' ? -1 : 1);
+    return;
+  }
   if (mode === 'confirm') {
     if (k === 'Enter') { forget(); ui.closeConfirm(); showSelect(); }
     if (k === 'Escape' || k === 'KeyN') { ui.closeConfirm(); mode = 'play'; syncConnection(); }
@@ -842,7 +863,7 @@ addEventListener('keydown', (e) => {
   if (k === 'Space') keys.jump = true;
   if (k === 'KeyN') askRestart();
   if (k === 'Tab') { e.preventDefault(); ui.foldRanks(); }
-  if (k === 'KeyH' && ui.toggleHall()) showHall();
+  if (k === 'KeyH') openHall();
   if (k === 'KeyG') { showGhosts = !showGhosts; ghostLayer.visible = showGhosts; localStorage.setItem('pheeeew-climb-ghosts', showGhosts ? 'on' : 'off'); say(showGhosts ? '다른 사람 보이기' : '다른 사람 숨기기'); quipT = 1.2; }
 });
 addEventListener('keyup', (e) => {
@@ -1049,7 +1070,7 @@ function frame(dt) {
 }
 app.ticker.add((tk) => {
   if (!window.paused) frame(Math.min(0.1, tk.deltaMS / 1000)); // paused: 시험할 때 시간을 멈춘다
-  bgm.update({ screen: mode, h: hOf(p.y + P.h) });
+  bgm.update({ screen: mode === 'hall' ? hallBack : mode, h: hOf(p.y + P.h) }); // 명예의 전당을 열어도 하던 음악 그대로
 });
 
 saved = JSON.parse(localStorage.getItem(SAVE_KEY) ?? 'null');
