@@ -64,7 +64,7 @@ final class ClimbResponses {
     }
 
     record HallItem(int order, String tag, String nickname, String character, int time, int falls,
-                    String finishedAt) {
+                    String finishedAt, int best, int bestFalls, String bestAt) {
     }
 
     record HallResponse(List<HallItem> hall) {
@@ -74,7 +74,8 @@ final class ClimbResponses {
                     .mapToObj(index -> {
                         ClimbHallEntry entry = entries.get(index);
                         return new HallItem(index + 1, entry.tag(), entry.nickname(), entry.character(),
-                                entry.finishSeconds(), entry.falls(), entry.finishedAt().toString());
+                                entry.finishSeconds(), entry.falls(), entry.finishedAt().toString(),
+                                entry.bestSeconds(), entry.bestFalls(), entry.bestAt().toString());
                     })
                     .toList());
         }

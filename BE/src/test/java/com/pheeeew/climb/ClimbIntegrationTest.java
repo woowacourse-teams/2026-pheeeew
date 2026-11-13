@@ -391,6 +391,54 @@ class ClimbIntegrationTest {
                 .query(Long.class).single()).isEqualTo(1);
     }
 
+    @Test
+    void 같은_손님이_더_빠르게_다시_완주하면_가장_빠른_기록만_바뀌고_순서와_처음_완주는_그대로다() throws Exception {
+        // given
+        HttpResponse<String> first = post("/api/v1/climb/guests", "{\"nickname\":\"어셔\"}", null);
+        HttpResponse<String> second = post("/api/v1/climb/guests", "{\"nickname\":\"둘째\"}", null);
+        String firstTag = json.readTree(first.body()).path("tag").stringValue();
+        String secondTag = json.readTree(second.body()).path("tag").stringValue();
+
+        // when: 처음 완주, 다른 손님, 더 빠른 재완주, 의심 완주(이벤트가 없어 DB 에 넣는다), 느린 재완주
+        finish(first, 2705, 4);
+        finish(second, 900, 1);
+        finish(first, 716, 2);
+        jdbc.sql("""
+                INSERT INTO climb_run (id, guest_id, map_version, character, best_height, best_at, height, x, falls,
+                    play_seconds, finished_at, finish_seconds, suspect, started_at, updated_at)
+                VALUES (:id, :guest, 'v1', 'angry', 663, now(), 663, 0, 0, 0, now(), 200, true, now(), now())
+                """)
+                .param("id", java.util.UUID.randomUUID())
+                .param("guest", java.util.UUID.fromString(json.readTree(first.body()).path("id").stringValue()))
+                .update();
+        finish(first, 1400, 0);
+        JsonNode hall = json.readTree(get("/api/v1/climb/hall?map=v1", null).body()).path("hall");
+
+        // then
+        JsonNode mine = null;
+        JsonNode other = null;
+        for (JsonNode item : hall) {
+            if (firstTag.equals(item.path("tag").stringValue())) {
+                mine = item;
+            }
+            if (secondTag.equals(item.path("tag").stringValue())) {
+                other = item;
+            }
+        }
+        assertThat(mine).isNotNull();
+        assertThat(other).isNotNull();
+        assertThat(mine.path("time").intValue()).isEqualTo(2705);
+        assertThat(mine.path("falls").intValue()).isEqualTo(4);
+        assertThat(mine.path("best").intValue()).isEqualTo(716);
+        assertThat(mine.path("bestFalls").intValue()).isEqualTo(2);
+        assertThat(java.time.Instant.parse(mine.path("bestAt").stringValue()))
+                .isAfter(java.time.Instant.parse(other.path("finishedAt").stringValue()));
+        assertThat(mine.path("order").intValue()).isLessThan(other.path("order").intValue());
+        assertThat(other.path("best").intValue()).isEqualTo(900);
+        assertThat(other.path("bestFalls").intValue()).isEqualTo(1);
+        assertThat(other.path("bestAt").stringValue()).isEqualTo(other.path("finishedAt").stringValue());
+    }
+
     /** 꼭대기에 오른 등반을 넣고 이어 해서 완주한다. 2초에 20칸 상한 때문에 처음부터 오르면 오래 걸린다. */
     private void finish(HttpResponse<String> created, int time, int falls) throws Exception {
         jdbc.sql("""

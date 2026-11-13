@@ -30,10 +30,12 @@ const SORTS = [['order', '먼저 온 순서'], ['time', '빠른 기록 순']];
 const list = (items, render) => (!items ? '<div class="none">불러오지 못했어요</div>' : items.length ? items.map(render).join('') : '<div class="none">아직 아무도 없어요</div>');
 // 1·2·3등 메달 이름(금·은·동). 그 밖은 ''
 export const medal = (place) => ['', 'gold', 'silver', 'bronze'][Number(place)] ?? '';
-// 명예의 전당 정렬. by 'order': 먼저 온 순서(등수 = order), 'time': 빠른 기록 순(같으면 먼저 온 쪽, 등수 = 1부터). null 은 그대로
+// 명예의 전당 정렬. by 'order': 먼저 온 순서(등수 = order, 처음 완주 값), 'time': 빠른 기록 순(같으면 먼저 온 쪽, 등수 = 1부터).
+// 빠른 기록 순은 줄의 time·falls·finishedAt 을 가장 빠른 완주(best·bestFalls·bestAt)로 바꾼다. 옛 서버 응답(best 없음)은 처음 완주 값. null 은 그대로
 const byOrder = (a, b) => Number(a.order) - Number(b.order);
+const fastest = (it) => ({ ...it, time: it.best ?? it.time, falls: it.bestFalls ?? it.falls, finishedAt: it.bestAt ?? it.finishedAt });
 export const hallBoard = (items, by) => items && (by === 'time'
-  ? [...items].sort((a, b) => Number(a.time) - Number(b.time) || byOrder(a, b)).map((it, i) => ({ ...it, place: i + 1 }))
+  ? items.map(fastest).sort((a, b) => Number(a.time) - Number(b.time) || byOrder(a, b)).map((it, i) => ({ ...it, place: i + 1 }))
   : [...items].sort(byOrder).map((it) => ({ ...it, place: Number(it.order) })));
 const STATUS = { connecting: '연결하는 중…', offline: '연결 끊김 · 다시 연결하는 중…', replaced: '다른 창에서 오르는 중' };
 
