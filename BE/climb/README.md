@@ -184,8 +184,8 @@
 
 | 요청 | 응답·조건 |
 |---|---|
-| `GET /api/v1/climb/stairs/today` | `{ day: "2026-11-13", seed: 1369517937 }` 형태. 쿠키 불필요. 날짜는 Asia/Seoul, seed는 `(int) day.toEpochDay() ^ 0x51a17e53`이다. |
-| `POST /api/v1/climb/stairs/runs` | 쿠키 불필요. `{ day, nickname, character, inputs: [{d:"L", t:0}, {d:"R", t:180}] }`. 응답 `{ height, timeMs, best:{height,timeMs}, rank }`. |
+| `GET /api/v1/climb/stairs/today` | `{ day: "2026-11-13", seed: 123456789, ticket: "<발급초>.<서명>" }`. 쿠키 불필요. **부를 때마다 새 무작위 seed**(판마다 다른 계단)를 주고, ticket 은 서버가 켜질 때 만든 키로 `day|seed|발급초`에 HMAC-SHA256 서명한 값이다. 등록은 발급 뒤 20분 안에만 받는다. 서버를 다시 켜면 그 전에 받은 ticket 은 `INVALID_TICKET` 이다. |
+| `POST /api/v1/climb/stairs/runs` | 쿠키 불필요. `{ day, nickname, character, seed, ticket, inputs: [{d:"L", t:0}, {d:"R", t:180}] }`. 응답 `{ height, timeMs, best:{height,timeMs}, rank }`. |
 | `GET /api/v1/climb/stairs/ranking?day=2026-11-13` | 쿠키 불필요. 날짜 생략 시 오늘. `{ top:[{rank,nickname,character,height,timeMs}], total }`. top은 닉네임별 그날 최고 상위 200개이며 total은 해당 날짜의 전체 참가 닉네임 수다. tag·me는 없다. 시작·결과 화면은 상위 10명, 전체 순위 창은 최대 200명을 보여 준다. |
 
 점수는 성공한 칸 수. `timeMs`는 첫 입력부터 **마지막 성공 입력**까지다. 첫 입력의 `t`는 반드시 0이고,
