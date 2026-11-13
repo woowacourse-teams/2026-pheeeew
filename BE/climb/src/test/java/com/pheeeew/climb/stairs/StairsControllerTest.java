@@ -94,8 +94,38 @@ class StairsControllerTest {
     }
 
     private String body(String nickname, int count, int interval) {
+        return body(nickname, count, interval, controller.today());
+    }
+    private String body(String nickname, int count, int interval, StairsService.Today today) {
         return json.writeValueAsString(Map.of("day", DAY.toString(), "nickname", nickname, "character", "angry",
-                "inputs", StairsRulesTest.inputs(StairsRules.seed(DAY), count, interval)));
+                "seed", today.seed(), "ticket", today.ticket(),
+                "inputs", StairsRulesTest.inputs(today.seed(), count, interval)));
+    }
+
+    @Test void everyRunGetsNewRandomStairs() {
+        Set<Integer> seeds = new HashSet<>();
+        for (int i = 0; i < 20; i++) seeds.add(controller.today().seed());
+        assertThat(seeds).hasSizeGreaterThan(15);
+        assertThat(controller.today().day()).isEqualTo(DAY);
+    }
+
+    @Test void rejectsForgedSwappedOrExpiredTickets() throws Exception {
+        var today = controller.today();
+        String forged = body("손님", 3, 100, new StairsService.Today(DAY, today.seed(), today.ticket() + "x"));
+        assertThatThrownBy(() -> controller.submit(request(forged, true))).hasMessage("INVALID_TICKET");
+        // 다른 판의 표로 쉬운 계단을 고를 수 없다
+        var other = controller.today();
+        String swapped = body("손님", 3, 100, new StairsService.Today(DAY, other.seed() ^ 1, other.ticket()));
+        assertThatThrownBy(() -> controller.submit(request(swapped, true))).hasMessage("INVALID_TICKET");
+        String noTicket = json.writeValueAsString(Map.of("day", DAY.toString(), "nickname", "손님", "character", "angry",
+                "inputs", StairsRulesTest.inputs(today.seed(), 3, 100)));
+        assertThatThrownBy(() -> controller.submit(request(noTicket, true))).hasMessage("INVALID_TICKET");
+        String late = body("손님", 3, 100, today);
+        clock.now = clock.now.plusSeconds(StairsService.TICKET_SECONDS + 1);
+        assertThatThrownBy(() -> controller.submit(request(late, true))).hasMessage("INVALID_TICKET");
+        assertThat(repository.saves).isZero();
+        assertThat(controller.invalid(new IllegalArgumentException("INVALID_TICKET")).getBody().toString())
+                .contains("새로고침");
     }
     private static MockHttpServletRequest request(String text, boolean length) {
         var request = new MockHttpServletRequest() {

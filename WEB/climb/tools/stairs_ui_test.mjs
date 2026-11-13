@@ -28,7 +28,7 @@ async function tab() {
   for (const [, id] of html.matchAll(/id="([^"]+)"/g)) nodes[id] = id === 'nickname' ? new Input(id) : id.endsWith('-ranking-open') ? new Button(id) : new Element(id);
   nodes.result.hidden = nodes['play-hud'].hidden = true;
   const net = {
-    stairsToday: async () => { calls.push('today'); return { status: 200, body: { day: new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(new Date()), seed: 123 } }; },
+    stairsToday: async () => { calls.push('today'); return { status: 200, body: { day: new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(new Date()), seed: 123, ticket: '1.sig' } }; },
     stairsRanking: async () => { calls.push('ranking'); return rankingReply(); },
     stairsRun: body => { calls.push(structuredClone(body)); return reply(body); },
   };
@@ -95,6 +95,7 @@ t.key('Enter', { isComposing: true });
 assert.equal(t.calls.filter(c => typeof c === 'object').length, 0);
 t.key('Enter'); await flush();
 assert.equal(t.calls.at(-2).nickname, '히유');
+assert.equal(t.calls.at(-2).ticket, '1.sig'); assert.equal(t.calls.at(-2).seed, 123); // 판마다 받은 계단 표를 함께 보낸다
 assert.match(t.nodes['save-status'].textContent, /7위/);
 assert.match(t.nodes['result-best'].textContent, /4칸/);
 assert.equal(t.nodes.register.disabled, true);

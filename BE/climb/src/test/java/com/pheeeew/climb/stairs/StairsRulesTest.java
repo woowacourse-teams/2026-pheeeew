@@ -161,7 +161,6 @@ class StairsRulesTest {
         var day = LocalDate.of(2026, 11, 13);
         var atMidnight = serviceAt("2026-11-12T15:00:00Z");
         assertThat(atMidnight.today().day()).isEqualTo(day);
-        assertThat(atMidnight.today().seed()).isEqualTo(StairsRules.seed(day));
         atMidnight.requireDay(day); atMidnight.requireDay(day.minusDays(1));
         assertThatThrownBy(() -> atMidnight.requireDay(day.plusDays(1))).hasMessage("INVALID_DAY");
         serviceAt("2026-11-12T15:04:59Z").requireDay(day.minusDays(1));
