@@ -46,15 +46,18 @@ class StairsRepositoryTest {
         assertThat(repository.best(DAY, nickname).height()).isEqualTo(21);
         assertThat(jdbc.sql("select count(*) from climb_stairs_run").query(Integer.class).single()).isEqualTo(5);
     }
-    @Test void ranksHeightDescendingTimeAscendingAndFindsNicknameOutsideTop50() {
+    @Test void ranksHeightDescendingTimeAscendingAndFindsNicknameOutsideTop200() {
         String mine = "내기록"; repository.save(mine, DAY, "angry", new StairsRules.Score(1, 0));
-        for (int i = 0; i < 51; i++) repository.save("손님" + i, DAY, "angry", new StairsRules.Score(100, 5000 - i));
+        for (int i = 0; i < 201; i++) repository.save("손님" + i, DAY, "angry", new StairsRules.Score(100, 5000 - i));
         var board = repository.ranking(DAY);
-        assertThat(board.top()).hasSize(50);
-        assertThat(board.top().getFirst().timeMs()).isEqualTo(4950);
+        assertThat(board.top()).hasSize(200);
+        assertThat(board.total()).isEqualTo(202);
+        assertThat(board.top().getFirst().timeMs()).isEqualTo(4800);
         assertThat(board.top().getLast().timeMs()).isEqualTo(4999);
-        assertThat(repository.best(DAY, mine).rank()).isEqualTo(52);
+        assertThat(board.top().getLast().rank()).isEqualTo(200);
+        assertThat(repository.best(DAY, mine).rank()).isEqualTo(202);
         assertThat(repository.ranking(DAY.minusDays(1)).top()).isEmpty();
+        assertThat(repository.ranking(DAY.minusDays(1)).total()).isZero();
     }
     @Test void serviceReplaysBeforeSavingAndReturnsBestRank() {
         String nickname = "손님";

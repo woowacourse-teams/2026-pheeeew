@@ -1,19 +1,21 @@
 import { createNet } from '../net.js';
-import { FACE, TINT, medal } from '../ui.js';
+import { FACE, TINT } from '../ui.js';
 import { apiForHostname } from '../api-config.js';
 import { cap } from './rules.js';
 import { StairsGame } from './game.js';
 import { createScene } from './scene.js';
+import { rankingRows } from './ranking.js';
 
 const ids = ['defeated', 'tired', 'frustrated', 'annoyed', 'angry'];
 const names = ['좌절이', '지침이', '답답이', '짜증이', '분노'];
 const $ = (id) => document.getElementById(id);
-const escape = (value) => String(value ?? '').replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
 const seconds = (ms) => `${(ms / 1000).toFixed(3)}초`;
 const net = createNet({ api: apiForHostname(location.hostname) });
 let character = ids[0], today, scene, game, mode = 'loading', board = { top: [] };
 let firstGuide = true, endedAt = 0, latestRun = null, refreshing = false;
 let lastNickname = '', tabBest = null;
+let registered = null, rankingRequest = 0;
+const rankingDialog = $('full-ranking');
 try {
   const preferred = localStorage.getItem('pheeeew-stairs-character');
   if (ids.includes(preferred)) character = preferred;
@@ -27,10 +29,44 @@ $('characters').innerHTML = ids.map((id, i) => `<button class="character" data-i
 $('characters').addEventListener('click', e => { const button = e.target.closest('[data-id]'); if (button) select(button.dataset.id); });
 
 function renderBoard() {
-  const markup = board.top.slice(0, 10).map(it => `<div class="r ${medal(it.rank) ? `podium ${medal(it.rank)}` : ''}"><b class="${medal(it.rank) ? 'medal' : ''}">${it.rank}</b><div class="avatar mini"><img src="${FACE(ids.includes(it.character) ? it.character : ids[0])}" alt=""></div><span class="n">${escape(it.nickname)}</span><span class="v">${it.height}칸<small>${seconds(it.timeMs)}</small></span></div>`).join('') || '<p class="none">첫 기록의 주인공이 되어 주세요!</p>';
+  const markup = rankingRows(board.top.slice(0, 10));
   $('lobby-ranking').innerHTML = $('result-ranking').innerHTML = markup;
   $('lobby-best').textContent = tabBest ? `이 탭 최고 ${tabBest.height}칸 · ${seconds(tabBest.timeMs)}` : '이 탭 최고 · 아직 기록이 없어요';
 }
+async function openRanking() {
+  if (!['lobby', 'result'].includes(mode) || !today?.day || rankingDialog.open) return;
+  const request = ++rankingRequest, day = today.day;
+  $('full-ranking-list').innerHTML = '';
+  $('full-ranking-list').scrollTop = 0;
+  $('ranking-count').textContent = '';
+  $('ranking-status').textContent = '순위를 불러오는 중…';
+  $('full-ranking-list').setAttribute('aria-busy', 'true');
+  rankingDialog.showModal();
+  $('ranking-close').focus();
+  try {
+    const response = await net.stairsRanking(day);
+    if (request !== rankingRequest || !rankingDialog.open) return;
+    if (response.status !== 200 || !Array.isArray(response.body?.top)) throw new Error('ranking');
+    const { top, total = top.length } = response.body;
+    $('ranking-count').textContent = `오늘 ${total}명 도전`;
+    $('ranking-status').textContent = total > top.length ? `상위 ${top.length}명까지 표시해요.` : '';
+    $('full-ranking-list').innerHTML = rankingRows(top, registered?.day === day ? registered.nickname : '');
+    $('full-ranking-list').querySelector('[data-mine]')?.scrollIntoView({ block: 'center' });
+  } catch {
+    if (request === rankingRequest && rankingDialog.open) $('ranking-status').textContent = '순위를 불러오지 못했어요. 닫고 다시 열어 주세요.';
+  } finally {
+    if (request === rankingRequest) $('full-ranking-list').setAttribute('aria-busy', 'false');
+  }
+}
+function closeRanking() {
+  ++rankingRequest; // 닫기 전에 시작한 요청은 다음 창에 반영하지 않는다.
+  rankingDialog.close();
+}
+$('lobby-ranking-open').onclick = $('result-ranking-open').onclick = openRanking;
+$('lobby-ranking-card').onclick = $('result-ranking-card').onclick = openRanking;
+$('ranking-close').onclick = closeRanking;
+rankingDialog.addEventListener('click', e => { if (e.target === rankingDialog) closeRanking(); });
+rankingDialog.addEventListener('cancel', e => { e.preventDefault(); closeRanking(); });
 async function refreshBoard(day = today?.day) {
   if (!day) return;
   const result = await net.stairsRanking(day);
@@ -43,7 +79,7 @@ function showLobby() {
   renderBoard(); refreshBoard();
 }
 async function start() {
-  if (!['lobby', 'result'].includes(mode) || refreshing) return;
+  if (rankingDialog.open || !['lobby', 'result'].includes(mode) || refreshing) return;
   // 자정을 넘긴 대기 화면은 서버에서 오늘의 시드를 새로 받는다.
   const localDay = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(new Date());
   if (today.day !== localDay) {
@@ -59,7 +95,7 @@ async function start() {
   firstGuide = false;
 }
 function input(d) {
-  if (mode !== 'play') return;
+  if (rankingDialog.open || mode !== 'play') return;
   const now = performance.now();
   if (game.input(d, now)) scene.hop(now);
   $('ready-label').hidden = true;
@@ -77,7 +113,7 @@ function saveStatus() {
   } else $('save-status').textContent = run?.sending ? '등록 중… 바로 다시 해도 돼요.' : run?.error ?? '';
 }
 async function register() {
-  if (mode !== 'result' || !latestRun || latestRun.sending || latestRun.saved) return;
+  if (rankingDialog.open || mode !== 'result' || !latestRun || latestRun.sending || latestRun.saved) return;
   const nickname = $('nickname').value.trim();
   if (!/^[가-힣a-zA-Z0-9]{1,10}$/.test(nickname)) {
     latestRun.error = nickname ? '한글, 영문, 숫자 1~10자로 입력해 주세요.' : '닉네임을 입력해 주세요.';
@@ -89,6 +125,7 @@ async function register() {
   const response = await net.stairsRun(run.body); run.sending = false;
   if (response.status === 200) {
     run.saved = response.body;
+    registered = { day: run.body.day, nickname: run.body.nickname };
     await refreshBoard(run.body.day);
   } else run.error = response.body?.message ?? '연결하지 못했어요. 기록 등록을 다시 눌러 주세요.';
   // 이전 판의 늦은 응답이 새 결과 화면의 입력이나 상태를 바꾸지 않는다.
@@ -115,6 +152,8 @@ $('home').onclick = showLobby;
 $('nickname').addEventListener('input', () => { lastNickname = $('nickname').value; });
 $('registration').onsubmit = e => { e.preventDefault(); register(); };
 addEventListener('keydown', e => {
+  if (rankingDialog.open) return; // dialog의 스크롤·닫기·Tab만 브라우저가 처리한다.
+  if (e.target instanceof HTMLButtonElement && e.target.id.endsWith('-ranking-open') && ['Space', 'Enter'].includes(e.code)) return;
   if (e.isComposing || e.keyCode === 229 || e.repeat) return;
   if (mode === 'result' && e.code === 'Enter') { e.preventDefault(); register(); return; }
   if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target?.isContentEditable) return;
@@ -124,6 +163,7 @@ addEventListener('keydown', e => {
   if (['ArrowRight', 'KeyD'].includes(e.code)) input('R');
 });
 addEventListener('pointerdown', e => {
+  if (rankingDialog.open) return;
   if (mode !== 'play' || (e.pointerType === 'mouse' && e.button !== 0)) return;
   e.preventDefault(); input(e.clientX < innerWidth / 2 ? 'L' : 'R');
 }, { passive: false });

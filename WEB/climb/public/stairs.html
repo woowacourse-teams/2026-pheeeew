@@ -22,7 +22,7 @@
     <button id="start" class="btn primary" disabled>계단 준비 중…</button>
     <p class="controls">화면 왼쪽 / 오른쪽 터치 · 키보드 ← → 또는 A / D<br>Space / Enter로 시작</p>
     <p class="best" id="lobby-best">이 탭 최고 · 아직 기록이 없어요</p>
-    <div class="ranking card"><div class="board-heading"><b>오늘의 러시 TOP 10</b><span id="day"></span></div><div id="lobby-ranking" class="rank-list">순위 불러오는 중…</div></div>
+    <div id="lobby-ranking-card" class="ranking card"><div class="board-heading"><div><b>오늘의 러시 TOP 10</b><span id="day"></span></div><button id="lobby-ranking-open" class="ranking-open" type="button" aria-haspopup="dialog" aria-controls="full-ranking">전체 순위 보기</button></div><div id="lobby-ranking" class="rank-list">순위 불러오는 중…</div></div>
     <p id="lobby-status" class="status" role="status"></p>
   </section>
   <section id="play-hud" hidden aria-label="게임 기록">
@@ -47,9 +47,19 @@
     <button id="retry" class="btn primary">바로 다시 하기 ↗</button>
     <button id="home" class="text-button">감정이 고르기</button>
     <p class="controls">등록하지 않고 다시 해도 돼요 · Space로 다시 하기</p>
-    <div class="ranking card"><div class="board-heading"><b>오늘의 러시 TOP 10</b></div><div id="result-ranking" class="rank-list"></div></div>
+    <div id="result-ranking-card" class="ranking card"><div class="board-heading"><b>오늘의 러시 TOP 10</b><button id="result-ranking-open" class="ranking-open" type="button" aria-haspopup="dialog" aria-controls="full-ranking">전체 순위 보기</button></div><div id="result-ranking" class="rank-list"></div></div>
   </section>
 </main>
+<dialog id="full-ranking" aria-labelledby="ranking-title" aria-describedby="ranking-status">
+  <section class="ranking-sheet">
+    <header class="ranking-header">
+      <div><h2 id="ranking-title">오늘의 전체 순위</h2><span id="ranking-count"></span></div>
+      <button id="ranking-close" class="ranking-open" type="button" autofocus>닫기 ✕</button>
+    </header>
+    <p id="ranking-status" role="status"></p>
+    <div id="full-ranking-list" class="rank-list" tabindex="0" aria-label="오늘의 순위 목록"></div>
+  </section>
+</dialog>
 <script type="module" src="/stairs/main.js"></script>
 </body>
 </html>
