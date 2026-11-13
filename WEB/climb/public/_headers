@@ -25,3 +25,15 @@
 /assets/manifest.json
   ! Cache-Control
   Cache-Control: public, max-age=60
+
+/stairs
+  Cache-Control: private, no-cache
+
+/stairs/
+  Cache-Control: private, no-cache
+
+/stairs.html
+  Cache-Control: private, no-cache
+
+/stairs/*
+  Cache-Control: private, no-cache
