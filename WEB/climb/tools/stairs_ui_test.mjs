@@ -3,18 +3,18 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { StairsGame } from '../public/stairs/game.js';
-import { direction, GAUGE_MAX } from '../public/stairs/rules.js';
+import { direction, cap } from '../public/stairs/rules.js';
 const source = fs.readFileSync(new URL('../public/stairs/main.js', import.meta.url), 'utf8').replace(/^import .*;\n/gm, '');
 const html = fs.readFileSync(new URL('../public/stairs.html', import.meta.url), 'utf8');
 const flush = () => new Promise(resolve => setImmediate(resolve));
 async function tab() {
   const events = {}, nodes = {}, calls = [], writes = [];
-  let now = 1000, frame, reply = async () => ({ status: 200, body: { height: 0, timeMs: 0, rank: 7, best: { height: 4, timeMs: 300 } } });
+  let now = 1000, frame, drawnGame, reply = async () => ({ status: 200, body: { height: 0, timeMs: 0, rank: 7, best: { height: 4, timeMs: 300 } } });
   const document = { activeElement: null, hidden: false, getElementById: id => nodes[id], querySelectorAll: () => [] };
   class Element {
     constructor(id) { this.id = id; this.value = ''; this.hidden = false; this.textContent = ''; this.style = {}; this.parentElement = this; }
     addEventListener(type, fn) { this[type] = fn; }
-    setAttribute() {}
+    setAttribute(name, value) { this[name] = value; }
     focus() { document.activeElement = this; }
     blur() { document.activeElement = null; }
   }
@@ -28,9 +28,9 @@ async function tab() {
   };
   vm.runInNewContext(source, {
     document, location: { hostname: 'localhost' }, performance: { now: () => now }, innerWidth: 375,
-    HTMLInputElement: Input, HTMLTextAreaElement: class extends Element {}, Intl, Date, StairsGame, GAUGE_MAX,
+    HTMLInputElement: Input, HTMLTextAreaElement: class extends Element {}, Intl, Date, StairsGame, cap,
     createNet: () => net, apiForHostname: () => '/', FACE: id => id, TINT: {}, medal: () => '',
-    createScene: async () => ({ reset() {}, hop() {}, draw() {} }),
+    createScene: async () => ({ reset() {}, hop() {}, draw(game) { drawnGame = game; } }),
     localStorage: { getItem: key => { assert.equal(key, 'pheeeew-stairs-character'); return null; }, setItem: (k, v) => writes.push([k, v]) },
     addEventListener: (name, fn) => events[name] = fn, requestAnimationFrame: fn => frame = fn,
   });
@@ -43,8 +43,30 @@ async function tab() {
     now += 400; frame(now); await flush();
     assert.equal(nodes.result.hidden, false);
   };
-  return { nodes, calls, writes, document, key, result, events, setReply: fn => reply = fn };
+  return { nodes, calls, writes, document, key, result, events, setReply: fn => reply = fn,
+    advance: ms => { now += ms; frame(now); }, get game() { return drawnGame; } };
 }
+const gaugeTab = await tab();
+await gaugeTab.nodes.start.onclick();
+gaugeTab.advance(0);
+assert.equal(gaugeTab.nodes['gauge-fill'].style.width, '100%');
+for (let i = 0; i < 300; i++) {
+  if (i) gaugeTab.advance(45);
+  gaugeTab.key(direction(123, i) === 'L' ? 'ArrowLeft' : 'ArrowRight');
+}
+gaugeTab.advance(0);
+assert.equal(gaugeTab.game.height, 300);
+assert.equal(gaugeTab.nodes['gauge-fill'].style.width, '100%');
+gaugeTab.advance(500);
+assert.equal(gaugeTab.nodes['gauge-fill'].style.width, '75%');
+assert.equal(gaugeTab.nodes['gauge-fill']['aria-valuenow'], '75');
+gaugeTab.game.gauge = cap(300) * 2;
+gaugeTab.advance(0);
+assert.equal(gaugeTab.nodes['gauge-fill'].style.width, '100%', '상한 초과 표시를 100%로 자른다');
+assert.equal(gaugeTab.nodes['gauge-fill']['aria-valuenow'], '100');
+gaugeTab.game.gauge = 0;
+gaugeTab.advance(0);
+assert.equal(gaugeTab.nodes['gauge-fill'].style.width, '0%');
 const t = await tab();
 assert.equal(t.nodes.start.disabled, false);
 assert.deepEqual(t.calls, ['today', 'ranking']);
@@ -97,4 +119,4 @@ assert.deepEqual(t.writes, [], '닉네임·신원 저장 없음');
 const fresh = await tab(); await fresh.result();
 assert.equal(fresh.nodes.nickname.value, '', '새 탭은 닉네임을 기억하지 않음');
 assert.doesNotMatch(source, /createGuest|net\.me\(|createNicknameDialog|sessionStorage|document\.cookie/);
-console.log('stairs UI: PASS no identity, opt-in registration, nickname validation, Enter/Space/IME/touch, retry, late response, tab memory');
+console.log('stairs UI: PASS height-based gauge/clamping, no identity, opt-in registration, nickname validation, Enter/Space/IME/touch, retry, late response, tab memory');

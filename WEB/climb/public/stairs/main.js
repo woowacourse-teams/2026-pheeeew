@@ -1,7 +1,7 @@
 import { createNet } from '../net.js';
 import { FACE, TINT, medal } from '../ui.js';
 import { apiForHostname } from '../api-config.js';
-import { GAUGE_MAX } from './rules.js';
+import { cap } from './rules.js';
 import { StairsGame } from './game.js';
 import { createScene } from './scene.js';
 
@@ -137,7 +137,7 @@ function frame(now) {
       scene.draw(game, character, now, mode === 'fall' ? now - endedAt : 0);
       $('height').textContent = game.height;
       $('elapsed').textContent = seconds(game.startedAt === null ? 0 : Math.max(0, Math.floor(now - game.startedAt)));
-      const percent = Math.max(0, Math.min(100, game.gaugeAt(now) / GAUGE_MAX * 100));
+      const percent = Math.max(0, Math.min(100, game.gaugeAt(now) / cap(game.height) * 100));
       $('gauge-fill').style.width = `${percent}%`; $('gauge-fill').style.background = percent < 25 ? '#f58476' : '#ffd35a';
       $('gauge-fill').parentElement.setAttribute('aria-valuenow', String(Math.round(percent)));
     }
