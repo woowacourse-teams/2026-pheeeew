@@ -522,7 +522,9 @@ class AppAttestRegistrationIntegrationTest {
                 refreshTokenIssuer,
                 accessTokenIssuer,
                 verifier,
-                tokenProperties
+                tokenProperties,
+                event -> {
+                }
         );
     }
 

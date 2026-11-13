@@ -204,7 +204,9 @@ class DeviceAttestationRoutingIntegrationTest {
                 refreshTokenIssuer,
                 accessTokenIssuer,
                 new RoutingDeviceAttestationVerifier(playIntegrityVerifier, appAttestVerifier),
-                tokenProperties
+                tokenProperties,
+                event -> {
+                }
         );
     }
 

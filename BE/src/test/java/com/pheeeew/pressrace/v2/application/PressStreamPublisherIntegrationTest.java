@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
@@ -79,7 +80,7 @@ class PressStreamPublisherIntegrationTest {
                 """).param("generation", pressRaceService.serverGeneration()).update();
         clock = new MutableClock(Instant.now());
         repository = spy(new PressSnapshotRepository(jdbc));
-        publisher = new PressStreamPublisher(new PressSnapshotService(repository), clock, PUBLISH_INTERVAL,
+        publisher = new PressStreamPublisher(new PressSnapshotService(new PressDatabaseSnapshotService(repository), Optional.empty(), Optional.empty()), clock, PUBLISH_INTERVAL,
                 HEARTBEAT_INTERVAL, PressStreamSendMode.SEQUENTIAL, 1, 1, Duration.ofSeconds(5));
     }
 

@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -44,7 +45,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @PostgisDataJpaTest
-@Import({PressSnapshotRepository.class, PressSnapshotService.class})
+@Import({PressSnapshotRepository.class, PressDatabaseSnapshotService.class, PressSnapshotService.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class PressCachedSnapshotServiceIntegrationTest {
 
@@ -81,7 +82,7 @@ class PressCachedSnapshotServiceIntegrationTest {
         clock = new MutableClock(Instant.now());
         repository = spy(new PressSnapshotRepository(jdbc));
         Ticker ticker = nanos::get;
-        cachedService = new PressCachedSnapshotService(new PressSnapshotService(repository), clock,
+        cachedService = new PressCachedSnapshotService(new PressSnapshotService(new PressDatabaseSnapshotService(repository), Optional.empty(), Optional.empty()), clock,
                 new SimpleMeterRegistry(), TTL, ticker);
     }
 

@@ -683,7 +683,9 @@ class PlayIntegrityRegistrationIntegrationTest {
                 refreshTokenIssuer,
                 accessTokenIssuer,
                 new RoutingDeviceAttestationVerifier(verifier, App_Attest_검증기를_만든다()),
-                tokenProperties
+                tokenProperties,
+                event -> {
+                }
         );
     }
 

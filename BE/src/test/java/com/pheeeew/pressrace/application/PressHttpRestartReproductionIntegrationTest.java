@@ -12,8 +12,12 @@ import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.emotion.domain.repository.DeviceDailyPressRepository;
 import com.pheeeew.pressrace.exception.PressRaceException;
 import com.pheeeew.pressrace.infra.PressRaceRepository;
+import com.pheeeew.pressrace.v2.application.PressWriteBuffer;
+import com.pheeeew.pressrace.v2.domain.PressWriteMode;
 import com.pheeeew.support.PostgisDataJpaTest;
+import java.time.Clock;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -45,6 +49,8 @@ class PressHttpRestartReproductionIntegrationTest {
     private EmotionPressMetrics metrics;
     @Autowired
     private JdbcClient jdbc;
+    @Autowired
+    private Clock clock;
 
     private Device device;
 
@@ -146,7 +152,8 @@ class PressHttpRestartReproductionIntegrationTest {
     }
 
     private EmotionPressService http(PressRaceService server) {
-        return new EmotionPressService(devices, metrics, server);
+        return new EmotionPressService(devices, metrics, server,
+                new PressWriteBuffer(PressWriteMode.DATABASE, clock, devices, presses, server), Optional.empty());
     }
 
     private void assertTotals(long expected) {

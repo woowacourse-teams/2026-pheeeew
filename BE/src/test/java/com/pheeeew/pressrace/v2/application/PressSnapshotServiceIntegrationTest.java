@@ -28,7 +28,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @PostgisDataJpaTest
-@Import({PressSnapshotRepository.class, PressSnapshotService.class})
+@Import({PressSnapshotRepository.class, PressDatabaseSnapshotService.class, PressSnapshotService.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class PressSnapshotServiceIntegrationTest {
 
