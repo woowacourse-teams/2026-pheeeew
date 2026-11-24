@@ -239,6 +239,38 @@ class EmotionPinCacheIntegrationTest {
         assertThat(result.items()).hasSize(21);
     }
 
+    @Test
+    void 첫_페이지가_한_페이지를_넘고_줌을_전달하면_핀_대신_셀_묶음을_반환한다() {
+        // given: 기본 핀 1개와 추가 핀 3개
+        insertPins(3, requester.getId());
+
+        // when
+        EmotionMapPageView clustered = v4Page(2, 12.0);
+        EmotionMapPageView withoutZoom = v4Page(2, null);
+        EmotionMapPageView tooClose = v4Page(2, 16.0);
+        EmotionMapPageView fits = v4Page(200, 12.0);
+
+        // then
+        assertThat(clustered.items()).isEmpty();
+        assertThat(clustered.hasNext()).isFalse();
+        assertThat(clustered.nextCursor()).isNull();
+        assertThat(clustered.clusters().stream().mapToLong(cluster -> cluster.count()).sum()).isEqualTo(4);
+        assertThat(clustered.clusters()).allSatisfy(cluster ->
+                assertThat(cluster.representativeState()).isEqualTo(EmotionState.ANGRY));
+        assertThat(withoutZoom.items()).hasSize(2);
+        assertThat(withoutZoom.hasNext()).isTrue();
+        assertThat(withoutZoom.clusters()).isEmpty();
+        assertThat(tooClose.items()).hasSize(2);
+        assertThat(tooClose.clusters()).isEmpty();
+        assertThat(fits.items()).hasSize(4);
+        assertThat(fits.clusters()).isEmpty();
+    }
+
+    private EmotionMapPageView v4Page(int limit, Double zoom) {
+        return queries.findContentMapWithinBoundsV4(BOUNDS, requester.getPublicId(), null, null, null, null, null,
+                limit, zoom);
+    }
+
     /** 캐시가 적중해서 응답한 페이지다. */
     private EmotionMapPageView cachedPage(String cursor) {
         var read = MapReadDecisions.pins(meters, () -> page(cursor));

@@ -1,6 +1,7 @@
 package com.pheeeew.emotion.application.mapcache;
 
 import com.pheeeew.emotion.application.dto.EmotionCursor;
+import com.pheeeew.emotion.application.dto.EmotionMapClusterView;
 import com.pheeeew.emotion.application.dto.RegionEmotionSummary;
 import com.pheeeew.emotion.domain.repository.EmotionMapReadRepository;
 import com.pheeeew.emotion.domain.repository.projection.EmotionMapBlocks;
@@ -53,6 +54,11 @@ public class PinCandidateCache implements EmotionMapCacheListener {
     }
 
     public Page find(EmotionCursor cursor, boolean firstPage, Long deviceId, int pageSize) {
+        return find(cursor, firstPage, deviceId, pageSize, null);
+    }
+
+    /** clusterResolution이 있고 첫 페이지가 한 페이지를 넘으면 같은 스냅샷과 차단 목록으로 셀 묶음도 만든다. */
+    public Page find(EmotionCursor cursor, boolean firstPage, Long deviceId, int pageSize, Integer clusterResolution) {
         Lookup lookup = lookup();
         if (lookup == null || !firstPage && lookup.snapshot().completeThrough().isBefore(cursor.snapshotAt())) {
             metrics.request("fallback");
@@ -69,7 +75,11 @@ public class PinCandidateCache implements EmotionMapCacheListener {
         PinCandidates.Selection selection = metrics.measurePinSearch(
                 () -> snapshot.ordered().select(selected, deviceId, blocked, pageSize + 1), PinCandidates.Selection::scanned);
 
-        return Page.of(selected, selection.pins());
+        List<EmotionMapClusterView> clusters = firstPage && clusterResolution != null
+                && selection.pins().size() > pageSize
+                ? snapshot.ordered().clusters(selected, deviceId, blocked, clusterResolution) : List.of();
+
+        return Page.of(selected, selection.pins(), clusters);
     }
 
     /** MY 지역 요약을 핀 후보에서 계산한다. 캐시를 쓸 수 없으면 null이며, 요청 지표는 호출한 지역 캐시가 기록한다. */
@@ -256,10 +266,11 @@ public class PinCandidateCache implements EmotionMapCacheListener {
         }
     }
 
-    public record Page(EmotionCursor cursor, List<EmotionMapPin> pins) {
+    /** clusters가 비어 있지 않으면 pins 대신 묶음으로 응답한다. */
+    public record Page(EmotionCursor cursor, List<EmotionMapPin> pins, List<EmotionMapClusterView> clusters) {
 
-        private static Page of(EmotionCursor cursor, List<EmotionMapPin> pins) {
-            return new Page(cursor, pins);
+        private static Page of(EmotionCursor cursor, List<EmotionMapPin> pins, List<EmotionMapClusterView> clusters) {
+            return new Page(cursor, pins, clusters);
         }
     }
 

@@ -35,6 +35,13 @@ public class EmotionMapQueryService {
 
     private static final int DEFAULT_PAGE_SIZE = 200;
     private static final int EXPERIMENT_MAX_PAGE_SIZE = 1000;
+    /** 줌 16부터는 화면이 해상도 9 셀 두세 개 크기라 묶어도 줄지 않는다. 그때는 핀을 페이지로 준다. */
+    private static final double CLUSTER_MAX_ZOOM = 16;
+    private static final double CLUSTER_FINE_MIN_ZOOM = 14;
+    private static final double CLUSTER_MIDDLE_MIN_ZOOM = 12;
+    private static final int CLUSTER_FINE_RESOLUTION = 9;
+    private static final int CLUSTER_MIDDLE_RESOLUTION = 8;
+    private static final int CLUSTER_COARSE_RESOLUTION = 7;
 
     private final Clock clock;
     private final EmotionMapDbQueryService dbQueries;
@@ -157,6 +164,22 @@ public class EmotionMapQueryService {
             String encodedCursor,
             Integer requestedSize
     ) {
+        return findContentMapWithinBoundsV4(bounds, devicePublicId, startDate, endDate, contentType, scope, encodedCursor,
+                requestedSize, null);
+    }
+
+    /** zoom을 전달한 첫 페이지가 한 페이지에 담기지 않으면 핀 대신 H3 셀 묶음을 반환한다. */
+    public EmotionMapPageView findContentMapWithinBoundsV4(
+            EmotionSearchBounds bounds,
+            UUID devicePublicId,
+            LocalDate startDate,
+            LocalDate endDate,
+            EmotionContentFilter contentType,
+            EmotionSearchScope scope,
+            String encodedCursor,
+            Integer requestedSize,
+            Double zoom
+    ) {
         int pageSize = resolveMapPageSize(requestedSize);
         EmotionCursor cursor = encodedCursor == null
                 ? EmotionCursor.initialWithinBounds(bounds, currentSnapshotAt(),
@@ -164,18 +187,32 @@ public class EmotionMapQueryService {
                 : EmotionCursorCodec.decodeV4WithinBounds(encodedCursor);
         cursor.validateSnapshotAt(Instant.now(clock));
         cursor.validateRequestedFilter(startDate, endDate, contentType, scope, null);
-        PinCandidateCache.Page cached = findCachedPins(cursor, devicePublicId, encodedCursor == null, pageSize);
+        PinCandidateCache.Page cached = findCachedPins(cursor, devicePublicId, encodedCursor == null, pageSize,
+                clusterResolution(zoom));
         if (cached != null) {
-            return dbQueries.findPinPageV4(cached, pageSize);
+            return cached.clusters().isEmpty() ? dbQueries.findPinPageV4(cached, pageSize)
+                    : EmotionMapPageView.clustered(cached.clusters());
         }
 
         return dbQueries.findMapV4(cursor, devicePublicId, pageSize);
     }
 
+    /** 화면 폭에 셀이 5~10개쯤 들어오는 해상도를 고른다. null이면 묶지 않는다. */
+    private Integer clusterResolution(Double zoom) {
+        if (zoom == null || zoom >= CLUSTER_MAX_ZOOM) {
+            return null;
+        }
+        if (zoom < CLUSTER_MIDDLE_MIN_ZOOM) {
+            return CLUSTER_COARSE_RESOLUTION;
+        }
+
+        return zoom < CLUSTER_FINE_MIN_ZOOM ? CLUSTER_MIDDLE_RESOLUTION : CLUSTER_FINE_RESOLUTION;
+    }
+
     private EmotionMapPageView findContentMap(
             EmotionCursor cursor, UUID devicePublicId, boolean firstPage, int pageSize, Function<EmotionCursor, String> encoder
     ) {
-        PinCandidateCache.Page cached = findCachedPins(cursor, devicePublicId, firstPage, pageSize);
+        PinCandidateCache.Page cached = findCachedPins(cursor, devicePublicId, firstPage, pageSize, null);
         if (cached != null) {
             return dbQueries.findPinPage(cached, pageSize, encoder);
         }
@@ -184,7 +221,7 @@ public class EmotionMapQueryService {
     }
 
     private PinCandidateCache.Page findCachedPins(
-            EmotionCursor cursor, UUID devicePublicId, boolean firstPage, int pageSize
+            EmotionCursor cursor, UUID devicePublicId, boolean firstPage, int pageSize, Integer clusterResolution
     ) {
         EmotionSearchFilter filter = cursor.filter();
         MapReadObservation.query(filter.startDate(), filter.endDate(), firstPage, defaultFilter(filter), clock);
@@ -195,7 +232,8 @@ public class EmotionMapQueryService {
             Long deviceId = dbQueries.findValidatedDeviceId(devicePublicId, cursor.groupIds());
 
             MapReadObservation.decision(Decision.CACHE_ATTEMPT);
-            PinCandidateCache.Page cached = pinCandidateCache.find(cursor, firstPage, deviceId, pageSize);
+            PinCandidateCache.Page cached = pinCandidateCache.find(cursor, firstPage, deviceId, pageSize,
+                    clusterResolution);
             if (cached != null) {
                 return cached;
             }

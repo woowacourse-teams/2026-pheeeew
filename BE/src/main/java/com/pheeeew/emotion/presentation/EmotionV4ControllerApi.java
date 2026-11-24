@@ -7,7 +7,7 @@ import com.pheeeew.emotion.presentation.dto.EmotionRegionMapResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionV4CreateRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionV4DetailResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionV4MapRequest;
-import com.pheeeew.emotion.presentation.dto.EmotionV4MapResponse;
+import com.pheeeew.emotion.presentation.dto.EmotionV4MapPageResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionV4RegionMapRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionV4UpdateRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionsV4WithoutBoundsRequest;
@@ -123,15 +123,20 @@ public interface EmotionV4ControllerApi {
             limit은 커서에 저장하지 않으며 다음 요청에서 변경할 수 있습니다. 생략하면 다시 200개를 적용합니다.
             기존 API·v4 목록 커서는 400입니다. 필터는 생략하거나 커서와 같게 전달합니다.
             커서의 기준 시각 이후 등록은 제외하지만 삭제·차단은 조회 시점에 다시 반영합니다.
+
+            첫 페이지에 zoom을 전달하면 화면 안 핀이 limit을 넘을 때 핀 대신 H3 셀 묶음을 clusters로 반환합니다.
+            이때 items는 빈 배열, hasNext는 false이며 묶음을 누르면 확대해서 다시 조회합니다.
+            zoom이 12 미만이면 해상도 7, 14 미만이면 8, 16 미만이면 9로 묶고 16 이상이면 묶지 않습니다.
+            zoom을 생략하면 clusters 필드 없이 기존과 같은 응답입니다. zoom이 0~24를 벗어나면 400입니다.
             """, security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "GeoJSON 핀 목록과 다음 페이지 정보"),
+            @ApiResponse(responseCode = "200", description = "GeoJSON 핀 목록과 다음 페이지 정보, 또는 H3 셀 묶음"),
             @ApiResponse(responseCode = "400", description = "잘못된 좌표·필터·커서·limit 또는 금지된 그룹 입력",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "401", description = "인증 실패 또는 유효하지 않은 기기",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
-    ResponseEntity<CursorResponse<EmotionV4MapResponse>> findContentMapWithinBoundsV4(
+    ResponseEntity<EmotionV4MapPageResponse> findContentMapWithinBoundsV4(
             @Valid @ParameterObject EmotionV4MapRequest request,
             @Parameter(hidden = true) UUID devicePublicId,
             @Parameter(hidden = true) MultiValueMap<String, String> parameters
