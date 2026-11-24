@@ -169,23 +169,29 @@ final class RegionAggregate {
     private static Map<String, RegionEmotionSummary> representatives(Map<String, Map<EmotionState, Long>> counts) {
         Map<String, RegionEmotionSummary> summaries = new HashMap<>();
         counts.forEach((code, values) -> {
-            long total = values.values().stream().mapToLong(Long::longValue).sum();
-            if (total > 0) {
-                EmotionState representative = null;
-                long highest = 0;
-                for (EmotionState state : PRIORITY) {
-                    long amount = values.getOrDefault(state, 0L);
-                    if (amount > highest) {
-                        representative = state;
-                        highest = amount;
-                    }
-                }
-
-                summaries.put(code, RegionEmotionSummary.of(total, representative));
+            RegionEmotionSummary summary = summaryOf(values);
+            if (summary.totalCount() > 0) {
+                summaries.put(code, summary);
             }
         });
 
         return Map.copyOf(summaries);
+    }
+
+    /** 상태별 개수의 합계와 최빈 감정. 동률은 PRIORITY 순서로 고른다. */
+    static RegionEmotionSummary summaryOf(Map<EmotionState, Long> values) {
+        long total = values.values().stream().mapToLong(Long::longValue).sum();
+        EmotionState representative = null;
+        long highest = 0;
+        for (EmotionState state : PRIORITY) {
+            long amount = values.getOrDefault(state, 0L);
+            if (amount > highest) {
+                representative = state;
+                highest = amount;
+            }
+        }
+
+        return RegionEmotionSummary.of(total, representative);
     }
 
     /** 한 내용 종류의 전체 기간 집계와 KST 날짜별 집계. 게시 후에는 바꾸지 않는다. */

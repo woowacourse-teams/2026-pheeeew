@@ -3,8 +3,10 @@ package com.pheeeew.emotion.application.mapcache;
 import static com.pheeeew.emotion.fixture.EmotionFixture.기본_한숨_빌더;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.within;
 
 import com.pheeeew.emotion.application.dto.EmotionCursor;
+import com.pheeeew.emotion.application.dto.EmotionMapClusterView;
 import com.pheeeew.emotion.domain.Emotion;
 import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.emotion.domain.repository.projection.EmotionMapBlocks;
@@ -263,6 +265,78 @@ class PinCandidatesTest {
         assertThat(earlier.size()).isZero();
         assertThat(original.size()).isEqualTo(1);
         assertThat(original.nextActivation()).isEqualTo(NOW.plusSeconds(5));
+    }
+
+    @Test
+    void 화면_안_핀을_셀로_묶어_개수와_대표_감정을_세고_선택_조건은_핀_조회와_같다() {
+        // given
+        var ordered = PinCandidates.of(List.of(
+                EmotionMapPin.of(1L, 1L, NOW, 127, 38, EmotionState.ANGRY, 0, null, false, "11010530"),
+                EmotionMapPin.of(2L, 1L, NOW, 127, 38, EmotionState.ANGRY, 0, null, false, "11010530"),
+                EmotionMapPin.of(3L, 1L, NOW, 127, 38, EmotionState.EXHAUSTED, 0, null, true, "11010530"),
+                EmotionMapPin.of(4L, 1L, NOW, 127.5, 38.5, EmotionState.EXHAUSTED, 0, null, false, "11010530"),
+                EmotionMapPin.of(5L, 1L, NOW, 129, 38, EmotionState.ANGRY, 0, null, false, "11010530"),
+                EmotionMapPin.of(6L, 7L, NOW, 127, 38, EmotionState.ANGRY, 0, null, false, "11010530"),
+                EmotionMapPin.of(7L, 1L, NOW.plusSeconds(1), 127, 38, EmotionState.ANGRY, 0, null, false, "11010530")),
+                null).ordered();
+        var blocks = EmotionMapBlocks.of(Set.of(), Set.of(7L));
+
+        // when
+        var all = ordered.clusters(cursor(), REQUESTER, blocks, 7);
+        var memo = ordered.clusters(cursor(EmotionContentFilter.MEMO, null), REQUESTER, blocks, 7);
+
+        // then: 화면 밖(5), 차단 작성자(6), 조회 시각 이후(7)는 세지 않는다
+        assertThat(all).extracting(EmotionMapClusterView::count).containsExactly(3L, 1L);
+        assertThat(all.getFirst().representativeState()).isEqualTo(EmotionState.ANGRY);
+        assertThat(all.getFirst().longitude()).isCloseTo(127, within(0.05));
+        assertThat(all.getFirst().latitude()).isCloseTo(38, within(0.05));
+        assertThat(all.getLast().representativeState()).isEqualTo(EmotionState.EXHAUSTED);
+        assertThat(memo).extracting(EmotionMapClusterView::count).containsExactly(2L, 1L);
+    }
+
+    @Test
+    void 낮은_해상도의_묶음은_높은_해상도_묶음을_빠짐없이_합친다() {
+        // given: 약 2km 범위에 흩어진 핀 400개
+        List<EmotionMapPin> pins = new ArrayList<>();
+        for (int index = 0; index < 400; index++) {
+            pins.add(EmotionMapPin.of((long) index, 1L, NOW, 127 + (index % 20) * 0.001, 38 + (index / 20) * 0.001,
+                    EmotionState.ANGRY, 0, null, false, "11010530"));
+        }
+        var ordered = PinCandidates.of(pins, null).ordered();
+
+        // when
+        var fine = ordered.clusters(cursor(), REQUESTER, NO_BLOCKS, 9);
+        var coarse = ordered.clusters(cursor(), REQUESTER, NO_BLOCKS, 7);
+
+        // then
+        assertThat(fine.stream().mapToLong(EmotionMapClusterView::count).sum()).isEqualTo(400);
+        assertThat(coarse.stream().mapToLong(EmotionMapClusterView::count).sum()).isEqualTo(400);
+        assertThat(coarse).hasSizeLessThan(fine.size());
+        assertThat(coarse).extracting(EmotionMapClusterView::cell).doesNotHaveDuplicates();
+    }
+
+    @Test
+    void 묶음은_내_감정_범위와_후보_변경을_반영하고_지원하지_않는_해상도는_거절한다() {
+        // given
+        var original = PinCandidates.of(List.of(pin(1, REQUESTER, NOW), pin(2, 7L, NOW)), null);
+        var mine = cursor(EmotionContentFilter.ALL, EmotionSearchScope.MY);
+
+        // when
+        var added = original.applyChange(null, contribution(3, REQUESTER, NOW), NOW, 100_000);
+        var removed = added.applyChange(contribution(1, REQUESTER, NOW), deletedContribution(1, REQUESTER, NOW), NOW,
+                100_000);
+
+        // then
+        assertThat(original.ordered().clusters(mine, REQUESTER, NO_BLOCKS, 7))
+                .extracting(EmotionMapClusterView::count).containsExactly(1L);
+        assertThat(original.ordered().clusters(cursor(), REQUESTER, NO_BLOCKS, 7).stream()
+                .mapToLong(EmotionMapClusterView::count).sum()).isEqualTo(2);
+        assertThat(added.ordered().clusters(cursor(), REQUESTER, NO_BLOCKS, 7).stream()
+                .mapToLong(EmotionMapClusterView::count).sum()).isEqualTo(3);
+        assertThat(removed.ordered().clusters(cursor(), REQUESTER, NO_BLOCKS, 7).stream()
+                .mapToLong(EmotionMapClusterView::count).sum()).isEqualTo(2);
+        assertThatThrownBy(() -> original.ordered().clusters(cursor(), REQUESTER, NO_BLOCKS, 10))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     private EmotionMapPin pin(long id, Long deviceId, Instant at) {
