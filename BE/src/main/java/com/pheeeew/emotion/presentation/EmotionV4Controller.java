@@ -13,7 +13,7 @@ import com.pheeeew.emotion.presentation.dto.EmotionRegionMapResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionV4CreateRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionV4DetailResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionV4MapRequest;
-import com.pheeeew.emotion.presentation.dto.EmotionV4MapResponse;
+import com.pheeeew.emotion.presentation.dto.EmotionV4MapPageResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionV4RegionMapRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionV4UpdateRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionsV4WithoutBoundsRequest;
@@ -90,7 +90,7 @@ public class EmotionV4Controller implements EmotionV4ControllerApi {
 
     @Override
     @GetMapping("/map")
-    public ResponseEntity<CursorResponse<EmotionV4MapResponse>> findContentMapWithinBoundsV4(
+    public ResponseEntity<EmotionV4MapPageResponse> findContentMapWithinBoundsV4(
             @ModelAttribute EmotionV4MapRequest request,
             @CurrentDevice UUID devicePublicId,
             @RequestParam MultiValueMap<String, String> parameters
@@ -100,10 +100,10 @@ public class EmotionV4Controller implements EmotionV4ControllerApi {
             throw new PheeeewException(CommonErrorCode.INVALID_REQUEST, null);
         }
         var page = emotionMapQueryService.findContentMapWithinBoundsV4(request.toBounds(), devicePublicId,
-                request.startDate(), request.endDate(), request.contentType(), request.scope(), request.cursor(), request.limit());
+                request.startDate(), request.endDate(), request.contentType(), request.scope(), request.cursor(),
+                request.limit(), request.zoom());
         return ResponseEntity.ok().cacheControl(CacheControl.noCache().cachePrivate())
-                .body(CursorResponse.of(page.items().stream().map(EmotionV4MapResponse::from).toList(),
-                        page.hasNext(), page.nextCursor()));
+                .body(EmotionV4MapPageResponse.from(page));
     }
 
     @Override

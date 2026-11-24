@@ -54,7 +54,14 @@ public record EmotionV4MapRequest(
         @Min(1)
         @Schema(description = "한 페이지의 최대 핀 수. 생략하면 200개이며 개발 상한은 1000개, 그 외 환경은 200개입니다. 커서에 저장되지 않으므로 다음 페이지에도 원하는 값을 전달합니다.",
                 minimum = "1", defaultValue = "200", example = "400")
-        Integer limit
+        Integer limit,
+
+        @DecimalMin("0.0")
+        @DecimalMax("24.0")
+        @Schema(description = "지도 줌. 전달하면 첫 페이지가 limit을 넘을 때 핀 대신 H3 셀 묶음(clusters)을 반환합니다. "
+                + "생략하거나 16 이상이면 항상 핀을 반환합니다. 커서에 저장되지 않으며 다음 페이지에서는 쓰이지 않습니다.",
+                minimum = "0", maximum = "24", example = "12.5")
+        Double zoom
 ) {
 
     @AssertTrue

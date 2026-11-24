@@ -190,6 +190,33 @@ class MapReadHttpIntegrationTest {
     }
 
     @Test
+    void v4_핀은_줌을_전달하고_한_페이지를_넘을_때만_묶음을_응답에_담는다() throws Exception {
+        // when: 핀 3개를 한 페이지 1개로 조회한다
+        var clustered = send("/api/v4/emotions/map" + BOUNDS + "&limit=1&zoom=12", token);
+        var withoutZoom = send("/api/v4/emotions/map" + BOUNDS + "&limit=1", token);
+        var invalidZoom = send("/api/v4/emotions/map" + BOUNDS + "&limit=1&zoom=-1", token);
+
+        // then
+        var body = mapper.readTree(clustered.body());
+        assertThat(clustered.statusCode()).isEqualTo(200);
+        assertThat(body.get("items").size()).isZero();
+        assertThat(body.get("hasNext").asBoolean()).isFalse();
+        long total = 0;
+        for (var cluster : body.get("clusters")) {
+            assertThat(cluster.get("type").asString()).isEqualTo("Feature");
+            assertThat(cluster.get("geometry").get("type").asString()).isEqualTo("Point");
+            assertThat(cluster.get("properties").get("representativeState").asString()).isEqualTo("ANGRY");
+            total += cluster.get("properties").get("totalCount").asLong();
+        }
+        assertThat(total).isEqualTo(3);
+        var plain = mapper.readTree(withoutZoom.body());
+        assertThat(plain.has("clusters")).isFalse();
+        assertThat(plain.get("items").size()).isEqualTo(1);
+        assertThat(plain.get("hasNext").asBoolean()).isTrue();
+        assertThat(invalidZoom.statusCode()).isEqualTo(400);
+    }
+
+    @Test
     void 한달_첫페이지와_커서_후속페이지는_캐시_경로를_집계하고_v4_계약을_유지한다() throws Exception {
         // given
         LocalDate end = LocalDate.now(ZoneId.of("Asia/Seoul"));

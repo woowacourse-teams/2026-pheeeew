@@ -276,14 +276,14 @@ class EmotionControllerTest {
         // given
         var date = LocalDate.of(2026, 10, 1);
         when(emotionMapQueryService.findContentMapWithinBoundsV4(null, DEVICE_PUBLIC_ID, date, date,
-                EmotionContentFilter.MEMO, scope, "v4-pin-next", null)).thenReturn(EmotionMapPageView.of(List.of(), false, null));
+                EmotionContentFilter.MEMO, scope, "v4-pin-next", null, null)).thenReturn(EmotionMapPageView.of(List.of(), false, null));
 
         // when / then
         request(HttpMethod.GET, "/api/v4/emotions/map?cursor=v4-pin-next&startDate=" + date + "&endDate=" + date
                 + "&contentType=MEMO&scope=" + scope + "&devicePublicId=" + UUID.randomUUID(), "access-token")
                 .expectStatus().isOk().expectBody().json("{\"items\":[],\"hasNext\":false,\"nextCursor\":null}", JsonCompareMode.STRICT);
         verify(emotionMapQueryService).findContentMapWithinBoundsV4(null, DEVICE_PUBLIC_ID, date, date,
-                EmotionContentFilter.MEMO, scope, "v4-pin-next", null);
+                EmotionContentFilter.MEMO, scope, "v4-pin-next", null, null);
     }
 
     @ParameterizedTest
@@ -305,9 +305,9 @@ class EmotionControllerTest {
         // given
         var bounds = EmotionSearchBounds.of(127.8, 37.2, 128.2, 37.8);
         when(emotionMapQueryService.findContentMapWithinBoundsV4(bounds, DEVICE_PUBLIC_ID,
-                null, null, null, null, null, limit)).thenReturn(EmotionMapPageView.of(List.of(), true, "next"));
+                null, null, null, null, null, limit, null)).thenReturn(EmotionMapPageView.of(List.of(), true, "next"));
         when(emotionMapQueryService.findContentMapWithinBoundsV4(null, DEVICE_PUBLIC_ID,
-                null, null, null, null, "next", limit)).thenReturn(EmotionMapPageView.of(List.of(), false, null));
+                null, null, null, null, "next", limit, null)).thenReturn(EmotionMapPageView.of(List.of(), false, null));
 
         // when / then
         request(HttpMethod.GET, "/api/v4/emotions/map" + REGION_BOUNDS_QUERY + "&limit=" + limit, "access-token")
@@ -315,9 +315,9 @@ class EmotionControllerTest {
         request(HttpMethod.GET, "/api/v4/emotions/map?cursor=next&limit=" + limit, "access-token")
                 .expectStatus().isOk().expectBody().jsonPath("$.hasNext").isEqualTo(false);
         verify(emotionMapQueryService).findContentMapWithinBoundsV4(bounds, DEVICE_PUBLIC_ID,
-                null, null, null, null, null, limit);
+                null, null, null, null, null, limit, null);
         verify(emotionMapQueryService).findContentMapWithinBoundsV4(null, DEVICE_PUBLIC_ID,
-                null, null, null, null, "next", limit);
+                null, null, null, null, "next", limit, null);
     }
 
     @ParameterizedTest
@@ -335,7 +335,7 @@ class EmotionControllerTest {
         // given
         var bounds = EmotionSearchBounds.of(127.8, 37.2, 128.2, 37.8);
         when(emotionMapQueryService.findContentMapWithinBoundsV4(bounds, DEVICE_PUBLIC_ID,
-                null, null, null, null, null, limit)).thenThrow(new PheeeewException(CommonErrorCode.INVALID_REQUEST, null));
+                null, null, null, null, null, limit, null)).thenThrow(new PheeeewException(CommonErrorCode.INVALID_REQUEST, null));
 
         // when / then
         request(HttpMethod.GET, "/api/v4/emotions/map" + REGION_BOUNDS_QUERY + "&limit=" + limit, "access-token")
@@ -345,7 +345,7 @@ class EmotionControllerTest {
     @Test
     void v4_핀도_잘못된_커서를_400으로_전달한다() {
         // given
-        when(emotionMapQueryService.findContentMapWithinBoundsV4(null, DEVICE_PUBLIC_ID, null, null, null, null, "legacy", null))
+        when(emotionMapQueryService.findContentMapWithinBoundsV4(null, DEVICE_PUBLIC_ID, null, null, null, null, "legacy", null, null))
                 .thenThrow(new EmotionException(EmotionErrorCode.EMOTION_INVALID_CURSOR));
 
         // when / then
@@ -362,7 +362,7 @@ class EmotionControllerTest {
         var emotion = 기본_한숨_빌더().groupStamp(stamp).state(EmotionState.FRUSTRATED).build();
         ReflectionTestUtils.setField(emotion, "id", 42L);
         var pin = EmotionMapItemView.of(emotion, GroupStampResult.from(stamp));
-        when(emotionMapQueryService.findContentMapWithinBoundsV4(bounds, DEVICE_PUBLIC_ID, null, null, null, null, null, null))
+        when(emotionMapQueryService.findContentMapWithinBoundsV4(bounds, DEVICE_PUBLIC_ID, null, null, null, null, null, null, null))
                 .thenReturn(EmotionMapPageView.of(List.of(pin), true, "v4-pin-next"));
 
         // when / then
